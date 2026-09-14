@@ -1,0 +1,157 @@
+{
+ "v": 1,
+ "batch": "elitea-2452",
+ "generatedAt": "2026-09-14T12:03:20.194Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-22T18:24:11.499Z",
+   "end": "2026-08-07T18:24:11.499Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 1
+ },
+ "delivered": 1,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   28.31,
+   25.52,
+   23.41
+  ],
+  "failures": [
+   {
+    "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py",
+    "signature": "TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant FAILED — pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — steps 1-10 passed cleanly). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1039: a bare LLM node (added via + Add Node with zero further config) errors instead of respon… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "elitea-testing-public#1039"
+    ]
+   },
+   {
+    "spec": "tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py",
+    "signature": "test_hitl_node_runtime_behavior FAILED — pytest.fail: Soft assertion(s) failed (sanctioned RED — known defect #1103). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1103: Reject should end the pipeline at END with no further processing, but the backend re-emitted ['agent_start','start_task'] — the pipeline restarted from the entry point instead.",
+    "case_ids": [
+     "elitea-testing-public#1103"
+    ]
+   },
+   {
+    "spec": "tests/ui/pipelines/test_pipeline_router_node_configuration.py",
+    "signature": "test_router_node_configuration_and_edge_wiring FAILED — pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — rest of the flow: Condition/Routes/Input/routes-edges/Save/reload passed cleanly). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036: default-output edge Router 1 default_output -> END did not render immediately after selec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "elitea-testing-public#1036"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2452",
+   "outcome": "automated",
+   "findings": 17,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2452"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

@@ -1,0 +1,88 @@
+{
+  "batch": "elitea-2023-pipeline-dashboard-search",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2023-pipeline-dashboard-search",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      38.3,
+      36.89,
+      36.7
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2023",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1302: ELITEA-2023 case Steps 3-4 imply the pipeline dashboard grid filters live as the user types 'YAML'. Live product (SearchBar.jsx, shared across Pipelines/Agents/MCP/Credentials/Toolkits/Skills dashboards) requires an explicit activation step -- pressing Enter or clicking the search-send icon (data-testid=search-send-button) -- before the underlying grid ac… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1302"
+        },
+        {
+          "kind": "note",
+          "note": "PipelinesListPage.search() (automation/pages/pipelines_list_page.py:122-131), as currently merged on origin/automation/base, only fills the search box -- it never presses Enter or clicks the send icon, so it never actually triggers the grid-narrowing search dispatch. The two existing merged tests (test_search_pipeline_by_name, test_search_pipeline_no_results) pass anyway because they incidentally … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Checked whether Pipelines reproduces the known sibling defect where clearing a zero-match search redirects to the entity's /create page (confirmed bugs: EliteaAI/elitea-testing-public#585 for MCPs, #551 for Credentials). Reproduced the identical trigger conditions live (search a term with zero matches -> empty state -> click Clear) -- Pipelines correctly restores the full grid and stays on /pipeli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Playwright's exact text=\"...\" locator (:text-is()) does not match an element's parent when the target text is split across nested <span> fragments (e.g. search-highlighted substrings), even though element.textContent concatenates correctly. This silently breaks any tech-debt raw-text-locator helper (pipeline_exists_in_list-style) for positive assertions made during an active/highlighted search on … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Concrete Handles table and test-specs/pipelines/_surface.md amended in-PR per Phase 2 rule to record the above finding, since it was not anticipated by the analyst's exploration (their manual confirmation used a browser snapshot, not the pipeline_exists_in_list() automation method itself)."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot ↔ AFS ↔ diff) all consistent. Extend-existing target verified real: TestSearchPipeline (test_pipeline_management.py:333-370) is on automation/base at commit 7c2d2e5b (confirmed present in `git log automation/base`); the two pre-existing tests genuinely only exercise the SearchBar.jsx suggestions popover (old `PipelinesListPage.search()` was `fill()`-only, no Enter/clic… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_management.py:333-370"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map ticked against the full original case (all 6 numbered case steps map to distinct allure.step blocks with real assertions at that step, not just an end-state check): Step1→test Step2 (both YAML + non-matching pipeline visibility asserted), Step2→test Step3 (placeholder text equality), Step3→test Step4 (input value), Step4→test Step5 (bidirectional: match visible AND non-match hidden, v… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_management.py:373-483"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-locator grep on the full diff (pages/ + tests/) returned 0 hits: `git diff automation/base...tests/ELITEA-2023-pipeline-dashboard-search-filter-clear -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → no matches. Both new LocatorDes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipelines_list_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Filed clarification EliteaAI/elitea-testing-public#1302 checked live via `gh issue view` — OPEN, `question`-labelled, correctly applies the reverse-masking guard (case text implies live-as-you-type filtering; live product correctly requires Enter/send-icon per SearchBar.jsx source read) rather than misfiling it as a product defect.",
+          "ref": "EliteaAI/elitea-testing-public#1302"
+        },
+        {
+          "kind": "note",
+          "note": "page.wait_for_timeout(1000) settle calls added in PipelinesListPage.search()/clear_search() are a pre-existing, widespread convention in this codebase (identical pattern already merged in mcp_list_page.py:212-213, and used throughout agent_detail_page.py) for post-networkidle React re-render settle -- not a new pattern introduced by this diff, and the reviewer contract's mechanical check targets ra… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipelines_list_page.py:169"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md",
+      "branch": "tests/ELITEA-2023-pipeline-dashboard-search-filter-clear",
+      "pr": 1303,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          38.3,
+          36.89,
+          36.7
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

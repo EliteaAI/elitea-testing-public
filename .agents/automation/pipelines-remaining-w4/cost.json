@@ -1,0 +1,266 @@
+{
+ "v": 1,
+ "batch": "pipelines-remaining-w4",
+ "generatedAt": "2026-09-14T12:03:20.237Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-25T01:40:47.000Z",
+   "end": "2026-08-10T01:40:47.000Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 5,
+  "already-covered": 1
+ },
+ "delivered": 5,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   227.62,
+   224.99,
+   245.38
+  ],
+  "failures": []
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2019",
+   "outcome": "automated",
+   "findings": 12,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2057",
+   "outcome": "automated",
+   "findings": 8,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2060",
+   "outcome": "already-covered",
+   "findings": 1,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2061",
+   "outcome": "automated",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2072",
+   "outcome": "automated",
+   "findings": 6,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2048",
+   "outcome": "automated",
+   "findings": 5,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 6
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2019",
+   "ELITEA-2057",
+   "ELITEA-2060",
+   "ELITEA-2061",
+   "ELITEA-2072",
+   "ELITEA-2048"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

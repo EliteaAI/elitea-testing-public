@@ -1,0 +1,63 @@
+{
+  "batch": "elitea-2094",
+  "base": "origin/automation/base",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-2094",
+      "outcome": "blocked",
+      "note": "AFS status is defect-found (mapped to `blocked` — the return schema has no defect-found value). Executed live, not inherited: 7 fresh repetitions in the real pytest/page-object harness (fresh agent_id + pipeline_with_llm_id + fresh UI-created conversation per rep, HEADLESS=true, localhost:5173 / DEV backend, NO fixed wall-clock delays). Agent→Pipeline 0/4, Pipeline→Agent 0/2, pipeline-alone contro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "BLOCKING, re-confirmed live 2026-08-27 (evidence commented on the issue). Adding two version-carrying participants (Agent + Pipeline) to one conversation silently drops the second, in BOTH orders: Agent→Pipeline 0/4, Pipeline→Agent 0/2, across 7 fresh reps with no fixed delays. This is the third independent confirmation (ELITEA-2455 saw 16 reps on 2026-08-26). NEW datapoint this pass: a pipeline-a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1279"
+        },
+        {
+          "kind": "defect",
+          "note": "Re-confirmed live 4/4 on 2026-08-27 (evidence commented on the issue). A HEALTHY remote MCP (mcp_toolkit_with_tools fixture, public mcp.deepwiki.com, 3 real tools, no OAuth) is falsely flagged 'Server is disconnected! Reconnect it to use.' as a chat participant. The automation consequence is newly recorded and is worse than a cosmetic warning: a misconfigured/warned participant renders through the… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#687"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 9 expects the owner icon to be added to PARTICIPANTS after Send. For a PRIVATE project the owner/Users section NEVER renders — showUsersSection = !isPrivateProject, both collapsed and expanded. In the suite's default project 399 ('Private') this step's expected result is unobservable BY DESIGN, not by defect; the case text assumes a team project. Independent of #1279 and will still need … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2094 step 9 / project 399"
+        },
+        {
+          "kind": "clarification",
+          "note": "The only testid-backed per-type icon signal is chat-participants-badge-icon-{section}, which renders ONLY while the participants panel is COLLAPSED. The EXPANDED panel's per-row EntityIcon (ParticipantItem.jsx) carries no testid and no per-type attribute at all. So a 'distinct icon per participant type' assertion must deliberately toggle the panel to collapsed for that check — it cannot be done in… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2094 step 7 (distinct icon per type)"
+        },
+        {
+          "kind": "note",
+          "note": "RETIRED a stale environment fact that the intake note carried forward from July: '${ELITEA_PROJECT_ID} = 399 (Private) has zero pipelines and zero MCPs, failing this case's precondition, so analysis must run in project 471 (Elitea Testing Team)'. That described the pre-existing catalogue, not what the fixtures build — agent_id, pipeline_with_llm_id, artifact_toolkit and mcp_toolkit_with_tools all … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/chat-interface/_surface.md + prior ELITEA-2094 intake note"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object gap for any four-participant-type case: there is no pipeline analogue of add_agent_participant_by_id. The chat-remaining campaign (waves 01-12, ~813 commits) landed nearly everything else the July AFS asked for — open_agents_submenu / open_pipelines_submenu / open_toolkits_submenu / open_mcps_submenu, add_agent_participant_by_id, add_toolkit_participant_via_slash_menu, add_mcp_particip… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Harvestable scope that is NOT blocked, raised for the lead's planning rather than actioned here (out of this case's scope): steps 1, 2, 4 (toolkit add) and 5 (MCP add, modulo #687) are independently workable today, as is a narrow 'misconfigured participant shows a yellow warning' scenario built on the existing github_toolkit_with_invalid_credential fixture. None of that path touches the Agent/Pipe… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2094 / ELITEA-2455 sequencing"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.close_plus_menu_popper() does not work on a brand-new, UNSENT conversation: it clicks chat-message-list, which NewConversationView does not render (it renders chat-new-conversation-greeting instead). Any case driving the plus-menu popper before the first Send needs the greeting container as the outside-click target. Confirmed live. Also: a brand-new unsent conversation is not persisted (U… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "close_plus_menu_popper()"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_add-agent-pipeline-toolkit-mcp-participants-panel_ELITEA-2094.md"
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

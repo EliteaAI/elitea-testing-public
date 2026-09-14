@@ -1,0 +1,168 @@
+{
+  "batch": "settings-w02",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w02",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      117.89,
+      110.4,
+      109.52
+    ],
+    "spec_set": "the 10 spec files the trunk adds vs origin/automation/base, together in ONE invocation per run (51 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each. NOTE: the lead's FIRST gate attempt (pre-stabilize) was RED \u2014 test_notification_link_navigates_to_bucket.py failed in the full-set run (1 failed/34 passed) while passing standalone (28.53s). The workflow's own internal gate had reported 3/3 green and did NOT surface it. Routed to batch-stabilize (run wf_2c544086-9df): root cause was a timing budget, NOT the lead's initial data-selection hypothesis \u2014 project 399 holds 1,049 artifact buckets, its list read measures 10-18s, and Artifacts.jsx renders the EMPTY state for the whole in-flight window, so a slow load was indistinguishable from a missing bucket against a flat 20s budget. Fixed with a context-level expect_event response gate on the popup's own bucket-LIST read (registered before the click, resolved before the row assertion) + budget raise, pinned by 16 new regression tests. No assertion added, weakened or removed; no sleep, skip or xfail.",
+    "stabilize_run": "wf_2c544086-9df (1 round, green)",
+    "blast_radius_note": "The workflow's gate also reported tests/ui/settings/test_settings_sidebar_item_navigation.py red \u2014 that is wave settings-w01's ELITEA-2243 sanctioned-RED against OPEN defect #1771, pre-declared and unrelated to this batch's diff. Not a regression, does not block (playbook: blast-radius red doesn't block the verdict).",
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2255",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2260 step 4 expects an 'unread count badge next to Notifications' in the Settings drawer's PERSONAL section. The drawer renders NO badge or counter next to any item \u2014 SettingsDrawer.jsx renders icon + label only (drawer innerText carries no digit; zero MuiBadge nodes inside settings-drawer; verified at 1728x861 and 1366x768). The product's unread indication is a BOOLEAN red dot, not a count\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1772"
+        }
+      ],
+      "afs": "test-specs/settings-notifications/l1_notifications-center-page-layout-and-header_ELITEA-2255.md",
+      "branch": "tests/ELITEA-2255-2256-2260-notifications-center",
+      "pr": 1783,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          109.13,
+          107.61,
+          108.63
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2256",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_notifications-center-pagination-controls_ELITEA-2256.md",
+      "branch": "tests/ELITEA-2255-2256-2260-notifications-center",
+      "pr": 1783,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          109.13,
+          107.61,
+          108.63
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2260",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_sidebar-notifications-entry-visible-without-scrolling_ELITEA-2260.md",
+      "branch": "tests/ELITEA-2255-2256-2260-notifications-center",
+      "pr": 1783,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          109.13,
+          107.61,
+          108.63
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2258",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_unread-vs-read-visual-distinction_ELITEA-2258.md",
+      "branch": "tests/ELITEA-2258-2264-notification-visual-and-search",
+      "pr": 1785,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          109.13,
+          107.61,
+          108.63
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2264",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_search-filters-notifications-by-text_ELITEA-2264.md",
+      "branch": "tests/ELITEA-2258-2264-notification-visual-and-search",
+      "pr": 1785,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          109.13,
+          107.61,
+          108.63
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2265",
+      "outcome": "blocked",
+      "note": "Blocked on environment prerequisites for the case's own trigger, verified live: /toolkits/all redirects to /toolkits/create (ZERO toolkits) and /credentials/all redirects to /credentials/create-credential (ZERO credentials); the artifact toolkit form's vector-store select (toolkit-credential-select-pgvector-combobox) offers only 'None'; no PGVECTOR* key exists in automation/config.py or .env.test.\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_new-notification-appears-in-list_ELITEA-2265.md"
+    },
+    {
+      "id": "ELITEA-2261",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_notification-chat-mention-link-navigates-to-conversation_ELITEA-2261.md",
+      "branch": "tests/2261-2263-notification-link-navigation",
+      "pr": 1787,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          109.13,
+          107.61,
+          108.63
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2262",
+      "outcome": "blocked",
+      "note": "Steps 1-3 execute fine (link found, clickable, target=_blank, correct href shape /{project_id}/toolkits/indexes/{meta.toolkit_id}?index_name=...). Steps 4-5 CANNOT be executed honestly: all 7 index_data_changed notifications on the account point at toolkits 146/30/118/137, every one of which now 400s on /elitea_core/tool/prompt_lib/406/{id} - the SPA silently falls back to the toolkits LIST page. \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_notification-index-link-navigates-to-index_ELITEA-2262.md"
+    },
+    {
+      "id": "ELITEA-2263",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green after stabilize round 1 (see report.gate) \u2014 this case's spec was the one the lead's first gate caught red; fixed properly, not re-run for a green.",
+      "findings": [],
+      "afs": "test-specs/settings-notifications/l2_notification-bucket-retention-link-navigates-to-bucket_ELITEA-2263.md",
+      "branch": "tests/2261-2263-notification-link-navigation",
+      "pr": 1787,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          109.13,
+          107.61,
+          108.63
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 7,
+    "blocked": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

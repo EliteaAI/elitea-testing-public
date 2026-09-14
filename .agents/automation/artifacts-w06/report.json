@@ -1,0 +1,89 @@
+{
+  "batch": "artifacts-w06",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1392",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-2491",
+      "outcome": "blocked",
+      "note": "Executed live against http://localhost:5173 (EliteaUI automation/testids, DEV backend). Steps 1-11 CONFIRMED: Team project 471 bucket dot-menu = 'Upload files / Rename / Pin to top / Share / Manage permissions' (5 items); Private project 399 = 'Upload files / Rename / Pin to top / Delete' (4 items) — Share + Manage permissions filtered out before render. Escape closes the menu in both. Steps 12-15… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text drift: ELITEA-2491 (title and steps 5/10/15) says \"Manage access\"; the live menu item is labelled \"Manage permissions\". The string \"Manage access\" exists nowhere in EliteaUI/src — only the internal handler name handleManageAccessClick. Same family as the already-open #666/#650 drift on this same menu. Filed as #1698.",
+          "ref": "EliteaAI/elitea-testing-public#1698"
+        },
+        {
+          "kind": "clarification",
+          "note": "BLOCKER + probable case error: steps 12-15 need a Public project the test user cannot reach (PUBLIC_PROJECT_ID = 1, absent from the user's project feed and from the selector; forcing the stored project id does not switch). Independently, BucketItem.jsx gates BOTH Share and Manage permissions on a single condition — display: isPersonalProject ? 'none' : undefined — with NO isPublic branch, so in th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1699"
+        },
+        {
+          "kind": "defect",
+          "note": "No product defect was filed. The one behaviour that looks wrong (Manage permissions rendering in the Public project) is unverified — access-blocked — so it went to #1699 as a clarification, not to a bug ticket. Recording explicitly so nobody re-litigates it as a missed filing."
+        },
+        {
+          "kind": "note",
+          "note": "Digest correction: the ELITEA-1820 note claiming \"a TEAM project's menu has 6 items\" does not hold. Team project 471 renders 5 — no Delete — because canDelete = isPrivate || checkPermission(artifacts.delete) and ${TEST_USER} has no delete permission there. Team-menu item COUNT is permission-dependent; assert the specific item, never a count. _surface.md updated.",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work for the implementer: the \"Manage permissions\" menu item has no `key` in BucketItem.jsx's menuItems, and DotMenu derives a menu-item testid from exactly that (DotMenu.jsx:422 testId: item.key -> :58 data-testid=\"{key}-menuitem\"). Add key: 'bucket-menu-manage-permissions' only — do NOT also key the sibling \"Share\" item (canon #511: add only the testid the test calls). The same testid ser… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Console side channel: the Private-project (399) run produced the project's known background 404/403 noise, the Team-project run was clean. The implemented test must use the suite's existing console filter, not a bare `assert not console_messages`, or it will inherit the recurring unrelated-resource-500/404 flake class documented in .agents/testing.md § Known issues."
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_manage-permissions-visibility-by-project-type_ELITEA-2491.md"
+    },
+    {
+      "id": "ELITEA-2492",
+      "outcome": "blocked",
+      "note": "Steps 1-11 (empty-state display + CTA opens the Add-exceptions dialog) executed live on localhost:5173 in Team project 471 (bucket abc-test, Exceptions - 0) and are fully specced with handles and expected strings. Steps 12-20 are BLOCKED: every bucket-permission WRITE returns 403 for the acting user (POST /api/v2/artifacts/s3_credentials/default/471 and PUT /api/v2/artifacts/bucket_permissions/def… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "PRODUCT BUG #1700 - a FAILED bucket-permission save is displayed as a successful one. On the 403 the UI still replaces the empty state, increments the header to 'Exceptions - 1' and lists the user with the chosen permission, while the correct 'Failed to update access' toast fires; re-opening the modal shows 'Exceptions - 0'. Root cause read from source: BucketAccessTable.handleAccessChange catches… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1700"
+        },
+        {
+          "kind": "clarification",
+          "note": "ACCESS BLOCKER #1701 - the automation user cannot write bucket permissions anywhere it can reach (403 on both the create-credential and update-permissions endpoints, in projects 471 and 406). A human must grant bucket-permission admin rights in 471, provision a separate admin identity, or re-scope ELITEA-2492 to its display half and split the write half into its own case.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1701"
+        },
+        {
+          "kind": "note",
+          "note": "SUITE HEALTH (not fixed here, outside this case's scope): the merged spec automation/tests/ui/artifacts/test_bucket_permissions_api.py (ELITEA-2493/2494, last touched ef5182f8e on automation/base) drives the same 403-blocked write path as its SETUP, and additionally requires TEST_USER_B_EMAIL / TEST_USER_B_PASSWORD - both EMPTY in this machine's .env.test (settings.test_user_b_email == ''). It is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_bucket_permissions_api.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift, minor and inside the blocked half so not filed separately: step 19's 'Read & Write' is labelled 'Read/write (default)' live, and removal is not a delete action - editing an exception to that value is what removes it (isRemoval = permission === PERMISSION_OPTIONS.READ_WRITE). The Add dialog deliberately offers only 'Read-only' and 'No access'. There is no Delete affordance in the e… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2492 step 19"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer economy for whoever picks this up: the modal carries exactly ONE testid today (credential-warning-banner, on the default-permissions banner - usable as-is when scoped inside the dialog, no UI change). Everything else needs adding, but most adds are a single prop at an existing call site: GridTableHeader already accepts columnTestIdPrefix + selectAllCheckboxTestId, GridTableRow accepts … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_manage-permissions-empty-state-and-add-exception_ELITEA-2492.md"
+        },
+        {
+          "kind": "note",
+          "note": "Two run-time gotchas recorded in the digest: (1) 'Exceptions - 0' uses an EN DASH (U+2013), so a hyphen assertion never matches; (2) buckets with zero exceptions are not the norm in a busy project (in 406 the first three had 2/4/7), so the empty bucket must be resolved at run time rather than taken as 'the first row'. Also: opening the Users dropdown emits a React 'Invalid value for prop sx on <sv… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_manage-permissions-empty-state-and-add-exception_ELITEA-2492.md"
+    }
+  ],
+  "totals": {
+    "blocked": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

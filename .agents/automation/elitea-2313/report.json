@@ -1,0 +1,100 @@
+{
+  "batch": "elitea-2313",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2313",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      13.81,
+      37.03,
+      12.52
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2313",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "AnalyticsUserDetailed.jsx:66 renders `{data.user_email}` as the detail-view title with no fallback for a user with a null/empty email — the Users-table LIST row it was clicked from falls back to `User {id}` (AnalyticsUsers.jsx:126) but the detail view drops that fallback, so the title renders as a completely empty element (confirmed via DOM inspection, zero text content) with no way to tell which … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1192"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text (ELITEA-2313) claims 6 KPI cards on the user-detail view and names the third summary panel 'Agents Used'. Live product has 10 KPI cards and the panel is 'Agents & Pipelines Used' — same stale-case-text family as ELITEA-2310 (tabs)/2311 (Overview KPIs)/2312 (table columns, #1188), but a different object (detail-view KPI cards, not the table), so filed as its own sibling per the dedup rule… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1191"
+        },
+        {
+          "kind": "note",
+          "note": "Row click into the user detail view is a same-page React state swap (AnalyticsUsers.jsx's local `selectedUserId` state), NOT a route/URL navigation — the browser URL stays /settings/analytics throughout. The implementer must wait on the analytics_user_detail/prompt_lib GET response + the view's own loading spinner, not a URL change, and there is no per-user deep link to assert against."
+        },
+        {
+          "kind": "note",
+          "note": "KpiCard.jsx and ChartTooltip.jsx are shared components consumed by 5+ other Analytics views (Overview, Costs, AgentDetailed, ToolDetailed, UsageSummary). New testids must be caller-supplied props (testId/valueTestId on KpiCard; a render-prop-threaded testId on ChartTooltip since Recharts injects active/payload/label at render time via `content={props => <ChartTooltip {...props} testId=... />}`), w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Sibling TMS case ELITEA-2329 ('Hovering over user detail Daily Activity chart shows per-series values', issue #837) is dedicated to deep hover-tooltip verification on this same chart. Not yet automated (no merged spec), so could not be targeted as extend-existing/already-covered per the merged-target rule. This AFS's hover step is deliberately kept shallow (tooltip presence + date/series label) to… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#837"
+        },
+        {
+          "kind": "defect",
+          "note": "AnalyticsUserDetailed.jsx renders a blank title for a user with a null/empty email (no 'User {id}' fallback, unlike the Users-table list row). Filed elitea-testing-public#1192, linked to ELITEA-2313. Test-data workaround used (row with non-null email) so this case's own automation stays unaffected.",
+          "ref": "elitea-testing-public#1192"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says 6 KPI cards and 'Agents Used'; live view has 10 KPI cards (adds Total/Input/Output Tokens + Total Cost) and 'Agents & Pipelines Used'. Same stale-count family as ELITEA-2310/2311/2312. Filed elitea-testing-public#1191.",
+          "ref": "elitea-testing-public#1191"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's originally-specced technique for the KPI-card negative-branch color check (reading color off the outer card-box locator) was verified live to be a no-op assertion -- KpiCard.jsx's card Box carries no color style at all; only the inner value Typography does. Amended AFS + testid design in the same PR (uniform analytics-user-detail-kpi-value testid on all 10 cards instead of Errors-only) rathe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking AFS internal drift (same family as the qa-engineer memory pattern afs_amendment_narrates_some_changes_leaves_others_unswept): the Concrete Handles table row for the KPI-value testid was correctly amended from the analyst's original Errors-only `analytics-user-detail-kpi-errors-value` to the implementer's uniform `analytics-user-detail-kpi-value` (all 10 cards), but the § Automation Hi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-analytics/l2_users-tab-row-click-opens-detail-view_ELITEA-2313.md:267"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean: all 10 TMS case steps map 1:1 to AFS steps 1-9 (case steps 1+2 collapse into AFS step 1) with real per-step Playwright assertions at each claimed step in test_analytics_user_detail_view.py, including all 4 Axis-2 analyst/implementer additions (KPI card order, negative-branch default-color check on the other 9 cards, panel empty-state assertion, back-navigation no-refetch asser… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both filed tickets verified live via `gh issue view`: #1191 (clarification, label `question`, OPEN, correctly covers the 6-vs-10-KPI-card and 'Agents Used' vs 'Agents & Pipelines Used' case-text drift) and #1192 (bug, label `bug`, OPEN, blank-title-for-no-email defect, correctly NOT worked around by masking — the test's row-selection logic deliberately picks a row with a non-null email so the happ… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All 12 new testids confirmed present on EliteaAI/EliteaUI@automation/testids (fresh git fetch) via commits 7c95c6d7 + da3c4d53; confirmed the superseded name (analytics-user-detail-kpi-errors-value) is genuinely absent from the branch (0 grep hits), i.e. no orphan testid was left behind. Read the actual JSX diff: KpiCard.jsx and ChartTooltip.jsx (both shared components) take caller-supplied testId… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical non-testid-handle grep on the full diff (automation/pages/ + automation/tests/): 0 hits — clean testid-only locators throughout."
+        }
+      ],
+      "afs": "test-specs/settings-analytics/l2_users-tab-row-click-opens-detail-view_ELITEA-2313.md",
+      "branch": "tests/2313-users-tab-row-click-detail-view",
+      "pr": 1193,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          13.81,
+          37.03,
+          12.52
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

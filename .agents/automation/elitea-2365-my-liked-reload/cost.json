@@ -1,0 +1,147 @@
+{
+ "v": 1,
+ "batch": "elitea-2365-my-liked-reload",
+ "generatedAt": "2026-09-14T12:03:20.191Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-22T02:27:56.918Z",
+   "end": "2026-08-07T02:27:56.918Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 1
+ },
+ "delivered": 0,
+ "gate": {
+  "verdict": "green",
+  "runs": 1,
+  "seconds": [
+   31.44,
+   104.5
+  ],
+  "failures": [
+   {
+    "spec": "automation/tests/ui/agents/test_agent_hub_my_liked_reload_cross_tab_sync.py",
+    "signature": "RED-BY-DESIGN (declared, excluded from the N-consecutive-green contract per dispatch). tests.ui.agents.test_agent_hub_my_liked_reload_cross_tab_sync.TestAgentHubMyLikedReloadCrossTabSync.test_agent_hub_my_liked_reload_reflects_cross_tab_like — ran once (gate n=3, stopped at first red as designed): 'Failed: Test flow completed and all functional assertions passed, but known-defect soft failures wer… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "ELITEA-2365"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py",
+    "signature": "Pre-existing sanctioned-RED (NOT this batch's code — not in the batch diff at all; page-object change was purely additive, 2 new methods, 0 lines removed). Found during the once-only blast-radius run: 'Failed: Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1215: non-serial… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": []
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2365",
+   "outcome": "blocked",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2365"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

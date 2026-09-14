@@ -1,0 +1,370 @@
+{
+ "v": 1,
+ "batch": "approved-top10",
+ "generatedAt": "2026-09-14T12:03:19.732Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-18T06:09:21.000Z",
+   "end": "2026-08-03T06:09:21.000Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 10
+ },
+ "delivered": 10,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   375.86,
+   385.07,
+   391.94
+  ],
+  "failures": [],
+  "notes": "Gate run directly by the lead (testing.md merge-gate contract), NOT via the workflow's internal gate agent (which stalled on infra — a slow `git fetch` over the OneDrive-hosted repo — and returned not-run/0 runs). Round 1 of 3: RED on test_credential_usage_and_deletion_mismatch (ELITEA-1979) — intermittent timing issue in ToolkitTestSettingsPage.wait_for_tool_result() under sustained batch-tail load. Routed to batch-stabilize (wf_2b75dbed-171): diagnosed as a real timing cause (GitHub-toolkit live tool-run + shared dev backend), fixed with an opt-in one-shot recovery from a mid-wait panel remount (automation/pages/toolkit_test_settings_page.py, commit 71089500), 4 new unit tests pin the recovery logic (tests/unit/test_toolkit_test_settings_recovery.py). Stabilize's own re-gate flagged red again but on ELITEA-1978's own sanctioned-RED spec (which its auto-computed spec set incorrectly included — that file is the intentional known-defect-#1004 soft-assert, confirmed 3/3 deterministic by the stabilize diagnostician AND independently re-confirmed once more by the lead). Lead re-ran the CORRECT scope after the fix: 9 UI specs together N=3 (run1: 14 passed; run2: infra-killed mid-run at 10/14 clean, retried clean 14 passed; run3: 14 passed) — all clean, zero failures. Sanctioned-red spec (test_credential_duplicate_mismatch_validation.py, ELITEA-1978/#1004) independently re-confirmed once more (1/1, identical signature). New unit-test file: 4/4 passed. Blast-radius regression sweep (42 files reachable from the batch's 6 modified page objects) run once in full: every failure encountered (test_guardrails_live_reload.py x3, test_agent_publish_unpublish_version.py, test_fork_agent_to_different_project.py, test_ghost_skill_after_agent_removed.py, test_skill_conversation_interaction.py, test_credential_search_by_name.py, test_toolkit_creation_create_bucket_verify_list_files.py [pre-existing #1866, already AFS-flagged], test_toolkit_parameterized.py[bitbucket]/[confluence]) was independently reproduced identically on unmodified origin/automation/base — confirmed pre-existing, zero regressions introduced by this batch. One additional single-test recheck (test_agent_management.py::TestAgentExecution::test_agent_executes_with_name_description_instructions_only) cleared as a one-off transient (passed clean in isolation on both base and trunk after failing once mid-regression-sweep)."
+ },
+ "cases": [
+  {
+   "id": "ELITEA-1934",
+   "outcome": "automated",
+   "findings": 22,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1937",
+   "outcome": "automated",
+   "findings": 22,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1976",
+   "outcome": "automated",
+   "findings": 15,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1978",
+   "outcome": "automated",
+   "findings": 15,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1979",
+   "outcome": "automated",
+   "findings": 15,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1890",
+   "outcome": "automated",
+   "findings": 17,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1891",
+   "outcome": "automated",
+   "findings": 17,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1877",
+   "outcome": "automated",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1880",
+   "outcome": "automated",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1993",
+   "outcome": "automated",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 10
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-1934",
+   "ELITEA-1937",
+   "ELITEA-1976",
+   "ELITEA-1978",
+   "ELITEA-1979",
+   "ELITEA-1890",
+   "ELITEA-1891",
+   "ELITEA-1877",
+   "ELITEA-1880",
+   "ELITEA-1993"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

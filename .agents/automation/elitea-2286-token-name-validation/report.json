@@ -1,0 +1,76 @@
+{
+  "batch": "elitea-2286-token-name-validation",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2286-token-name-validation",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      31.699951708,
+      29.558245667,
+      31.092953542
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2286",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "test-specs/settings-personal-tokens/_surface.md updated with a new 'Name-field client-side validation' section covering: the TOKEN_NAME_PATTERN regex + exact error text, the enableAutoBlur/useAutoBlur mechanism (no manual blur needed for validation state), the Control+a-unreliable / Home+Shift+End-reliable field-clearing technique, the beforeunload nav-blocker gotcha, and the new create-personal-t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "New qa-engineer memory entry (indexed) generalizes the autoBlur/Control+a finding beyond this one case: Input.InputBase is the shared text-input wrapper used across the whole EliteaUI app with enableAutoBlur defaulting true everywhere, so any future session clearing an already-filled field built on this component should use Home+Shift+End, not Control+a.",
+          "ref": ".agents/memory/qa-engineer/input_autoblur_breaks_control_a_select_all.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Not filed as a tracker issue (too minor to warrant one) -- but documented in the AFS's Case-Text Note: the case's steps 2-4 (special characters, e.g. \"my token!@#\") and steps 5-6 (space only, \"my token\") exercise the identical TOKEN_NAME_PATTERN regex branch (confirmed live: byte-identical error text and disable mechanism for both). Not a defect -- both examples are still valid demonstrations of t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-personal-tokens/lextend_token-name-validation-invalid-characters-rejected_ELITEA-2286.md"
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracking issue found in board #9 (EliteaAI/elitea-testing-public) for ELITEA-2286 — gh issue list --state all --limit 200 returned no hit. Skipped the 'comment PR link on originating issue' handoff step since there's nothing to comment on. If the orchestrator expects a tracking card for this case, one may need to be filed retroactively."
+        },
+        {
+          "kind": "note",
+          "note": "AFS was exceptionally thorough and required zero live re-exploration in Phase 2 — every handle, wait mechanism (auto-blur), and gotcha (Control+a race) was already confirmed live by the analyst and matched the source exactly on inspection. No amendment needed.",
+          "ref": "test-specs/settings-personal-tokens/lextend_token-name-validation-invalid-characters-rejected_ELITEA-2286.md"
+        },
+        {
+          "kind": "note",
+          "note": "allure.issue() TMS-case link uses the wrong repo path/slug (flat 'settings-personal-tokens/ELITEA-2286_token-name-validation-invalid-characters-rejected.md' vs real nested 'settings/personal-tokens/ELITEA-2286_token-name-validation-only-alphanumeric-characters-underscor.md') — dead link, cosmetic only, 3rd occurrence of a pattern inherited from the already-merged ELITEA-2280/2284 specs, not introd… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py:275-277"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI JSX calls getNameHelperText() twice in the ternary (condition + render) instead of memoizing to a local var — pure/memoized function, zero functional impact, style nit only, outside this repo's diff scope.",
+          "ref": "EliteaUI src/[fsd]/pages/settings/CreatePersonalToken.jsx:162-163 (commit a2348b78)"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/lextend_token-name-validation-invalid-characters-rejected_ELITEA-2286.md",
+      "branch": "tests/2286-token-name-validation",
+      "pr": 1177,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          31.699951708,
+          29.558245667,
+          31.092953542
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

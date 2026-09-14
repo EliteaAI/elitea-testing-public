@@ -1,0 +1,91 @@
+{
+  "batch": "target-summary-tokens-range-2378",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-target-summary-tokens-range-2378",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      47.68706725,
+      44.979560833,
+      44.53321725
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2378",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1244: ELITEA-2378's case text (step 7 / Expected Final State) says 'Save is enabled', but /settings/memory has no Save button anywhere on the page - it is fully autosave-on-blur. Recommend updating the TMS case wording to 'no validation error is shown and the value autosaves' instead of referencing a Save button. Not a product defect.",
+          "ref": "EliteaAI/elitea-testing-public#1244"
+        },
+        {
+          "kind": "defect",
+          "note": "Live evidence this session CONTRADICTS the currently-OPEN bug EliteaAI/elitea-testing-public#1129 ('numeric fields on /settings/memory don't autosave when typed'): typing a valid value (200) into Target Summary Tokens and blurring DID fire the autosave PUT successfully, with the response body echoing the new value. Commented the evidence on #1129 for human re-triage rather than closing it (agents … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1129"
+        },
+        {
+          "kind": "note",
+          "note": "No new testid was strictly required to satisfy ELITEA-2378's pass/fail contract - the validation-error assertion is satisfiable via the standard aria-invalid ARIA attribute on the already-existing target-summary-tokens-input testid. Optionally specced testid needed: target-summary-tokens-error-text (via FormHelperTextProps on the StyledInputEnhancer in MemorySummarization.jsx) only if the implemen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map's two 'clarification' dispositions (route drift and no-Save-button) were already ticketed by the analyst before I started (#1238, #1244 respectively) — no new tickets needed, nothing further to file.",
+          "ref": "test-specs/settings-user-profile/lextend_target-summary-tokens-range-validation_ELITEA-2378.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS flagged possible tension with open bug #1129 ('numeric fields don't autosave when typed into directly') for step 7's autosave assertion. My live run's step 7 (200 → blur) DID autosave successfully (PUT 200, value echoed) — consistent with the analyst's own contradicting observation already commented on #1129. No flakiness observed in this run; noting for the orchestrator in case #1129 resurfac… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1129"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation complete: original TMS case snapshot (.agents/automation/target-summary-tokens-range-2378/cases/ELITEA-2378.md) -> AFS (lextend_target-summary-tokens-range-validation_ELITEA-2378.md) -> diff. All 7 case elements have Coverage Map rows; 5 disposed 'asserted' with real per-step assertions verified in the diff (99/4097 -> expect(...).to_have_attribute('aria-invalid','true') + a listener… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-user-profile/lextend_target-summary-tokens-range-validation_ELITEA-2378.md"
+        },
+        {
+          "kind": "note",
+          "note": "extend-existing target verified merged to automation/base at the strongest level (git merge-base --is-ancestor confirms origin/automation/base is an ancestor of the batch trunk; commit 92c18db5 landed test_context_management_toggle.py there), and I independently confirmed the covering file at the batch trunk has zero pre-existing hits for '100|4096|4097|aria-invalid' — corroborating the analyst's … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks re-run myself (not trusted from the PR body paste): locator-policy grep (get_by_role|get_by_label|get_by_text|...|.locator() on added lines) = 0 hits; additive-only grep on the shared-caller file (^-[^-]) = 0 hits; fallback=/locator= grep = 0 hits. All LocatorDescriptor fields referenced (context_management_section/toggle, automatic_summarization_toggle, target_summary_tokens_inp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/user_profile_settings_page.py:402"
+        },
+        {
+          "kind": "note",
+          "note": "Verified not_to_have_attribute is a real Playwright Python API method (playwright/sync_api/_generated.py:21804), not a hallucinated call — the field-validity assertion in Step 7 is sound.",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py:472"
+        },
+        {
+          "kind": "clarification",
+          "note": "Non-blocking: the declared bounded page.wait_for_timeout(2_000) used to prove absence of an autosave PUT after a client-validation failure (Steps 5/6) is well-reasoned (Formik validateForm() gates submitForm() synchronously, so there's genuinely no positive condition to wait on) and is documented in three places — AFS Automation Hints, inline code comments, and a new memory entry (asserting_absenc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py:444"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/lextend_target-summary-tokens-range-validation_ELITEA-2378.md",
+      "branch": "tests/ELITEA-2378-target-summary-tokens-range-validation",
+      "pr": 1245,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          47.68706725,
+          44.979560833,
+          44.53321725
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -1,0 +1,41 @@
+{
+  "slug": "elitea-2464-chat-modules-panel",
+  "runId": "wf_d01fafd5-913",
+  "date": "2026-08-07",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2464-chat-modules-panel",
+  "report_author": "test-automation-lead (hand-written per playbook § Interruption and resumption — workflow stopped by operator during the gate's blast-radius run; all prior phases completed inside the workflow, evidence from journal.jsonl + gate agent transcript + git)",
+  "cases": [
+    {
+      "id": "ELITEA-2464",
+      "title": "Chat – Modules panel accessible from + icon in conversation with all toggles functional",
+      "outcome": "automated",
+      "afs_status": "extend-existing",
+      "afs": "test-specs/chat-interface/lextend_modules-panel-full-menu-and-all-toggles_ELITEA-2464.md",
+      "extends": "tests/ui/chat/test_chat_search_and_modules_panel.py::TestChatSearchAndModulesPanel::test_search_filters_and_modules_panel_toggles (ELITEA-2162, merged to automation/base)",
+      "branch": "tests/2464-modules-panel-full-menu-all-toggles",
+      "pr": "https://github.com/EliteaAI/elitea-testing-public/pull/1294",
+      "review": "APPROVED after 1 fix round (blockers fixed: Step 6b bare read → real falsifiable visual-vs-native checked assertion; AFS provenance table corrected to verified 3-on-main / 7-on-automation/testids split). Reviewer mechanical grep: 0 non-testid handles added.",
+      "merged_to_trunk": "55c2e35a",
+      "note": "Extension adds: Step 6a full plus-menu popup verification (Attach Files, Modules, Agents, Pipelines, Toolkits, MCPs), Step 6b per-toggle displayed-state assertion (Mui-checked visual class vs native input.checked), Steps 7b/8b toggling of ALL 8 modules (incl. Ask User) with toast per change, Step 9b conversation-view-restored check. No new testids needed — all handles pre-existed.",
+      "findings": [
+        {
+          "type": "clarification",
+          "issue": "https://github.com/EliteaAI/elitea-testing-public/issues/1293",
+          "label": "question",
+          "summary": "Modules panel now shows 8 toggles (adds 'Ask User'/ask_user between pyodide and swarm), not the 7 the case text and ELITEA-2162's merged spec list — live product change post-dating the 2162 analysis. Test asserts the live 8-toggle truth."
+        }
+      ],
+      "gate": {
+        "verdict": "GREEN",
+        "n": 3,
+        "runs": ["1 passed in 68.09s", "1 passed in 65.75s", "1 passed in 65.27s"],
+        "cmd": "cd automation && HEADLESS=true ../.venv/bin/pytest tests/ui/chat/test_chat_search_and_modules_panel.py::TestChatSearchAndModulesPanel::test_search_filters_and_modules_panel_toggles -v -p no:cacheprovider",
+        "blast_radius": "WAIVED by operator (explicit in-session instruction 2026-08-07: 'limit gate to just this test green — as an exception'). The gate agent's ~42-spec chat_page.py blast-radius run was terminated on that instruction; the 3× scoped runs stand as the merge signal."
+      }
+    }
+  ],
+  "totals": { "automated": 1 },
+  "gate": { "verdict": "GREEN (scoped)", "runs": 3, "failures": [] },
+  "next": "merge trunk → automation/base, TMS back-write, closure record on #972, board → Ready"
+}

@@ -1,0 +1,156 @@
+{
+ "v": 1,
+ "batch": "elitea-2450",
+ "generatedAt": "2026-09-14T12:03:20.193Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-22T17:01:47.407Z",
+   "end": "2026-08-07T17:01:47.407Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 1
+ },
+ "delivered": 1,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   25.45,
+   23.09,
+   23.99
+  ],
+  "failures": [
+   {
+    "spec": "tests/ui/chat/test_generate_mermaid_diagram_and_edit_in_canvas.py",
+    "signature": "AssertionError: Unexpected console error(s) during the flow: [\"Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect...\"] — raw hard failure (not soft-asserted/known-defect-tagged in this test), executed and ran (not a collection/infra miss)",
+    "case_ids": []
+   },
+   {
+    "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py",
+    "signature": "Failed: Soft assertion(s) failed — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1039: bare LLM node errors instead of responding when used as a chat participant (AI response did not complete within 60000ms — Copy button never appeared). Steps 1-10 passed cleanly.",
+    "case_ids": []
+   },
+   {
+    "spec": "tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py",
+    "signature": "Failed: Soft assertion(s) failed — sanctioned RED, Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1103: Reject should end pipeline at END with no further processing, but backend re-emitted ['agent_start','start_task'] — pipeline restarted from entry point.",
+    "case_ids": []
+   },
+   {
+    "spec": "tests/ui/pipelines/test_pipeline_router_node_configuration.py",
+    "signature": "Failed: Soft assertion(s) failed — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036: default-output edge Router1.default_output -> END did not render immediately after selecting Default output = END on a fresh Router node. Rest of flow (Condition/Routes/Input/routes-edges/Save/reload) passed cleanly.",
+    "case_ids": []
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2450",
+   "outcome": "automated",
+   "findings": 19,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2450"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

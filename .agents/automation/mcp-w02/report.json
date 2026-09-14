@@ -1,0 +1,592 @@
+{
+  "batch": "mcp-w02",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1396",
+  "integration_branch": "tests/batch-mcp-w02",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      208.67,
+      202.84,
+      216.2
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1935",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1936 step 2 asserts a connection-status badge ('Disconnected' with icon) on every Remote MCP list card. NO SUCH BADGE EXISTS. Verified live across 18 cards: a card's complete testid inventory is entity-card-icon, entity-card-name, entity-card-tag-chip (text 'Remote' — the toolkit TYPE, not a connection state), mcp-pin-toggle-button-<id>; a page-wide text probe for Disconnected / Not Connect… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1723"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1936 steps 5-7 look like they should be blocked on an external OAuth flow, and are NOT. Source-confirmed and verified live: McpAuthStatus.jsx onLogin -> useMcpAuthCheck.runAuthCheck emits an in-page socket 'test_mcp_connection' event (protocol-level tools/list). Against a public no-OAuth server (DeepWiki) it succeeds in-page — McpAuthHelpers.setConnectionVerified(url) runs and the indicator… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "note",
+          "note": "ISOLATION TRAP the implementer must handle on ELITEA-1936, and the case text never mentions it. The verified-connection record lives in sessionStorage['elitea_mcp_tokens_v1'], keyed by SERVER URL rather than by toolkit: {\"https://mcp.deepwiki.com/mcp\": {\"access_token\": \"__connection_verified__\", \"connection_verified\": true, ...}}. sessionStorage is per-context, so a fresh Playwright context gives … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "defect",
+          "note": "Correction to an existing tracked claim, not a new defect. Issue #574 records 'available_mcp_tools does not appear anywhere in the live schema'. That reading came from toolkits explored BEFORE Load Tools ran. Once tools are discovered the field IS present and fully populated (one object per tool with label/value/args_schema) — confirmed both in the Raw Json editor and programmatically via get_raw_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/574"
+        },
+        {
+          "kind": "note",
+          "note": "Three tooling traps found the hard way, each cost a probe; all recorded in the digest + AFS automation hints so the implementer does not repeat them. (1) get_raw_json_full() scrolls the CodeMirror viewport to the bottom to defeat virtualization and LEAVES IT THERE — a following fill_raw_json_line() fails with 'Locator.click: Timeout' because the target line has been virtualized out of the DOM; do … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "question",
+          "note": "test-specs/mcp/_surface.md is now 444 lines, well past the ~150-line split threshold the analysis skill names. I deliberately did NOT split it into an index + per-subarea files mid-dispatch: 10+ merged AFS files reference it by that exact path, so a restructure is a batch-level decision with cross-file blast radius rather than something to slip into an analysis commit. Recommend scheduling the spl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Self-correction, disclosed for the record: while writing today's role-memory daily log I used 'cat >' instead of appending and clobbered 13 earlier entries written by the reviewer sessions from the same day. Caught it in the staged diff before committing and restored the original from HEAD — the committed diff is 8 additions, 0 deletions, and the incident is logged as its own daily-log line. The m… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/daily/2026-08-24.md"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY input for the closure record — do not copy the AFS row blind, but this one was verified with a fresh git fetch origin in ../EliteaUI on 2026-08-24. ELITEA-1935: every handle it touches is on origin/main, so it is deployed-env promotable on the testid axis the moment its test merges. ELITEA-1936: its two load-bearing handles, toolkit-connection-status and toolkit-connection-login-butt… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY GAP — ELITEA-1936 is green on localhost, will be RED on any deployed env. It depends on three testids that live only on automation/testids: toolkit-connection-status + toolkit-connection-login-button (EliteaAI/EliteaUI@a467c0ac, from ELITEA-1934) and toolkit-connection-status-icon (EliteaAI/EliteaUI@55dc4f66, added by me this session, pushed). All three need a human cherry-pick to El… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "defect",
+          "note": "Latent bug found and FIXED in a pre-existing shared method (not a product defect, no ticket filed): fill_raw_json_line re-resolved its line locator after the selection landed, which CodeMirror's selectionMatch extension makes ambiguous whenever the line text recurs in the document. It survived since ELITEA-1927 only because its single merged caller edits a \"description\" line that never recurs. Any… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:fill_raw_json_line"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1936 case step 2 requires every MCP list card to render a Disconnected connection badge; no such badge exists in the product. Already filed as clarification #1723 by the analyst — I did NOT re-file. The spec asserts the ABSENCE (reverse-masking guard) through a new testid-anchored McpListPage.get_card_texts(), plus an assertion that the card's only chip carries the type Remote. Worth noting… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1723"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift amended on my branch (not returned as needs-analyst-rerun — both are HOW, not WHAT): (a) the analyst's verified delete_raw_json_line shape does not survive selectionMatch on a tools-loaded document and had to resolve the ElementHandle before the click; (b) the hint 'do the per-line edit BEFORE any get_raw_json_full() call' is unusable because the case's own step order is read (step 3) th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_remote-mcp-deselect-select-specific-tools_ELITEA-1935.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI's commit-msg hook (commitlint) REJECTS the testid commit-message form shown in .agents/workflow.md unless the subject carries a [EL-XXXX] ticket token — 'test: [ELITEA-1936] ...' fails with 'subject must container ticket number - [EL-XXXX]'; 'test: [EL-1936] ...' passes. Also, lint-staged runs prettier on the staged JSX, so a one-line attribute add can come back reformatted across several… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING #1 — AFS provenance false in the *reverse* direction. Verified block: `toolkit-connection-status  main:YES testids:YES` / `toolkit-connection-login-button  main:YES testids:YES` (origin/main:src/[fsd]/features/mcp/ui/McpAuthStatus.jsx:136 and :149), landed by EliteaAI/EliteaUI@bf4a13ad 2026-08-12. Every other handle in BOTH AFS files verified on-main too — including `toolkit-type-card-mcp… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-connection-status-indicator_ELITEA-1936.md:170"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING #2 — non-retrying `is_disabled()` immediately after a network-response await. The suite has precedent for `is_disabled()` (8+ call sites), but those follow a settled UI interaction, not a `expect_response()` return; precedent is convention, not authority for this shape (.agents/role-overrides.md § precedent is not authority). Cheapest of the two fixes; flagging statically because a margin… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_toggle_selected_tools.py:151"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion, ELITEA-1936 step 5: the `allure.step(\"Step 5 …\")` block contains only `form.click_connection_login()`. Its sole expect lives inside the page object (`not_to_have_text(\"Logging in...\")`, mcp_form_page.py) and can pass vacuously — it may satisfy before the click's effect renders, since the pre-click label is also not \"Logging in...\". NOT blocking: the case duplicates the same exp… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:126"
+        },
+        {
+          "kind": "note",
+          "note": "Undeclared AFS↔implementation drift at ELITEA-1936 step 2: the AFS specifies the absence be asserted with a retrying absence assertion (`to_have_count(0)` / `not_to_be_visible()`); the implementation instead snapshots `mcp_list.get_card_texts()` (non-retrying `inner_text()` per card) and asserts no card text contains any of Disconnected / Not Connected / Connected!. Defensible — the element does n… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:104"
+        },
+        {
+          "kind": "note",
+          "note": "Dead code introduced by this diff: `_wait_for_line_selection_applied(line_locator, ...)` now has ZERO callers — both `fill_raw_json_line` and the new `delete_raw_json_line` were converted to `_wait_for_line_selection_applied_handle`. Grep across automation/: only its own definition. Nit — remove it, or keep it and say why in a docstring line.",
+          "ref": "automation/pages/mcp_form_page.py:880"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance grep run on the full diff (`git diff tests/batch-mcp-w02...tests/ELITEA-1935-1936-mcp-tools-connection -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'`): 3 hits, all COMPLIANT. (a) mcp_form_page.py `scroll_raw_json_to_top` — a viewport `scrollTop = 0` reusing `get_raw_json_full()`'s existing scrollable-ancestor walk, fed the class-leve… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:783"
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep run on the full diff (`... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`): 5 hits, 3 in comments/docstrings, 2 real — both `self.raw_json_editor_content.get_by_text(current_line_text, exact=True)` in `fill_raw_json_line` (pre-existing, reshaped) and the new `delete_raw_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:788"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid EliteaAI/EliteaUI@55dc4f66 (`toolkit-connection-status-icon`) reviewed against the zero-functional-impact rule: one additive `data-testid` attribute on the existing `<OnlineIcon>` (an SVGR `?react` import, so props spread onto the root svg). No new DOM node, no Box/div/span, no hook, no state. The single `-` line is the same `<OnlineIcon>` element reformatted onto multiple lines — … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/features/mcp/ui/McpAuthStatus.jsx:134"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulation, ELITEA-1935: all 8 case steps + the precondition + Test Data row + Expected Final State have Axis-1 rows, all `asserted`, and every one maps to a real assertion at the claimed step in the code (step 3 exact set + len 3 + `available_mcp_tools`; step 4 editor re-read; step 5 PUT-200 via the response matcher + save-disabled; step 6 `data-selected` false/true + chip count 3… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_remote-mcp-deselect-select-specific-tools_ELITEA-1935.md:120"
+        },
+        {
+          "kind": "clarification",
+          "note": "Reverse-masking handling on ELITEA-1936 step 2 verified and correct: the case demands a `Disconnected` badge on every MCP list card, the product renders none, the analyst filed it as a CLARIFICATION (issue #1723, OPEN, labels `question` + `case-text-drift` — confirmed live via `gh issue view`) rather than a bug, and the implementation asserts the ABSENCE so the claim stays test-enforced instead of… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-connection-status-indicator_ELITEA-1936.md:118"
+        },
+        {
+          "kind": "note",
+          "note": "Surface digest update is attributed implementer-appended implementation fact, additive only, and does not overwrite the analyst's behaviour claims — matches the digest's one-writer rule. It documents a genuinely reusable trap (CodeMirror `selectionMatch` making a `get_by_text` line locator resolve to 3 elements once a selection lands), and the fix was correctly applied to the pre-existing shared `… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md:445"
+        },
+        {
+          "kind": "note",
+          "note": "The same stale 'not yet on main' provenance claim survives in three OTHER merged MCP AFS files, all copied from the same pre-bulk-promotion snapshot: l2_remote-mcp-load-tools-from-invalid-url_ELITEA-1934.md:150, l3_remote-mcp-test-settings-select-and-run-tool_ELITEA-1937.md:188 and :230, l2_create-remote-mcp-validation-missing-required-field_ELITEA-1923-1924.md:245-251. Out of scope for this branc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-load-tools-from-invalid-url_ELITEA-1934.md:150"
+        },
+        {
+          "kind": "note",
+          "note": "No separate regression test was added for the fixed race, deliberately: a test asserting the same post-save disabled state would carry the identical single-shot-read coin flip, so it would prove nothing. The retrying expect() assertion is itself the regression protection, and the general rule (every UI-state check FOLLOWING a click or navigation must retry; is_visible/is_disabled/get_attribute/tex… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_toggle_selected_tools.py:151"
+        },
+        {
+          "kind": "clarification",
+          "note": "Root cause of the false-provenance defect is a process gap, not analyst carelessness: a provenance row can go stale in the NOT-on-main direction after a bulk promotion, and the surface digest is the shared carrier that propagates it. Both the qa-engineer (commit 9a94ad5bd) and this fix round recorded it. Worth a canon line in .agents/role-overrides.md § Analyst slot: never carry a prior AFS's or t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@bf4a13ad"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKER 1 (false provenance) — RESOLVED, independently verified. l2_..._ELITEA-1936.md now carries an explicit correction block: toolkit-connection-status and toolkit-connection-login-button are marked on-main since 2026-08-12 (EliteaAI/EliteaUI@bf4a13ad, PR #753 bulk promotion), and the promotability warning was re-pointed from a467c0ac to EliteaAI/EliteaUI@55dc4f66. I re-ran the two-stage … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-connection-status-indicator_ELITEA-1936.md:196-224"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKER 2 (non-retrying save-disabled read) — RESOLVED. `assert form.detail_save_button.is_disabled()` is now `expect(form.detail_save_button).to_be_disabled(timeout=UI_STATE_TIMEOUT)` with a module-level UI_STATE_TIMEOUT=10_000 and a comment naming the exact race (Formik dirty-state resets only after React processes the PUT response and the GET refetch lands). The same fix was applied preve… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_toggle_selected_tools.py:160"
+        },
+        {
+          "kind": "defect",
+          "note": "RESIDUAL, non-blocking: two sibling one-shot reads of the same class survive. `McpFormPage.is_tool_chip_selected()` (mcp_form_page.py:1392) does a bare `chip.get_attribute(\"data-selected\")` and `get_discovered_tool_names()` (:1381) does `count()` + per-index `get_attribute()` — both read once, at whatever tick they land on. The spec calls them at step 6 and step 8 immediately after `switch_to_form… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:1392"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability gap for the closure record: this branch is green on localhost and RED on any deployed env until a human cherry-picks EliteaAI/EliteaUI@55dc4f66 to EliteaUI main. The only assertion that depends on it is ELITEA-1936 step 4's Axis-2 icon check (`expect(form.connection_status_icon).to_be_visible()`). ELITEA-1935 has no gap at all — every testid it touches is on main.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:127"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation ticked case-by-case against the intake snapshots. ELITEA-1935: all 8 case steps + the Test Data row + Expected Final State have Coverage-Map rows and a real assertion at that step; the Tavily->DeepWiki swap is a precondition/fixture substitution (transit, declared in the module docstring), not of any observable; the tool-to-deselect mapping (tavily_crawl -> ask_question) is justified… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_remote-mcp-deselect-select-specific-tools_ELITEA-1935.md:126"
+        },
+        {
+          "kind": "clarification",
+          "note": "Clarification #1723 verified live via `gh issue view`: OPEN, titled '[Clarification][ELITEA-1936] MCP list cards have NO connection-status badge — step 2 asserts UI that does not exist', labelled `question` + `case-text-drift`. The reverse-masking handling is correct — case step 2 is asserted as an ABSENCE (`offenders` list over each card's testid-anchored inner_text) rather than dropped, so the c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:104"
+        },
+        {
+          "kind": "note",
+          "note": "Shared-caller change reviewed and judged safe: `fill_raw_json_line()` (pre-existing, one merged caller test_mcp_edit_raw_json_description.py) was changed to resolve the ElementHandle before the click, to dodge CodeMirror's selectionMatch strict-mode violation. Semantically equivalent for the old caller — resolution happens before any selection exists, so no selectionMatch spans can be present at r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:880"
+        },
+        {
+          "kind": "note",
+          "note": "Two nits, neither worth a round. (1) ELITEA-1936 step 5's allure block contains only `form.click_connection_login()` with no `expect()` in the spec — the per-step assertion requirement is met indirectly, since that POM method ends in `expect(login_button).not_to_have_text('Logging in...')` and the AFS's step-5 verify ('the click is accepted / button was enabled') is asserted at step 4. Acceptable,… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:136"
+        }
+      ],
+      "afs": "test-specs/mcp/l1_remote-mcp-deselect-select-specific-tools_ELITEA-1935.md",
+      "branch": "tests/ELITEA-1935-1936-mcp-tools-connection",
+      "pr": 1724,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.67,
+          202.84,
+          216.2
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1936",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1936 step 2 asserts a connection-status badge ('Disconnected' with icon) on every Remote MCP list card. NO SUCH BADGE EXISTS. Verified live across 18 cards: a card's complete testid inventory is entity-card-icon, entity-card-name, entity-card-tag-chip (text 'Remote' — the toolkit TYPE, not a connection state), mcp-pin-toggle-button-<id>; a page-wide text probe for Disconnected / Not Connect… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1723"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1936 steps 5-7 look like they should be blocked on an external OAuth flow, and are NOT. Source-confirmed and verified live: McpAuthStatus.jsx onLogin -> useMcpAuthCheck.runAuthCheck emits an in-page socket 'test_mcp_connection' event (protocol-level tools/list). Against a public no-OAuth server (DeepWiki) it succeeds in-page — McpAuthHelpers.setConnectionVerified(url) runs and the indicator… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "note",
+          "note": "ISOLATION TRAP the implementer must handle on ELITEA-1936, and the case text never mentions it. The verified-connection record lives in sessionStorage['elitea_mcp_tokens_v1'], keyed by SERVER URL rather than by toolkit: {\"https://mcp.deepwiki.com/mcp\": {\"access_token\": \"__connection_verified__\", \"connection_verified\": true, ...}}. sessionStorage is per-context, so a fresh Playwright context gives … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "defect",
+          "note": "Correction to an existing tracked claim, not a new defect. Issue #574 records 'available_mcp_tools does not appear anywhere in the live schema'. That reading came from toolkits explored BEFORE Load Tools ran. Once tools are discovered the field IS present and fully populated (one object per tool with label/value/args_schema) — confirmed both in the Raw Json editor and programmatically via get_raw_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/574"
+        },
+        {
+          "kind": "note",
+          "note": "Three tooling traps found the hard way, each cost a probe; all recorded in the digest + AFS automation hints so the implementer does not repeat them. (1) get_raw_json_full() scrolls the CodeMirror viewport to the bottom to defeat virtualization and LEAVES IT THERE — a following fill_raw_json_line() fails with 'Locator.click: Timeout' because the target line has been virtualized out of the DOM; do … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "question",
+          "note": "test-specs/mcp/_surface.md is now 444 lines, well past the ~150-line split threshold the analysis skill names. I deliberately did NOT split it into an index + per-subarea files mid-dispatch: 10+ merged AFS files reference it by that exact path, so a restructure is a batch-level decision with cross-file blast radius rather than something to slip into an analysis commit. Recommend scheduling the spl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Self-correction, disclosed for the record: while writing today's role-memory daily log I used 'cat >' instead of appending and clobbered 13 earlier entries written by the reviewer sessions from the same day. Caught it in the staged diff before committing and restored the original from HEAD — the committed diff is 8 additions, 0 deletions, and the incident is logged as its own daily-log line. The m… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/daily/2026-08-24.md"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY input for the closure record — do not copy the AFS row blind, but this one was verified with a fresh git fetch origin in ../EliteaUI on 2026-08-24. ELITEA-1935: every handle it touches is on origin/main, so it is deployed-env promotable on the testid axis the moment its test merges. ELITEA-1936: its two load-bearing handles, toolkit-connection-status and toolkit-connection-login-butt… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY GAP — ELITEA-1936 is green on localhost, will be RED on any deployed env. It depends on three testids that live only on automation/testids: toolkit-connection-status + toolkit-connection-login-button (EliteaAI/EliteaUI@a467c0ac, from ELITEA-1934) and toolkit-connection-status-icon (EliteaAI/EliteaUI@55dc4f66, added by me this session, pushed). All three need a human cherry-pick to El… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1936"
+        },
+        {
+          "kind": "defect",
+          "note": "Latent bug found and FIXED in a pre-existing shared method (not a product defect, no ticket filed): fill_raw_json_line re-resolved its line locator after the selection landed, which CodeMirror's selectionMatch extension makes ambiguous whenever the line text recurs in the document. It survived since ELITEA-1927 only because its single merged caller edits a \"description\" line that never recurs. Any… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:fill_raw_json_line"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1936 case step 2 requires every MCP list card to render a Disconnected connection badge; no such badge exists in the product. Already filed as clarification #1723 by the analyst — I did NOT re-file. The spec asserts the ABSENCE (reverse-masking guard) through a new testid-anchored McpListPage.get_card_texts(), plus an assertion that the card's only chip carries the type Remote. Worth noting… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1723"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift amended on my branch (not returned as needs-analyst-rerun — both are HOW, not WHAT): (a) the analyst's verified delete_raw_json_line shape does not survive selectionMatch on a tools-loaded document and had to resolve the ElementHandle before the click; (b) the hint 'do the per-line edit BEFORE any get_raw_json_full() call' is unusable because the case's own step order is read (step 3) th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_remote-mcp-deselect-select-specific-tools_ELITEA-1935.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI's commit-msg hook (commitlint) REJECTS the testid commit-message form shown in .agents/workflow.md unless the subject carries a [EL-XXXX] ticket token — 'test: [ELITEA-1936] ...' fails with 'subject must container ticket number - [EL-XXXX]'; 'test: [EL-1936] ...' passes. Also, lint-staged runs prettier on the staged JSX, so a one-line attribute add can come back reformatted across several… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING #1 — AFS provenance false in the *reverse* direction. Verified block: `toolkit-connection-status  main:YES testids:YES` / `toolkit-connection-login-button  main:YES testids:YES` (origin/main:src/[fsd]/features/mcp/ui/McpAuthStatus.jsx:136 and :149), landed by EliteaAI/EliteaUI@bf4a13ad 2026-08-12. Every other handle in BOTH AFS files verified on-main too — including `toolkit-type-card-mcp… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-connection-status-indicator_ELITEA-1936.md:170"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING #2 — non-retrying `is_disabled()` immediately after a network-response await. The suite has precedent for `is_disabled()` (8+ call sites), but those follow a settled UI interaction, not a `expect_response()` return; precedent is convention, not authority for this shape (.agents/role-overrides.md § precedent is not authority). Cheapest of the two fixes; flagging statically because a margin… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_toggle_selected_tools.py:151"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion, ELITEA-1936 step 5: the `allure.step(\"Step 5 …\")` block contains only `form.click_connection_login()`. Its sole expect lives inside the page object (`not_to_have_text(\"Logging in...\")`, mcp_form_page.py) and can pass vacuously — it may satisfy before the click's effect renders, since the pre-click label is also not \"Logging in...\". NOT blocking: the case duplicates the same exp… [clipped; full text in the unit's receipt under .attrs/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:126"
+        },
+        {
+          "kind": "note",
+          "note": "Undeclared AFS↔implementation drift at ELITEA-1936 step 2: the AFS specifies the absence be asserted with a retrying absence assertion (`to_have_count(0)` / `not_to_be_visible()`); the implementation instead snapshots `mcp_list.get_card_texts()` (non-retrying `inner_text()` per card) and asserts no card text contains any of Disconnected / Not Connected / Connected!. Defensible — the element does n… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:104"
+        },
+        {
+          "kind": "note",
+          "note": "Dead code introduced by this diff: `_wait_for_line_selection_applied(line_locator, ...)` now has ZERO callers — both `fill_raw_json_line` and the new `delete_raw_json_line` were converted to `_wait_for_line_selection_applied_handle`. Grep across automation/: only its own definition. Nit — remove it, or keep it and say why in a docstring line.",
+          "ref": "automation/pages/mcp_form_page.py:880"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance grep run on the full diff (`git diff tests/batch-mcp-w02...tests/ELITEA-1935-1936-mcp-tools-connection -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'`): 3 hits, all COMPLIANT. (a) mcp_form_page.py `scroll_raw_json_to_top` — a viewport `scrollTop = 0` reusing `get_raw_json_full()`'s existing scrollable-ancestor walk, fed the class-leve… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:783"
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep run on the full diff (`... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`): 5 hits, 3 in comments/docstrings, 2 real — both `self.raw_json_editor_content.get_by_text(current_line_text, exact=True)` in `fill_raw_json_line` (pre-existing, reshaped) and the new `delete_raw_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:788"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid EliteaAI/EliteaUI@55dc4f66 (`toolkit-connection-status-icon`) reviewed against the zero-functional-impact rule: one additive `data-testid` attribute on the existing `<OnlineIcon>` (an SVGR `?react` import, so props spread onto the root svg). No new DOM node, no Box/div/span, no hook, no state. The single `-` line is the same `<OnlineIcon>` element reformatted onto multiple lines — … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/features/mcp/ui/McpAuthStatus.jsx:134"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulation, ELITEA-1935: all 8 case steps + the precondition + Test Data row + Expected Final State have Axis-1 rows, all `asserted`, and every one maps to a real assertion at the claimed step in the code (step 3 exact set + len 3 + `available_mcp_tools`; step 4 editor re-read; step 5 PUT-200 via the response matcher + save-disabled; step 6 `data-selected` false/true + chip count 3… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_remote-mcp-deselect-select-specific-tools_ELITEA-1935.md:120"
+        },
+        {
+          "kind": "clarification",
+          "note": "Reverse-masking handling on ELITEA-1936 step 2 verified and correct: the case demands a `Disconnected` badge on every MCP list card, the product renders none, the analyst filed it as a CLARIFICATION (issue #1723, OPEN, labels `question` + `case-text-drift` — confirmed live via `gh issue view`) rather than a bug, and the implementation asserts the ABSENCE so the claim stays test-enforced instead of… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-connection-status-indicator_ELITEA-1936.md:118"
+        },
+        {
+          "kind": "note",
+          "note": "Surface digest update is attributed implementer-appended implementation fact, additive only, and does not overwrite the analyst's behaviour claims — matches the digest's one-writer rule. It documents a genuinely reusable trap (CodeMirror `selectionMatch` making a `get_by_text` line locator resolve to 3 elements once a selection lands), and the fix was correctly applied to the pre-existing shared `… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md:445"
+        },
+        {
+          "kind": "note",
+          "note": "The same stale 'not yet on main' provenance claim survives in three OTHER merged MCP AFS files, all copied from the same pre-bulk-promotion snapshot: l2_remote-mcp-load-tools-from-invalid-url_ELITEA-1934.md:150, l3_remote-mcp-test-settings-select-and-run-tool_ELITEA-1937.md:188 and :230, l2_create-remote-mcp-validation-missing-required-field_ELITEA-1923-1924.md:245-251. Out of scope for this branc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-load-tools-from-invalid-url_ELITEA-1934.md:150"
+        },
+        {
+          "kind": "note",
+          "note": "No separate regression test was added for the fixed race, deliberately: a test asserting the same post-save disabled state would carry the identical single-shot-read coin flip, so it would prove nothing. The retrying expect() assertion is itself the regression protection, and the general rule (every UI-state check FOLLOWING a click or navigation must retry; is_visible/is_disabled/get_attribute/tex… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_toggle_selected_tools.py:151"
+        },
+        {
+          "kind": "clarification",
+          "note": "Root cause of the false-provenance defect is a process gap, not analyst carelessness: a provenance row can go stale in the NOT-on-main direction after a bulk promotion, and the surface digest is the shared carrier that propagates it. Both the qa-engineer (commit 9a94ad5bd) and this fix round recorded it. Worth a canon line in .agents/role-overrides.md § Analyst slot: never carry a prior AFS's or t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@bf4a13ad"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKER 1 (false provenance) — RESOLVED, independently verified. l2_..._ELITEA-1936.md now carries an explicit correction block: toolkit-connection-status and toolkit-connection-login-button are marked on-main since 2026-08-12 (EliteaAI/EliteaUI@bf4a13ad, PR #753 bulk promotion), and the promotability warning was re-pointed from a467c0ac to EliteaAI/EliteaUI@55dc4f66. I re-ran the two-stage … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-connection-status-indicator_ELITEA-1936.md:196-224"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKER 2 (non-retrying save-disabled read) — RESOLVED. `assert form.detail_save_button.is_disabled()` is now `expect(form.detail_save_button).to_be_disabled(timeout=UI_STATE_TIMEOUT)` with a module-level UI_STATE_TIMEOUT=10_000 and a comment naming the exact race (Formik dirty-state resets only after React processes the PUT response and the GET refetch lands). The same fix was applied preve… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_toggle_selected_tools.py:160"
+        },
+        {
+          "kind": "defect",
+          "note": "RESIDUAL, non-blocking: two sibling one-shot reads of the same class survive. `McpFormPage.is_tool_chip_selected()` (mcp_form_page.py:1392) does a bare `chip.get_attribute(\"data-selected\")` and `get_discovered_tool_names()` (:1381) does `count()` + per-index `get_attribute()` — both read once, at whatever tick they land on. The spec calls them at step 6 and step 8 immediately after `switch_to_form… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:1392"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability gap for the closure record: this branch is green on localhost and RED on any deployed env until a human cherry-picks EliteaAI/EliteaUI@55dc4f66 to EliteaUI main. The only assertion that depends on it is ELITEA-1936 step 4's Axis-2 icon check (`expect(form.connection_status_icon).to_be_visible()`). ELITEA-1935 has no gap at all — every testid it touches is on main.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:127"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation ticked case-by-case against the intake snapshots. ELITEA-1935: all 8 case steps + the Test Data row + Expected Final State have Coverage-Map rows and a real assertion at that step; the Tavily->DeepWiki swap is a precondition/fixture substitution (transit, declared in the module docstring), not of any observable; the tool-to-deselect mapping (tavily_crawl -> ask_question) is justified… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_remote-mcp-deselect-select-specific-tools_ELITEA-1935.md:126"
+        },
+        {
+          "kind": "clarification",
+          "note": "Clarification #1723 verified live via `gh issue view`: OPEN, titled '[Clarification][ELITEA-1936] MCP list cards have NO connection-status badge — step 2 asserts UI that does not exist', labelled `question` + `case-text-drift`. The reverse-masking handling is correct — case step 2 is asserted as an ABSENCE (`offenders` list over each card's testid-anchored inner_text) rather than dropped, so the c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:104"
+        },
+        {
+          "kind": "note",
+          "note": "Shared-caller change reviewed and judged safe: `fill_raw_json_line()` (pre-existing, one merged caller test_mcp_edit_raw_json_description.py) was changed to resolve the ElementHandle before the click, to dodge CodeMirror's selectionMatch strict-mode violation. Semantically equivalent for the old caller — resolution happens before any selection exists, so no selectionMatch spans can be present at r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:880"
+        },
+        {
+          "kind": "note",
+          "note": "Two nits, neither worth a round. (1) ELITEA-1936 step 5's allure block contains only `form.click_connection_login()` with no `expect()` in the spec — the per-step assertion requirement is met indirectly, since that POM method ends in `expect(login_button).not_to_have_text('Logging in...')` and the AFS's step-5 verify ('the click is accepted / button was enabled') is asserted at step 4. Acceptable,… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_connection_status_indicator.py:136"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_remote-mcp-connection-status-indicator_ELITEA-1936.md",
+      "branch": "tests/ELITEA-1935-1936-mcp-tools-connection",
+      "pr": 1724,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.67,
+          202.84,
+          216.2
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1938",
+      "outcome": "blocked",
+      "note": "Executed live on localhost:5173 (EliteaUI @ automation/testids, MCP id 2140, DeepWiki fixture). Steps 1-3 PASSED: created the precondition honestly — Load Tools 3/3, ran read_wiki_structure, got a real result (✅ 1.182s + real DeepWiki page list). Step 4 BLOCKED: the 'clear the chat' trash control does not exist. Full DOM inventory of every <button> on /mcps/all/2140/test, in the empty-state, tool-… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "HIGH PRIORITY, needs a lead decision — the EL-6277 refactor has very likely turned merged specs RED on automation/base, independently of this batch. test_mcp_test_settings_select_and_run_tool.py (ELITEA-1937) creates an MCP, lands on the detail page, clicks Load Tools, then at Step 2 waits for test_settings.empty_state_tool_select (toolkit-test-empty-tool-select) to be visible ON THAT PAGE. My liv… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test_mcp_test_settings_select_and_run_tool.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1938 — Remote MCP Test Settings has no 'clear the chat' control; removed by EL-5947 then EL-6277. Filed question + case-text-drift with git evidence and an embedded screenshot. Human decision needed: (a) retire/rewrite the case for the post-EL-6277 surface (likely), or (b) rule the lost 'clear results' capability a regression, which would escalate to EliteaAI/elitea_issues via file-app-bug … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1725"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1939 — Remote MCP Test Settings has no Fullscreen Mode toggle; removed by EL-5947, never returned. Filed question + case-text-drift. Cross-linked to #1363 as a SIBLING, not a duplicate: same missing control, different object and different class (pipeline's was never implemented; MCP's existed and was removed). Human decision needed: retire/rewrite, or rule it a feature-parity gap against th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1726"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1940 — case text says the run-history button is in the test panel header and opens a panel/drawer; live it is in the MCP detail action bar and opens a full page at /toolkits/all/{id}/history?isMCP=true. Does NOT block automation — the AFS asserts the live contract. TMS case text should be updated for steps 3-4. Also recorded there: ViewRunHistoryButton.jsx:16 defaults testId='pipeline-histo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1727"
+        },
+        {
+          "kind": "question",
+          "note": "The MCP surface digest is now ~612 lines, four times the ~150-line threshold the test-case-analysis skill flags, and the split into an index + per-subarea files (create-form / detail-page / test-surface / run-history / fixtures) is overdue. I deliberately did not do it in this dispatch: several merged AFS files reference this exact path, so the restructure deserves its own unit rather than a mid-w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Two pre-existing clarifications from the ELITEA-1937 session were re-verified against the post-refactor product and both still hold: #1086 (no pre-run welcome/chat area — ToolkitTestResults.jsx returns null while messages.length === 0, so chat-message-list genuinely does not exist in the DOM before the first run) and #1087 (the Run button's label is 'Run Test', not 'RUN TOOL'). #1088 (model-select… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1937 AFS"
+        }
+      ],
+      "afs": "test-specs/mcp/l3_remote-mcp-test-settings-clear-chat_ELITEA-1938.md"
+    },
+    {
+      "id": "ELITEA-1939",
+      "outcome": "blocked",
+      "note": "Executed live in the same session, own observations. Step 1 PASSED (reached /mcps/all/2140/test). Step 2 BLOCKED and everything after it depends on it: no fullscreen/expand control exists on this surface — no FullscreenOutlinedIcon, no aria-label matching fullscreen, no button of any kind in either column header, verified across all three panel states. The interaction-discovery ladder (.agents/rol… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "HIGH PRIORITY, needs a lead decision — the EL-6277 refactor has very likely turned merged specs RED on automation/base, independently of this batch. test_mcp_test_settings_select_and_run_tool.py (ELITEA-1937) creates an MCP, lands on the detail page, clicks Load Tools, then at Step 2 waits for test_settings.empty_state_tool_select (toolkit-test-empty-tool-select) to be visible ON THAT PAGE. My liv… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test_mcp_test_settings_select_and_run_tool.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1938 — Remote MCP Test Settings has no 'clear the chat' control; removed by EL-5947 then EL-6277. Filed question + case-text-drift with git evidence and an embedded screenshot. Human decision needed: (a) retire/rewrite the case for the post-EL-6277 surface (likely), or (b) rule the lost 'clear results' capability a regression, which would escalate to EliteaAI/elitea_issues via file-app-bug … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1725"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1939 — Remote MCP Test Settings has no Fullscreen Mode toggle; removed by EL-5947, never returned. Filed question + case-text-drift. Cross-linked to #1363 as a SIBLING, not a duplicate: same missing control, different object and different class (pipeline's was never implemented; MCP's existed and was removed). Human decision needed: retire/rewrite, or rule it a feature-parity gap against th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1726"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1940 — case text says the run-history button is in the test panel header and opens a panel/drawer; live it is in the MCP detail action bar and opens a full page at /toolkits/all/{id}/history?isMCP=true. Does NOT block automation — the AFS asserts the live contract. TMS case text should be updated for steps 3-4. Also recorded there: ViewRunHistoryButton.jsx:16 defaults testId='pipeline-histo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1727"
+        },
+        {
+          "kind": "question",
+          "note": "The MCP surface digest is now ~612 lines, four times the ~150-line threshold the test-case-analysis skill flags, and the split into an index + per-subarea files (create-form / detail-page / test-surface / run-history / fixtures) is overdue. I deliberately did not do it in this dispatch: several merged AFS files reference this exact path, so the restructure deserves its own unit rather than a mid-w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Two pre-existing clarifications from the ELITEA-1937 session were re-verified against the post-refactor product and both still hold: #1086 (no pre-run welcome/chat area — ToolkitTestResults.jsx returns null while messages.length === 0, so chat-message-list genuinely does not exist in the DOM before the first run) and #1087 (the Run button's label is 'Run Test', not 'RUN TOOL'). #1088 (model-select… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1937 AFS"
+        }
+      ],
+      "afs": "test-specs/mcp/l3_remote-mcp-test-settings-fullscreen-mode_ELITEA-1939.md"
+    },
+    {
+      "id": "ELITEA-1940",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "HIGH PRIORITY, needs a lead decision — the EL-6277 refactor has very likely turned merged specs RED on automation/base, independently of this batch. test_mcp_test_settings_select_and_run_tool.py (ELITEA-1937) creates an MCP, lands on the detail page, clicks Load Tools, then at Step 2 waits for test_settings.empty_state_tool_select (toolkit-test-empty-tool-select) to be visible ON THAT PAGE. My liv… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test_mcp_test_settings_select_and_run_tool.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1938 — Remote MCP Test Settings has no 'clear the chat' control; removed by EL-5947 then EL-6277. Filed question + case-text-drift with git evidence and an embedded screenshot. Human decision needed: (a) retire/rewrite the case for the post-EL-6277 surface (likely), or (b) rule the lost 'clear results' capability a regression, which would escalate to EliteaAI/elitea_issues via file-app-bug … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1725"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1939 — Remote MCP Test Settings has no Fullscreen Mode toggle; removed by EL-5947, never returned. Filed question + case-text-drift. Cross-linked to #1363 as a SIBLING, not a duplicate: same missing control, different object and different class (pipeline's was never implemented; MCP's existed and was removed). Human decision needed: retire/rewrite, or rule it a feature-parity gap against th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1726"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1940 — case text says the run-history button is in the test panel header and opens a panel/drawer; live it is in the MCP detail action bar and opens a full page at /toolkits/all/{id}/history?isMCP=true. Does NOT block automation — the AFS asserts the live contract. TMS case text should be updated for steps 3-4. Also recorded there: ViewRunHistoryButton.jsx:16 defaults testId='pipeline-histo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1727"
+        },
+        {
+          "kind": "question",
+          "note": "The MCP surface digest is now ~612 lines, four times the ~150-line threshold the test-case-analysis skill flags, and the split into an index + per-subarea files (create-form / detail-page / test-surface / run-history / fixtures) is overdue. I deliberately did not do it in this dispatch: several merged AFS files reference this exact path, so the restructure deserves its own unit rather than a mid-w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Two pre-existing clarifications from the ELITEA-1937 session were re-verified against the post-refactor product and both still hold: #1086 (no pre-run welcome/chat area — ToolkitTestResults.jsx returns null while messages.length === 0, so chat-message-list genuinely does not exist in the DOM before the first run) and #1087 (the Run button's label is 'Run Test', not 'RUN TOOL'). #1088 (model-select… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1937 AFS"
+        },
+        {
+          "kind": "defect",
+          "note": "Merged spec `automation/tests/ui/toolkits/test_mcp_test_settings_select_and_run_tool.py` (ELITEA-1937) is RED on localhost, independently of this branch. Verified by running it standalone: fails in Step 2 with `TimeoutError: waiting for get_by_test_id(\"toolkit-test-empty-tool-select\") to be visible` — EL-6277 (EliteaAI/EliteaUI@cb030b7d) moved the Test panel off the detail page onto the `/mcps/all… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_test_settings_select_and_run_tool.py"
+        }
+      ],
+      "afs": "test-specs/mcp/l3_remote-mcp-test-settings-view-run-history_ELITEA-1940.md",
+      "branch": "tests/ELITEA-1940-mcp-run-history",
+      "pr": 1728,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.67,
+          202.84,
+          216.2
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1946",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/mcp/l2_mcp-detail-three-dot-menu-actions_ELITEA-1946.md",
+      "branch": "tests/1946-1959-mcp-three-dot-menu-copy-link",
+      "pr": 1730,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.67,
+          202.84,
+          216.2
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1959",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/mcp/l2_remote-mcp-copy-link-from-three-dot-menu_ELITEA-1959.md",
+      "branch": "tests/1946-1959-mcp-three-dot-menu-copy-link",
+      "pr": 1730,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.67,
+          202.84,
+          216.2
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1961",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/mcp/l2_mcp-back-navigation-detail-to-list_ELITEA-1961.md",
+      "branch": "tests/ELITEA-1961-mcp-back-navigation",
+      "pr": 1733,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.67,
+          202.84,
+          216.2
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 6,
+    "blocked": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

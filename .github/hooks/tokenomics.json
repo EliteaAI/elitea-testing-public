@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "node \"./.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --sweep",
+        "powershell": "& node \"./.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --sweep",
+        "env": {
+          "COPILOT_CLI": "1"
+        },
+        "timeoutSec": 120
+      },
+      {
+        "type": "command",
+        "bash": "node \"./.claude/skills/tokenomics/hooks/scope-hook.mjs\" --announce --json",
+        "powershell": "& node \"./.claude/skills/tokenomics/hooks/scope-hook.mjs\" --announce --json",
+        "env": {
+          "COPILOT_CLI": "1"
+        },
+        "timeoutSec": 10
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "node \"./.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --sweep",
+        "powershell": "& node \"./.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --sweep",
+        "env": {
+          "COPILOT_CLI": "1"
+        },
+        "timeoutSec": 120
+      }
+    ],
+    "subagentStart": [
+      {
+        "type": "command",
+        "bash": "node \"./.claude/skills/tokenomics/hooks/scope-hook.mjs\" --mark-dispatch",
+        "powershell": "& node \"./.claude/skills/tokenomics/hooks/scope-hook.mjs\" --mark-dispatch",
+        "env": {
+          "COPILOT_CLI": "1"
+        },
+        "timeoutSec": 10
+      }
+    ],
+    "subagentStop": [
+      {
+        "type": "command",
+        "bash": "node \"./.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --dispatch",
+        "powershell": "& node \"./.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --dispatch",
+        "env": {
+          "COPILOT_CLI": "1"
+        },
+        "timeoutSec": 120
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "node \"./.claude/skills/tokenomics/hooks/scope-hook.mjs\" --gate",
+        "powershell": "& node \"./.claude/skills/tokenomics/hooks/scope-hook.mjs\" --gate",
+        "env": {
+          "COPILOT_CLI": "1"
+        },
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

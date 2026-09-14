@@ -1,0 +1,122 @@
+{
+  "batch": "elitea-2438-skill-import-frontmatter",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2438-skill-import-frontmatter",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      82.440014334,
+      79.271905458,
+      80.304766375
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2438",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Reused suite knowledge fast: ELITEA-1737's AFS + SkillsListPage page object gave the Import button testid (skills-import-button) and the Import-parameters-dialog flow shape for free; only the invalid-file branch needed live execution.",
+          "ref": "test-specs/skills/l3_import_skill_base_version_ELITEA-1737.md"
+        },
+        {
+          "kind": "note",
+          "note": "Traced the validation to source (useSkillImport.hooks.js:31-63) — confirms it's a pure client-side check (!frontmatter?.name || !frontmatter?.description) with zero network round-trip, so the AFS's 'no skill created' assertion can be proven three independent ways (UI stat, SkillAPI.list_skills() before/after, network-absence) without needing a live skill_import request to inspect.",
+          "ref": "../EliteaUI/src/[fsd]/features/skill/lib/hooks/useSkillImport.hooks.js:45"
+        },
+        {
+          "kind": "note",
+          "note": "Identified a reusable-but-missing page-object pattern gap: SkillsListPage has no toast_alert/severity-scoped locator trio even though ChatPage and PipelineDetailPage already established the exact compliant pattern (testid identity + data-severity state filter) for this identical app-wide Toast component — implementer should copy verbatim, not invent a new shape.",
+          "ref": "automation/pages/chat_page.py:965"
+        },
+        {
+          "kind": "note",
+          "note": "Self-caught locator-policy near-miss: my first draft of the dialog-absence assertion used page.get_by_role(\"dialog\") directly in the test, which would have failed the reviewer's mechanical grep. Fixed by adding SkillsListPage.has_visible_dialog(), which delegates to the pre-existing components.mui.Dialog helper. Documented as a reusable pattern in .agents/memory/test-automation-engineer/has_visibl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skills_list_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "import_skill() on SkillsListPage has only 2 merged callers (both in this same file), below the >=3-caller strict-additive threshold, so I refactored its body into a new upload_skill_file() extraction rather than leaving it duplicated. Verified behavior-preserving by re-running all 3 tests in the file green (both pre-existing callers unaffected).",
+          "ref": "automation/pages/skills_list_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/tests/ui/skills/test_skill_export_import.py:583 — new test `test_import_skill_missing_frontmatter_shows_validation_error` (class `TestSkillImportMissingFrontmatter`) is decorated `@pytest.mark.p3` (low), but the AFS's own metadata states `Priority: l3 (medium, per case)` and pytest.ini defines `p2: Priority 2 (medium)` / `p3: Priority 3 (low)` — the correct marker is `p2`. This is the 6… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_export_import.py:583"
+        },
+        {
+          "kind": "note",
+          "note": "automation/pages/skills_list_page.py — `toast_alert` / `TOAST_ALERT_SEVERITY` / `get_toast_alert()` / `get_toast_text()` are copy-pasted verbatim onto a THIRD page object (after ChatPage and PipelineDetailPage), directly contradicting page-objects.md's 'Critical: NO Method Duplication — use inheritance or composition' rule. Not blocking this PR: it mirrors 2 already-merged precedents and was expli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skills_list_page.py:63-81"
+        },
+        {
+          "kind": "note",
+          "note": "`toast_dismiss_button` LocatorDescriptor added to SkillsListPage but never referenced by any method or by the new test (AFS itself flagged it 'optional, not required by this case'). Minor dead field — not a new EliteaUI testid addition (pre-existing app-wide testid, so it doesn't corrupt the UI-coverage-by-testid-presence metric), just unused page-object plumbing. Nit only.",
+          "ref": "automation/pages/skills_list_page.py:80"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean otherwise: all 4 Coverage Map rows verified against real per-step assertions (fixture existence, upload via expect_file_chooser, exact toast-text equality + dialog-absence check, skill-ID-set equality + zero skill_import requests + zero console errors). Mechanical raw-handle grep on automation/pages/+automation/tests/: 2 hits, both compliant (`self.page.locator(self.TOAST_ALERT… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_export_import.py"
+        },
+        {
+          "kind": "note",
+          "note": "6th recorded recurrence of the AFS-Priority-vs-pytest.mark drift pattern, and the first where a fix-round dispatch named the finding explicitly and it STILL wasn't fixed in that round (fixed here in round 2). Logged in .agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md as Recurrence 6. Worth considering a stronger process gate (grep dispatch-named findings again… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2438 / PR #1262"
+        },
+        {
+          "kind": "note",
+          "note": "The file test_skill_export_import.py carries a second, pre-existing, unfixed instance of the same marker-drift bug outside this PR's scope: TestSkillImportNonBaseVersion.test_import_skill_non_base_version (ELITEA-1738) has AFS Priority l3(medium) but compiles to @pytest.mark.p3, should be p2. Not touched here (out of this PR's diff) but flagged for a future cleanup pass.",
+          "ref": "automation/tests/ui/skills/test_skill_export_import.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing ruff I001 (unsorted import block) on test_skill_export_import.py, confirmed present on HEAD before this round's edit — not introduced by this fix, left untouched (out of scope for a marker-only fix round).",
+          "ref": "automation/tests/ui/skills/test_skill_export_import.py:16"
+        },
+        {
+          "kind": "note",
+          "note": "Priority-marker fix verified: automation/tests/ui/skills/test_skill_export_import.py:583 now carries @pytest.mark.p2 (was p3), matching AFS 'Priority: l3 (medium, per case)' and pytest.ini's l3->p2 scale. Confirmed via git diff on commit 98896f80 and the collect-only/live-run evidence recorded in the implementer's memory entry.",
+          "ref": "automation/tests/ui/skills/test_skill_export_import.py:583"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added non-testid handles in automation/pages/ and automation/tests/ (git diff 43b5fe52...tests/ELITEA-2438-import-skill-missing-frontmatter -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned exactly 2 hits, both complian… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skills_list_page.py:111,122"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (case snapshot -> AFS -> implementation) checked out: all 4 case steps map to Coverage-Map rows with real per-step assertions in the test (toast message exact-text match at step 3, dialog-absence assertion at step 3, skill-ID-set + zero skill_import network calls + zero console errors at step 4). Toast message text matches the live source (../EliteaUI/src/[fsd]/features/skill/li… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking, out of this PR's scope: the implementer's memory (priority_marker_drift_afs_vs_pytest_mark.md) flags that a same-file sibling test (TestSkillImportNonBaseVersion.test_import_skill_non_base_version, ELITEA-1738) has the identical pre-existing wrong p3 marker (should be p2) that this PR did not introduce and correctly did not touch. Worth a follow-up fix-only pass but is not a blocker … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_export_import.py"
+        }
+      ],
+      "afs": "test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md",
+      "branch": "tests/ELITEA-2438-import-skill-missing-frontmatter",
+      "pr": 1262,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          82.440014334,
+          79.271905458,
+          80.304766375
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -1,0 +1,143 @@
+{
+ "v": 1,
+ "batch": "elitea-2068",
+ "generatedAt": "2026-09-14T12:03:20.183Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-20T21:57:35.737Z",
+   "end": "2026-08-05T21:57:35.737Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 1
+ },
+ "delivered": 1,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   18.103615,
+   19.71095575,
+   16.750017542
+  ],
+  "failures": [
+   {
+    "spec": "automation/tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant",
+    "signature": "FAILED (pytest.fail via soft_failures aggregation) — screenshot automation/screenshots/test_add_llm_node_save_pipeline_and_verify_participant_FAIL_20260805_005147.png. Test's own docstring documents this as a deterministic, already-filed known defect (issue #1039: bare LLM node added via chat canvas does not respond as a chat participant — soft-asserted via the pytest-native soft_failures/pytest.f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "ELITEA-2079"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2068",
+   "outcome": "automated",
+   "findings": 5,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2068"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

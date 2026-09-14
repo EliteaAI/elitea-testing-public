@@ -1,0 +1,155 @@
+{
+  "batch": "elitea-2356-agent-hub-detail-modal",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2356-agent-hub-detail-modal",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      14.524718167,
+      11.49521025,
+      11.662948334
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/agents/test_agent_hub_like_agent_list_view.py::TestAgentHubLikeAgentListView::test_agent_hub_like_agent_from_list_view",
+        "signature": "pytest.fail(): 'Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1215: non-serializable Redux console error(s) on like click: 1 occurrence(s)'",
+        "case_ids": [
+          "ELITEA-2354"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2356",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text says 'CONVERSATION STARTERS' section and 'Start conversation' button; live product renders 'CHAT STARTERS' and 'Start Chat' (AgentConversationStarters.jsx / AgentModal.jsx:267). Already tracked as EliteaAI/elitea-testing-public#1042 (filed from ELITEA-2092), which explicitly lists ELITEA-2356 as an affected sibling. Not re-filed; AFS asserts the live copy.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1042"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says 'copy link icon' should be visible in the modal header. Live product has no standalone copy-link icon — it's the pre-existing 'agent-hub-modal-menu-button' overflow ('...') menu, whose 'Share' item (not 'Copy link') performs the copy action. Filed new clarification #1218 (dedup-checked first, 0 prior hits); it names ELITEA-2359/#867 as the sibling case that actually exercises the co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1218"
+        },
+        {
+          "kind": "note",
+          "note": "6 testid gaps on AgentModal.jsx elements this case touches: agent icon (EntityIcon at AgentModal.jsx:222-227 already accepts a data-testid prop, just needs it passed), owner name (AgentModal.jsx:190-195), like button (AgentHubLike at AgentModal.jsx:198-201 threads NO testId at all, unlike the card-list like button which does via a different testid prefix — data-liked auto-derives once threaded), c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/l3_agent-hub-open-agent-detail-modal_ELITEA-2356.md"
+        },
+        {
+          "kind": "note",
+          "note": "The agent used for this case ('User Story Creator', app id 172) has a typo in its own author-authored description ('Thuis agent is responsible...') — this is live product DATA (user-editable content), not a UI/rendering defect, so it was NOT filed. AFS instructs the implementer to assert description non-empty/visible, never the literal string, so the test doesn't silently start failing if someone … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Self-caught locator-policy violation before commit: my first draft asserted \"modal opens as an overlay\" via page.get_by_role(\"dialog\") — a role-based locator, forbidden per .agents/role-overrides.md's testid-only policy. Caught by running the reviewer's own mechanical grep on my diff before committing. Fixed by adding a new testid (catalog-agent-modal, on AgentModal.jsx's main-panel Box, EliteaAI/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_open_agent_detail_modal.py"
+        },
+        {
+          "kind": "note",
+          "note": "Two case-text drifts (CONVERSATION STARTERS/Start conversation vs live CHAT STARTERS/Start Chat; copy-link icon vs live overflow menu) were already identified and tracked by the analyst as clarification issues #1042 and #1218 — asserted the live product copy, no new clarification filed by the implementer.",
+          "ref": "test-specs/agent-hub/l3_agent-hub-open-agent-detail-modal_ELITEA-2356.md"
+        },
+        {
+          "kind": "note",
+          "note": "Tracking issue #864 exists (found via gh issue list, not obvious from the dispatch) — commented the PR link on it per the seeded status-reporting policy."
+        },
+        {
+          "kind": "defect",
+          "note": "Mechanical testid-only grep on the full diff (git diff <trunk>...<branch> -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') produced exactly 1 hit: `self.page.locator(self.MODAL_LIKE_BUTTON)` in agent_hub_page.py's get_modal_liked_state(). MODAL_LIKE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_hub_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING: the implementer discovered mid-build that AFS step 3's Coverage-Map row ('dialog visible', no named handle) needed a NEW testid — catalog-agent-modal, on the Dialog's main panel — to avoid a get_by_role(\"dialog\") locator-policy violation. This was well-documented in the PR body's 'Testids added' bullet and in the implementer's own memory entry (mui_dialog_needs_its_own_testid_not_role_di… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/l3_agent-hub-open-agent-detail-modal_ELITEA-2356.md"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the 'not extend-existing' reasoning is factually accurate: read test_agent_hub_participant_readonly_canvas_llm_override.py:135-138 (ELITEA-2075) directly — it asserts only modal_agent_name.text_content() before clicking Start Chat and leaving the modal, confirming the AFS's claim of '1 of 9 observables' asserted there. ready-for-automation (fresh spec) is the correct classification, not e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_agent_hub_participant_readonly_canvas_llm_override.py:135"
+        },
+        {
+          "kind": "note",
+          "note": "Both cited case-text-drift clarification tickets were spot-checked and are real, open, correctly labelled 'question', and both name ELITEA-2356 as an affected case: #1042 (CHAT STARTERS/Start Chat vs case's 'CONVERSATION STARTERS'/'Start conversation') and #1218 (overflow-menu 'Share' vs case's 'copy link icon', filed this dispatch). Dedup and bug-filing routing were done correctly per profile.md."
+        },
+        {
+          "kind": "question",
+          "note": "The AFS/test asserts the CHAT STARTERS empty-state body copy as 'No predefined chat starters – just type your request to begin.' (EXPECTED_CHAT_STARTERS_EMPTY_TEXT), but the cited clarification ticket #1042 (filed from a different case, ELITEA-2092, at an earlier date) quotes the SAME empty-state body copy as 'No predefined conversation starters – just type your request to begin.' — i.e. the secti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Step 2's AFS Axis-2 addition ('the underlying agent-details network request resolves 200') is verified only via the end-of-test aggregate failed_responses>=400 check (registered via a single page.on('response',...) listener spanning the whole test), not via an inline status-code assertion scoped to the specific prompt_lib response at Step 2 itself — open_agent_by_name()'s expect_response() predica… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_open_agent_detail_modal.py:75"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/agent-hub/_surface.md was NOT amended this round despite the dispatch's \"ideally\" ask — the implementer role has no write access to that analyst-owned digest per Hard Rule 11. Recommend a small analyst follow-up (or the next sibling case, ELITEA-2357/2358/2359/2360) add the catalog-agent-modal testid gap to _surface.md's \"Zero testids\" list.",
+          "ref": "test-specs/agent-hub/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Confirms the reviewer's own named pattern (qa-engineer memory: new_testid_documented_in_pr_body_not_afs.md) — an implementer-discovered testid documented richly in the PR body/memory but never fed back into the AFS artifact is a recurring risk on any round where implementation surfaces a testid the AFS didn't originally ask for.",
+          "ref": ".agents/memory/qa-engineer/new_testid_documented_in_pr_body_not_afs.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker (catalog-agent-modal testid undocumented in AFS) is fixed: commit 7b1cdf91 amends AFS Test Step 3, Coverage Map step-3 row, and adds a new Concrete Handles row for AgentHubPage.modal_dialog / catalog-agent-modal — verbatim match to the shipped page-object field.",
+          "ref": "test-specs/agent-hub/l3_agent-hub-open-agent-detail-modal_ELITEA-2356.md"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/agent-hub/_surface.md was NOT amended for the new catalog-agent-modal testid; the implementer declined citing the one-writer-per-digest rule and logged it as an analyst follow-up instead of an out-of-contract edit. Correct call — the prior finding phrased the _surface.md half as \"ideally\", not a hard requirement, and the AFS itself (the load-bearing artifact) is fully amended.",
+          "ref": "test-specs/agent-hub/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Fresh EliteaUI git fetch confirms all 8 new modal testids (catalog-agent-modal, -agent-icon, -owner-name, -like-button, -close-button, -description, -chat-starters-section, -welcome-message-section) exist on origin/automation/testids and are absent on origin/main — matches the AFS PROVENANCE claim exactly (pushed, not yet promoted).",
+          "ref": "automation/pages/agent_hub_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles added in the diff: 1 hit, self.page.locator(self.MODAL_LIKE_BUTTON) at agent_hub_page.py:73 — compliant (class-level constant MODAL_LIKE_BUTTON = '[data-testid=\"catalog-agent-modal-like-button\"]'). No other hits. Command: git diff automation/base...tests/2356-agent-hub-open-agent-detail-modal -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_hub_page.py:73"
+        },
+        {
+          "kind": "note",
+          "note": "Re-verified the ready-for-automation (not extend-existing) classification against the only overlapping merged spec: test_agent_hub_participant_readonly_canvas_llm_override.py (ELITEA-2075) asserts only agent_hub.modal_agent_name before diverging into Start Chat/canvas — matches the AFS's own reasoning, eight of nine case observables genuinely unasserted there.",
+          "ref": "automation/tests/ui/chat/test_agent_hub_participant_readonly_canvas_llm_override.py:135-138"
+        },
+        {
+          "kind": "note",
+          "note": "Both cited clarification issues re-verified live via gh issue view: #1042 (CHAT STARTERS/Start Chat drift) is OPEN, labelled question+case-text-drift, body explicitly names ELITEA-2356 as an affected sibling; #1218 (copy-link-icon-is-actually-an-overflow-menu drift) is OPEN, labelled question, correctly scoped to this case. Neither is masked as a defect."
+        },
+        {
+          "kind": "note",
+          "note": "All 7 case steps map to real per-step assertions inside their allure.step blocks (icon/name/owner/like-state/menu/close/description at step 4, section header+empty-state text at steps 5-6, footer button at step 7); side-channel check (zero console errors, zero 4xx/5xx) registered before navigation and asserted at the end. No defect-masking patterns (pytest.skip/xfail/test.fail/weakened asserts) fo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_open_agent_detail_modal.py"
+        }
+      ],
+      "afs": "test-specs/agent-hub/l3_agent-hub-open-agent-detail-modal_ELITEA-2356.md",
+      "branch": "tests/2356-agent-hub-open-agent-detail-modal",
+      "pr": 1219,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          14.524718167,
+          11.49521025,
+          11.662948334
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

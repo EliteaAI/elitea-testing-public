@@ -1,0 +1,142 @@
+{
+ "v": 1,
+ "batch": "elitea-2337-secret-name-validation",
+ "generatedAt": "2026-09-14T12:03:20.189Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-21T15:42:58.373Z",
+   "end": "2026-08-06T15:42:58.373Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 1
+ },
+ "delivered": 0,
+ "gate": {
+  "verdict": "red",
+  "runs": 1,
+  "seconds": [
+   32.396535
+  ],
+  "failures": [
+   {
+    "spec": "tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py",
+    "signature": "pytest.fail() in both test functions: 'Test flow completed and all functional assertions passed, but known-defect soft failure(s) were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React \"Maximum update depth exceeded\" console error(s) on /settings/secrets mount: 17 occurrence(s)' — exit code 1, 2 failed / 0 passed, 31.73s test session (32.40s incl. base-mer… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "ELITEA-2336",
+     "ELITEA-2337"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2337",
+   "outcome": "blocked",
+   "findings": 17,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2337"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

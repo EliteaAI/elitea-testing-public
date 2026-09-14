@@ -1,0 +1,91 @@
+{
+  "batch": "elitea-2352-agent-hub-filter-single-category",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2352-agent-hub-filter-single-category",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      13.05,
+      10.13,
+      10.1
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2352",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2352 case text (title + step 5) claims a 'reload category items' icon appears next to the filtered category section header. Confirmed absent from the live product both visually and via source (AgentCategorySection.jsx headerContainer renders only a Typography title; zero reload/refresh icon components anywhere under src/[fsd]/features/agent-hub or src/[fsd]/shared/ui/category). Filed as Eli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1212"
+        },
+        {
+          "kind": "note",
+          "note": "Category filter-rail chip (CategoryRail.jsx) had NO accessible/stable 'selected' signal before this dispatch — no aria-selected, aria-pressed, or data-* attribute; only a computed CSS style difference. Playwright's own accessibility-tree [active] marker is pure DOM focus (confirmed live: it moves to whichever element was most recently clicked/focused, independent of the actual filter/selection sta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@9b93f67c"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered that Agent Hub category filtering is actually multi-select at the app-state level (selectedTagNames accumulates; clicking a second chip after a first renders both categories' sections simultaneously rather than replacing). ELITEA-2352 only exercises the single-click case per its title/scope; this behavior is relevant to a likely sibling case ('filter by multiple categories') in the same… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case ↔ AFS ↔ diff) checks out for all 5 case steps: Step1 heading, Step2 click, Step3 selected-state, Step4 exactly-one-heading + all 4 named agent cards, Step5 heading text (icon claim correctly NOT asserted, filed as clarification). Zero console-error check wraps the whole interaction, matching the project's console-capture idiom (not per-step, which is correct for an aggregate ob… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_filter_single_category.py"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance independently verified against EliteaUI, not just trusted from the AFS: commit EliteaAI/EliteaUI@9b93f67c is real, adds exactly `data-selected={selectedCategories.includes(category) ? 'true' : 'false'}` to CategoryRail.jsx, is present on origin/automation/testids and confirmed absent from origin/main — matches the AFS/PR claim exactly.",
+          "ref": "EliteaAI/EliteaUI@9b93f67c"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the diff: 3 `.locator(` hits, all keyed off UPPER_CASE class-level `[data-testid=` constants (CATEGORY_FILTER_CHIP, CATEGORY_HEADING_PREFIX) — no raw role/text/CSS handles added. Additive-only check on the shared agent_hub_page.py (git diff base...head, grep '^-[^-]') is empty — ELITEA-2350's caller is untouched. Ruff clean.",
+          "ref": "automation/pages/agent_hub_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "One line builds its selector by concatenating the class-level `CATEGORY_FILTER_CHIP` template with a raw `'[data-selected=\"true\"]'` literal defined only in the method body, rather than as a single combined class-level constant (the exact shape `.agents/testing.md` § Locator policy's own worked example uses for a testid+state-filter combo). It still passes the reviewer's literal one-hop mechanical-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_hub_page.py:193-195"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4's 'only Business Analyst agents displayed' is proven via (a) exactly-one-content-list-heading check + (b) presence of all 4 expected named cards, but does not independently assert total rendered card count (e.g. get_agent_card_count()==4), so it doesn't literally rule out a stray extra card inside the same section. Verified via EliteaUI source that AgentCategorySection always groups cards u… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_filter_single_category.py:70-80"
+        },
+        {
+          "kind": "note",
+          "note": "Case step 5's 'appears above the results' spatial claim is not independently asserted (no bounding-box/order check) — only heading + card visibility. Reasonable given the single-section component structure (heading always renders before its cards in AgentCategorySection), and the case's other clause (the icon) is already correctly handled as a filed clarification. Nit-level, not blocking.",
+          "ref": "automation/tests/ui/agents/test_agent_hub_filter_single_category.py:82-90"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift correctly filed as EliteaAI/elitea-testing-public#1212 (label `question`, body names ELITEA-2352 + 'Found while working', screenshot uploaded to the evidence release and embedded inline per role-overrides.md, correctly cross-referenced as same drift family as #1208). Dedup and bug-filing discipline both verified live via `gh issue view`.",
+          "ref": "EliteaAI/elitea-testing-public#1212"
+        }
+      ],
+      "afs": "test-specs/agent-hub/l3_agent-hub-filter-by-single-category_ELITEA-2352.md",
+      "branch": "tests/2352-agent-hub-filter-single-category",
+      "pr": 1213,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          13.05,
+          10.13,
+          10.1
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

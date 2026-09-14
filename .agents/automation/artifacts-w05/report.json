@@ -1,0 +1,601 @@
+{
+  "batch": "artifacts-w05",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1392",
+  "integration_branch": "tests/batch-artifacts-w05",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      181.44,
+      190.97,
+      200.7
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1853",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855 step 3 ('Click the X (close) icon to close the editor panel -> Editor closes') is stale: with unsaved changes the live product raises a Warning dialog ('You are editing now. Do you want to discard current changes and continue?', Cancel/Confirm) and closes only after Confirm. Requested change: split step 3 into click X -> dialog appears -> Confirm -> editor closes; the Cancel branch is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1687"
+        },
+        {
+          "kind": "note",
+          "note": "The file-preview editor has TWO distinct unsaved-changes modals, easy to conflate: (a) the header Discard button's own Modal.BaseModal inside the shared Button.DiscardButton — message 'Are you sure you want to discard changes?', new artifacts-preview-discard-warning-* testids; (b) the X button's AlertDialog in FilePreviewCanvas — different message, generic pre-existing alert-dialog-content / alert… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "useCodeMirror debounces notifyChange by 30ms, so the parent's hasChanges/hasUnsavedChanges lag the typed DOM text. A first analysis probe typed and clicked X immediately: the editor closed with NO warning dialog because the parent still believed it was clean. Any test on this surface must wait on is_file_preview_save_enabled()/is_file_preview_discard_enabled() after typing before asserting dirty-s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js"
+        },
+        {
+          "kind": "note",
+          "note": "The post-discard revert reaches CodeMirror one React state round-trip AFTER the Warning modal hides (parent resets editedContent, then useCodeMirror's effect calls setCode(fileContent)). A one-shot get_file_preview_content_text() at that moment still returns the EDITED text — this was the unit's single rerun. Assert with a web-first retrying expect(), then read for byte-equality. Recorded in the A… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md"
+        },
+        {
+          "kind": "note",
+          "note": "Vite did not pick up the src/[fsd]/ JSX edits (the known OneDrive/FSD HMR gap already in the digest) — the dev server needed a full kill + npm run dev restart before the new testids were served. Verified by curling the module URL and grepping for the testid before running anything.",
+          "ref": "../EliteaUI"
+        },
+        {
+          "kind": "defect",
+          "note": "Decorator seam bug: `@action(\"Edit file preview content\")` at artifacts_page.py:4178 now decorates `click_file_preview_discard` (4180) instead of `edit_file_preview_content` (4249). Two `@action` lines with no `def` between them is the signature. No runtime failure — which is why no gate catches it — but the pre-existing edit-save spec loses failure screenshots and the new method logs under the wr… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:4178"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS↔implementation drift: ELITEA-1854 Coverage-Map row 8 promises \"full content equals the post-edit content\"; the implementation asserts only `to_contain_text(EDITED_LINE_17)` plus editor visibility for that row. Substance of the case step is covered; the claim is not.",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md (Axis 1, ELITEA-1854, row 8)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — dead read: `content_after = get_file_preview_content_text(...)` runs for BOTH parameterized rows but is only used in the `not expect_change_present` branch. Move it inside that branch (or use it for the 1854 equality assertion above).",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (Step 9 block)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — potentially vacuous comparison: `modified_before = metadata_before.get(\"lastModified\")` uses `.get` while `size` uses `[...]`. If the key were ever absent, `None == None` passes silently and the ms-precision oracle the AFS leans on disappears. Verified `ArtifactAPI.get_file_metadata` (api/client.py:1470) returns the raw S3 `contents[]` item which does carry `lastModified`, so it is real toda… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_close_x_unsaved.py (baseline capture)"
+        },
+        {
+          "kind": "note",
+          "note": "Weak-negative-assertion note (accepted, not blocking): ELITEA-1853 step 12 asserts `success_toast_message.to_have_count(0)`, which passes instantly and cannot see a toast that already faded. Acceptable here because the AFS establishes live that discard is a pure client-side state reset with no network request, and the assertion runs within a few fast assertions of the click — but it is an absence … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (Step 12 block)"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855 case-text drift is correctly handled per the reverse-masking guard: step 3 (\"Click X → editor closes\") omits the live unsaved-changes Warning dialog (\"You are editing now. Do you want to discard current changes and continue?\") that `FilePreviewCanvas.handleClose` raises. The AFS declares it, the test ASSERTS the dialog rather than dropping the step, and a case-text clarification is fil… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-close-x-without-saving_ELITEA-1855.md § Case-text drift"
+        },
+        {
+          "kind": "note",
+          "note": "Family-AFS per-ROW triangulation passes: each of ELITEA-1853/1854 maps to its own `pytest.param` row with DISTINCT expected values that are actually asserted (`expect_change_present` drives content-revert-vs-preserved; `expect_buttons_enabled` drives disabled-vs-enabled Save/Discard). No flattened shared assertion, no case id without a row. Both cases carry their own Coverage Map.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (parametrize block)"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work verified independently, not taken on the AFS's word: EliteaAI/EliteaUI@d0b8a0c2 adds only prop plumbing (DiscardButton.jsx forwards four extra testId props; PreviewHeader.jsx supplies six call-site values). All four forwarded props are consumed by `src/[fsd]/shared/ui/modal/BaseModal.jsx:33-37,67,103,142,154`, so the testids genuinely render. Shared component carries no feature-scoped … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@d0b8a0c2"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion check passes for all three cases — every case step with a stated expected result has an assertion at that step, including the intermediate ones (modal open, modal closed, editor still open, buttons visible+state, file table restored, timestamp unchanged, reopened content). The AFS Axis-2 additions are all grounded (backend lastModified/size as the honest oracle over a whole-minu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no `pytest.skip`, `xfail`, `test.fail`, `expect.soft`, weakened asserts, sleeps, or quarantine markers anywhere in the diff. Console-error side-channel asserted in both specs, matching the neighbouring artifacts specs' convention. Read-only-by-default is respected as far as it can be — both specs mutate in-editor state, so the fixture-seeded bucket per test is justified and documente… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Digest and knowledge layers were updated and committed with the work: `test-specs/artifacts/_surface.md` gained the revert-lags-the-modal-close gotcha and the five new page-object method names, and a `.agents/knowledge/` entry on the two distinct unsaved-changes modals was promoted. The page-object comment block at artifacts_page.py:792 that distinguishes the DiscardButton modal from the AlertDial… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The additive-only self-check (`git diff <base> -- <file> | grep -E '^-[^-]'` is empty) structurally CANNOT catch a stolen decorator: inserting a method between an existing decorator and its def is pure addition, so the check reports clean while a merged caller silently loses its @action. The new AST guard automation/tests/unit/test_page_object_action_decorator_seams.py is the check that does catch… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_page_object_action_decorator_seams.py"
+        },
+        {
+          "kind": "note",
+          "note": "@action (automation/utils/actions.py:65) records the step description only in a closure — nothing lands on the wrapper object — so decorator-label drift can only ever be detected by source/AST inspection, not by runtime introspection. Any future guard in this family has to be static.",
+          "ref": "automation/utils/actions.py:65"
+        },
+        {
+          "kind": "note",
+          "note": "The new unit guard carries no pytest marker: `unit` is not registered in automation/pytest.ini markers, and neighbouring meta-tests under automation/tests/unit/ carry no markers either. Followed the neighbours rather than introducing an unregistered marker.",
+          "ref": "automation/pytest.ini"
+        },
+        {
+          "kind": "note",
+          "note": "ROUND-1 BLOCKER 1 — RESOLVED. The five new methods now sit BEFORE the pre-existing `@action(\"Edit file preview content\")` decorator, not between it and its `def`. Verified statically with an AST pass over all `automation/pages/*.py`: 0 methods carry stacked `@action` decorators; `click_file_preview_discard` (line 4179) carries exactly `['Open the Discard warning modal']` and `edit_file_preview_con… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:4179"
+        },
+        {
+          "kind": "note",
+          "note": "ROUND-1 BLOCKER 2 — RESOLVED. ELITEA-1854 Axis-1 row 8 (\"back in edit mode, all changes intact\") now has a real full-content equality assertion at Step 10: `assert content_after == edited_content`, where `edited_content` is the post-edit baseline captured live from the product at Step 3-4 (not reconstructed from FILE_LINES). Gated on `expect_change_present`, so it binds the 1854 row only. The 1853… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py:317"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on `git diff tests/batch-artifacts-w05...tests/artifacts-w05-1853-1855 -- automation/`:\n(1) locator policy `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → **0 hits**. All eight new locators are class-level `LocatorDescriptor(testid=…)` fields; no `fallback=`/`locator… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1688"
+        },
+        {
+          "kind": "defect",
+          "note": "NON-BLOCKING AFS↔impl drift. The row's \"Asserted where\" column claims \"CodeMirror content visible; **file table not shown**\". The implementation (Step 10) asserts `file_preview_code_content` visible and `file_preview_file_path` visible — there is no file-table-absence assertion. The case element itself (\"user remains in edit mode, editor still open and active\") IS genuinely asserted, so this is a … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md — Axis-1 ELITEA-1853 row 10"
+        },
+        {
+          "kind": "defect",
+          "note": "NON-BLOCKING AFS↔impl drift (nit). The 1855 AFS step 6 reads \"Verify: Save/Discard became enabled\"; the test's Step 2a asserts only `is_file_preview_save_enabled()`. Both buttons are driven by the same `hasChanges` state, so the dirty-state guard the hint calls load-bearing is fully satisfied by the Save check — but the AFS says \"Save/Discard\" and the code checks one. (The 1853/1854 spec does asse… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-close-x-without-saving_ELITEA-1855.md — step 6"
+        },
+        {
+          "kind": "note",
+          "note": "New case-less unit test shipped in this PR: a static AST guard that (a) no page-object method in `automation/pages/*.py` carries stacked `@action` decorators and (b) the two methods the round-1 seam damaged keep exactly their own labels. I judge this IN SCOPE — the defect class is invisible to every runtime gate (`@action` closes over its description and records nothing on the wrapper), so a sourc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_page_object_action_decorator_seams.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855's case text (step 3: \"Click the X → Editor closes\") is stale — the live product raises an unsaved-changes Warning dialog (\"You are editing now. Do you want to discard current changes and continue?\") and closes only after Confirm. Handled correctly per the reverse-masking guard: the AFS has a § Case-text drift section, the test docstring repeats it, the extra dialog is ASSERTED (not ski… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1687"
+        },
+        {
+          "kind": "note",
+          "note": "Hardening-gate flake heads-up: both specs end with a raw `assert not console_errors` collected via `page.on(\"console\", …)` with no filtering. That matches the established artifacts-suite convention (19+ neighbouring specs do the same, and no shared filter helper exists), so it is not a review finding — but `.agents/testing.md` § Known issues documents a CONFIRMED recurring class of unrelated-resou… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_close_x_unsaved.py:305"
+        },
+        {
+          "kind": "note",
+          "note": "Family-spec per-row triangulation passes. Both TMS ids map to their own `pytest.param` row with DISTINCT expected values (`expect_change_present`, `expect_buttons_enabled`) that really drive divergent assertions: 1853 → marker absent + byte-equality vs original + both buttons DISABLED + toast count 0; 1854 → edited line present + byte-equality vs post-edit baseline + both buttons ENABLED. No flatt… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md"
+        },
+        {
+          "kind": "note",
+          "note": "Good catch worth preserving: the page-object comment block explicitly separates the TWO unsaved-changes modals on this surface — the header Discard button's own `Button.DiscardButton` modal (`artifacts-preview-discard-warning-*`, \"Are you sure you want to discard changes?\") vs `FilePreviewCanvas`'s generic `AlertDialog` (`alert-dialog-*`, \"You are editing now…\"). Both reachable from one editor ses… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:792"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md",
+      "branch": "tests/artifacts-w05-1853-1855",
+      "pr": 1688,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1854",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855 step 3 ('Click the X (close) icon to close the editor panel -> Editor closes') is stale: with unsaved changes the live product raises a Warning dialog ('You are editing now. Do you want to discard current changes and continue?', Cancel/Confirm) and closes only after Confirm. Requested change: split step 3 into click X -> dialog appears -> Confirm -> editor closes; the Cancel branch is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1687"
+        },
+        {
+          "kind": "note",
+          "note": "The file-preview editor has TWO distinct unsaved-changes modals, easy to conflate: (a) the header Discard button's own Modal.BaseModal inside the shared Button.DiscardButton — message 'Are you sure you want to discard changes?', new artifacts-preview-discard-warning-* testids; (b) the X button's AlertDialog in FilePreviewCanvas — different message, generic pre-existing alert-dialog-content / alert… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "useCodeMirror debounces notifyChange by 30ms, so the parent's hasChanges/hasUnsavedChanges lag the typed DOM text. A first analysis probe typed and clicked X immediately: the editor closed with NO warning dialog because the parent still believed it was clean. Any test on this surface must wait on is_file_preview_save_enabled()/is_file_preview_discard_enabled() after typing before asserting dirty-s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js"
+        },
+        {
+          "kind": "note",
+          "note": "The post-discard revert reaches CodeMirror one React state round-trip AFTER the Warning modal hides (parent resets editedContent, then useCodeMirror's effect calls setCode(fileContent)). A one-shot get_file_preview_content_text() at that moment still returns the EDITED text — this was the unit's single rerun. Assert with a web-first retrying expect(), then read for byte-equality. Recorded in the A… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md"
+        },
+        {
+          "kind": "note",
+          "note": "Vite did not pick up the src/[fsd]/ JSX edits (the known OneDrive/FSD HMR gap already in the digest) — the dev server needed a full kill + npm run dev restart before the new testids were served. Verified by curling the module URL and grepping for the testid before running anything.",
+          "ref": "../EliteaUI"
+        },
+        {
+          "kind": "defect",
+          "note": "Decorator seam bug: `@action(\"Edit file preview content\")` at artifacts_page.py:4178 now decorates `click_file_preview_discard` (4180) instead of `edit_file_preview_content` (4249). Two `@action` lines with no `def` between them is the signature. No runtime failure — which is why no gate catches it — but the pre-existing edit-save spec loses failure screenshots and the new method logs under the wr… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:4178"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS↔implementation drift: ELITEA-1854 Coverage-Map row 8 promises \"full content equals the post-edit content\"; the implementation asserts only `to_contain_text(EDITED_LINE_17)` plus editor visibility for that row. Substance of the case step is covered; the claim is not.",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md (Axis 1, ELITEA-1854, row 8)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — dead read: `content_after = get_file_preview_content_text(...)` runs for BOTH parameterized rows but is only used in the `not expect_change_present` branch. Move it inside that branch (or use it for the 1854 equality assertion above).",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (Step 9 block)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — potentially vacuous comparison: `modified_before = metadata_before.get(\"lastModified\")` uses `.get` while `size` uses `[...]`. If the key were ever absent, `None == None` passes silently and the ms-precision oracle the AFS leans on disappears. Verified `ArtifactAPI.get_file_metadata` (api/client.py:1470) returns the raw S3 `contents[]` item which does carry `lastModified`, so it is real toda… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_close_x_unsaved.py (baseline capture)"
+        },
+        {
+          "kind": "note",
+          "note": "Weak-negative-assertion note (accepted, not blocking): ELITEA-1853 step 12 asserts `success_toast_message.to_have_count(0)`, which passes instantly and cannot see a toast that already faded. Acceptable here because the AFS establishes live that discard is a pure client-side state reset with no network request, and the assertion runs within a few fast assertions of the click — but it is an absence … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (Step 12 block)"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855 case-text drift is correctly handled per the reverse-masking guard: step 3 (\"Click X → editor closes\") omits the live unsaved-changes Warning dialog (\"You are editing now. Do you want to discard current changes and continue?\") that `FilePreviewCanvas.handleClose` raises. The AFS declares it, the test ASSERTS the dialog rather than dropping the step, and a case-text clarification is fil… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-close-x-without-saving_ELITEA-1855.md § Case-text drift"
+        },
+        {
+          "kind": "note",
+          "note": "Family-AFS per-ROW triangulation passes: each of ELITEA-1853/1854 maps to its own `pytest.param` row with DISTINCT expected values that are actually asserted (`expect_change_present` drives content-revert-vs-preserved; `expect_buttons_enabled` drives disabled-vs-enabled Save/Discard). No flattened shared assertion, no case id without a row. Both cases carry their own Coverage Map.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (parametrize block)"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work verified independently, not taken on the AFS's word: EliteaAI/EliteaUI@d0b8a0c2 adds only prop plumbing (DiscardButton.jsx forwards four extra testId props; PreviewHeader.jsx supplies six call-site values). All four forwarded props are consumed by `src/[fsd]/shared/ui/modal/BaseModal.jsx:33-37,67,103,142,154`, so the testids genuinely render. Shared component carries no feature-scoped … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@d0b8a0c2"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion check passes for all three cases — every case step with a stated expected result has an assertion at that step, including the intermediate ones (modal open, modal closed, editor still open, buttons visible+state, file table restored, timestamp unchanged, reopened content). The AFS Axis-2 additions are all grounded (backend lastModified/size as the honest oracle over a whole-minu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no `pytest.skip`, `xfail`, `test.fail`, `expect.soft`, weakened asserts, sleeps, or quarantine markers anywhere in the diff. Console-error side-channel asserted in both specs, matching the neighbouring artifacts specs' convention. Read-only-by-default is respected as far as it can be — both specs mutate in-editor state, so the fixture-seeded bucket per test is justified and documente… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Digest and knowledge layers were updated and committed with the work: `test-specs/artifacts/_surface.md` gained the revert-lags-the-modal-close gotcha and the five new page-object method names, and a `.agents/knowledge/` entry on the two distinct unsaved-changes modals was promoted. The page-object comment block at artifacts_page.py:792 that distinguishes the DiscardButton modal from the AlertDial… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The additive-only self-check (`git diff <base> -- <file> | grep -E '^-[^-]'` is empty) structurally CANNOT catch a stolen decorator: inserting a method between an existing decorator and its def is pure addition, so the check reports clean while a merged caller silently loses its @action. The new AST guard automation/tests/unit/test_page_object_action_decorator_seams.py is the check that does catch… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_page_object_action_decorator_seams.py"
+        },
+        {
+          "kind": "note",
+          "note": "@action (automation/utils/actions.py:65) records the step description only in a closure — nothing lands on the wrapper object — so decorator-label drift can only ever be detected by source/AST inspection, not by runtime introspection. Any future guard in this family has to be static.",
+          "ref": "automation/utils/actions.py:65"
+        },
+        {
+          "kind": "note",
+          "note": "The new unit guard carries no pytest marker: `unit` is not registered in automation/pytest.ini markers, and neighbouring meta-tests under automation/tests/unit/ carry no markers either. Followed the neighbours rather than introducing an unregistered marker.",
+          "ref": "automation/pytest.ini"
+        },
+        {
+          "kind": "note",
+          "note": "ROUND-1 BLOCKER 1 — RESOLVED. The five new methods now sit BEFORE the pre-existing `@action(\"Edit file preview content\")` decorator, not between it and its `def`. Verified statically with an AST pass over all `automation/pages/*.py`: 0 methods carry stacked `@action` decorators; `click_file_preview_discard` (line 4179) carries exactly `['Open the Discard warning modal']` and `edit_file_preview_con… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:4179"
+        },
+        {
+          "kind": "note",
+          "note": "ROUND-1 BLOCKER 2 — RESOLVED. ELITEA-1854 Axis-1 row 8 (\"back in edit mode, all changes intact\") now has a real full-content equality assertion at Step 10: `assert content_after == edited_content`, where `edited_content` is the post-edit baseline captured live from the product at Step 3-4 (not reconstructed from FILE_LINES). Gated on `expect_change_present`, so it binds the 1854 row only. The 1853… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py:317"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on `git diff tests/batch-artifacts-w05...tests/artifacts-w05-1853-1855 -- automation/`:\n(1) locator policy `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → **0 hits**. All eight new locators are class-level `LocatorDescriptor(testid=…)` fields; no `fallback=`/`locator… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1688"
+        },
+        {
+          "kind": "defect",
+          "note": "NON-BLOCKING AFS↔impl drift. The row's \"Asserted where\" column claims \"CodeMirror content visible; **file table not shown**\". The implementation (Step 10) asserts `file_preview_code_content` visible and `file_preview_file_path` visible — there is no file-table-absence assertion. The case element itself (\"user remains in edit mode, editor still open and active\") IS genuinely asserted, so this is a … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md — Axis-1 ELITEA-1853 row 10"
+        },
+        {
+          "kind": "defect",
+          "note": "NON-BLOCKING AFS↔impl drift (nit). The 1855 AFS step 6 reads \"Verify: Save/Discard became enabled\"; the test's Step 2a asserts only `is_file_preview_save_enabled()`. Both buttons are driven by the same `hasChanges` state, so the dirty-state guard the hint calls load-bearing is fully satisfied by the Save check — but the AFS says \"Save/Discard\" and the code checks one. (The 1853/1854 spec does asse… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-close-x-without-saving_ELITEA-1855.md — step 6"
+        },
+        {
+          "kind": "note",
+          "note": "New case-less unit test shipped in this PR: a static AST guard that (a) no page-object method in `automation/pages/*.py` carries stacked `@action` decorators and (b) the two methods the round-1 seam damaged keep exactly their own labels. I judge this IN SCOPE — the defect class is invisible to every runtime gate (`@action` closes over its description and records nothing on the wrapper), so a sourc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_page_object_action_decorator_seams.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855's case text (step 3: \"Click the X → Editor closes\") is stale — the live product raises an unsaved-changes Warning dialog (\"You are editing now. Do you want to discard current changes and continue?\") and closes only after Confirm. Handled correctly per the reverse-masking guard: the AFS has a § Case-text drift section, the test docstring repeats it, the extra dialog is ASSERTED (not ski… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1687"
+        },
+        {
+          "kind": "note",
+          "note": "Hardening-gate flake heads-up: both specs end with a raw `assert not console_errors` collected via `page.on(\"console\", …)` with no filtering. That matches the established artifacts-suite convention (19+ neighbouring specs do the same, and no shared filter helper exists), so it is not a review finding — but `.agents/testing.md` § Known issues documents a CONFIRMED recurring class of unrelated-resou… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_close_x_unsaved.py:305"
+        },
+        {
+          "kind": "note",
+          "note": "Family-spec per-row triangulation passes. Both TMS ids map to their own `pytest.param` row with DISTINCT expected values (`expect_change_present`, `expect_buttons_enabled`) that really drive divergent assertions: 1853 → marker absent + byte-equality vs original + both buttons DISABLED + toast count 0; 1854 → edited line present + byte-equality vs post-edit baseline + both buttons ENABLED. No flatt… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md"
+        },
+        {
+          "kind": "note",
+          "note": "Good catch worth preserving: the page-object comment block explicitly separates the TWO unsaved-changes modals on this surface — the header Discard button's own `Button.DiscardButton` modal (`artifacts-preview-discard-warning-*`, \"Are you sure you want to discard changes?\") vs `FilePreviewCanvas`'s generic `AlertDialog` (`alert-dialog-*`, \"You are editing now…\"). Both reachable from one editor ses… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:792"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md",
+      "branch": "tests/artifacts-w05-1853-1855",
+      "pr": 1688,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1855",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855 step 3 ('Click the X (close) icon to close the editor panel -> Editor closes') is stale: with unsaved changes the live product raises a Warning dialog ('You are editing now. Do you want to discard current changes and continue?', Cancel/Confirm) and closes only after Confirm. Requested change: split step 3 into click X -> dialog appears -> Confirm -> editor closes; the Cancel branch is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1687"
+        },
+        {
+          "kind": "note",
+          "note": "The file-preview editor has TWO distinct unsaved-changes modals, easy to conflate: (a) the header Discard button's own Modal.BaseModal inside the shared Button.DiscardButton — message 'Are you sure you want to discard changes?', new artifacts-preview-discard-warning-* testids; (b) the X button's AlertDialog in FilePreviewCanvas — different message, generic pre-existing alert-dialog-content / alert… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "useCodeMirror debounces notifyChange by 30ms, so the parent's hasChanges/hasUnsavedChanges lag the typed DOM text. A first analysis probe typed and clicked X immediately: the editor closed with NO warning dialog because the parent still believed it was clean. Any test on this surface must wait on is_file_preview_save_enabled()/is_file_preview_discard_enabled() after typing before asserting dirty-s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js"
+        },
+        {
+          "kind": "note",
+          "note": "The post-discard revert reaches CodeMirror one React state round-trip AFTER the Warning modal hides (parent resets editedContent, then useCodeMirror's effect calls setCode(fileContent)). A one-shot get_file_preview_content_text() at that moment still returns the EDITED text — this was the unit's single rerun. Assert with a web-first retrying expect(), then read for byte-equality. Recorded in the A… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md"
+        },
+        {
+          "kind": "note",
+          "note": "Vite did not pick up the src/[fsd]/ JSX edits (the known OneDrive/FSD HMR gap already in the digest) — the dev server needed a full kill + npm run dev restart before the new testids were served. Verified by curling the module URL and grepping for the testid before running anything.",
+          "ref": "../EliteaUI"
+        },
+        {
+          "kind": "defect",
+          "note": "Decorator seam bug: `@action(\"Edit file preview content\")` at artifacts_page.py:4178 now decorates `click_file_preview_discard` (4180) instead of `edit_file_preview_content` (4249). Two `@action` lines with no `def` between them is the signature. No runtime failure — which is why no gate catches it — but the pre-existing edit-save spec loses failure screenshots and the new method logs under the wr… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:4178"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS↔implementation drift: ELITEA-1854 Coverage-Map row 8 promises \"full content equals the post-edit content\"; the implementation asserts only `to_contain_text(EDITED_LINE_17)` plus editor visibility for that row. Substance of the case step is covered; the claim is not.",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md (Axis 1, ELITEA-1854, row 8)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — dead read: `content_after = get_file_preview_content_text(...)` runs for BOTH parameterized rows but is only used in the `not expect_change_present` branch. Move it inside that branch (or use it for the 1854 equality assertion above).",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (Step 9 block)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — potentially vacuous comparison: `modified_before = metadata_before.get(\"lastModified\")` uses `.get` while `size` uses `[...]`. If the key were ever absent, `None == None` passes silently and the ms-precision oracle the AFS leans on disappears. Verified `ArtifactAPI.get_file_metadata` (api/client.py:1470) returns the raw S3 `contents[]` item which does carry `lastModified`, so it is real toda… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_close_x_unsaved.py (baseline capture)"
+        },
+        {
+          "kind": "note",
+          "note": "Weak-negative-assertion note (accepted, not blocking): ELITEA-1853 step 12 asserts `success_toast_message.to_have_count(0)`, which passes instantly and cannot see a toast that already faded. Acceptable here because the AFS establishes live that discard is a pure client-side state reset with no network request, and the assertion runs within a few fast assertions of the click — but it is an absence … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (Step 12 block)"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855 case-text drift is correctly handled per the reverse-masking guard: step 3 (\"Click X → editor closes\") omits the live unsaved-changes Warning dialog (\"You are editing now. Do you want to discard current changes and continue?\") that `FilePreviewCanvas.handleClose` raises. The AFS declares it, the test ASSERTS the dialog rather than dropping the step, and a case-text clarification is fil… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-close-x-without-saving_ELITEA-1855.md § Case-text drift"
+        },
+        {
+          "kind": "note",
+          "note": "Family-AFS per-ROW triangulation passes: each of ELITEA-1853/1854 maps to its own `pytest.param` row with DISTINCT expected values that are actually asserted (`expect_change_present` drives content-revert-vs-preserved; `expect_buttons_enabled` drives disabled-vs-enabled Save/Discard). No flattened shared assertion, no case id without a row. Both cases carry their own Coverage Map.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py (parametrize block)"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work verified independently, not taken on the AFS's word: EliteaAI/EliteaUI@d0b8a0c2 adds only prop plumbing (DiscardButton.jsx forwards four extra testId props; PreviewHeader.jsx supplies six call-site values). All four forwarded props are consumed by `src/[fsd]/shared/ui/modal/BaseModal.jsx:33-37,67,103,142,154`, so the testids genuinely render. Shared component carries no feature-scoped … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@d0b8a0c2"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion check passes for all three cases — every case step with a stated expected result has an assertion at that step, including the intermediate ones (modal open, modal closed, editor still open, buttons visible+state, file table restored, timestamp unchanged, reopened content). The AFS Axis-2 additions are all grounded (backend lastModified/size as the honest oracle over a whole-minu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no `pytest.skip`, `xfail`, `test.fail`, `expect.soft`, weakened asserts, sleeps, or quarantine markers anywhere in the diff. Console-error side-channel asserted in both specs, matching the neighbouring artifacts specs' convention. Read-only-by-default is respected as far as it can be — both specs mutate in-editor state, so the fixture-seeded bucket per test is justified and documente… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Digest and knowledge layers were updated and committed with the work: `test-specs/artifacts/_surface.md` gained the revert-lags-the-modal-close gotcha and the five new page-object method names, and a `.agents/knowledge/` entry on the two distinct unsaved-changes modals was promoted. The page-object comment block at artifacts_page.py:792 that distinguishes the DiscardButton modal from the AlertDial… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The additive-only self-check (`git diff <base> -- <file> | grep -E '^-[^-]'` is empty) structurally CANNOT catch a stolen decorator: inserting a method between an existing decorator and its def is pure addition, so the check reports clean while a merged caller silently loses its @action. The new AST guard automation/tests/unit/test_page_object_action_decorator_seams.py is the check that does catch… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_page_object_action_decorator_seams.py"
+        },
+        {
+          "kind": "note",
+          "note": "@action (automation/utils/actions.py:65) records the step description only in a closure — nothing lands on the wrapper object — so decorator-label drift can only ever be detected by source/AST inspection, not by runtime introspection. Any future guard in this family has to be static.",
+          "ref": "automation/utils/actions.py:65"
+        },
+        {
+          "kind": "note",
+          "note": "The new unit guard carries no pytest marker: `unit` is not registered in automation/pytest.ini markers, and neighbouring meta-tests under automation/tests/unit/ carry no markers either. Followed the neighbours rather than introducing an unregistered marker.",
+          "ref": "automation/pytest.ini"
+        },
+        {
+          "kind": "note",
+          "note": "ROUND-1 BLOCKER 1 — RESOLVED. The five new methods now sit BEFORE the pre-existing `@action(\"Edit file preview content\")` decorator, not between it and its `def`. Verified statically with an AST pass over all `automation/pages/*.py`: 0 methods carry stacked `@action` decorators; `click_file_preview_discard` (line 4179) carries exactly `['Open the Discard warning modal']` and `edit_file_preview_con… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:4179"
+        },
+        {
+          "kind": "note",
+          "note": "ROUND-1 BLOCKER 2 — RESOLVED. ELITEA-1854 Axis-1 row 8 (\"back in edit mode, all changes intact\") now has a real full-content equality assertion at Step 10: `assert content_after == edited_content`, where `edited_content` is the post-edit baseline captured live from the product at Step 3-4 (not reconstructed from FILE_LINES). Gated on `expect_change_present`, so it binds the 1854 row only. The 1853… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_discard_warning.py:317"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on `git diff tests/batch-artifacts-w05...tests/artifacts-w05-1853-1855 -- automation/`:\n(1) locator policy `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → **0 hits**. All eight new locators are class-level `LocatorDescriptor(testid=…)` fields; no `fallback=`/`locator… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1688"
+        },
+        {
+          "kind": "defect",
+          "note": "NON-BLOCKING AFS↔impl drift. The row's \"Asserted where\" column claims \"CodeMirror content visible; **file table not shown**\". The implementation (Step 10) asserts `file_preview_code_content` visible and `file_preview_file_path` visible — there is no file-table-absence assertion. The case element itself (\"user remains in edit mode, editor still open and active\") IS genuinely asserted, so this is a … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md — Axis-1 ELITEA-1853 row 10"
+        },
+        {
+          "kind": "defect",
+          "note": "NON-BLOCKING AFS↔impl drift (nit). The 1855 AFS step 6 reads \"Verify: Save/Discard became enabled\"; the test's Step 2a asserts only `is_file_preview_save_enabled()`. Both buttons are driven by the same `hasChanges` state, so the dirty-state guard the hint calls load-bearing is fully satisfied by the Save check — but the AFS says \"Save/Discard\" and the code checks one. (The 1853/1854 spec does asse… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-close-x-without-saving_ELITEA-1855.md — step 6"
+        },
+        {
+          "kind": "note",
+          "note": "New case-less unit test shipped in this PR: a static AST guard that (a) no page-object method in `automation/pages/*.py` carries stacked `@action` decorators and (b) the two methods the round-1 seam damaged keep exactly their own labels. I judge this IN SCOPE — the defect class is invisible to every runtime gate (`@action` closes over its description and records nothing on the wrapper), so a sourc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_page_object_action_decorator_seams.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1855's case text (step 3: \"Click the X → Editor closes\") is stale — the live product raises an unsaved-changes Warning dialog (\"You are editing now. Do you want to discard current changes and continue?\") and closes only after Confirm. Handled correctly per the reverse-masking guard: the AFS has a § Case-text drift section, the test docstring repeats it, the extra dialog is ASSERTED (not ski… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1687"
+        },
+        {
+          "kind": "note",
+          "note": "Hardening-gate flake heads-up: both specs end with a raw `assert not console_errors` collected via `page.on(\"console\", …)` with no filtering. That matches the established artifacts-suite convention (19+ neighbouring specs do the same, and no shared filter helper exists), so it is not a review finding — but `.agents/testing.md` § Known issues documents a CONFIRMED recurring class of unrelated-resou… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_file_preview_close_x_unsaved.py:305"
+        },
+        {
+          "kind": "note",
+          "note": "Family-spec per-row triangulation passes. Both TMS ids map to their own `pytest.param` row with DISTINCT expected values (`expect_change_present`, `expect_buttons_enabled`) that really drive divergent assertions: 1853 → marker absent + byte-equality vs original + both buttons DISABLED + toast count 0; 1854 → edited line present + byte-equality vs post-edit baseline + both buttons ENABLED. No flatt… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_file-preview-discard-warning-modal_ELITEA-1853-1854.md"
+        },
+        {
+          "kind": "note",
+          "note": "Good catch worth preserving: the page-object comment block explicitly separates the TWO unsaved-changes modals on this surface — the header Discard button's own `Button.DiscardButton` modal (`artifacts-preview-discard-warning-*`, \"Are you sure you want to discard changes?\") vs `FilePreviewCanvas`'s generic `AlertDialog` (`alert-dialog-*`, \"You are editing now…\"). Both reachable from one editor ses… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:792"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_file-preview-close-x-without-saving_ELITEA-1855.md",
+      "branch": "tests/artifacts-w05-1853-1855",
+      "pr": 1688,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1859",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_file-preview-markdown-raw-discard-modal-exit-paths_ELITEA-1859-1860.md",
+      "branch": "tests/1859-1861-markdown-raw-discard-and-tab-switching",
+      "pr": 1691,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1860",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_file-preview-markdown-raw-discard-modal-exit-paths_ELITEA-1859-1860.md",
+      "branch": "tests/1859-1861-markdown-raw-discard-and-tab-switching",
+      "pr": 1691,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1861",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_file-preview-markdown-preview-raw-tab-switching_ELITEA-1861.md",
+      "branch": "tests/1859-1861-markdown-raw-discard-and-tab-switching",
+      "pr": 1691,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1863",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_file-preview-unsupported-xlsx-preview-not-available_ELITEA-1863.md",
+      "branch": "tests/artifacts-w05-1863-1864",
+      "pr": 1694,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1864",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_file-preview-unsupported-zip-no-preview-row-actions_ELITEA-1864.md",
+      "branch": "tests/artifacts-w05-1863-1864",
+      "pr": 1694,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          181.44,
+          190.97,
+          200.7
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1865",
+      "outcome": "blocked",
+      "note": "Case claims an Artifacts file-preview opens a 'Context Management' settings panel (~14 fields + Cancel/Save). Live-verified against localhost:5173 with a fixture bucket + 1.png: the preview panel renders exactly '<bucket>/1.png / Save / Discard' plus close + 3-dot menu (image branch, matching merged ELITEA-1851/1862), and ZERO matches for every one of the case's labels ('Context Management' 0, 'Co… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_file-preview-context-management-panel_ELITEA-1865.md"
+    }
+  ],
+  "totals": {
+    "automated": 8,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

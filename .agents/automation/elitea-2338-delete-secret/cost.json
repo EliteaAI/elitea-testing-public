@@ -1,0 +1,138 @@
+{
+ "v": 1,
+ "batch": "elitea-2338-delete-secret",
+ "generatedAt": "2026-09-14T12:03:20.189Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-21T22:40:07.412Z",
+   "end": "2026-08-06T22:40:07.412Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 1
+ },
+ "delivered": 0,
+ "gate": {
+  "verdict": "sanctioned-red-pass",
+  "runs": 3,
+  "seconds": [
+   21.84,
+   28.95,
+   20.62
+  ],
+  "trunk_head_after_gate": "8c36be58",
+  "resolved_infra_blocker": "Initial gate attempt hit a base-merge conflict in gate-case.mjs (append/append collision in 3 .agents/memory/** log files vs origin/automation/base) and correctly aborted rather than resolving it. A fresh gate-slot dispatch (agentId af8609242af1b575c) merged origin/automation/base into the trunk, resolved the 3 conflicts as pure unions (both sides kept, verified zero conflict markers remained), pushed (trunk head 8c36be58), then re-ran the gate for real.",
+  "failures": [],
+  "notes": "3/3 consecutive separate pytest invocations of the new spec (test_secret_delete_via_three_dot_menu.py::TestSecretDeleteViaThreeDotMenu::test_delete_secret_via_three_dot_menu) each showed the identical sanctioned-RED signature: pytest.fail on the soft-asserted known defect EliteaAI/elitea-testing-public#1203 (React 'Maximum update depth exceeded' console warning on every /settings/secrets mount), with 'all functional assertions passed' every time (occurrence counts varied: 44/46/16 — expected, it's a live console-error tally, not a flaky toggle). Blast-radius spec (test_secret_create_inline_checkmark_x_cancel.py, imports the modified automation/pages/secrets_page.py) ran once: 2/2 tests showed the identical #1203 signature, functional assertions passed on both. Per .agents/testing.md § Merge gate sanctioned-RED exception: deterministic (a), single-cause (b), linked to an OPEN defect (#1203) — qualifies."
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2338",
+   "outcome": "blocked",
+   "findings": 17,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2338"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

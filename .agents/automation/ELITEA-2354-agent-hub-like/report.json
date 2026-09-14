@@ -1,0 +1,115 @@
+{
+  "batch": "ELITEA-2354-agent-hub-like",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-ELITEA-2354-agent-hub-like",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      22.72161025
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/agents/test_agent_hub_like_agent_list_view.py::TestAgentHubLikeAgentListView::test_agent_hub_like_agent_from_list_view",
+        "signature": "pytest.fail() at test_agent_hub_like_agent_list_view.py:287 — 'Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1215: non-serializable Redux console error(s) on like click: 1 occurrence(s)'. All 5 functional assertions (heading visible, 0-like agent located, POST like 201, d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2354"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2354",
+      "outcome": "blocked",
+      "note": "gate red: pytest.fail() at test_agent_hub_like_agent_list_view.py:287 — 'Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/E",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "MINOR, filed EliteaAI/elitea-testing-public#1215: liking or unliking an agent on the Agent Hub / Catalog list view fires a Redux Toolkit 'non-serializable value detected' console.error every time (agentHub/updateApplicationInCategories action payload carries a raw updateFn closure). Root cause confirmed via source: useAgentHubData.hooks.js:330 dispatches the closure, slices/agentHub.js:42-49's red… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1215"
+        },
+        {
+          "kind": "note",
+          "note": "Like counts are mutable, shared, cross-session product data — a case's named 'e.g.' example agent will not reliably show a specific like count from run to run. Automation must dynamically discover a card matching the needed starting state rather than hardcoding the example name from the case text. Not a defect (case text explicitly says 'e.g.')."
+        },
+        {
+          "kind": "note",
+          "note": "The default post-refresh Agent Hub / Catalog view only renders the top-6 'Trending' cards (sorted by likes descending) — a freshly-liked LOW-count agent is not guaranteed to still be visible there after a page reload. Step 6's persistence check must re-locate the agent via the catalog-search-input rather than assuming it's still in the default unfiltered view."
+        },
+        {
+          "kind": "note",
+          "note": "Any case that likes an agent as part of its steps must unlike it again before ending (cleanup), because like state is shared product data that sibling family cases (ELITEA-2355 unlike, ELITEA-2364 My Liked filter, ELITEA-2365 reload button) depend on as a clean baseline. Encoded as a MANDATORY Cleanup section in this AFS rather than optional."
+        },
+        {
+          "kind": "note",
+          "note": "The case snapshot file (.agents/automation/ELITEA-2354-agent-hub-like/cases/ELITEA-2354.md) was missing at intake — read the case body directly from the onetest-ai-tm-Elitea sibling clone instead. Flagging the intake gap per the skill contract."
+        },
+        {
+          "kind": "note",
+          "note": "Product defect #1215 (Redux non-serializable console.error on every Agent Hub like/unlike click) confirmed reproducing live via Playwright MCP direct click, in addition to the analyst's prior filing — soft-asserted RED-by-design per .agents/testing.md merge-gate policy, no action needed beyond the existing filed ticket.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1215"
+        },
+        {
+          "kind": "note",
+          "note": "New durable framework gotcha: capture_console_errors()'s CapturedConsoleMessages list is only reliably populated after a SUBSEQUENT Playwright blocking call (a wait_for/expect), not immediately after an expect_response()-wrapped click returns — Playwright's Python sync API pumps pending CDP console events lazily. Any future test checking console errors right after an async-dispatch-triggering clic… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/console_capture_read_races_async_dispatch.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI's automation/testids branch enforces commitlint requiring the subject prefix \"[EL-XXXX]\" (not \"[ELITEA-XXXX]\") — matches the existing precedent from ELITEA-2350/2352's own testid commits, worth keeping in mind for future testid commits on that repo."
+        },
+        {
+          "kind": "defect",
+          "note": "Cleanup unlike verification (204 status at line 178, restored count-to-0 at lines 194-202, no-unexpected-console-errors at lines 203-212) is logged-only via `logger.error`, never `assert`/routed into the existing `soft_failures` mechanism. A failed cleanup (e.g. an async-optimistic-update race, the same class of race the file's own docstring calls out for the like-side) leaves the test green while… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py:178"
+        },
+        {
+          "kind": "note",
+          "note": "Step-3's console-error listener (`console_errors`, captured line 115) is only `.stop()`'d on the happy path (line 148, inside the side-channel-check block reached after steps 4-5). If step 4 or 5's assertion raises first, the listener leaks past test end. Mitigated by `page` being function-scoped in conftest.py (fresh page/context per test, so the leak dies at teardown) — non-blocking, but worth m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py:148"
+        },
+        {
+          "kind": "note",
+          "note": "AFS § Known Defects says to soft-assert #1215 'on the like AND unlike clicks specifically'; implementation only adds the like-click occurrence to `soft_failures` (unlike occurrence is logged-only, comment explains the test is already RED-by-design from the like side). Not currently a masking bug — the unlike side still checks for *unexpected* errors beyond the known one — but a literal AFS-wording… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py:213"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical testid-only grep re-run independently against the full diff: `git diff tests/batch-ELITEA-2354-agent-hub-like...tests/ELITEA-2354-agent-hub-like-list-view -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits, both `self.LIKE_BUTTON.format(...)` off the UP… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_hub_page.py:89"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer's finding named lines 178, 194-202, 203-212. Fixed those plus the adjacent outer `except Exception` cleanup-crash handler (previously also log-only) for consistency with the same underlying principle (a crashed cleanup is a failed cleanup too). Flagging this scope addition explicitly since it wasn't named verbatim in the finding.",
+          "ref": "automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: cleanup-unlike verification (unlike-response 204 status, like-count restored to 0, no new unexpected console errors) is no longer logger.error()-only. Commit 1e9e4544 extracts a pure helper `_cleanup_soft_failures(unlike_status, like_count_restored, final_like_count, unexpected_unlike_errors)` in automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py and… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py:70-105,215-283"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (git diff origin/tests/batch-ELITEA-2354-agent-hub-like...origin/tests/ELITEA-2354-agent-hub-like-list-view -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 2 hits, both `self.page.locator(self.LIKE_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_hub_page.py:89,125"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all 6 AFS Coverage Map rows against the TMS case snapshot (test-specs/agent-hub/l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md) and the test body — each carries a real assertion at its own step (page heading, dynamic 0-like discovery + card visibility, 201 on like + known-defect-#1215 soft-assert, data-liked=true, count 0->1, post-refresh re-search + persistence). Cleanup secti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md"
+        }
+      ],
+      "afs": "test-specs/agent-hub/l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md",
+      "branch": "tests/ELITEA-2354-agent-hub-like-list-view",
+      "pr": 1216
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

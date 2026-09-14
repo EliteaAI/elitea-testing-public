@@ -1,0 +1,126 @@
+{
+  "batch": "pipeline-decision-node-2034",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-pipeline-decision-node-2034",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      47.611938625,
+      43.547178625,
+      42.183428625
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2034",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case ELITEA-2034 step 5 / precondition text implies DECISION OUTPUTS is a typeable chip field (\"add target node names as chips\") and that target nodes for routing simply pre-exist. Live-confirmed (source + DOM) the ONLY mechanism is dragging a canvas edge from the Decision node's Output handle to an EXISTING, correctly-renamed target node — DecisionNodeShared.jsx's DecisionOutputs component has ze… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-configuration_ELITEA-2034.md"
+        },
+        {
+          "kind": "note",
+          "note": "Decision node's canvas edge data-testid SHAPE is unstable across save/reload: the nodes-handle (DECISION OUTPUTS) edge is {source}nodes-{target}target pre-save but {source}---{target} post-reload (the handle suffix disappears); the default_output edge keeps its suffix but switches separator ({source}default_output-{target}target -> {source}default_output---{target}). Root cause traced to source: l… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-configuration_ELITEA-2034.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live UI trap in the flow editor's STATE side panel (adding a custom state variable): the add-variable \"+\" button's Playwright-computed accessible name resolves ambiguously to \"Context\" (matched different actual click targets across 3 attempts, once closing the whole panel instead of opening a new row); separately, the raw CSS selector input[name=\"name\"] for the resulting new-row textbox ALSO match… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/pipeline_state_panel_ambiguous_add_button_and_name_input_collision.md"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale provenance claim in the pipelines/_surface.md digest inherited from the ELITEA-2033 (Router) session: pipeline-node-interrupt-before-toggle-{id} was previously described as \"unconditional, on-main\" but a fresh git fetch origin + git grep this session found it ONLY on origin/automation/testids, not yet on origin/main. Digest and AFS both updated with the corrected fact and a note … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Test pipeline created during this analysis (autotest_decision_2034, id 7452, project 399/Private) was left undeleted on the local DEV backend — PipelineAPI requires a browser_cookies context this analyst session's Playwright-MCP-based tooling didn't expose, and an in-page fetch() DELETE failed (TypeError: Failed to fetch, likely CORS/auth-header gap). Same precedent as several other analyst-sessio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS case-text drift corrected: the analyst-documented STATE panel 'confirm (checkmark) button' does not exist in source or live product — the new-variable row commits via blur/Enter only (StateVariableItem.jsx/StateVariableItemActions.jsx, live-reverified 2026-08-04). AFS amended in place; no tracker issue filed since this is an implementer-corrected AFS drift, not a product bug — same reverse-mas… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-configuration_ELITEA-2034.md"
+        },
+        {
+          "kind": "note",
+          "note": "No [Automate][ELITEA-2034] tracking issue found in EliteaAI/elitea-testing-public — could not comment the PR link per profile.md's 'yes' policy. Orchestrator should verify whether intake filed one for this batch and comment #1147 there if so."
+        },
+        {
+          "kind": "note",
+          "note": "STATE side drawer (FlowEditor.jsx) overlaps the canvas and intercepts clicks/dblclicks on nodes underneath it while open — hit twice live (Printer rename, Decision Input select). Fixed via setup ordering (nodes before STATE panel) + a new close_state_panel() page-object method; any future pipeline case touching custom state variables should reuse this pattern rather than rediscovering it.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Playwright Python's Page.wait_for_function() requires arg= as a keyword (not positional) — porting the JS API's waitForFunction(fn, arg, options) shape positionally raises a TypeError. Documented in role memory.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Case step 2 requires verifying BOTH the 'Interrupt before' and 'Interrupt after' switches are present ('Interrupt before/after switches | All listed sections are present'), and the AFS's own Coverage Map row 2 claims full coverage ('asserted — no case-text drift, live UI matches exactly'). The implementation only checks pipeline_page.decision_node_interrupt_after_toggle.is_visible() in Step 2. No … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_decision_node_configuration.py:135-140"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map's Precondition row still cites 'step 0: STATE panel lists both custom vars' as the assertion location, but the test's own docstring (and the code) documents that state-variable existence is actually verified functionally in Step 3, via the Input select's select-option-{value} testids, not by reading the STATE panel's row text at step 0 (which carries no testid, so a direct read th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-configuration_ELITEA-2034.md (Coverage Map, Precondition row)"
+        },
+        {
+          "kind": "note",
+          "note": "New Decision-node LocatorDescriptors (decision_node_input_select, decision_node_description_input, decision_node_outputs_container, decision_node_interrupt_after_toggle, decision_node_output_handle, decision_node_default_output_handle) are page-wide, not scoped to a specific node's container. The implementer's own comment discloses this is correct only while a test has a single Decision node on ca… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:336-339"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep run clean. Command: git --no-pager diff origin/tests/batch-pipeline-decision-node-2034...origin/tests/2034-pipeline-decision-node-configuration | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'. Output: 6 hits, all compliant — 4 are `.locator(...)` calls format… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case ↔ AFS ↔ diff for all 9 numbered case steps + the precondition + Expected Final State + Pass/Fail rows. All other Coverage Map rows check out: each AFS-claimed assertion (node appear, 4 config sections minus the gap above, Input chips, Description value, Decision-outputs chips + immediate pre-save edges, Save 201-gated response wait, post-reload persistence of Input/Description/ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "3rd occurrence of the identical Interrupt-before-toggle omission across pipeline-node-configuration AFS tests (Toolkit, LLM, now Decision) — the helper to fix it (is_node_interrupt_before_toggle_visible) already exists and is a one-line reuse each time. Logged as a preventive memory entry; worth flagging in the pipeline-node AFS/spec template so it doesn't recur on the next node type.",
+          "ref": "automation/pages/pipeline_detail_page.py:2380"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep on the full diff (pages + spec files): `git diff origin/tests/batch-pipeline-decision-node-2034...origin/tests/2034-pipeline-decision-node-configuration -- automation/pages/pipeline_detail_page.py automation/tests/ui/pipelines/test_pipeline_decision_node_configuration.py | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round-1 commit c756b6fe resolves the prior blocking finding: Step 2 now asserts both toggles — `pipeline_page.is_node_interrupt_before_toggle_visible(decision_node_id)` (pre-existing ELITEA-2008 node-id-keyed helper, reused unmodified, correctly bound to the Decision node's own id) plus `decision_node_interrupt_after_toggle.is_visible()`. AFS Coverage Map row 2's 'asserted' disposition is now … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_decision_node_configuration.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (case snapshot ↔ AFS ↔ diff) re-run: every Coverage Map Axis-1 row (steps 0–9 incl. the added setup step 0 and Axis-2 additions) maps to a real assertion at the claimed step — Input chips (step 3), Description via `.input_value()` (step 4), drag-connect chip+edge wiring with loose prefix/substring edge matching that tolerates the documented pre-save/post-reload testid-shape dive… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-decision-node-configuration_ELITEA-2034.md",
+      "branch": "tests/2034-pipeline-decision-node-configuration",
+      "pr": 1147,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          47.611938625,
+          43.547178625,
+          42.183428625
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

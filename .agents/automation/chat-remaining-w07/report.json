@@ -1,0 +1,825 @@
+{
+  "batch": "chat-remaining-w07",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w07",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      330.91,
+      329.69,
+      334.83
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2136",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') cannot be reproduced via any test-accessible surface: live-verified the ConversationAPI PUT endpoint silently ignores caller-supplied created_at/updated_at (200 response, values unchanged), and the shared DEV project currently has zero naturally-occurring Older (or even Today) conversations to … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object method ChatPage.select_move_to_back_to_list() added — the move_to_back_to_list_menuitem locator has existed since ELITEA-2135's implementation but had zero callers until this session (canon ruling #511, first live caller).",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Previously-undocumented product behavior discovered and now asserted: the 'Move to' submenu, when opened for a conversation already inside a folder, lists that folder's OWN entry as a disabled menuitem (aria-disabled=\"true\") rather than omitting it — self-move prevention. Recorded in the surface digest for future cases on this area.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed (again) the documented 'append not replace' race when clearing the folder-name inline editor via a bare Control+a+Backspace sequence — a real folder was momentarily created with the wrong name (id 293) during exploration and cleaned up via API before the shipped test used ChatPage.set_folder_name()'s own .clear()-based idiom, which works correctly."
+        },
+        {
+          "kind": "note",
+          "note": "TMS execution back-write (execution_type/status/automation_test_id per .agents/test-automation.yaml) is not performed by this dispatch — per the seeded policy it is the orchestrator's post-merge step; this session only confirmed the wiring/policy exists (tms.adapter: onetest configured)."
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/chat-interface/lextend_move-conversation-between-two-folders_ELITEA-2141.md — the case's literal Test Data table ('Source folder | New folder_edited | Target folder | New folder5', itself malformed — 4 cells under a 2-column header) is not acknowledged anywhere in the AFS's Coverage Map as a deviation, unlike the toast-quote-marks wording drift which IS explicitly flagged as a CLARIFICA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2141"
+        },
+        {
+          "kind": "question",
+          "note": "AFS test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md classifies ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') as a clarification rather than blocked, because no test-accessible surface can seed a literal Older-origin conversation (live-verified: PUT with custom updated_at/created_at is silently ignored) … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2140"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_move-conversation-removed-from-all-date-groups_ELITEA-2136.md",
+      "branch": "tests/2136-2138-2139-2140-2141-move-conversation-family",
+      "pr": 1540,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2138",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') cannot be reproduced via any test-accessible surface: live-verified the ConversationAPI PUT endpoint silently ignores caller-supplied created_at/updated_at (200 response, values unchanged), and the shared DEV project currently has zero naturally-occurring Older (or even Today) conversations to … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object method ChatPage.select_move_to_back_to_list() added — the move_to_back_to_list_menuitem locator has existed since ELITEA-2135's implementation but had zero callers until this session (canon ruling #511, first live caller).",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Previously-undocumented product behavior discovered and now asserted: the 'Move to' submenu, when opened for a conversation already inside a folder, lists that folder's OWN entry as a disabled menuitem (aria-disabled=\"true\") rather than omitting it — self-move prevention. Recorded in the surface digest for future cases on this area.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed (again) the documented 'append not replace' race when clearing the folder-name inline editor via a bare Control+a+Backspace sequence — a real folder was momentarily created with the wrong name (id 293) during exploration and cleaned up via API before the shipped test used ChatPage.set_folder_name()'s own .clear()-based idiom, which works correctly."
+        },
+        {
+          "kind": "note",
+          "note": "TMS execution back-write (execution_type/status/automation_test_id per .agents/test-automation.yaml) is not performed by this dispatch — per the seeded policy it is the orchestrator's post-merge step; this session only confirmed the wiring/policy exists (tms.adapter: onetest configured)."
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/chat-interface/lextend_move-conversation-between-two-folders_ELITEA-2141.md — the case's literal Test Data table ('Source folder | New folder_edited | Target folder | New folder5', itself malformed — 4 cells under a 2-column header) is not acknowledged anywhere in the AFS's Coverage Map as a deviation, unlike the toast-quote-marks wording drift which IS explicitly flagged as a CLARIFICA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2141"
+        },
+        {
+          "kind": "question",
+          "note": "AFS test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md classifies ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') as a clarification rather than blocked, because no test-accessible surface can seed a literal Older-origin conversation (live-verified: PUT with custom updated_at/created_at is silently ignored) … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2140"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_move-conversation-to-new-folder-custom-name_ELITEA-2138.md",
+      "branch": "tests/2136-2138-2139-2140-2141-move-conversation-family",
+      "pr": 1540,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2139",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') cannot be reproduced via any test-accessible surface: live-verified the ConversationAPI PUT endpoint silently ignores caller-supplied created_at/updated_at (200 response, values unchanged), and the shared DEV project currently has zero naturally-occurring Older (or even Today) conversations to … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object method ChatPage.select_move_to_back_to_list() added — the move_to_back_to_list_menuitem locator has existed since ELITEA-2135's implementation but had zero callers until this session (canon ruling #511, first live caller).",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Previously-undocumented product behavior discovered and now asserted: the 'Move to' submenu, when opened for a conversation already inside a folder, lists that folder's OWN entry as a disabled menuitem (aria-disabled=\"true\") rather than omitting it — self-move prevention. Recorded in the surface digest for future cases on this area.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed (again) the documented 'append not replace' race when clearing the folder-name inline editor via a bare Control+a+Backspace sequence — a real folder was momentarily created with the wrong name (id 293) during exploration and cleaned up via API before the shipped test used ChatPage.set_folder_name()'s own .clear()-based idiom, which works correctly."
+        },
+        {
+          "kind": "note",
+          "note": "TMS execution back-write (execution_type/status/automation_test_id per .agents/test-automation.yaml) is not performed by this dispatch — per the seeded policy it is the orchestrator's post-merge step; this session only confirmed the wiring/policy exists (tms.adapter: onetest configured)."
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/chat-interface/lextend_move-conversation-between-two-folders_ELITEA-2141.md — the case's literal Test Data table ('Source folder | New folder_edited | Target folder | New folder5', itself malformed — 4 cells under a 2-column header) is not acknowledged anywhere in the AFS's Coverage Map as a deviation, unlike the toast-quote-marks wording drift which IS explicitly flagged as a CLARIFICA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2141"
+        },
+        {
+          "kind": "question",
+          "note": "AFS test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md classifies ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') as a clarification rather than blocked, because no test-accessible surface can seed a literal Older-origin conversation (live-verified: PUT with custom updated_at/created_at is silently ignored) … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2140"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md",
+      "branch": "tests/2136-2138-2139-2140-2141-move-conversation-family",
+      "pr": 1540,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2140",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') cannot be reproduced via any test-accessible surface: live-verified the ConversationAPI PUT endpoint silently ignores caller-supplied created_at/updated_at (200 response, values unchanged), and the shared DEV project currently has zero naturally-occurring Older (or even Today) conversations to … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object method ChatPage.select_move_to_back_to_list() added — the move_to_back_to_list_menuitem locator has existed since ELITEA-2135's implementation but had zero callers until this session (canon ruling #511, first live caller).",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Previously-undocumented product behavior discovered and now asserted: the 'Move to' submenu, when opened for a conversation already inside a folder, lists that folder's OWN entry as a disabled menuitem (aria-disabled=\"true\") rather than omitting it — self-move prevention. Recorded in the surface digest for future cases on this area.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed (again) the documented 'append not replace' race when clearing the folder-name inline editor via a bare Control+a+Backspace sequence — a real folder was momentarily created with the wrong name (id 293) during exploration and cleaned up via API before the shipped test used ChatPage.set_folder_name()'s own .clear()-based idiom, which works correctly."
+        },
+        {
+          "kind": "note",
+          "note": "TMS execution back-write (execution_type/status/automation_test_id per .agents/test-automation.yaml) is not performed by this dispatch — per the seeded policy it is the orchestrator's post-merge step; this session only confirmed the wiring/policy exists (tms.adapter: onetest configured)."
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/chat-interface/lextend_move-conversation-between-two-folders_ELITEA-2141.md — the case's literal Test Data table ('Source folder | New folder_edited | Target folder | New folder5', itself malformed — 4 cells under a 2-column header) is not acknowledged anywhere in the AFS's Coverage Map as a deviation, unlike the toast-quote-marks wording drift which IS explicitly flagged as a CLARIFICA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2141"
+        },
+        {
+          "kind": "question",
+          "note": "AFS test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md classifies ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') as a clarification rather than blocked, because no test-accessible surface can seed a literal Older-origin conversation (live-verified: PUT with custom updated_at/created_at is silently ignored) … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2140"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md",
+      "branch": "tests/2136-2138-2139-2140-2141-move-conversation-family",
+      "pr": 1540,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2141",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') cannot be reproduced via any test-accessible surface: live-verified the ConversationAPI PUT endpoint silently ignores caller-supplied created_at/updated_at (200 response, values unchanged), and the shared DEV project currently has zero naturally-occurring Older (or even Today) conversations to … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object method ChatPage.select_move_to_back_to_list() added — the move_to_back_to_list_menuitem locator has existed since ELITEA-2135's implementation but had zero callers until this session (canon ruling #511, first live caller).",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Previously-undocumented product behavior discovered and now asserted: the 'Move to' submenu, when opened for a conversation already inside a folder, lists that folder's OWN entry as a disabled menuitem (aria-disabled=\"true\") rather than omitting it — self-move prevention. Recorded in the surface digest for future cases on this area.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed (again) the documented 'append not replace' race when clearing the folder-name inline editor via a bare Control+a+Backspace sequence — a real folder was momentarily created with the wrong name (id 293) during exploration and cleaned up via API before the shipped test used ChatPage.set_folder_name()'s own .clear()-based idiom, which works correctly."
+        },
+        {
+          "kind": "note",
+          "note": "TMS execution back-write (execution_type/status/automation_test_id per .agents/test-automation.yaml) is not performed by this dispatch — per the seeded policy it is the orchestrator's post-merge step; this session only confirmed the wiring/policy exists (tms.adapter: onetest configured)."
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/chat-interface/lextend_move-conversation-between-two-folders_ELITEA-2141.md — the case's literal Test Data table ('Source folder | New folder_edited | Target folder | New folder5', itself malformed — 4 cells under a 2-column header) is not acknowledged anywhere in the AFS's Coverage Map as a deviation, unlike the toast-quote-marks wording drift which IS explicitly flagged as a CLARIFICA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2141"
+        },
+        {
+          "kind": "question",
+          "note": "AFS test-specs/chat-interface/lextend_move-conversation-back-to-list_ELITEA-2139_2140.md classifies ELITEA-2140's stated precondition ('a conversation that was originally in Older is now inside a folder') as a clarification rather than blocked, because no test-accessible surface can seed a literal Older-origin conversation (live-verified: PUT with custom updated_at/created_at is silently ignored) … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2140"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_move-conversation-between-two-folders_ELITEA-2141.md",
+      "branch": "tests/2136-2138-2139-2140-2141-move-conversation-family",
+      "pr": 1540,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2142",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): StructuredOutput retry cap (5) exceeded — 5 failed calls with no valid output",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "[MAJOR] EliteaAI/elitea-testing-public#1541 — Chat drag-and-drop: dropping a conversation from one folder onto another folder lands the conversation in the ungrouped/general list instead of the target folder, even though the target folder is correctly highlighted (dashed border) through to release. Reproduced 3x with a pristine single-gesture repro (fresh page load, target bounding box re-measured… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1541"
+        },
+        {
+          "kind": "defect",
+          "note": "[MINOR] EliteaAI/elitea-testing-public#1542 — Chat drag-and-drop: no success toast fires for a single-conversation drag move, regardless of whether the move itself succeeds. Source-confirmed: useDragAndDrop.js's handleDragEnd() gates toastSuccess(...) behind currentDraggedItems.length > 1 (multi-select only). Contradicts both the TMS cases (ELITEA-2142/2144 each expect a toast for a single-item mo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1542"
+        },
+        {
+          "kind": "note",
+          "note": "This shared DEV account (localhost:5173) currently carries 65+ orphaned chat folders left by insufficiently-cleaned-up prior test sessions — this is a KNOWN, already-tracked root cause (issues #1309/#1310/#1533: chat-folder-menu-delete-menuitem testid regressions repeatedly breaking ChatPage.delete_folder_via_menu()'s cleanup). It materially hampered this session's ability to cleanly test the Toda… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The chat conversation<->folder drag-and-drop mechanism is @dnd-kit/core's PointerSensor (pointer events), not native HTML5 draggable/DragEvent. Genuine Playwright mouse gestures (mousedown -> multi-step mousemove -> mouseup, re-measuring the target's bounding box on every step) reliably drive the real product code (confirmed via real PUT network calls) — no substitution is needed anywhere in this … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Filed defect elitea-testing-public#1542 (\"no success toast for a single-conversation drag-and-drop move\") does NOT reproduce live and was mis-analyzed by the source read that filed it: it examined only useDragAndDrop.js's own toastSuccess call (correctly gated to multi-select drags), missing that the SAME onMoveToFolderConversation mutation hook the \"Move to\" menu flow uses fires its own toast unc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1542"
+        },
+        {
+          "kind": "note",
+          "note": "Two page-object-level drag-gesture bugs discovered and fixed in ChatPage during implementation (not product defects): (1) bounding_box() is viewport-relative, so an off-screen conversation item (this shared DEV account carries 65+ pre-existing orphaned folders ahead of the conversation list) never activates a raw page.mouse drag; fixed with scroll_into_view_if_needed(). (2) A distinct, subtler rac… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2142's build-time #1541 check (drop-target misresolution, confirmed on ELITEA-2144's folder-to-folder scenario) came back CLEAN for the Today->folder direction — the PUT resolved with the correct folder_id, no soft-assert tie needed. Recorded in the AFS and _surface.md so ELITEA-2144's implementer knows this direction is unaffected."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2143's case text explicitly makes drop correctness a first-class Pass/Fail criterion ('Pass: ... drop moves conversation' / 'Fail: ... drop does not move conversation'), and Steps-table row 4's own Expected Result is 'Conversation moved into that folder; highlight disappears'. The implemented Step 4 only asserts move_response.status==200, the drop-zone highlight clearing, and isDragging goi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_drag_drop_conversation_folder.py:392-401 (TestDragDropHighlightsTargetFolderOnHover.test_drag_drop_highlights_target_folder_on_hover, Step 4)"
+        },
+        {
+          "kind": "note",
+          "note": "Both convenience wrapper methods are added but never called by any test in this PR — the three tests all use the composable primitives (start_conversation_drag/move_drag_over_target/release_drag) directly instead, per their own docstrings. Dead code as shipped; not a testid/locator-policy violation (they wrap already-referenced helpers, add no new handle), so I did not block on it, but per the sta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6899-6931 (drag_conversation_to_folder, drag_conversation_to_general_list)"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity/substitution grep on the full diff (automation/): git diff tests/batch-chat-remaining-w07...tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()' -> 2 hits, both compliant: getComputedStyle(el.parentElement).opacity (reads the real dnd-kit-driven opacity to detect drag activa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff: git diff tests/batch-chat-remaining-w07...tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' -> 1 hit: return self.page.locator(self.FOLDER_DROP_ZONE.format(folder_id)) in ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified both new testids against EliteaUI: git -C ../EliteaUI fetch origin then git grep for chat-folder-drop-zone / chat-conversation-list-drop-zone / data-drop-active on origin/automation/testids -- src/ shows both present in DroppableFolderItem.jsx and DroppableGroupedArea.jsx (commit 86f4a564), matching the PR's claim exactly. Same grep against origin/main returns nothing — expected, not yet … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified #1541 and #1542 on the tracker: #1542 carries the correcting comment quoted in the AFS/test/PR (from bermudas, referencing this PR #1543), state OPEN as claimed (agents don't close). #1541 state OPEN, title matches the folder-to-folder misresolution described. No masking-pattern grep hits (pytest.skip|xfail|.skip(|test.fail|expect.soft|# Known defect|xit() anywhere in the diff — consisten… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2142's Coverage Map row 3 disposes as 'already-covered (by ELITEA-2143, once merged)' — verified the referenced assertion is real: ELITEA-2143's own Step 2 does assert data-drop-active=\"true\" on hover, at the claimed step, asserting the claimed observable. Since both cases ship atomically in this same PR, this is functionally sound (not the batch-level 'already-covered may only target a spe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All three tests' cleanup uses the pre-existing chat.delete_folder_via_menu() UI helper rather than the AFS-specified conversation_api.delete_folder(id) API call. This is a real UI action (not a substitution) and cleanup mechanism isn't an asserted observable, so no fidelity issue and no AFS amendment is owed for it — noting only for traceability."
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of the finding: the original AFS (analyst pass) deferred ELITEA-2143's drop-outcome assertion to a sibling case (ELITEA-2144) that hadn't been dispatched into this batch yet — a cross-case coverage dependency the AFS shouldn't have created since the case's own TMS Pass/Fail criteria required the check independently. Worth flagging for the analyst slot: don't defer a case's own explicit … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_drag-drop-conversation-to-folder_ELITEA-2142.md",
+      "branch": "tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder",
+      "pr": 1543
+    },
+    {
+      "id": "ELITEA-2143",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): StructuredOutput retry cap (5) exceeded — 5 failed calls with no valid output",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "[MAJOR] EliteaAI/elitea-testing-public#1541 — Chat drag-and-drop: dropping a conversation from one folder onto another folder lands the conversation in the ungrouped/general list instead of the target folder, even though the target folder is correctly highlighted (dashed border) through to release. Reproduced 3x with a pristine single-gesture repro (fresh page load, target bounding box re-measured… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1541"
+        },
+        {
+          "kind": "defect",
+          "note": "[MINOR] EliteaAI/elitea-testing-public#1542 — Chat drag-and-drop: no success toast fires for a single-conversation drag move, regardless of whether the move itself succeeds. Source-confirmed: useDragAndDrop.js's handleDragEnd() gates toastSuccess(...) behind currentDraggedItems.length > 1 (multi-select only). Contradicts both the TMS cases (ELITEA-2142/2144 each expect a toast for a single-item mo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1542"
+        },
+        {
+          "kind": "note",
+          "note": "This shared DEV account (localhost:5173) currently carries 65+ orphaned chat folders left by insufficiently-cleaned-up prior test sessions — this is a KNOWN, already-tracked root cause (issues #1309/#1310/#1533: chat-folder-menu-delete-menuitem testid regressions repeatedly breaking ChatPage.delete_folder_via_menu()'s cleanup). It materially hampered this session's ability to cleanly test the Toda… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The chat conversation<->folder drag-and-drop mechanism is @dnd-kit/core's PointerSensor (pointer events), not native HTML5 draggable/DragEvent. Genuine Playwright mouse gestures (mousedown -> multi-step mousemove -> mouseup, re-measuring the target's bounding box on every step) reliably drive the real product code (confirmed via real PUT network calls) — no substitution is needed anywhere in this … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Filed defect elitea-testing-public#1542 (\"no success toast for a single-conversation drag-and-drop move\") does NOT reproduce live and was mis-analyzed by the source read that filed it: it examined only useDragAndDrop.js's own toastSuccess call (correctly gated to multi-select drags), missing that the SAME onMoveToFolderConversation mutation hook the \"Move to\" menu flow uses fires its own toast unc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1542"
+        },
+        {
+          "kind": "note",
+          "note": "Two page-object-level drag-gesture bugs discovered and fixed in ChatPage during implementation (not product defects): (1) bounding_box() is viewport-relative, so an off-screen conversation item (this shared DEV account carries 65+ pre-existing orphaned folders ahead of the conversation list) never activates a raw page.mouse drag; fixed with scroll_into_view_if_needed(). (2) A distinct, subtler rac… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2142's build-time #1541 check (drop-target misresolution, confirmed on ELITEA-2144's folder-to-folder scenario) came back CLEAN for the Today->folder direction — the PUT resolved with the correct folder_id, no soft-assert tie needed. Recorded in the AFS and _surface.md so ELITEA-2144's implementer knows this direction is unaffected."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2143's case text explicitly makes drop correctness a first-class Pass/Fail criterion ('Pass: ... drop moves conversation' / 'Fail: ... drop does not move conversation'), and Steps-table row 4's own Expected Result is 'Conversation moved into that folder; highlight disappears'. The implemented Step 4 only asserts move_response.status==200, the drop-zone highlight clearing, and isDragging goi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_drag_drop_conversation_folder.py:392-401 (TestDragDropHighlightsTargetFolderOnHover.test_drag_drop_highlights_target_folder_on_hover, Step 4)"
+        },
+        {
+          "kind": "note",
+          "note": "Both convenience wrapper methods are added but never called by any test in this PR — the three tests all use the composable primitives (start_conversation_drag/move_drag_over_target/release_drag) directly instead, per their own docstrings. Dead code as shipped; not a testid/locator-policy violation (they wrap already-referenced helpers, add no new handle), so I did not block on it, but per the sta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6899-6931 (drag_conversation_to_folder, drag_conversation_to_general_list)"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity/substitution grep on the full diff (automation/): git diff tests/batch-chat-remaining-w07...tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()' -> 2 hits, both compliant: getComputedStyle(el.parentElement).opacity (reads the real dnd-kit-driven opacity to detect drag activa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff: git diff tests/batch-chat-remaining-w07...tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' -> 1 hit: return self.page.locator(self.FOLDER_DROP_ZONE.format(folder_id)) in ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified both new testids against EliteaUI: git -C ../EliteaUI fetch origin then git grep for chat-folder-drop-zone / chat-conversation-list-drop-zone / data-drop-active on origin/automation/testids -- src/ shows both present in DroppableFolderItem.jsx and DroppableGroupedArea.jsx (commit 86f4a564), matching the PR's claim exactly. Same grep against origin/main returns nothing — expected, not yet … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified #1541 and #1542 on the tracker: #1542 carries the correcting comment quoted in the AFS/test/PR (from bermudas, referencing this PR #1543), state OPEN as claimed (agents don't close). #1541 state OPEN, title matches the folder-to-folder misresolution described. No masking-pattern grep hits (pytest.skip|xfail|.skip(|test.fail|expect.soft|# Known defect|xit() anywhere in the diff — consisten… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2142's Coverage Map row 3 disposes as 'already-covered (by ELITEA-2143, once merged)' — verified the referenced assertion is real: ELITEA-2143's own Step 2 does assert data-drop-active=\"true\" on hover, at the claimed step, asserting the claimed observable. Since both cases ship atomically in this same PR, this is functionally sound (not the batch-level 'already-covered may only target a spe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All three tests' cleanup uses the pre-existing chat.delete_folder_via_menu() UI helper rather than the AFS-specified conversation_api.delete_folder(id) API call. This is a real UI action (not a substitution) and cleanup mechanism isn't an asserted observable, so no fidelity issue and no AFS amendment is owed for it — noting only for traceability."
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of the finding: the original AFS (analyst pass) deferred ELITEA-2143's drop-outcome assertion to a sibling case (ELITEA-2144) that hadn't been dispatched into this batch yet — a cross-case coverage dependency the AFS shouldn't have created since the case's own TMS Pass/Fail criteria required the check independently. Worth flagging for the analyst slot: don't defer a case's own explicit … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_drag-drop-conversation-highlights-target-folder-on-hover_ELITEA-2143.md",
+      "branch": "tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder",
+      "pr": 1543
+    },
+    {
+      "id": "ELITEA-2144",
+      "outcome": "blocked",
+      "note": "AFS status is 'defect-found' per the skill's own taxonomy (mapped to 'blocked' here since that status isn't in this tool's verdict enum) — a CONFIRMED, pristine-repro-gated product defect blocks this case's core assertion. Filed EliteaAI/elitea-testing-public#1541: dragging a conversation from one folder onto another folder does not move it there — it lands in the ungrouped/general list instead, D… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "[MAJOR] EliteaAI/elitea-testing-public#1541 — Chat drag-and-drop: dropping a conversation from one folder onto another folder lands the conversation in the ungrouped/general list instead of the target folder, even though the target folder is correctly highlighted (dashed border) through to release. Reproduced 3x with a pristine single-gesture repro (fresh page load, target bounding box re-measured… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1541"
+        },
+        {
+          "kind": "defect",
+          "note": "[MINOR] EliteaAI/elitea-testing-public#1542 — Chat drag-and-drop: no success toast fires for a single-conversation drag move, regardless of whether the move itself succeeds. Source-confirmed: useDragAndDrop.js's handleDragEnd() gates toastSuccess(...) behind currentDraggedItems.length > 1 (multi-select only). Contradicts both the TMS cases (ELITEA-2142/2144 each expect a toast for a single-item mo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1542"
+        },
+        {
+          "kind": "note",
+          "note": "This shared DEV account (localhost:5173) currently carries 65+ orphaned chat folders left by insufficiently-cleaned-up prior test sessions — this is a KNOWN, already-tracked root cause (issues #1309/#1310/#1533: chat-folder-menu-delete-menuitem testid regressions repeatedly breaking ChatPage.delete_folder_via_menu()'s cleanup). It materially hampered this session's ability to cleanly test the Toda… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The chat conversation<->folder drag-and-drop mechanism is @dnd-kit/core's PointerSensor (pointer events), not native HTML5 draggable/DragEvent. Genuine Playwright mouse gestures (mousedown -> multi-step mousemove -> mouseup, re-measuring the target's bounding box on every step) reliably drive the real product code (confirmed via real PUT network calls) — no substitution is needed anywhere in this … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_drag-drop-conversation-between-two-folders_ELITEA-2144.md"
+    },
+    {
+      "id": "ELITEA-2145",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): StructuredOutput retry cap (5) exceeded — 5 failed calls with no valid output",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "[MAJOR] EliteaAI/elitea-testing-public#1541 — Chat drag-and-drop: dropping a conversation from one folder onto another folder lands the conversation in the ungrouped/general list instead of the target folder, even though the target folder is correctly highlighted (dashed border) through to release. Reproduced 3x with a pristine single-gesture repro (fresh page load, target bounding box re-measured… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1541"
+        },
+        {
+          "kind": "defect",
+          "note": "[MINOR] EliteaAI/elitea-testing-public#1542 — Chat drag-and-drop: no success toast fires for a single-conversation drag move, regardless of whether the move itself succeeds. Source-confirmed: useDragAndDrop.js's handleDragEnd() gates toastSuccess(...) behind currentDraggedItems.length > 1 (multi-select only). Contradicts both the TMS cases (ELITEA-2142/2144 each expect a toast for a single-item mo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1542"
+        },
+        {
+          "kind": "note",
+          "note": "This shared DEV account (localhost:5173) currently carries 65+ orphaned chat folders left by insufficiently-cleaned-up prior test sessions — this is a KNOWN, already-tracked root cause (issues #1309/#1310/#1533: chat-folder-menu-delete-menuitem testid regressions repeatedly breaking ChatPage.delete_folder_via_menu()'s cleanup). It materially hampered this session's ability to cleanly test the Toda… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The chat conversation<->folder drag-and-drop mechanism is @dnd-kit/core's PointerSensor (pointer events), not native HTML5 draggable/DragEvent. Genuine Playwright mouse gestures (mousedown -> multi-step mousemove -> mouseup, re-measuring the target's bounding box on every step) reliably drive the real product code (confirmed via real PUT network calls) — no substitution is needed anywhere in this … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Filed defect elitea-testing-public#1542 (\"no success toast for a single-conversation drag-and-drop move\") does NOT reproduce live and was mis-analyzed by the source read that filed it: it examined only useDragAndDrop.js's own toastSuccess call (correctly gated to multi-select drags), missing that the SAME onMoveToFolderConversation mutation hook the \"Move to\" menu flow uses fires its own toast unc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1542"
+        },
+        {
+          "kind": "note",
+          "note": "Two page-object-level drag-gesture bugs discovered and fixed in ChatPage during implementation (not product defects): (1) bounding_box() is viewport-relative, so an off-screen conversation item (this shared DEV account carries 65+ pre-existing orphaned folders ahead of the conversation list) never activates a raw page.mouse drag; fixed with scroll_into_view_if_needed(). (2) A distinct, subtler rac… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2142's build-time #1541 check (drop-target misresolution, confirmed on ELITEA-2144's folder-to-folder scenario) came back CLEAN for the Today->folder direction — the PUT resolved with the correct folder_id, no soft-assert tie needed. Recorded in the AFS and _surface.md so ELITEA-2144's implementer knows this direction is unaffected."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2143's case text explicitly makes drop correctness a first-class Pass/Fail criterion ('Pass: ... drop moves conversation' / 'Fail: ... drop does not move conversation'), and Steps-table row 4's own Expected Result is 'Conversation moved into that folder; highlight disappears'. The implemented Step 4 only asserts move_response.status==200, the drop-zone highlight clearing, and isDragging goi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_drag_drop_conversation_folder.py:392-401 (TestDragDropHighlightsTargetFolderOnHover.test_drag_drop_highlights_target_folder_on_hover, Step 4)"
+        },
+        {
+          "kind": "note",
+          "note": "Both convenience wrapper methods are added but never called by any test in this PR — the three tests all use the composable primitives (start_conversation_drag/move_drag_over_target/release_drag) directly instead, per their own docstrings. Dead code as shipped; not a testid/locator-policy violation (they wrap already-referenced helpers, add no new handle), so I did not block on it, but per the sta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6899-6931 (drag_conversation_to_folder, drag_conversation_to_general_list)"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity/substitution grep on the full diff (automation/): git diff tests/batch-chat-remaining-w07...tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()' -> 2 hits, both compliant: getComputedStyle(el.parentElement).opacity (reads the real dnd-kit-driven opacity to detect drag activa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff: git diff tests/batch-chat-remaining-w07...tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' -> 1 hit: return self.page.locator(self.FOLDER_DROP_ZONE.format(folder_id)) in ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified both new testids against EliteaUI: git -C ../EliteaUI fetch origin then git grep for chat-folder-drop-zone / chat-conversation-list-drop-zone / data-drop-active on origin/automation/testids -- src/ shows both present in DroppableFolderItem.jsx and DroppableGroupedArea.jsx (commit 86f4a564), matching the PR's claim exactly. Same grep against origin/main returns nothing — expected, not yet … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified #1541 and #1542 on the tracker: #1542 carries the correcting comment quoted in the AFS/test/PR (from bermudas, referencing this PR #1543), state OPEN as claimed (agents don't close). #1541 state OPEN, title matches the folder-to-folder misresolution described. No masking-pattern grep hits (pytest.skip|xfail|.skip(|test.fail|expect.soft|# Known defect|xit() anywhere in the diff — consisten… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2142's Coverage Map row 3 disposes as 'already-covered (by ELITEA-2143, once merged)' — verified the referenced assertion is real: ELITEA-2143's own Step 2 does assert data-drop-active=\"true\" on hover, at the claimed step, asserting the claimed observable. Since both cases ship atomically in this same PR, this is functionally sound (not the batch-level 'already-covered may only target a spe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All three tests' cleanup uses the pre-existing chat.delete_folder_via_menu() UI helper rather than the AFS-specified conversation_api.delete_folder(id) API call. This is a real UI action (not a substitution) and cleanup mechanism isn't an asserted observable, so no fidelity issue and no AFS amendment is owed for it — noting only for traceability."
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of the finding: the original AFS (analyst pass) deferred ELITEA-2143's drop-outcome assertion to a sibling case (ELITEA-2144) that hadn't been dispatched into this batch yet — a cross-case coverage dependency the AFS shouldn't have created since the case's own TMS Pass/Fail criteria required the check independently. Worth flagging for the analyst slot: don't defer a case's own explicit … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_drag-drop-conversation-back-to-general-list_ELITEA-2145.md",
+      "branch": "tests/ELITEA-2142-2143-2145-drag-drop-conversation-folder",
+      "pr": 1543
+    },
+    {
+      "id": "ELITEA-2146",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Two new testid gaps for the implementer to fill via add-data-testid: (1) chat-conversation-list-scroll-container on Conversations.jsx's ref={listRef} Box (ELITEA-2146); (2) chat-move-to-submenu-popover on DotMenu.jsx's nested 'Move to' <Menu> Paper (ELITEA-2147). Both are zero-new-DOM-node attribute additions on already-rendered elements.",
+          "ref": "ELITEA-2146, ELITEA-2147"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object method gap (not a testid gap): chat_page.py has no collapse_folder(). expand_folder() cannot be safely reused to collapse (it waits for data-expanded=\"true\", which is already true). Implementer should add a small mirror method waiting for [data-expanded=\"false\"].",
+          "ref": "ELITEA-2148"
+        },
+        {
+          "kind": "note",
+          "note": "Shared MCP browser instance carries viewport size across sequential batch dispatches — a prior dispatch's browser_resize(1280,4000) silently made this session's first scrollability check read as a false negative until resized back. Logged as an indexed memory entry (shared_mcp_browser_carries_viewport_across_dispatches.md) so any future dispatch checking scrollHeight/clientHeight resizes first."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2148's case title ('Folder Displays Conversation Count or Empty State') implies a numeric conversation-count badge on the folder header that does not exist anywhere in source (FolderAccordionItem.jsx/FolderAccordion.jsx never render folder.total or conversations.length as visible text). Not filed as a tracker clarification because the case's own numbered steps never actually ask for a count… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2148"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift discovered and fixed in-PR (not a defect, a live-behavior correction): ELITEA-2146 steps 4/5 and ELITEA-2147 steps 3/4 assumed the sidebar/submenu scroll container's raw scrollHeight-clientHeight maximum lands on the last-created seeded folder. Live-false: (1) Conversations.jsx's ref={listRef} container shares its scroll region with the full pinned+date-grouped conversation list, so on a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_folder-list-scrollable-many-folders_ELITEA-2146.md"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object gotcha (also memory-logged): a first-draft collapse_folder() mirrored expand_folder()'s whole-row click and passed manual single-folder exploration, but failed in the shipped test -- FOLDER_ITEM scopes both header and (once expanded) body as descendants, so a plain .click()'s bounding-box-center target can land in the body instead of the header toggle once the container grows to includ… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found across all three cases -- every step matched live product behavior once the scroll-target-selection technique was corrected. ELITEA-2147's opening gesture remains affected by the pre-existing, already-filed EliteaAI/elitea-testing-public#1117 (Move-to submenu doesn't reliably open on one click), handled via the existing click_move_to_and_wait_for_submenu() retry loop as do… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL / blocking (ELITEA-2147). The new testid `chat-move-to-submenu-popover` is hardcoded as a literal string directly in `DotMenu.jsx`'s nested `<Menu>` (`slotProps={{ paper: { 'data-testid': 'chat-move-to-submenu-popover' } }}`). `DotMenu.jsx` lives under `src/components/` and is a genuinely shared component — `grep -rln \"DotMenu\" src/` finds 16+ consumers (settings, artifacts, pipelines, si… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/components/DotMenu.jsx:110 (commit EliteaAI/EliteaUI@1787ad67)"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity self-check verified independently: `git diff origin/tests/batch-chat-remaining-w07...origin/tests/2146-2147-2148-folder-list-scroll-and-states -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 8 hits, all `.evaluate('el => el.scrollTop')` / scrollHeight/clientHeight reads off the live DOM (chat_page.py, in the new scroll-metric methods)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator self-check verified independently: `git diff origin/tests/batch-chat-remaining-w07...origin/tests/2146-2147-2148-folder-list-scroll-and-states -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 3 hits, all compliant scoped sub-selectors ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulation (all three cases, case snapshot ↔ AFS ↔ implementation): every original-case step/precondition has a row, disposed `asserted`, and each maps to a real assertion at that exact step in the shipped test — verified by reading the test line-by-line against each AFS Coverage Map row. ELITEA-2146 steps 1-5, ELITEA-2147 steps 1-4, ELITEA-2148 steps 1-3 all check out. No `already… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no `pytest.mark.skip`/`xfail`/`test.fail()`/`expect.soft()`/`# Known defect` markers anywhere in the new test file — confirmed via grep. All three tests assert real, unweakened expectations end-to-end; no defects found or masked in this cluster (matches AFS 'Known Defects: none' sections)."
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2148's `collapse_folder()` correctly clicks the scoped `FOLDER_EXPAND_ICON` rather than the whole `FOLDER_ITEM` row (unlike `expand_folder()`), with the reasoning (center-click landing in expanded body content) documented in both the docstring and the AFS amendment. Verified this matches the shipped test's step 2 assertions (`data-expanded=\"false\"` + `not_to_be_visible()` on the still-DOM-m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py (collapse_folder, ~line 6714)"
+        },
+        {
+          "kind": "note",
+          "note": "DotMenu.jsx shared-component testid leak (ELITEA-2147 review blocker) resolved: chat-move-to-submenu-popover moved from a hardcoded literal in DotMenu.jsx to a caller-supplied submenuTestId prop from ConversationItem.jsx. EliteaAI/EliteaUI@1b35a0a2 on automation/testids. Zero new DOM nodes/hooks; testid value and test-repo locators unchanged. Spec re-run green 3/3.",
+          "ref": "EliteaAI/EliteaUI@1b35a0a2"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED and verified in this re-review: DotMenu.jsx (src/components/, 16+ consumers) no longer hardcodes 'chat-move-to-submenu-popover' as a literal string. Fix-round-1 commit EliteaAI/EliteaUI@1b35a0a2 rewires it as a caller-supplied `submenuTestId` prop threaded ConversationItem.jsx -> DotMenu -> BasicMenuItem, matching the shared-component testid rule exactly (same patte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer mechanical greps on the test-repo diff (automation/): fidelity-substitution grep found 8 hits, all `.evaluate()` READS of real scrollHeight/clientHeight/scrollTop on the live DOM (no page.route/route.fulfill/mock_/monkeypatch) — same pattern as the pre-existing `chat_messages_scroll_container` trio; compliant, not a substitution. Non-testid-locator grep found 3 hits, all scoped off pre-ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all three cases (TMS case snapshot <-> AFS <-> implementation) fully: every Coverage-Map Axis-1 row for ELITEA-2146/2147/2148 has a real assertion at the claimed step in test_folder_list_scrollability_and_expand_states.py (verified by reading the whole 628-line file), the two AFS 'Implementer amendment' sections (steps 4-5 for 2146, steps 3-4 for 2147 — the newest-first / shared-scrol… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_folder-list-scrollable-many-folders_ELITEA-2146.md",
+      "branch": "tests/2146-2147-2148-folder-list-scroll-and-states",
+      "pr": 1544,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2147",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Two new testid gaps for the implementer to fill via add-data-testid: (1) chat-conversation-list-scroll-container on Conversations.jsx's ref={listRef} Box (ELITEA-2146); (2) chat-move-to-submenu-popover on DotMenu.jsx's nested 'Move to' <Menu> Paper (ELITEA-2147). Both are zero-new-DOM-node attribute additions on already-rendered elements.",
+          "ref": "ELITEA-2146, ELITEA-2147"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object method gap (not a testid gap): chat_page.py has no collapse_folder(). expand_folder() cannot be safely reused to collapse (it waits for data-expanded=\"true\", which is already true). Implementer should add a small mirror method waiting for [data-expanded=\"false\"].",
+          "ref": "ELITEA-2148"
+        },
+        {
+          "kind": "note",
+          "note": "Shared MCP browser instance carries viewport size across sequential batch dispatches — a prior dispatch's browser_resize(1280,4000) silently made this session's first scrollability check read as a false negative until resized back. Logged as an indexed memory entry (shared_mcp_browser_carries_viewport_across_dispatches.md) so any future dispatch checking scrollHeight/clientHeight resizes first."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2148's case title ('Folder Displays Conversation Count or Empty State') implies a numeric conversation-count badge on the folder header that does not exist anywhere in source (FolderAccordionItem.jsx/FolderAccordion.jsx never render folder.total or conversations.length as visible text). Not filed as a tracker clarification because the case's own numbered steps never actually ask for a count… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2148"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift discovered and fixed in-PR (not a defect, a live-behavior correction): ELITEA-2146 steps 4/5 and ELITEA-2147 steps 3/4 assumed the sidebar/submenu scroll container's raw scrollHeight-clientHeight maximum lands on the last-created seeded folder. Live-false: (1) Conversations.jsx's ref={listRef} container shares its scroll region with the full pinned+date-grouped conversation list, so on a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_folder-list-scrollable-many-folders_ELITEA-2146.md"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object gotcha (also memory-logged): a first-draft collapse_folder() mirrored expand_folder()'s whole-row click and passed manual single-folder exploration, but failed in the shipped test -- FOLDER_ITEM scopes both header and (once expanded) body as descendants, so a plain .click()'s bounding-box-center target can land in the body instead of the header toggle once the container grows to includ… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found across all three cases -- every step matched live product behavior once the scroll-target-selection technique was corrected. ELITEA-2147's opening gesture remains affected by the pre-existing, already-filed EliteaAI/elitea-testing-public#1117 (Move-to submenu doesn't reliably open on one click), handled via the existing click_move_to_and_wait_for_submenu() retry loop as do… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL / blocking (ELITEA-2147). The new testid `chat-move-to-submenu-popover` is hardcoded as a literal string directly in `DotMenu.jsx`'s nested `<Menu>` (`slotProps={{ paper: { 'data-testid': 'chat-move-to-submenu-popover' } }}`). `DotMenu.jsx` lives under `src/components/` and is a genuinely shared component — `grep -rln \"DotMenu\" src/` finds 16+ consumers (settings, artifacts, pipelines, si… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/components/DotMenu.jsx:110 (commit EliteaAI/EliteaUI@1787ad67)"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity self-check verified independently: `git diff origin/tests/batch-chat-remaining-w07...origin/tests/2146-2147-2148-folder-list-scroll-and-states -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 8 hits, all `.evaluate('el => el.scrollTop')` / scrollHeight/clientHeight reads off the live DOM (chat_page.py, in the new scroll-metric methods)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator self-check verified independently: `git diff origin/tests/batch-chat-remaining-w07...origin/tests/2146-2147-2148-folder-list-scroll-and-states -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 3 hits, all compliant scoped sub-selectors ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulation (all three cases, case snapshot ↔ AFS ↔ implementation): every original-case step/precondition has a row, disposed `asserted`, and each maps to a real assertion at that exact step in the shipped test — verified by reading the test line-by-line against each AFS Coverage Map row. ELITEA-2146 steps 1-5, ELITEA-2147 steps 1-4, ELITEA-2148 steps 1-3 all check out. No `already… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no `pytest.mark.skip`/`xfail`/`test.fail()`/`expect.soft()`/`# Known defect` markers anywhere in the new test file — confirmed via grep. All three tests assert real, unweakened expectations end-to-end; no defects found or masked in this cluster (matches AFS 'Known Defects: none' sections)."
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2148's `collapse_folder()` correctly clicks the scoped `FOLDER_EXPAND_ICON` rather than the whole `FOLDER_ITEM` row (unlike `expand_folder()`), with the reasoning (center-click landing in expanded body content) documented in both the docstring and the AFS amendment. Verified this matches the shipped test's step 2 assertions (`data-expanded=\"false\"` + `not_to_be_visible()` on the still-DOM-m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py (collapse_folder, ~line 6714)"
+        },
+        {
+          "kind": "note",
+          "note": "DotMenu.jsx shared-component testid leak (ELITEA-2147 review blocker) resolved: chat-move-to-submenu-popover moved from a hardcoded literal in DotMenu.jsx to a caller-supplied submenuTestId prop from ConversationItem.jsx. EliteaAI/EliteaUI@1b35a0a2 on automation/testids. Zero new DOM nodes/hooks; testid value and test-repo locators unchanged. Spec re-run green 3/3.",
+          "ref": "EliteaAI/EliteaUI@1b35a0a2"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED and verified in this re-review: DotMenu.jsx (src/components/, 16+ consumers) no longer hardcodes 'chat-move-to-submenu-popover' as a literal string. Fix-round-1 commit EliteaAI/EliteaUI@1b35a0a2 rewires it as a caller-supplied `submenuTestId` prop threaded ConversationItem.jsx -> DotMenu -> BasicMenuItem, matching the shared-component testid rule exactly (same patte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer mechanical greps on the test-repo diff (automation/): fidelity-substitution grep found 8 hits, all `.evaluate()` READS of real scrollHeight/clientHeight/scrollTop on the live DOM (no page.route/route.fulfill/mock_/monkeypatch) — same pattern as the pre-existing `chat_messages_scroll_container` trio; compliant, not a substitution. Non-testid-locator grep found 3 hits, all scoped off pre-ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all three cases (TMS case snapshot <-> AFS <-> implementation) fully: every Coverage-Map Axis-1 row for ELITEA-2146/2147/2148 has a real assertion at the claimed step in test_folder_list_scrollability_and_expand_states.py (verified by reading the whole 628-line file), the two AFS 'Implementer amendment' sections (steps 4-5 for 2146, steps 3-4 for 2147 — the newest-first / shared-scrol… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_move-to-submenu-folder-list-scrollable_ELITEA-2147.md",
+      "branch": "tests/2146-2147-2148-folder-list-scroll-and-states",
+      "pr": 1544,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2148",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Two new testid gaps for the implementer to fill via add-data-testid: (1) chat-conversation-list-scroll-container on Conversations.jsx's ref={listRef} Box (ELITEA-2146); (2) chat-move-to-submenu-popover on DotMenu.jsx's nested 'Move to' <Menu> Paper (ELITEA-2147). Both are zero-new-DOM-node attribute additions on already-rendered elements.",
+          "ref": "ELITEA-2146, ELITEA-2147"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object method gap (not a testid gap): chat_page.py has no collapse_folder(). expand_folder() cannot be safely reused to collapse (it waits for data-expanded=\"true\", which is already true). Implementer should add a small mirror method waiting for [data-expanded=\"false\"].",
+          "ref": "ELITEA-2148"
+        },
+        {
+          "kind": "note",
+          "note": "Shared MCP browser instance carries viewport size across sequential batch dispatches — a prior dispatch's browser_resize(1280,4000) silently made this session's first scrollability check read as a false negative until resized back. Logged as an indexed memory entry (shared_mcp_browser_carries_viewport_across_dispatches.md) so any future dispatch checking scrollHeight/clientHeight resizes first."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2148's case title ('Folder Displays Conversation Count or Empty State') implies a numeric conversation-count badge on the folder header that does not exist anywhere in source (FolderAccordionItem.jsx/FolderAccordion.jsx never render folder.total or conversations.length as visible text). Not filed as a tracker clarification because the case's own numbered steps never actually ask for a count… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2148"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift discovered and fixed in-PR (not a defect, a live-behavior correction): ELITEA-2146 steps 4/5 and ELITEA-2147 steps 3/4 assumed the sidebar/submenu scroll container's raw scrollHeight-clientHeight maximum lands on the last-created seeded folder. Live-false: (1) Conversations.jsx's ref={listRef} container shares its scroll region with the full pinned+date-grouped conversation list, so on a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_folder-list-scrollable-many-folders_ELITEA-2146.md"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object gotcha (also memory-logged): a first-draft collapse_folder() mirrored expand_folder()'s whole-row click and passed manual single-folder exploration, but failed in the shipped test -- FOLDER_ITEM scopes both header and (once expanded) body as descendants, so a plain .click()'s bounding-box-center target can land in the body instead of the header toggle once the container grows to includ… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found across all three cases -- every step matched live product behavior once the scroll-target-selection technique was corrected. ELITEA-2147's opening gesture remains affected by the pre-existing, already-filed EliteaAI/elitea-testing-public#1117 (Move-to submenu doesn't reliably open on one click), handled via the existing click_move_to_and_wait_for_submenu() retry loop as do… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL / blocking (ELITEA-2147). The new testid `chat-move-to-submenu-popover` is hardcoded as a literal string directly in `DotMenu.jsx`'s nested `<Menu>` (`slotProps={{ paper: { 'data-testid': 'chat-move-to-submenu-popover' } }}`). `DotMenu.jsx` lives under `src/components/` and is a genuinely shared component — `grep -rln \"DotMenu\" src/` finds 16+ consumers (settings, artifacts, pipelines, si… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/components/DotMenu.jsx:110 (commit EliteaAI/EliteaUI@1787ad67)"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity self-check verified independently: `git diff origin/tests/batch-chat-remaining-w07...origin/tests/2146-2147-2148-folder-list-scroll-and-states -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 8 hits, all `.evaluate('el => el.scrollTop')` / scrollHeight/clientHeight reads off the live DOM (chat_page.py, in the new scroll-metric methods)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator self-check verified independently: `git diff origin/tests/batch-chat-remaining-w07...origin/tests/2146-2147-2148-folder-list-scroll-and-states -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 3 hits, all compliant scoped sub-selectors ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulation (all three cases, case snapshot ↔ AFS ↔ implementation): every original-case step/precondition has a row, disposed `asserted`, and each maps to a real assertion at that exact step in the shipped test — verified by reading the test line-by-line against each AFS Coverage Map row. ELITEA-2146 steps 1-5, ELITEA-2147 steps 1-4, ELITEA-2148 steps 1-3 all check out. No `already… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no `pytest.mark.skip`/`xfail`/`test.fail()`/`expect.soft()`/`# Known defect` markers anywhere in the new test file — confirmed via grep. All three tests assert real, unweakened expectations end-to-end; no defects found or masked in this cluster (matches AFS 'Known Defects: none' sections)."
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2148's `collapse_folder()` correctly clicks the scoped `FOLDER_EXPAND_ICON` rather than the whole `FOLDER_ITEM` row (unlike `expand_folder()`), with the reasoning (center-click landing in expanded body content) documented in both the docstring and the AFS amendment. Verified this matches the shipped test's step 2 assertions (`data-expanded=\"false\"` + `not_to_be_visible()` on the still-DOM-m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py (collapse_folder, ~line 6714)"
+        },
+        {
+          "kind": "note",
+          "note": "DotMenu.jsx shared-component testid leak (ELITEA-2147 review blocker) resolved: chat-move-to-submenu-popover moved from a hardcoded literal in DotMenu.jsx to a caller-supplied submenuTestId prop from ConversationItem.jsx. EliteaAI/EliteaUI@1b35a0a2 on automation/testids. Zero new DOM nodes/hooks; testid value and test-repo locators unchanged. Spec re-run green 3/3.",
+          "ref": "EliteaAI/EliteaUI@1b35a0a2"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED and verified in this re-review: DotMenu.jsx (src/components/, 16+ consumers) no longer hardcodes 'chat-move-to-submenu-popover' as a literal string. Fix-round-1 commit EliteaAI/EliteaUI@1b35a0a2 rewires it as a caller-supplied `submenuTestId` prop threaded ConversationItem.jsx -> DotMenu -> BasicMenuItem, matching the shared-component testid rule exactly (same patte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer mechanical greps on the test-repo diff (automation/): fidelity-substitution grep found 8 hits, all `.evaluate()` READS of real scrollHeight/clientHeight/scrollTop on the live DOM (no page.route/route.fulfill/mock_/monkeypatch) — same pattern as the pre-existing `chat_messages_scroll_container` trio; compliant, not a substitution. Non-testid-locator grep found 3 hits, all scoped off pre-ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all three cases (TMS case snapshot <-> AFS <-> implementation) fully: every Coverage-Map Axis-1 row for ELITEA-2146/2147/2148 has a real assertion at the claimed step in test_folder_list_scrollability_and_expand_states.py (verified by reading the whole 628-line file), the two AFS 'Implementer amendment' sections (steps 4-5 for 2146, steps 3-4 for 2147 — the newest-first / shared-scrol… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_folder-displays-conversations-or-empty-state_ELITEA-2148.md",
+      "branch": "tests/2146-2147-2148-folder-list-scroll-and-states",
+      "pr": 1544,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          330.91,
+          329.69,
+          334.83
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 8,
+    "blocked": 4
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

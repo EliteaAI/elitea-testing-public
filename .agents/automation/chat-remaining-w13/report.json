@@ -1,0 +1,340 @@
+{
+  "batch": "chat-remaining-w13",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w13",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      149.19
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/chat/test_send_message_with_attachments_verify_included.py::TestSendMessageWithAttachmentsVerifyIncluded::test_send_message_with_attachments_verify_included",
+        "signature": "AssertionError: Expected the AI response to reference attachment 'report_alpha.txt', got: \"I'll analyze the four files you've provided... These files appear to be related to project ELITEA-2201... All files contain unique identification tokens (alpha, beta, gamma, delta) which suggest they're part of a structured document management system...\" — the response names/quotes 'notes_beta.txt' and 'plan… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2201"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2195",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Added EliteaUI testid chat-attach-menuitem-button-icon (AttachmentButton.jsx, computed ${testId}-icon) at EliteaAI/EliteaUI@a17cb22d on automation/testids — pushed, awaiting human cherry-pick to main per standing policy.",
+          "ref": "EliteaAI/EliteaUI@a17cb22d"
+        },
+        {
+          "kind": "note",
+          "note": "No product defect found — all 3 case observables (10-left counter text, paperclip icon, enabled/clickable state) matched expectations exactly on live verification."
+        },
+        {
+          "kind": "note",
+          "note": "Nit — the AFS's 'Automation Hints' prose still says testid `chat-attach-menuitem-icon`, while the AFS's own Concrete Handles table, the page object (`automation/pages/chat_page.py:144-147`), and the test docstring were all correctly amended to `chat-attach-menuitem-button-icon` (the actual computed value, per the implementer's `${testId}-icon` naming-trap memory entry). The fix round updated one A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_attach-files-10-left-counter_ELITEA-2195.md § Automation Hints"
+        },
+        {
+          "kind": "note",
+          "note": "Verified live in EliteaUI: the added `data-testid={testId ? `${testId}-icon` : undefined}` on AttachmentButton.jsx's icon Box (commit a17cb22d) is a single-line, zero-functional-impact addition (no new hooks/DOM/state) and is the correct 'shape 1' same-element conditional-pair (only the used branch named, per canon #277) — confirmed by reading both call sites in PlusChatButton.jsx: the popper inst… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's rationale for classifying `ready-for-automation` instead of `extend-existing` (onto ELITEA-2091's or ELITEA-2197's larger, unrelated specs) is a defensible judgment call, not an error — one candidate spec already asserts '10 left' as an intermediate check but neither asserts the icon or enabled state, and the skill's own default ('when in doubt, ready-for-automation') favors the choice made.… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_attach-files-10-left-counter_ELITEA-2195.md",
+      "branch": "tests/2195-attach-files-10-left-counter",
+      "pr": 1587
+    },
+    {
+      "id": "ELITEA-2196",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2196 case-text step 2 says 'files begin uploading' as the expected result of selecting files. Live-confirmed (and consistent with the already-filed ELITEA-2197 Network Behavior finding): attaching a file is 100% client-side -- zero network request fires at selection time; files only reach the backend when a message is actually sent. Not a defect -- the AFS asserts the real, self-consistent … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md"
+        },
+        {
+          "kind": "note",
+          "note": "New testid chat-attachment-remove-chip-{index} was reserved by the ELITEA-2197 AFS under a different name (chat-attachment-chip-remove-{index}) that turned out to collide with an existing shared-caller prefix matcher (ChatPage.CHAT_ATTACHMENT_CHIP_PREFIX, used by get_attachment_chip_count()). Renamed during implementation, live-reverified clean, both sibling specs re-run to confirm no regression. … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@7f29c3dc"
+        },
+        {
+          "kind": "defect",
+          "note": "Blocking (Important) — Case step 2's expected result (\"Files begin uploading\") is a genuine case-text/live-product mismatch, correctly diagnosed and correctly NOT masked (the test asserts the real client-side-only behavior, per the reverse-masking guard — that part is right). But this project's bug-filing policy is `strict-per-bug` (profile.md § Bug filing: \"every finding (either class) gets its o… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md:51 (Coverage Map row 2); .agents/profile.md § Bug filing"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking. The ELITEA-2197 AFS's own Concrete Handles table still reserves the OLD name `chat-attachment-chip-remove-{index}` for this sibling case; it wasn't updated to reflect the amendment to `chat-attachment-remove-chip-{index}` this PR made. ELITEA-2196's own AFS documents the rename clearly and cross-references 2197, so this is only a minor staleness in a previously-merged file, not requi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2197.md (unchanged by this PR)"
+        },
+        {
+          "kind": "note",
+          "note": "Verified (not just trusted) the trickier assertions rather than take the AFS/PR body at face value: (1) confirmed live in EliteaUI source that `AttachedFileIcon` is an SVGR `?react` import (renders a bare `<svg>`, matching the `children[0].tagName === 'svg'` check); (2) confirmed `TypographyWithConditionalTooltip`'s MUI `Typography variant=\"bodyMedium\"` — an app-custom variant absent from MUI's `v… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_attach_files_multiple_chips_display.py:105-135"
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed issue #1589 (question + case-text-drift) for ELITEA-2196's own case-text mismatch: step 2 'Files begin uploading' has no live observable — attach is 100% client-side, zero network request at selection time. Distinct from #1122 (same class, sibling ELITEA-2197 case). Cited in AFS + test docstring + PR #1588 comment.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1589"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker (missing dedicated clarification ticket for ELITEA-2196's own case-text mismatch) resolved in fix round 1: issue #1589 filed (question+case-text-drift, correctly distinguished from #1122) and cited in AFS Status line, Coverage Map row 2, Known Defects Found, and the test docstring. No code change was required; re-run confirmed green (1 passed).",
+          "ref": "test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity grep (4 hits) all .evaluate() calls inside get_attachment_chip_visual_facts() are scoped, read-only computed-style/DOM reads under an existing testid'd parent — not a substitution shape. Command: git diff origin/tests/batch-chat-remaining-w13...origin/tests/2196-attach-files-multiple-chips-display -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evalu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:2903-2925"
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep (4 hits) all reference class-level UPPER_CASE [data-testid=] template constants (CHAT_ATTACHMENT_CHIP, CHAT_ATTACHMENT_CHIP_PREFIX, CHAT_ATTACHMENT_CHIP_REMOVE) — no raw/role/text handles added. Command: git diff origin/tests/batch-chat-remaining-w13...origin/tests/2196-attach-files-multiple-chips-display -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_lab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Verified against fresh EliteaUI ground truth (git fetch origin first): chat-attachment-remove-chip-{index} present on origin/automation/testids (FileList.jsx:99, commit 7f29c3dc), correctly absent from origin/main pending human cherry-pick — matches AFS/docstring claims exactly.",
+          "ref": "EliteaAI/EliteaUI@7f29c3dc"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md",
+      "branch": "tests/2196-attach-files-multiple-chips-display",
+      "pr": 1588
+    },
+    {
+      "id": "ELITEA-2198",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2198's case text (steps 1-2) is near-duplicate coverage of ELITEA-2196's own functional check (attach 4, remove chip 0, verify 3 remain) — flagging for anyone reviewing case-authoring overlap in this cluster, though extend-existing correctly captured the incremental new observable (a second sequential removal) rather than re-deriving the whole flow.",
+          "ref": "ELITEA-2196"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (TMS ELITEA-2198 snapshot ↔ AFS lextend_attach-files-remove-individual-files-sequential_ELITEA-2198.md ↔ PR #1590 diff) is faithful. Case has 4 steps (attach 4/verify → remove chip1/verify 3 → remove another chip/verify 2 → verify remaining shown). AFS Coverage Map maps all 4 to rows; step 1-2 disposed 'asserted — same mechanism the covering ELITEA-2196 test already proves (its own S… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_attach_files_multiple_chips_display.py"
+        },
+        {
+          "kind": "note",
+          "note": "Merged-target rule for extend-existing satisfied: the extension target l3_attach-files-multiple-chips-display_ELITEA-2196.md/spec is already merged onto this batch's trunk tests/batch-chat-remaining-w13 (git log shows commit 632d281c8 'merge ELITEA-2196 into tests/batch-chat-remaining-w13' predates this PR's branch cut), not merely a same-batch in-flight sibling."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep (0 hits): `git diff origin/tests/batch-chat-remaining-w13...tests/ELITEA-2198-attach-remove-sequential -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → no output. No substitution introduced."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep (0 hits): `git diff origin/tests/batch-chat-remaining-w13...tests/ELITEA-2198-attach-remove-sequential -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → no output. New test method calls only pre-existing ChatPage methods (attach_files_via_menu, c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:2869"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion check passed: Step 1 asserts exact chip names (list-equality, not bare count); Step 2 removes chip 0 + asserts remaining == file_names[1:]; Step 3 removes the post-renumbering chip 0 + asserts remaining == file_names[2:] (the genuine new gap); Step 4 re-asserts names + asserts both remaining chips' X-button count()==1 and is_visible(). Side-channel console/pageerror check presen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_attach_files_multiple_chips_display.py:235"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_attach-files-remove-individual-files-sequential_ELITEA-2198.md",
+      "branch": "tests/ELITEA-2198-attach-remove-sequential",
+      "pr": 1590
+    },
+    {
+      "id": "ELITEA-2199",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1591: ELITEA-2199's case text claims chat attachment chips show a 'type-appropriate icon... icons reflect file types', but FileList.jsx (EliteaUI/src/components/Chat/FileList.jsx:88,154) renders the identical AttachedFileIcon SVG for every attachment regardless of type -- confirmed both via source (zero type-branching logic anywhere) and live (attached .png/.pd… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1591"
+        },
+        {
+          "kind": "note",
+          "note": "The chat attachment '+N' overflow button (chat-attachment-overflow-button) IS a real, functioning click-to-expand control -- confirmed live: click sets aria-expanded from undefined to \"true\" and opens a MUI role=\"menu\" populated by the existing chat-attachment-overflow-item-{index} testid'd items, listing hidden filenames in order. Existing merged tests (ELITEA-2196, ELITEA-2197) already click thi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — AFS↔implementation drift (per-step assertion gap), ELITEA-2467. Both the case's own Expected Results and the AFS Coverage Map row 6 disposition for ELITEA-2467 step 6 commit to THREE confirmed-live observables for the overflow click-to-expand: (a) aria-expanded flips to 'true', (b) a MUI role='menu' becomes visible, (c) the 3 hidden filenames render in order. `open_attachment_overflow_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:2960-2988; automation/tests/ui/chat/test_attach_files_multiple_chips_display.py:531-549"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — `assert result[\"expanded_before\"] != \"true\"` (test file ~L538) is weaker than what the AFS itself confirmed live ('flips undefined → \"true\" on click', ELITEA-2467 AFS Concrete Handles table). A value of e.g. \"false\" or any non-'true' string trivially satisfies this without proving the attribute was actually absent pre-click. Tightening to `result[\"expanded_before\"] is None` would match the A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Informational, non-blocking — the case-text-drift clarification issue #1591 (cited correctly by both AFS files and the test docstrings/allure.issue links) itself cites the AFS by a filename that does not match what's actually committed: issue body says `lextend_attach-files-type-icons-truncation-overflow-expand_ELITEA-2199.md`, the real file is `lextend_attach-files-icon-genericity-and-truncation_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out cleanly and is confirmed, not just claimed: (1) Locator-policy grep on the full diff — 3 hits, all `[data-testid=` class-level constants (`CHAT_ATTACHMENT_CHIP`, `CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX`), zero new raw handles. (2) Fidelity/provenance grep — 2 `.evaluate()` hits, both confirmed read-only DOM structural/layout reads (icon outerHTML confirmed byte-identical … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Technique for future cases: any @mui/material Menu popup lacking its own testid can get one via slotProps.list (lands on the role=\"menu\" root itself, confirmed against MUI source) instead of a raw role selector — documented in .agents/memory/test-automation-engineer/mui_slotprops_list_testid_lands_on_role_menu_root.md."
+        },
+        {
+          "kind": "note",
+          "note": "First test run immediately after pushing a fresh EliteaUI testid commit to automation/testids hit 2 timeout reruns waiting on the new locator; a standalone re-run ~30s later (and 2 more) passed clean. Looks like dev-server/HMR module-transform propagation lag right after push+first-navigation, not a code defect. Worth watching if it recurs on other cases."
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 fully resolves the prior blocking finding. `open_attachment_overflow_menu_and_read()` (automation/pages/chat_page.py, new method) now asserts all three AFS-required observables for ELITEA-2467 Coverage Map row 6: aria-expanded flips to 'true' (expanded_before/expanded_after), role='menu' visibility (chat_attachment_overflow_menu.is_visible() + get_attribute('role')=='menu'), and the hi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The new locator was implemented via a genuine, correctly-placed testid, not a workaround: `chat_attachment_overflow_menu` (testid `chat-attachment-overflow-menu`) is wired onto MUI Menu's `slotProps.list` in FileList.jsx, which forwards directly onto MenuList's root — the actual role='menu' element itself, not a derived proxy. Verified: EliteaAI/EliteaUI@feb9101a on origin/automation/testids (sing… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-verified (not just the delta) all six already-covered/asserted Coverage Map rows across both AFS against the actual covering-spec code: filenames assertion (test_attach_files_multiple_chips_display.py:237-239), dark/light styling luminance checks (:277-289), file-icon presence (:246-249), and the ELITEA-2197 total-attached-count mechanism (test_attach_files_10_file_limit_warning.py:157-160) all… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (git diff 3908ee5ab...HEAD -- automation/): substitution grep `\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(` → 2 hits, both `chip.evaluate(...)` reads (icon outerHTML, scrollWidth/clientWidth) — read-only DOM structural/layout reads under an already-testid'd parent, not state injection or fabricated response; same idiom as the pre-existing merged luminance check… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the two new test methods (like all 4 tests in this module, including the previously-merged ELITEA-2196/2198 ones) carry only `@pytest.mark.p3` — testing.md's marker convention also calls for a feature marker (`chat`) + `regression`. Pre-existing pattern across the whole file, not introduced by this round; not scoping it to this PR."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_attach-files-icon-genericity-and-truncation_ELITEA-2199.md",
+      "branch": "tests/ELITEA-2199-2467-attach-files-icon-truncation-overflow",
+      "pr": 1592
+    },
+    {
+      "id": "ELITEA-2201",
+      "outcome": "blocked",
+      "note": "gate red: AssertionError: Expected the AI response to reference attachment 'report_alpha.txt', got: \"I'll analyze the four files you've provided... These files appear to be related to project ELITEA-2201... All",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Response-content assertion technique for chat+attachment cases: attach small distinctly-named .txt files, send a plain analysis prompt, wait for the real AI response, assert each filename appears as a substring in the captured response text. Reliable because attachment content is embedded directly in the message payload (model skips file-reading tools). Recorded in .agents/memory/test-automation-e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2201"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage gap identified vs the closest neighbour, ELITEA-2091 (merged, test_create_new_conversation_team_project_attachments_and_llm.py): that spec never asserts real AI response content or post-send composer chip state, only auto-naming and thread-content. No action needed here (ELITEA-2201 now covers exactly that gap as its own spec), but worth knowing for anyone reviewing coverage overlap betwe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2091"
+        },
+        {
+          "kind": "note",
+          "note": "Diff scope correction: the correct merge-base for this PR is the batch trunk commit 8d8f5a4f3 (AFS-commit), not origin/automation/base — the branch also carries the prior wave-13 merges (ELITEA-2199, ELITEA-2467). Diffing against automation/base pulls in ~20 unrelated files; the real ELITEA-2201 diff is 4 files / 271 insertions: the test, the memory entry, a daily-log line, and one appended AFS Au… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean: TMS case (5 steps) ↔ AFS (5 steps, all disposed 'asserted' in Coverage Map) ↔ implementation (5 allure.step blocks + 1 side-channel block) — every step carries a real assertion at that step, not just an end-state check (chip count+names+'6 left' counter; input value; sent-message text+all 4 filenames+URL regex; AI response text containing all 4 filenames read via get_last_mess… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_send_message_with_attachments_verify_included.py"
+        },
+        {
+          "kind": "note",
+          "note": "Zero page-object changes — every handle (sidebar-create-button, plus-menu-button, chat-attach-menuitem-button, chat-attachment-chip-{index}, chat-message-input, chat-message-item, send-button) and every method used (attach_files_via_menu, wait_for_attachment_chip_count, get_all_attached_file_names, wait_for_ai_response, get_last_message_text, get_message_text_at, get_attachment_overflow_count, cli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: the AI-response assertion (filenames echoed by the model) reads the real, live-generated response text via get_last_message_text() — no page.route/route.fulfill/monkeypatch/.evaluate() substitution anywhere in the diff (mechanical grep: 0 hits). This is the project-sanctioned 'capture the real response, assert a structural invariant' pattern for a nondeterministic producer, and matches w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator policy: mechanical grep for added non-testid handles (get_by_role/get_by_label/get_by_text/get_by_test_id/page.locator/.locator() etc.) across the diff returned 0 hits — the diff adds zero new locators of any kind, testid or otherwise."
+        },
+        {
+          "kind": "clarification",
+          "note": "The Step-1 counter check (`attach_files_button.text_content()` read AFTER `attach_files_via_menu()` has already clicked the item and resolved the file chooser, i.e. after the popper interaction) is NOT covered by the AFS's cited sibling test 10-left-counter case (which reads the counter WHILE the popper is still open, before selection). I independently verified this read-after-select shape against… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_send_message_with_attachments_verify_included.py:114"
+        },
+        {
+          "kind": "note",
+          "note": "The implementation deviates cosmetically from the AFS Automation Hints' suggested `chat.send_message(text, use_enter=True)` call, instead doing `message_input.fill()` + a separate `message_input.press('Enter')` — functionally equivalent, and matches the exact shape ELITEA-2091's sibling test already uses successfully. Not a defect.",
+          "ref": "automation/tests/ui/chat/test_send_message_with_attachments_verify_included.py:147"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_send-message-with-attachments-verify-included_ELITEA-2201.md",
+      "branch": "tests/ELITEA-2201-send-message-with-attachments",
+      "pr": 1593
+    },
+    {
+      "id": "ELITEA-2467",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1591: ELITEA-2199's case text claims chat attachment chips show a 'type-appropriate icon... icons reflect file types', but FileList.jsx (EliteaUI/src/components/Chat/FileList.jsx:88,154) renders the identical AttachedFileIcon SVG for every attachment regardless of type -- confirmed both via source (zero type-branching logic anywhere) and live (attached .png/.pd… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1591"
+        },
+        {
+          "kind": "note",
+          "note": "The chat attachment '+N' overflow button (chat-attachment-overflow-button) IS a real, functioning click-to-expand control -- confirmed live: click sets aria-expanded from undefined to \"true\" and opens a MUI role=\"menu\" populated by the existing chat-attachment-overflow-item-{index} testid'd items, listing hidden filenames in order. Existing merged tests (ELITEA-2196, ELITEA-2197) already click thi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — AFS↔implementation drift (per-step assertion gap), ELITEA-2467. Both the case's own Expected Results and the AFS Coverage Map row 6 disposition for ELITEA-2467 step 6 commit to THREE confirmed-live observables for the overflow click-to-expand: (a) aria-expanded flips to 'true', (b) a MUI role='menu' becomes visible, (c) the 3 hidden filenames render in order. `open_attachment_overflow_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:2960-2988; automation/tests/ui/chat/test_attach_files_multiple_chips_display.py:531-549"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — `assert result[\"expanded_before\"] != \"true\"` (test file ~L538) is weaker than what the AFS itself confirmed live ('flips undefined → \"true\" on click', ELITEA-2467 AFS Concrete Handles table). A value of e.g. \"false\" or any non-'true' string trivially satisfies this without proving the attribute was actually absent pre-click. Tightening to `result[\"expanded_before\"] is None` would match the A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Informational, non-blocking — the case-text-drift clarification issue #1591 (cited correctly by both AFS files and the test docstrings/allure.issue links) itself cites the AFS by a filename that does not match what's actually committed: issue body says `lextend_attach-files-type-icons-truncation-overflow-expand_ELITEA-2199.md`, the real file is `lextend_attach-files-icon-genericity-and-truncation_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out cleanly and is confirmed, not just claimed: (1) Locator-policy grep on the full diff — 3 hits, all `[data-testid=` class-level constants (`CHAT_ATTACHMENT_CHIP`, `CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX`), zero new raw handles. (2) Fidelity/provenance grep — 2 `.evaluate()` hits, both confirmed read-only DOM structural/layout reads (icon outerHTML confirmed byte-identical … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Technique for future cases: any @mui/material Menu popup lacking its own testid can get one via slotProps.list (lands on the role=\"menu\" root itself, confirmed against MUI source) instead of a raw role selector — documented in .agents/memory/test-automation-engineer/mui_slotprops_list_testid_lands_on_role_menu_root.md."
+        },
+        {
+          "kind": "note",
+          "note": "First test run immediately after pushing a fresh EliteaUI testid commit to automation/testids hit 2 timeout reruns waiting on the new locator; a standalone re-run ~30s later (and 2 more) passed clean. Looks like dev-server/HMR module-transform propagation lag right after push+first-navigation, not a code defect. Worth watching if it recurs on other cases."
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 fully resolves the prior blocking finding. `open_attachment_overflow_menu_and_read()` (automation/pages/chat_page.py, new method) now asserts all three AFS-required observables for ELITEA-2467 Coverage Map row 6: aria-expanded flips to 'true' (expanded_before/expanded_after), role='menu' visibility (chat_attachment_overflow_menu.is_visible() + get_attribute('role')=='menu'), and the hi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The new locator was implemented via a genuine, correctly-placed testid, not a workaround: `chat_attachment_overflow_menu` (testid `chat-attachment-overflow-menu`) is wired onto MUI Menu's `slotProps.list` in FileList.jsx, which forwards directly onto MenuList's root — the actual role='menu' element itself, not a derived proxy. Verified: EliteaAI/EliteaUI@feb9101a on origin/automation/testids (sing… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-verified (not just the delta) all six already-covered/asserted Coverage Map rows across both AFS against the actual covering-spec code: filenames assertion (test_attach_files_multiple_chips_display.py:237-239), dark/light styling luminance checks (:277-289), file-icon presence (:246-249), and the ELITEA-2197 total-attached-count mechanism (test_attach_files_10_file_limit_warning.py:157-160) all… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (git diff 3908ee5ab...HEAD -- automation/): substitution grep `\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(` → 2 hits, both `chip.evaluate(...)` reads (icon outerHTML, scrollWidth/clientWidth) — read-only DOM structural/layout reads under an already-testid'd parent, not state injection or fabricated response; same idiom as the pre-existing merged luminance check… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the two new test methods (like all 4 tests in this module, including the previously-merged ELITEA-2196/2198 ones) carry only `@pytest.mark.p3` — testing.md's marker convention also calls for a feature marker (`chat`) + `regression`. Pre-existing pattern across the whole file, not introduced by this round; not scoping it to this PR."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_attach-files-truncation-and-overflow-click-to-expand_ELITEA-2467.md",
+      "branch": "tests/ELITEA-2199-2467-attach-files-icon-truncation-overflow",
+      "pr": 1592
+    }
+  ],
+  "totals": {
+    "blocked": 6
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

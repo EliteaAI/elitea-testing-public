@@ -1,0 +1,120 @@
+{
+  "batch": "elitea-2337-secret-name-validation",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2337-secret-name-validation",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      32.396535
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py",
+        "signature": "pytest.fail() in both test functions: 'Test flow completed and all functional assertions passed, but known-defect soft failure(s) were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React \"Maximum update depth exceeded\" console error(s) on /settings/secrets mount: 17 occurrence(s)' — exit code 1, 2 failed / 0 passed, 31.73s test session (32.40s incl. base-mer… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2336",
+          "ELITEA-2337"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2337",
+      "outcome": "blocked",
+      "note": "gate red: pytest.fail() in both test functions: 'Test flow completed and all functional assertions passed, but known-defect soft failure(s) were recorded: Known defect https://github.com/EliteaAI/elitea-testing",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Cross-surface product inconsistency (not a defect, no ticket filed): Secrets' name validation is /^[A-Za-z0-9_]*$/ (hyphens rejected) while the sibling Settings -> Personal Tokens surface's name validation is /^[a-zA-Z0-9_-]*$/ (hyphens explicitly allowed). Both are correct per their own case text and own source regex; flagged in the AFS's Case-Text Note for visibility only, in case a future case … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/lextend_secret-name-validation-invalid-characters-rejected_ELITEA-2337.md"
+        },
+        {
+          "kind": "question",
+          "note": "Known OPEN defect EliteaAI/elitea-testing-public#1203 ('Maximum update depth exceeded' React warning on every /settings/secrets mount, filed during ELITEA-2336's implementation, deterministic 3/3 in that automated run) did NOT reproduce during this analyst's own live exploration of the same route (0 console errors/warnings, verified via browser_console_messages before/after every typed value). Lef… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed (2nd surface) that Input.StyledInputEnhancer/Input.InputBase's default enableAutoBlur breaks a Control+a select-all keypress on this app's shared text-input component (same failure shape as the ELITEA-2286 Personal Tokens finding: old+new text end up concatenated instead of replaced). Updated the existing role-memory entry (input_autoblur_breaks_control_a_select_all.md) with the recurr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/input_autoblur_breaks_control_a_select_all.md"
+        },
+        {
+          "kind": "note",
+          "note": "Sanctioned-RED: the new test's run hit the pre-existing OPEN elitea-testing-public#1203 (React \"Maximum update depth exceeded\" on every /settings/secrets mount) 1/1. All 4 functional name-validation assertions (Steps 1-4: hyphen rejected, space+special-char rejected, valid name clears error and re-enables save) passed cleanly. This is the exact outcome the AFS's own Known Defects section anticipat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1203"
+        },
+        {
+          "kind": "clarification",
+          "note": "Deviated from the AFS's literal Concrete Handles code snippet: wrapped helperText in a testid span conditioned on field==='name' rather than unconditionally, because EditSecretInputGridTable.jsx is a single shared component instantiated for BOTH the name and value fields, and helperText also carries the value field's character-limit warning. An unconditional testid would have mislabeled that value… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/secrets_page.py; EliteaAI/EliteaUI@b34ceed7"
+        },
+        {
+          "kind": "defect",
+          "note": "Case row 7 (\"Enter a valid name 'my_secret_123'\" -> \"Field accepts the input and displays the entered value\") is marked 'asserted' in the AFS Coverage Map, and the AFS's own Test Steps narrative (step 4, first bullet) explicitly requires 'Verify: the name input's value is \"my_secret_123\"'. Neither the AFS's literal Gap-assertions code block nor the shipped test actually performs that assertion in … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:349-355"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-locator grep on the full diff (automation/pages + automation/tests): git diff origin/tests/batch-elitea-2337-secret-name-validation...origin/tests/2337-secret-name-validation-invalid-characters-rejected -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid triangulation confirmed live: secret-name-error is wired via EliteaAI/EliteaUI@b34ceed7 on automation/testids, scoped `field === 'name' ? 'secret-name-error' : undefined` on EditSecretInputGridTable.jsx's shared helperText span (verified in ../EliteaUI src after git fetch origin). This is per-instance conditioning (field is a static per-call-site prop, not runtime state on one live element)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Extend-existing merged-target rule respected: covering spec test_create_secret_inline_checkmark_x_cancel.py (ELITEA-2336) is already on origin/automation/base (commit 722278ae), so this PR's extend-existing target is valid. Coverage-Map rows disposed already-covered (case steps 1-2, pointing at the covering spec's own Steps 1-3) verified against the covering spec's actual code — the assertions gen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only confirmed: diff against the batch trunk shows zero removed/modified lines in the covering test's existing method — only new page-object methods and one new test method appended. Own @pytest.mark.p1 decorator correctly added on the new method (module pytestmark stays p2), matching the AFS's Gap-assertions instruction and avoiding the ELITEA-2284/2286 priority-marker-drift trap."
+        },
+        {
+          "kind": "note",
+          "note": "All page-object handles the new test calls (name_input, save_button, click_add_button, click_cancel_button, capture_console_errors, navigate) are pre-existing and verified present in automation/pages/secrets_page.py / base_page.py — no invented handles. Steps are allure.step-wrapped per convention. Sanctioned-RED framing (known defect #1203) reuses the exact existing _is_known_defect_1203() matche… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Test remains sanctioned-RED, unrelated to this fix round: known defect EliteaAI/elitea-testing-public#1203 (React 'Maximum update depth exceeded' console warning on /settings/secrets mount, deterministic, 17 occurrences this run) — same signature already documented in this file's module docstring and shared with the covering test test_create_secret_inline_checkmark_saves_x_cancels (#1205/ELITEA-23… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1203"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles added in this diff: `git diff origin/tests/batch-elitea-2337-secret-name-validation...origin/tests/2337-secret-name-validation-invalid-characters-rejected | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 0 hits.",
+          "ref": "automation/pages/secrets_page.py; automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 correctly added `assert secrets_page.name_input.input_value() == \"my_secret_123\"` in Step 4 (test file lines 353-358), matching the pattern in Steps 2/3 and satisfying the case's row-7 expected result (\"Field accepts the input and displays the entered value\"). Confirmed against the PR's fix-round-1 comment and the implementer's memory log entry, which both cite the same commit (7d4651f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:353"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case ↔ AFS ↔ diff: TMS case ELITEA-2337 steps 1-8 all map to Coverage Map rows (steps 1-2 already-covered by the ELITEA-2336 covering spec's Steps 1-3, verified those steps genuinely assert page-load/row-presence, not just exist; steps 3-8 newly asserted in the new test's Steps 2-4). No dropped or misclassified case elements found. Per-step assertions present at every step (name input… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/lextend_secret-name-validation-invalid-characters-rejected_ELITEA-2337.md:186-199"
+        },
+        {
+          "kind": "note",
+          "note": "New EliteaUI testid `secret-name-error` (commit EliteaAI/EliteaUI@b34ceed7, on automation/testids) is field-conditional (`field === 'name' ? 'secret-name-error' : undefined`) rather than the AFS's literal unconditional snippet, correctly avoiding mislabeling the shared component's value-field character-limit helperText — matches canon ruling #277 shape (a) (only the used branch named, other branch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "../EliteaUI/src/[fsd]/features/settings/ui/secrets/EditSecretInputGridTable.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Sanctioned-RED handling for known defect #1203 reuses the existing `_is_known_defect_1203()` matcher verbatim (no new derivation), consistent with the AFS's own decision-tree instruction and the covering spec's established idiom. Priority marker correctly applied per-function (`@pytest.mark.p1` at line 292) rather than inheriting the module's `p2` pytestmark, per the AFS's explicit instruction and… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:292"
+        }
+      ],
+      "afs": "test-specs/settings-secrets/lextend_secret-name-validation-invalid-characters-rejected_ELITEA-2337.md",
+      "branch": "tests/2337-secret-name-validation-invalid-characters-rejected",
+      "pr": 1206
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

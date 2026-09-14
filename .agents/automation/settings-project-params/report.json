@@ -1,0 +1,96 @@
+{
+  "batch": "settings-project-params",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-project-params",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      12.59,
+      11.53,
+      12.97
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2272",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "New feature area confirmed clean: Save/Discard buttons in ProjectContextEditor.jsx are gated purely on `isDirty` (any edit made), independent of character count -- so the case's named regression #5667 (Save button disabled at the 2500 boundary) does not reproduce on this build; Save stays enabled through and past the boundary exactly as the case's Pass criterion expects. No defect filed -- this is… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI src/[fsd]/features/settings/ui/project-context/ProjectContextEditor.jsx (headerActions Save button, disabled={!isDirty || isSaving})"
+        },
+        {
+          "kind": "note",
+          "note": "Requested 4 new testids for the implementer, all currently missing from EliteaUI: project-context-create-button, project-context-editor-content (via the CodeMirrorEditor's existing contentTestId prop -- an already-sanctioned shared-component pattern, not a new one), project-context-save-button, project-context-char-counter. Full add-data-testid guidance (file, exact JSX, recommended add) is in the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-project-params/l2_project-context-character-limit-2500_ELITEA-2272.md § Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered a reusable technique for filling large CodeMirror fields quickly: clipboard-write (page.evaluate + navigator.clipboard.writeText) then Ctrl/Cmd+V goes through the same EditorState.transactionFilter as native keystroke typing (confirmed live, truncation/counter/isDirty all update identically), and is dramatically faster than keyboard.type() for 500+ char fills. conftest.py's context fixt… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/codemirror_large_fill_clipboard_paste.md"
+        },
+        {
+          "kind": "note",
+          "note": "Project Context REST DELETE endpoint returns 404 ({\"error\": \"Project context not found\"}) when no context exists yet, unlike GET which always returns 200 (empty content). A setup/teardown fixture calling DELETE for cleanup must tolerate this 404 as a normal 'already clean' outcome, not treat it as a failure.",
+          "ref": "GET/DELETE /elitea_core/project_context/prompt_lib/{project_id}/project-context, confirmed live via automation/api/client.py APIClient"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS step 3 originally asserted both Save AND Discard/Cancel start disabled, but the AFS's own Concrete Handles table scoped Discard/Cancel as explicitly 'not touched' (case never discards, no testid requested) — an internal contradiction. Amended the AFS in-place (dropped the Discard/Cancel half, kept the Save-disabled control-condition check which already had a testid) and committed the amendment… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-project-params/l2_project-context-character-limit-2500_ELITEA-2272.md step 3"
+        },
+        {
+          "kind": "note",
+          "note": "Case's own named regression (#5667 — Save button disabled at the 2500-character boundary) does NOT reproduce on this build. Save is gated purely on React's isDirty flag, independent of character count, so it stays enabled through and past the boundary. This matches the case's own stated Pass criterion (the AFS's Known Defects section already flagged this as confirmed-not-reproducing, not a new fin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Critical — three `self.page.wait_for_timeout(...)` calls (100ms after Backspace in `set_editor_content_via_paste`, 300ms after the clipboard paste, 200ms after the extra keystroke in `type_additional_character`) violate the project's hard rule 'No sleep/waitForTimeout — framework waits only' (.agents/conventions.md § Hard don'ts). This is not an incidental miss: the AFS's own § Automation Hints ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/project_context_page.py:107,114,125"
+        },
+        {
+          "kind": "note",
+          "note": "The condition-based rewrite of set_editor_content_via_paste() uncovered a real (if minor) UI timing characteristic: the project-context-char-counter Typography re-renders on a separately-lagged React state tick from the CodeMirror .cm-content DOM update, off the same paste transaction. The old blind wait_for_timeout(300) sleep had enough slack to always mask this; the tighter condition-based wait … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/project_context_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (3 page.wait_for_timeout() calls in automation/pages/project_context_page.py) is FIXED — verified via full-diff grep (0 hits outside memory docs) and by reading the actual replacement code: expect(editor_content).to_have_text(...) + expect(char_counter).not_to_have_text(...) in set_editor_content_via_paste(), page.wait_for_function() polling terminal content-length in type_a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/project_context_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "type_additional_character()'s page.wait_for_function() hardcodes the editor-content testid as a raw JS string literal (document.querySelector('[data-testid=\"project-context-editor-content\"]')) instead of referencing a class-level constant shared with the editor_content LocatorDescriptor — a second, driftable copy of the same value. Not a policy violation (still testid-based, not raw CSS/role/text;… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/project_context_page.py:113-127"
+        },
+        {
+          "kind": "note",
+          "note": "All 4 testids used by this PR (project-context-create-button, project-context-editor-content via contentTestId prop, project-context-save-button, project-context-char-counter) confirmed present on EliteaAI/EliteaUI@origin/automation/testids via a fresh git fetch + git grep — locator provenance claims in the AFS/page-object docstring check out.",
+          "ref": "automation/pages/project_context_page.py"
+        }
+      ],
+      "afs": "test-specs/settings-project-params/l2_project-context-character-limit-2500_ELITEA-2272.md",
+      "branch": "tests/ELITEA-2272-project-context-character-limit-2500",
+      "pr": 1169,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          12.59,
+          11.53,
+          12.97
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

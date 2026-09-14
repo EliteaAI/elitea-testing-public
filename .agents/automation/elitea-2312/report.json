@@ -1,0 +1,76 @@
+{
+  "batch": "elitea-2312",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2312",
+  "gate": {
+    "verdict": "green",
+    "runs": [
+      { "spec": "tests/ui/admin/test_analytics_users_activity_table.py::TestAnalyticsUsersActivityTable::test_users_tab_activity_table_columns_and_pagination", "result": "PASSED", "seconds": 11.58 },
+      { "spec": "tests/ui/admin/test_analytics_users_activity_table.py::TestAnalyticsUsersActivityTable::test_users_tab_activity_table_columns_and_pagination", "result": "PASSED", "seconds": 9.69 },
+      { "spec": "tests/ui/admin/test_analytics_users_activity_table.py::TestAnalyticsUsersActivityTable::test_users_tab_activity_table_columns_and_pagination", "result": "PASSED", "seconds": 11.12 }
+    ],
+    "blast_radius": [
+      { "spec": "tests/ui/admin/test_analytics_default_load.py::TestAnalyticsDefaultLoad::test_analytics_page_default_load", "result": "PASSED", "seconds": 8.22, "reason": "shares automation/pages/analytics_page.py, extended by this batch" }
+    ],
+    "gated_by": "test-automation-engineer (fresh agent, not the implementer)"
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2312",
+      "outcome": "automated",
+      "note": "Batch workflow parked this case `blocked` at 'R2 cap exceeded (4 reruns)'. Orchestrator verified independently (git/gh, not the self-report) that the 4 reruns were 4 DISTINCT diagnosed infrastructure root causes, each resolved in ≤2 attempts (within the true per-root-cause R2 budget: test-automation-implementation SKILL.md § Retry budget, orchestration-playbook.md § R2 cap rule) — the workflow's total-rerun counter is coarser than that rule and false-flagged sound, now-green work. Recovered by hand per 'recover, never repair': 3 static review rounds (round 1 found a real AFS-vs-code doc-drift blocker; round 2's fix was partial/`unaddressed`; round 3 closed it exhaustively) → merge to trunk `tests/batch-elitea-2312` → independent fresh-agent gate (3/3 green + blast radius) → PR #1190 squash-merged to `automation/base` (`4dda9744`). TMS back-written (`onetest-ai-tm-Elitea@0c38800`), closure record posted on elitea-testing-public#820, board card → Ready. See issue #820 closure-record comment for full verified promotability + testid-commit-SHA evidence.",
+      "branch": "tests/ELITEA-2312-users-tab-activity-table",
+      "pr": "https://github.com/EliteaAI/elitea-testing-public/pull/1190",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Case-text drift, not a product defect (reverse-masking guard): ELITEA-2312 step 4 lists 8 table columns including a non-existent 'EVENTS' column; live table (AnalyticsUsers.jsx) has 9 columns (User, Active Days, LLM Calls, Tool Calls, Agent/Pipeline Runs, Chat Msg, Errors, Total Tokens, Total Cost) and no Events column. Filed as elitea-testing-public#1188.",
+          "ref": "elitea-testing-public#1188"
+        },
+        {
+          "kind": "defect",
+          "note": "Case-text drift, not a product defect: ELITEA-2312 step 5 says the Errors column is red 'when greater or equal 0' (literally: every value red). Live source (AnalyticsUsers.jsx:144-151) and live observation (three errors:0 rows, all default/white color) confirm the real threshold is errors > 0. Bundled into the same clarification issue #1188 as the column-list drift (same root cause: stale case aut… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1188"
+        },
+        {
+          "kind": "note",
+          "note": "AFS documents a genuine, honest coverage gap: the positive branch of the Errors-red rule (errors>0 actually renders red) cannot be exercised live in the exploration project (no user has errors>0 there) and is source-confirmed only. Flagged in the AFS's Blocked Steps section rather than silently asserted or silently dropped, so the implementer/reviewer see it explicitly and a future project/dataset… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The Users-tab data-fetch endpoint is GET /api/v2/elitea_core/analytics_users/prompt_lib/{project_id}?... — distinct from the Overview/Health endpoint (.../analytics/prompt_lib/... without _users) that ELITEA-2310's AnalyticsPage.navigate() already waits on. Implementer needs a second URL-substring wait constant, not a reuse of the existing one."
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift already filed by the analyst (8-column list incl. non-existent 'EVENTS'; ERRORS-red threshold is >0 not >=0) — referenced in this PR, not newly filed.",
+          "ref": "elitea-testing-public#1188"
+        },
+        {
+          "kind": "note",
+          "note": "Bonus coverage: the AFS's own § Blocked Steps directive ('if a future project naturally accumulates a user with errors > 0, extend the test') applied — the auth_state fixture's actual test project ('Private') has 2 rows with errors>0 live, so the previously-blocked positive-branch Errors-color assertion (red/rejected color) is now automated alongside the default-color branch."
+        },
+        {
+          "kind": "clarification",
+          "note": "The analyst explored against project 'UI Testing' (all-zero errors, per the AFS), but the auth_state fixture used by the actual pytest run authenticates into a different default project ('Private') with richer/different data (2 users with errors>0, different active-days counts). Both have 3 users so structural coverage matched, but future case authors should be aware exploration-time live checks (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Descoped the AFS's pagination rowsPerPageOptions-enumeration Axis-2 addition (verifying 10/20/50 are all present in the open dropdown) — MUI TablePagination's slotProps exposes only a single shared `menuItem` slot applied identically to every option, no way to disambiguate 'the 20 option' from 'the 50 option' without net-new per-option testid plumbing not in the analyst's original 10-handle table.… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Two infrastructure gotchas found during Phase 5 debugging and memorialized for the team: (1) BasePage.wait_for_network() (networkidle) is a one-time-per-navigation Playwright lifecycle event, not a repeatable 'wait until currently idle' check — a later call can resolve instantly, ignoring a request an action just triggered a few ms earlier; (2) press_sequentially() dropped the leading keystroke on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/settings-analytics/l2_users-tab-activity-table_ELITEA-2312.md"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": [],
+  "recovery": "Rebuilt/completed by the lead outside the workflow run after the workflow parked the case on a false-positive R2-cap total-rerun count; the merge to automation/base (PR #1190) is the load-bearing fact, not a workflow gate receipt — see cases[0].note."
+}

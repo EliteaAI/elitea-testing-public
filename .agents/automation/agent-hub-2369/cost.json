@@ -1,0 +1,204 @@
+{
+ "v": 1,
+ "batch": "agent-hub-2369",
+ "generatedAt": "2026-09-14T12:03:19.729Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-22T06:13:17.581Z",
+   "end": "2026-08-07T06:13:17.581Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 1
+ },
+ "delivered": 1,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   80.91201875,
+   74.8338665,
+   75.625898583
+  ],
+  "failures": [
+   {
+    "spec": "tests/ui/agents/test_agent_hub_like_agent_list_view.py::TestAgentHubLikeAgentListView::test_agent_hub_like_agent_from_list_view",
+    "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_agent_hub_like_agent_from_list_view_FAIL_20260806_080300.png"
+   },
+   {
+    "spec": "tests/ui/agents/test_agent_hub_my_liked_reload_cross_tab_sync.py::TestAgentHubMyLikedReloadCrossTabSync::test_agent_hub_my_liked_reload_reflects_cross_tab_like",
+    "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_agent_hub_my_liked_reload_reflects_cross_tab_like_FAIL_20260806_080124.png"
+   },
+   {
+    "spec": "tests/ui/chat/test_attach_unsupported_file_format_error.py::TestAttachUnsupportedFileFormatError::test_attach_unsupported_file_shows_error_toast",
+    "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_attach_unsupported_file_shows_error_toast_FAIL_20260806_080917.png"
+   },
+   {
+    "spec": "tests/ui/chat/test_chat_interface.py::TestConversationUIElements::test_internal_tools_panel_shows_all_tools",
+    "signature": "FAILED (blast-radius run, single attempt) — no rerun triggered; ran between test_chat_interface's other passing sub-tests"
+   },
+   {
+    "spec": "tests/ui/chat/test_chat_search_and_modules_panel.py::TestChatSearchAndModulesPanel::test_search_filters_and_modules_panel_toggles",
+    "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_search_filters_and_modules_panel_toggles_FAIL_20260806_081500.png"
+   },
+   {
+    "spec": "tests/ui/chat/test_create_agent_via_chat_canvas.py::TestCreateAgentViaChatCanvas::test_create_new_conversation_and_add_agent_via_canvas",
+    "signature": "FAILED after 2 pytest-rerunfailures reruns (RERUN, RERUN, FAILED) — 3 distinct failure screenshots, e.g. automation/screenshots/test_create_new_conversation_and_add_agent_via_canvas_FAIL_20260806_082328.png"
+   },
+   {
+    "spec": "tests/ui/chat/test_direct_toolkit_call_complete_flow.py::TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow",
+    "signature": "FAILED (blast-radius run, single attempt)"
+   },
+   {
+    "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant",
+    "signature": "FAILED (blast-radius run, single attempt)"
+   },
+   {
+    "spec": "tests/ui/chat/test_team_users_mention_and_remove_participants.py::TestTeamUsersMentionAndRemoveParticipants::test_team_users_mention_and_remove_participants",
+    "signature": "FAILED after 1 pytest-rerunfailures rerun (RERUN, FAILED)"
+   },
+   {
+    "spec": "tests/ui/skills/test_ghost_skill_after_agent_removed.py::TestGhostSkillAfterAgentRemoved::test_ghost_skill_not_shown_after_agent_participant_removed",
+    "signature": "FAILED after 1 pytest-rerunfailures rerun (RERUN, FAILED)"
+   },
+   {
+    "spec": "tests/ui/skills/test_skill_conversation_interaction.py::TestInteractWithSkillsFromConversation::test_interact_with_skills_from_conversation",
+    "signature": "FAILED after 1 pytest-rerunfailures rerun (RERUN, FAILED)"
+   },
+   {
+    "spec": "tests/ui/toolkits/test_toolkit_parameterized.py::TestToolkitTestSettings::test_toolkit_test_settings[bitbucket]",
+    "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_toolkit_test_settings[bitbucket]_FAIL_20260806_090200.png; sibling params [github]/[jira]/[confluence]/[bitbucket] all ran (creds present), only [gitlab] SKIPPED (no creds)"
+   },
+   {
+    "spec": "tests/ui/toolkits/test_toolkit_parameterized.py::TestToolkitTestSettings::test_toolkit_test_settings[confluence]",
+    "signature": "FAILED after 2 pytest-rerunfailures reruns (RERUN, RERUN, FAILED) — run in the remainder segment after the primary blast-radius process was killed mid-test; see automation/screenshots/test_toolkit_test_settings[confluence]_FAIL_20260806_090435.png"
+   },
+   {
+    "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionCardDisplay::test_sensitive_action_card_displays_for_direct_toolkit_call",
+    "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR) — pytest ERROR status, not a plain assertion FAILED; ran and produced a result, did not crash the worker"
+   },
+   {
+    "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionAuthorize::test_authorize_executes_toolkit_tool_directly",
+    "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR)"
+   },
+   {
+    "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionBlock::test_block_prevents_toolkit_tool_from_executing",
+    "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR)"
+   },
+   {
+    "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionBlockWithComment::test_block_with_comment_records_reason_and_blocks_action",
+    "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR) — all 4 test items in this file show the identical RERUN/RERUN/ERROR pattern, suggesting one shared cause (fixture/setup) rather than 4 independent test bugs"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2369",
+   "outcome": "automated",
+   "findings": 24,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2369"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

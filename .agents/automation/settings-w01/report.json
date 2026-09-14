@@ -1,0 +1,468 @@
+{
+  "batch": "settings-w01",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w01",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      34.399556667,
+      31.9286235,
+      35.71597225
+    ],
+    "spec_group": "tests/ui/settings/test_settings_page_sections_and_default_tab.py tests/ui/settings/test_settings_default_landing_tab_restored.py tests/ui/settings/test_settings_profile_logout_button_visible.py tests/ui/settings/test_ai_providers_sections_loading_state.py",
+    "note": "Lead gate 3/3 green (34.40s/31.93s/35.72s), 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each run. Recovered from the workflow's own gate step failing with verdict=conflict (memory-index merge conflict between the earlier automation/base sync and the batch trunk) \u2014 resolved on tests/batch-settings-w01 (commit d2f707915, union-merge of the additive MEMORY.md index lines), then the lead ran gate-case.mjs directly per .agents/testing.md \u00a7 Merge gate.",
+    "sanctioned_red": {
+      "spec": "tests/ui/settings/test_settings_sidebar_item_navigation.py",
+      "runs": 3,
+      "seconds": [
+        10.205737083,
+        10.312133625,
+        9.49268575
+      ],
+      "signature": "Known defect EliteaAI/elitea-testing-public#1771: disableUnderline console warning(s) on 'ai-personality' click: 1 occurrence(s) \u2014 identical 3/3, single-cause, tied to OPEN defect. Matches .agents/testing.md \u00a7 Merge gate sanctioned-RED exception.",
+      "case_ids": [
+        "ELITEA-2243"
+      ]
+    },
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2242",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). gate CUT OFF mid-run; merged on the trunk but unproven \u2014 resume the gate on tests/batch-settings-w01, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text drift confirmed live for ELITEA-2242/2243/2244: the Settings drawer has no 'AI Configuration', 'Project Params', or 'Log out' items; live PROJECT = General/AI Providers/Project Context/Secrets/Users(conditional)/Analytics/Usage, PERSONAL = Profile/Preferences/AI Personality/Memory/Personal Tokens/Notifications; default active tab is 'General', not 'AI Configuration'. Already tracked and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1772"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's click-through of every drawer item legitimately reproduces a known, already-filed MINOR console-warning defect (disableUnderline prop leak) when visiting AI Personality. AFS soft-asserts it per the merge-gate known-defect pattern rather than masking or hard-failing on it.",
+          "ref": "EliteaAI/elitea-testing-public#1771"
+        },
+        {
+          "kind": "note",
+          "note": "A prior (interrupted or fabricated) session posted a comment on #1772 claiming three AFS files were delivered at specific paths with specific priority prefixes; none were ever committed anywhere in git history (verified via git log --all / git rev-list --all --objects / git fsck --lost-found), and the priority prefixes it claimed were wrong per spec-format.md's mapping. Did the real analysis and w\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid added beyond the analyst's provenance table: settings-section-header-{project|personal} on EliteaAI/EliteaUI@automation/testids (commit 529e2e4d), needed for ELITEA-2242 step 2's PROJECT/PERSONAL header assertions which had no prior handle. Not yet on main \u2014 same pending human-cherry-pick status as the cluster's other four testids.",
+          "ref": "EliteaAI/EliteaUI@529e2e4d"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's spec is RED by design: all functional assertions pass, and the test ends pytest.fail() only on the soft_failures aggregation for known defect #1771 (disableUnderline console warning, deterministic, on the AI Personality nav-item click). Do not weaken; stays red until #1771 ships.",
+          "ref": "EliteaAI/elitea-testing-public#1771"
+        },
+        {
+          "kind": "note",
+          "note": "src/[fsd]/ JSX edits on this OneDrive checkout can serve stale from the Vite dev server even after commit+push (chokidar watcher gap) \u2014 curl the served module before trusting a 0-elements DOM read; a restart (kill npm run dev + vite pids, rm node_modules/.vite, relaunch) fixed it immediately. Already documented in .agents/memory/test-automation-engineer/vite_hmr_misses_fsd_bracket_dirs.md; this ru\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/pages/settings_drawer_page.py:175-176 and :188 \u2014 nav_item_ids_in_order() and last_personal_nav_item() both hardcode the literal compound selector '[data-testid=\"settings-drawer-menu\"] [data-testid^=\"settings-nav-item-\"]' directly inside method bodies (duplicated verbatim in two places). This is the exact WRONG shape called out in .claude/rules/page-objects.md ('inline locator in method:\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:175"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/pages/settings_drawer_page.py:158-165 \u2014 drawer_logout_controls() returns self.settings_drawer.get_by_text(self.LOGOUT_LABEL_PATTERN), a raw text-based handle chained off an existing LocatorDescriptor field. Fails the reviewer's mandatory mechanical grep: the line contains neither a literal [data-testid=] selector nor a reference to an UPPER_CASE class constant whose class-level definiti\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:158"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2242's own case text is internally inconsistent: Preconditions say only 'User is logged in to the Elitea platform', but step 1 says 'Log in as a user with admin role.' The AFS/test use the standard ${TEST_USER} with no admin-role distinction called out anywhere in the AFS or Coverage Map, unlike the drawer-inventory drift which was explicitly flagged. Given the drawer content observed (User\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-navigation/l2_settings_page_sections_and_default_tab_ELITEA-2242.md:120"
+        },
+        {
+          "kind": "clarification",
+          "note": "Canon gap in .agents/testing.md \u00a7 Locator policy: the #579 stop+flag rule enumerates exactly two sanctioned raw-handle shapes (third-party widget subtree; third-party editor-library internal nodes), both scoped to elements OUTSIDE EliteaUI's own JSX. Neither shape covers a scoped absence assertion for a first-party control that is never rendered at all (no JSX node exists to carry a testid, so add\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:146 (drawer_logout_controls docstring)"
+        },
+        {
+          "kind": "note",
+          "note": "Finding 1 (dup inline raw compound selector in nav_item_ids_in_order()/last_personal_nav_item()) is fixed: extracted to class-level UPPER_CASE constant SETTINGS_NAV_ITEMS_IN_MENU ('[data-testid=\"settings-drawer-menu\"] [data-testid^=\"settings-nav-item-\"]') in automation/pages/settings_drawer_page.py; both methods now reference self.SETTINGS_NAV_ITEMS_IN_MENU.",
+          "ref": "automation/pages/settings_drawer_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Finding 2 (drawer_logout_controls() mis-citing #579) is fixed: docstring now explicitly frames the handle as a DECLARED IMPROVISATION (role-overrides.md \u00a7 Declared-improvisation protocol), not a #579 exception, with sound reasoning \u2014 it asserts absence of a control the product never renders at all, so there is no JSX node to add a testid to, distinct from the #511/#277 absence-assertion rulings wh\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:187"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep of the full unit diff (origin/tests/batch-settings-w01...HEAD, automation/) for get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator( shows 6 code hits: 3 use class-level [data-testid=] template constants (SETTINGS_NAV_ITEM, SETTINGS_SECTION_HEADER, SETTINGS_NAV_ITEMS_IN_MENU \u00d72), 1 is the declared-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's test carries a sanctioned-RED known-defect pattern (soft_failures aggregation + final pytest.fail(), linked to open issue #1771) matching .agents/testing.md \u00a7 Merge gate exactly \u2014 every functional assertion is a hard assert; only the known-defect console warning is soft-asserted. Not a masking violation.",
+          "ref": "automation/tests/ui/settings/test_settings_sidebar_item_navigation.py"
+        }
+      ],
+      "afs": "test-specs/settings-navigation/l2_settings_page_sections_and_default_tab_ELITEA-2242.md",
+      "branch": "tests/ELITEA-2242-2243-2244-settings-drawer-navigation",
+      "pr": 1778
+    },
+    {
+      "id": "ELITEA-2243",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate 3/3 IDENTICAL red, tied to OPEN defect EliteaAI/elitea-testing-public#1771 (see report.gate.sanctioned_red). Sanctioned-RED per .agents/testing.md \u00a7 Merge gate \u2014 stays red until #1771 ships.",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text drift confirmed live for ELITEA-2242/2243/2244: the Settings drawer has no 'AI Configuration', 'Project Params', or 'Log out' items; live PROJECT = General/AI Providers/Project Context/Secrets/Users(conditional)/Analytics/Usage, PERSONAL = Profile/Preferences/AI Personality/Memory/Personal Tokens/Notifications; default active tab is 'General', not 'AI Configuration'. Already tracked and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1772"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's click-through of every drawer item legitimately reproduces a known, already-filed MINOR console-warning defect (disableUnderline prop leak) when visiting AI Personality. AFS soft-asserts it per the merge-gate known-defect pattern rather than masking or hard-failing on it.",
+          "ref": "EliteaAI/elitea-testing-public#1771"
+        },
+        {
+          "kind": "note",
+          "note": "A prior (interrupted or fabricated) session posted a comment on #1772 claiming three AFS files were delivered at specific paths with specific priority prefixes; none were ever committed anywhere in git history (verified via git log --all / git rev-list --all --objects / git fsck --lost-found), and the priority prefixes it claimed were wrong per spec-format.md's mapping. Did the real analysis and w\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid added beyond the analyst's provenance table: settings-section-header-{project|personal} on EliteaAI/EliteaUI@automation/testids (commit 529e2e4d), needed for ELITEA-2242 step 2's PROJECT/PERSONAL header assertions which had no prior handle. Not yet on main \u2014 same pending human-cherry-pick status as the cluster's other four testids.",
+          "ref": "EliteaAI/EliteaUI@529e2e4d"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's spec is RED by design: all functional assertions pass, and the test ends pytest.fail() only on the soft_failures aggregation for known defect #1771 (disableUnderline console warning, deterministic, on the AI Personality nav-item click). Do not weaken; stays red until #1771 ships.",
+          "ref": "EliteaAI/elitea-testing-public#1771"
+        },
+        {
+          "kind": "note",
+          "note": "src/[fsd]/ JSX edits on this OneDrive checkout can serve stale from the Vite dev server even after commit+push (chokidar watcher gap) \u2014 curl the served module before trusting a 0-elements DOM read; a restart (kill npm run dev + vite pids, rm node_modules/.vite, relaunch) fixed it immediately. Already documented in .agents/memory/test-automation-engineer/vite_hmr_misses_fsd_bracket_dirs.md; this ru\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/pages/settings_drawer_page.py:175-176 and :188 \u2014 nav_item_ids_in_order() and last_personal_nav_item() both hardcode the literal compound selector '[data-testid=\"settings-drawer-menu\"] [data-testid^=\"settings-nav-item-\"]' directly inside method bodies (duplicated verbatim in two places). This is the exact WRONG shape called out in .claude/rules/page-objects.md ('inline locator in method:\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:175"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/pages/settings_drawer_page.py:158-165 \u2014 drawer_logout_controls() returns self.settings_drawer.get_by_text(self.LOGOUT_LABEL_PATTERN), a raw text-based handle chained off an existing LocatorDescriptor field. Fails the reviewer's mandatory mechanical grep: the line contains neither a literal [data-testid=] selector nor a reference to an UPPER_CASE class constant whose class-level definiti\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:158"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2242's own case text is internally inconsistent: Preconditions say only 'User is logged in to the Elitea platform', but step 1 says 'Log in as a user with admin role.' The AFS/test use the standard ${TEST_USER} with no admin-role distinction called out anywhere in the AFS or Coverage Map, unlike the drawer-inventory drift which was explicitly flagged. Given the drawer content observed (User\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-navigation/l2_settings_page_sections_and_default_tab_ELITEA-2242.md:120"
+        },
+        {
+          "kind": "clarification",
+          "note": "Canon gap in .agents/testing.md \u00a7 Locator policy: the #579 stop+flag rule enumerates exactly two sanctioned raw-handle shapes (third-party widget subtree; third-party editor-library internal nodes), both scoped to elements OUTSIDE EliteaUI's own JSX. Neither shape covers a scoped absence assertion for a first-party control that is never rendered at all (no JSX node exists to carry a testid, so add\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:146 (drawer_logout_controls docstring)"
+        },
+        {
+          "kind": "note",
+          "note": "Finding 1 (dup inline raw compound selector in nav_item_ids_in_order()/last_personal_nav_item()) is fixed: extracted to class-level UPPER_CASE constant SETTINGS_NAV_ITEMS_IN_MENU ('[data-testid=\"settings-drawer-menu\"] [data-testid^=\"settings-nav-item-\"]') in automation/pages/settings_drawer_page.py; both methods now reference self.SETTINGS_NAV_ITEMS_IN_MENU.",
+          "ref": "automation/pages/settings_drawer_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Finding 2 (drawer_logout_controls() mis-citing #579) is fixed: docstring now explicitly frames the handle as a DECLARED IMPROVISATION (role-overrides.md \u00a7 Declared-improvisation protocol), not a #579 exception, with sound reasoning \u2014 it asserts absence of a control the product never renders at all, so there is no JSX node to add a testid to, distinct from the #511/#277 absence-assertion rulings wh\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:187"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep of the full unit diff (origin/tests/batch-settings-w01...HEAD, automation/) for get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator( shows 6 code hits: 3 use class-level [data-testid=] template constants (SETTINGS_NAV_ITEM, SETTINGS_SECTION_HEADER, SETTINGS_NAV_ITEMS_IN_MENU \u00d72), 1 is the declared-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's test carries a sanctioned-RED known-defect pattern (soft_failures aggregation + final pytest.fail(), linked to open issue #1771) matching .agents/testing.md \u00a7 Merge gate exactly \u2014 every functional assertion is a hard assert; only the known-defect console warning is soft-asserted. Not a masking violation.",
+          "ref": "automation/tests/ui/settings/test_settings_sidebar_item_navigation.py"
+        }
+      ],
+      "afs": "test-specs/settings-navigation/l3_settings_sidebar_item_navigation_ELITEA-2243.md",
+      "branch": "tests/ELITEA-2242-2243-2244-settings-drawer-navigation",
+      "pr": 1778
+    },
+    {
+      "id": "ELITEA-2244",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). gate CUT OFF mid-run; merged on the trunk but unproven \u2014 resume the gate on tests/batch-settings-w01, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text drift confirmed live for ELITEA-2242/2243/2244: the Settings drawer has no 'AI Configuration', 'Project Params', or 'Log out' items; live PROJECT = General/AI Providers/Project Context/Secrets/Users(conditional)/Analytics/Usage, PERSONAL = Profile/Preferences/AI Personality/Memory/Personal Tokens/Notifications; default active tab is 'General', not 'AI Configuration'. Already tracked and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1772"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's click-through of every drawer item legitimately reproduces a known, already-filed MINOR console-warning defect (disableUnderline prop leak) when visiting AI Personality. AFS soft-asserts it per the merge-gate known-defect pattern rather than masking or hard-failing on it.",
+          "ref": "EliteaAI/elitea-testing-public#1771"
+        },
+        {
+          "kind": "note",
+          "note": "A prior (interrupted or fabricated) session posted a comment on #1772 claiming three AFS files were delivered at specific paths with specific priority prefixes; none were ever committed anywhere in git history (verified via git log --all / git rev-list --all --objects / git fsck --lost-found), and the priority prefixes it claimed were wrong per spec-format.md's mapping. Did the real analysis and w\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid added beyond the analyst's provenance table: settings-section-header-{project|personal} on EliteaAI/EliteaUI@automation/testids (commit 529e2e4d), needed for ELITEA-2242 step 2's PROJECT/PERSONAL header assertions which had no prior handle. Not yet on main \u2014 same pending human-cherry-pick status as the cluster's other four testids.",
+          "ref": "EliteaAI/EliteaUI@529e2e4d"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's spec is RED by design: all functional assertions pass, and the test ends pytest.fail() only on the soft_failures aggregation for known defect #1771 (disableUnderline console warning, deterministic, on the AI Personality nav-item click). Do not weaken; stays red until #1771 ships.",
+          "ref": "EliteaAI/elitea-testing-public#1771"
+        },
+        {
+          "kind": "note",
+          "note": "src/[fsd]/ JSX edits on this OneDrive checkout can serve stale from the Vite dev server even after commit+push (chokidar watcher gap) \u2014 curl the served module before trusting a 0-elements DOM read; a restart (kill npm run dev + vite pids, rm node_modules/.vite, relaunch) fixed it immediately. Already documented in .agents/memory/test-automation-engineer/vite_hmr_misses_fsd_bracket_dirs.md; this ru\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/pages/settings_drawer_page.py:175-176 and :188 \u2014 nav_item_ids_in_order() and last_personal_nav_item() both hardcode the literal compound selector '[data-testid=\"settings-drawer-menu\"] [data-testid^=\"settings-nav-item-\"]' directly inside method bodies (duplicated verbatim in two places). This is the exact WRONG shape called out in .claude/rules/page-objects.md ('inline locator in method:\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:175"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/pages/settings_drawer_page.py:158-165 \u2014 drawer_logout_controls() returns self.settings_drawer.get_by_text(self.LOGOUT_LABEL_PATTERN), a raw text-based handle chained off an existing LocatorDescriptor field. Fails the reviewer's mandatory mechanical grep: the line contains neither a literal [data-testid=] selector nor a reference to an UPPER_CASE class constant whose class-level definiti\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:158"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2242's own case text is internally inconsistent: Preconditions say only 'User is logged in to the Elitea platform', but step 1 says 'Log in as a user with admin role.' The AFS/test use the standard ${TEST_USER} with no admin-role distinction called out anywhere in the AFS or Coverage Map, unlike the drawer-inventory drift which was explicitly flagged. Given the drawer content observed (User\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-navigation/l2_settings_page_sections_and_default_tab_ELITEA-2242.md:120"
+        },
+        {
+          "kind": "clarification",
+          "note": "Canon gap in .agents/testing.md \u00a7 Locator policy: the #579 stop+flag rule enumerates exactly two sanctioned raw-handle shapes (third-party widget subtree; third-party editor-library internal nodes), both scoped to elements OUTSIDE EliteaUI's own JSX. Neither shape covers a scoped absence assertion for a first-party control that is never rendered at all (no JSX node exists to carry a testid, so add\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:146 (drawer_logout_controls docstring)"
+        },
+        {
+          "kind": "note",
+          "note": "Finding 1 (dup inline raw compound selector in nav_item_ids_in_order()/last_personal_nav_item()) is fixed: extracted to class-level UPPER_CASE constant SETTINGS_NAV_ITEMS_IN_MENU ('[data-testid=\"settings-drawer-menu\"] [data-testid^=\"settings-nav-item-\"]') in automation/pages/settings_drawer_page.py; both methods now reference self.SETTINGS_NAV_ITEMS_IN_MENU.",
+          "ref": "automation/pages/settings_drawer_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Finding 2 (drawer_logout_controls() mis-citing #579) is fixed: docstring now explicitly frames the handle as a DECLARED IMPROVISATION (role-overrides.md \u00a7 Declared-improvisation protocol), not a #579 exception, with sound reasoning \u2014 it asserts absence of a control the product never renders at all, so there is no JSX node to add a testid to, distinct from the #511/#277 absence-assertion rulings wh\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py:187"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep of the full unit diff (origin/tests/batch-settings-w01...HEAD, automation/) for get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator( shows 6 code hits: 3 use class-level [data-testid=] template constants (SETTINGS_NAV_ITEM, SETTINGS_SECTION_HEADER, SETTINGS_NAV_ITEMS_IN_MENU \u00d72), 1 is the declared-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_drawer_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2243's test carries a sanctioned-RED known-defect pattern (soft_failures aggregation + final pytest.fail(), linked to open issue #1771) matching .agents/testing.md \u00a7 Merge gate exactly \u2014 every functional assertion is a hard assert; only the known-defect console warning is soft-asserted. Not a masking violation.",
+          "ref": "automation/tests/ui/settings/test_settings_sidebar_item_navigation.py"
+        }
+      ],
+      "afs": "test-specs/settings-navigation/l3_settings_default_landing_tab_restored_ELITEA-2244.md",
+      "branch": "tests/ELITEA-2242-2243-2244-settings-drawer-navigation",
+      "pr": 1778
+    },
+    {
+      "id": "ELITEA-2249",
+      "outcome": "blocked",
+      "note": "DUPLICATE DISPATCH: this exact cluster (ELITEA-2249/2250/2251) was already fully analysed on this same batch trunk (tests/batch-settings-w01, commit 0567a0b41, 2026-08-24). Re-verified live this session rather than re-executing from scratch: dev server up (curl 200), no commits touched secrets_page.py/personal_tokens_page.py or these two AFS files since 0567a0b41, and both cited defects are still \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This cluster dispatch (ELITEA-2249/2250/2251) is a duplicate of work already completed earlier in this session: batch trunk tests/batch-settings-w01 already has the full analysis (commit 0567a0b41) and ELITEA-2251 is already implemented, reviewed, and merged onto the trunk (commits 41a673c91 / 661762112). Verified live this session that nothing drifted before returning the existing verdicts unchan\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "tests/batch-settings-w01@0567a0b41,661762112"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2249 remains blocked pending a human decision: no project the shared TEST_USER can both list secrets in (200) and that is empty exists today -- the only 'empty-looking' projects are 403 permission artefacts (bug #1773, still OPEN), and the two listable projects (120 and 4 secrets) cannot be safely emptied. Bug #1203 (React max-update-depth loop on Secrets mount) is also still OPEN and unbou\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-secrets/l2_secrets-empty-state-no-secrets_ELITEA-2249.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2250 remains blocked pending a human decision: personal tokens are user-scoped (not project-scoped), and the shared TEST_USER's 5 tokens include 2 expired ones that cannot be recreated (the create form only offers future expirations) and are relied on by the already-merged ELITEA-2284 test, so the empty state is not producible without a token-free identity (localhost's auth_state_user_b fix\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/l2_personal-tokens-empty-state-no-tokens_ELITEA-2250.md"
+        }
+      ],
+      "afs": "test-specs/settings-secrets/l2_secrets-empty-state-no-secrets_ELITEA-2249.md"
+    },
+    {
+      "id": "ELITEA-2250",
+      "outcome": "blocked",
+      "note": "DUPLICATE DISPATCH -- same trunk commit 0567a0b41 already carries this AFS. Re-verified live this session: dev server up, no commits touched personal_tokens_page.py or this AFS since the original analysis, token inventory unchanged (5 rows: for_ui_tests/Levon/Marian(expired)/New(expired)/uautomate). Personal tokens are user-scoped (useTokenListQuery keys off user.personal_project_id, not the selec\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This cluster dispatch (ELITEA-2249/2250/2251) is a duplicate of work already completed earlier in this session: batch trunk tests/batch-settings-w01 already has the full analysis (commit 0567a0b41) and ELITEA-2251 is already implemented, reviewed, and merged onto the trunk (commits 41a673c91 / 661762112). Verified live this session that nothing drifted before returning the existing verdicts unchan\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "tests/batch-settings-w01@0567a0b41,661762112"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2249 remains blocked pending a human decision: no project the shared TEST_USER can both list secrets in (200) and that is empty exists today -- the only 'empty-looking' projects are 403 permission artefacts (bug #1773, still OPEN), and the two listable projects (120 and 4 secrets) cannot be safely emptied. Bug #1203 (React max-update-depth loop on Secrets mount) is also still OPEN and unbou\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-secrets/l2_secrets-empty-state-no-secrets_ELITEA-2249.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2250 remains blocked pending a human decision: personal tokens are user-scoped (not project-scoped), and the shared TEST_USER's 5 tokens include 2 expired ones that cannot be recreated (the create form only offers future expirations) and are relied on by the already-merged ELITEA-2284 test, so the empty state is not producible without a token-free identity (localhost's auth_state_user_b fix\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/l2_personal-tokens-empty-state-no-tokens_ELITEA-2250.md"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l2_personal-tokens-empty-state-no-tokens_ELITEA-2250.md"
+    },
+    {
+      "id": "ELITEA-2251",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green as part of this batch's hardening gate (see report.gate) \u2014 relabelled from already-covered to automated: this spec was BUILT and merged within this same batch (tests/ELITEA-2251-settings-sections-loading-state, PR #1774), not pre-existing coverage from elsewhere.",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This cluster dispatch (ELITEA-2249/2250/2251) is a duplicate of work already completed earlier in this session: batch trunk tests/batch-settings-w01 already has the full analysis (commit 0567a0b41) and ELITEA-2251 is already implemented, reviewed, and merged onto the trunk (commits 41a673c91 / 661762112). Verified live this session that nothing drifted before returning the existing verdicts unchan\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "tests/batch-settings-w01@0567a0b41,661762112"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2249 remains blocked pending a human decision: no project the shared TEST_USER can both list secrets in (200) and that is empty exists today -- the only 'empty-looking' projects are 403 permission artefacts (bug #1773, still OPEN), and the two listable projects (120 and 4 secrets) cannot be safely emptied. Bug #1203 (React max-update-depth loop on Secrets mount) is also still OPEN and unbou\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-secrets/l2_secrets-empty-state-no-secrets_ELITEA-2249.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2250 remains blocked pending a human decision: personal tokens are user-scoped (not project-scoped), and the shared TEST_USER's 5 tokens include 2 expired ones that cannot be recreated (the create form only offers future expirations) and are relied on by the already-merged ELITEA-2284 test, so the empty state is not producible without a token-free identity (localhost's auth_state_user_b fix\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/l2_personal-tokens-empty-state-no-tokens_ELITEA-2250.md"
+        }
+      ],
+      "afs": "test-specs/settings-ai-providers/l1_settings-sections-loading-state_ELITEA-2251.md"
+    },
+    {
+      "id": "ELITEA-2252",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). gate CUT OFF mid-run; merged on the trunk but unproven \u2014 resume the gate on tests/batch-settings-w01, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This entire dispatch was a duplicate of already-completed analyst work (commit 5df0dfd2e, 2026-08-24). All three verdicts unchanged; verified consistency against #1772 and disk state rather than re-executing live steps.",
+          "ref": "5df0dfd2e18577f2a5c32fdd68050d4c70e09dd6"
+        },
+        {
+          "kind": "note",
+          "note": "A second sibling duplicate-dispatch (ELITEA-2249/2250/2251) was found uncommitted in the same tree at 04:37 UTC today, suggesting the orchestrator may be re-dispatching already-analysed units in this run \u2014 worth checking the batch's dispatch bookkeeping."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2252 case text says Log out is the last item of the Settings drawer's PERSONAL section; live product puts it as a button on the Settings\u2192Profile content pane instead (Profile.jsx:73). Already tracked as a comment on clarification #1772 (row 4), not re-filed.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2254's premise ('Log out visible in the sidebar without extra navigation from any Settings sub-page') is false live \u2014 0 'Log out' text nodes found on /settings/tokens; reaching it costs exactly one drawer click to Profile. Already tracked as a comment on #1772, not re-filed.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2253/ELITEA-2254 need a human routing decision: their core observable (redirect to login page, session not restored on back-nav) cannot be produced on localhost at all (onLogout hard-navigates to /forward-auth/logout, an infra endpoint the Vite dev server has no route for \u2014 SPA fallback returns 200/app-shell, user stays authenticated). Options recorded in both AFS: (a) CI-only spec on a dep\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift confirmed and already tracked: TMS case ELITEA-2252 places Log out as the last item of the Settings drawer's PERSONAL section; live product (SettingsDrawer.jsx, verified via source + DOM) has no Log out node in the drawer at all \u2014 it's the last control of the Profile page's content pane instead. Spec asserts the live contract plus the absence invariant. Already tracked under clarif\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1772"
+        },
+        {
+          "kind": "note",
+          "note": "7 new testids landed on EliteaAI/EliteaUI automation/testids (EliteaAI/EliteaUI@e1e031a1, @67194ed1) \u2014 none yet on main; test is green on localhost, would be red on a deployed env until a human cherry-picks. Settings shell had zero testids before this case."
+        },
+        {
+          "kind": "note",
+          "note": "Durable technique found and memory-logged: vite-plugin-svgr (svgr) spreads props onto the generated <svg> root, so an icon rendered via an svgr import can take data-testid directly at the JSX call site (startIcon={<LogoutIcon data-testid=\"...\" />}) with no wrapper node needed \u2014 beats the #579 scoped-raw-handle exception whenever reachable. Flagged in memory as a cross-role promotion candidate sinc\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "question",
+          "note": "The one substantive locator-policy grep hit \u2014 automation/pages/settings_profile_page.py:376 `self.settings_drawer.get_by_text(self.LOGOUT_LABEL_PATTERN)` (absence assertion: no Log-out control exists anywhere in the Settings drawer) \u2014 is a raw, non-testid handle that does not literally match either of #579's two sanctioned exception shapes (third-party widget subtree / third-party editor internal \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_profile_page.py:376"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/l2_settings_profile_logout_button_visible_ELITEA-2252.md",
+      "branch": "tests/ELITEA-2252-settings-profile-logout-visible",
+      "pr": 1775
+    },
+    {
+      "id": "ELITEA-2253",
+      "outcome": "blocked",
+      "note": "Blocked, not a defect. Profile.jsx's onLogout hard-navigates to <origin>/forward-auth/logout (infra endpoint, reverse-proxy/forward-auth layer on deployed envs). Localhost's Vite dev server has no such route \u2014 SPA fallback answers HTTP 200 with the app shell, so the click lands on a 'Page not found' view while the user stays fully authenticated (verified live 2026-08-24: user identity still render\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This entire dispatch was a duplicate of already-completed analyst work (commit 5df0dfd2e, 2026-08-24). All three verdicts unchanged; verified consistency against #1772 and disk state rather than re-executing live steps.",
+          "ref": "5df0dfd2e18577f2a5c32fdd68050d4c70e09dd6"
+        },
+        {
+          "kind": "note",
+          "note": "A second sibling duplicate-dispatch (ELITEA-2249/2250/2251) was found uncommitted in the same tree at 04:37 UTC today, suggesting the orchestrator may be re-dispatching already-analysed units in this run \u2014 worth checking the batch's dispatch bookkeeping."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2252 case text says Log out is the last item of the Settings drawer's PERSONAL section; live product puts it as a button on the Settings\u2192Profile content pane instead (Profile.jsx:73). Already tracked as a comment on clarification #1772 (row 4), not re-filed.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2254's premise ('Log out visible in the sidebar without extra navigation from any Settings sub-page') is false live \u2014 0 'Log out' text nodes found on /settings/tokens; reaching it costs exactly one drawer click to Profile. Already tracked as a comment on #1772, not re-filed.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2253/ELITEA-2254 need a human routing decision: their core observable (redirect to login page, session not restored on back-nav) cannot be produced on localhost at all (onLogout hard-navigates to /forward-auth/logout, an infra endpoint the Vite dev server has no route for \u2014 SPA fallback returns 200/app-shell, user stays authenticated). Options recorded in both AFS: (a) CI-only spec on a dep\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/l1_settings_profile_logout_logs_user_out_ELITEA-2253.md"
+    },
+    {
+      "id": "ELITEA-2254",
+      "outcome": "blocked",
+      "note": "Blocked on two independent walls, verified live 2026-08-24 on /settings/tokens: (1) case-text drift \u2014 the premise 'Log out visible in the sidebar without extra navigation' is false; a whole-document text scan found 0 'Log out' nodes on that sub-page, and the only logout control in the app is on Settings\u2192Profile (one click away via the drawer). The sidebar's UserButton.jsx DotMenu (which does have \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This entire dispatch was a duplicate of already-completed analyst work (commit 5df0dfd2e, 2026-08-24). All three verdicts unchanged; verified consistency against #1772 and disk state rather than re-executing live steps.",
+          "ref": "5df0dfd2e18577f2a5c32fdd68050d4c70e09dd6"
+        },
+        {
+          "kind": "note",
+          "note": "A second sibling duplicate-dispatch (ELITEA-2249/2250/2251) was found uncommitted in the same tree at 04:37 UTC today, suggesting the orchestrator may be re-dispatching already-analysed units in this run \u2014 worth checking the batch's dispatch bookkeeping."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2252 case text says Log out is the last item of the Settings drawer's PERSONAL section; live product puts it as a button on the Settings\u2192Profile content pane instead (Profile.jsx:73). Already tracked as a comment on clarification #1772 (row 4), not re-filed.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2254's premise ('Log out visible in the sidebar without extra navigation from any Settings sub-page') is false live \u2014 0 'Log out' text nodes found on /settings/tokens; reaching it costs exactly one drawer click to Profile. Already tracked as a comment on #1772, not re-filed.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2253/ELITEA-2254 need a human routing decision: their core observable (redirect to login page, session not restored on back-nav) cannot be produced on localhost at all (onLogout hard-navigates to /forward-auth/logout, an infra endpoint the Vite dev server has no route for \u2014 SPA fallback returns 200/app-shell, user stays authenticated). Options recorded in both AFS: (a) CI-only spec on a dep\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/l1_settings_logout_reachable_from_any_subpage_ELITEA-2254.md"
+    }
+  ],
+  "totals": {
+    "automated": 4,
+    "merged-sanctioned-red": 1,
+    "blocked": 4
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/settings/test_settings_sidebar_item_navigation.py::TestSettingsSidebarItemNavigation::test_settings_sidebar_item_navigation",
+      "test_id": "tests.ui.settings.test_settings_sidebar_item_navigation.TestSettingsSidebarItemNavigation.test_settings_sidebar_item_navigation",
+      "ticket": "EliteaAI/elitea-testing-public#1771",
+      "why": "Clicking settings-nav-item-ai-personality deterministically fires one disableUnderline React console warning (confirmed live, single-cause, OPEN). Every functional assertion in the test (URL, active-state, content-changed, absence/order checks) passes; only the soft_failures aggregation fires pytest.fail() to keep the known-defect occurrence visible per .agents/testing.md \u00a7 Merge gate sanctioned-RED pattern.",
+      "case_ids": [
+        "ELITEA-2243"
+      ],
+      "unit": "ELITEA-2242+ELITEA-2243+ELITEA-2244"
+    }
+  ],
+  "parked": []
+}

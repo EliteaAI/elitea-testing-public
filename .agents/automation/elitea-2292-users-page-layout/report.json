@@ -1,0 +1,133 @@
+{
+  "batch": "elitea-2292-users-page-layout",
+  "base": "origin/automation/base",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-2292",
+      "outcome": "blocked",
+      "note": "reviewer left surviving blockers unclassified twice — cannot tell unaddressed from unfixable, so the loop cannot judge whether another round would help after 2 fix round(s): Amend the AFS's Concrete Handles ('Sort-indicator icons' note) and Automation Hints ('Sort-indicator assertion' bullet) to document the actual implemented locator strategy - the dedicated `user-sort-i",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "GridTableRowDataCell.jsx (shared by UsersTable/TokensTable/SecretsTable/BucketAccessTable) has no testid prop of any kind, unlike its sibling GridTableHeader.jsx (columnTestIdPrefix) and GridTableRow.jsx (nameCellTestId/checkboxTestId/data-testid). Spec'd a new optional dataCellTestIdPrefix prop mirroring the header's {prefix}-column-header-{field} shape as {prefix}-column-value-{field} — additive… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI src/[fsd]/entities/grid-table/ui/GridTableRowDataCell.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "EditUsersButton.jsx and DeleteUserButton.jsx are dual-use components (rendered once as a header batch-action with isBatchEdit/useSecondaryButton, once per row plain) with zero testid support today. A single testId prop/value would collide between the header instance and every row instance — the AFS spec's two distinct values (users-header-edit-button vs user-row-edit-button) at two call sites. Log… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/dual_use_action_button_components_need_per_call_site_testid.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 7's expected-result text ('Operation completes successfully; state updates and confirmation is shown') is generic boilerplate that doesn't match what this layout-only case actually exercises — the header Delete button is only checked for presence/disabled-state, never clicked. Reverse-masking guard applied: asserted the real live behavior (visible + disabled with nothing selected) instea… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l2_users-page-layout-and-components_ELITEA-2292.md#axis-2"
+        },
+        {
+          "kind": "note",
+          "note": "This dispatch found the case's work already fully implemented, committed, and PR'd (PR #1179, MERGEABLE) from an earlier pass on the same branch — this session only re-verified (clean tree, fresh green test run) rather than re-implementing.",
+          "ref": "PR #1179"
+        },
+        {
+          "kind": "note",
+          "note": "Recurring process-hygiene gotcha (4th+ occurrence per test-automation-engineer daily log): implementer sessions keep starting their first commit directly on the batch trunk instead of cutting the feature branch first. Already self-caught and corrected in the prior pass for this case (branch-fork + trunk reset + force-with-lease), but the recurrence rate suggests the 'verify_feature_branch_before_f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/verify_feature_branch_before_first_commit.md"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/pages/admin_users_page.py:64 hardcodes USERS_TEAM_PROJECT_ID = \"400\" as a bare page-object module constant, bypassing .agents/testing.md § Test data strategy (\"Add new keys to config.py + the master env file — grep for an existing key first\"). The master .env.test already carries ELITEA_TEAM_PROJECT_ID=471 for exactly this concept (a non-private/team project) — grepped the whole automat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/admin_users_page.py:64"
+        },
+        {
+          "kind": "note",
+          "note": "logger = logging.getLogger(...) is declared but never called (no logger.* usage anywhere) in both new files — dead code, low priority.",
+          "ref": "automation/pages/admin_users_page.py:49"
+        },
+        {
+          "kind": "note",
+          "note": "AdminUsersPage.navigate() returns tuple[Response, Response] — the only navigate() override in the whole pages/ suite with a non-None return (every other page object's navigate() returns None per the Smart Navigation Pattern in .claude/rules/page-objects.md). Defensible here (step 7 needs the two driving GET responses) and well-documented in the docstring, but worth a second look for consistency wi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/admin_users_page.py:181"
+        },
+        {
+          "kind": "note",
+          "note": "users_page.page_title.text_content() is called twice (once for the assert, once for the failure message interpolation) — negligible risk given static content, but a minor style inconsistency vs. capturing the value once.",
+          "ref": "automation/tests/ui/admin/test_users_page_layout.py:82"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean: all 17 case elements + Expected Final State have Coverage Map rows, every 'asserted' row has a real assertion at the matching AFS/test step (verified step-by-step against test_users_page_layout.py). One case-text drift (step 7's generic 'operation completes/confirmation shown' boilerplate for the header Delete button) is correctly handled as a reverse-masking-guard CLARIFICATI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical testid-only grep run against both new files: `grep -nE '(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' automation/pages/admin_users_page.py automation/tests/ui/admin/test_users_page_layout.py` → 9 hits, all in admin_users_page.py, every one either `self.page.locator(self.<UPPER_CASE_TESTID_C… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Two distinct, live, non-private team projects exist in this env's test data: 471 (\"Elitea Testing Team\", used by several chat/toolkit tests as a local hardcoded TEAM_PROJECT_ID constant, and matching the pre-existing but until-now-unused ELITEA_TEAM_PROJECT_ID env key) and 400 (\"UI Testing\", needed for ELITEA-2292's Settings->Users precondition). Future test-data routing work for \"the team project… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/config.py"
+        },
+        {
+          "kind": "defect",
+          "note": "NEW finding (not in the round-1 blocking list). get_column_sort_icon_count(self, column_header) does `return column_header.locator(\"svg\").count()` — a raw, non-testid CSS/tag-name selector chained off an existing LocatorDescriptor field inside a method body. This is the exact anti-pattern .claude/rules/page-objects.md names verbatim as the PR #22 / ELITEA-1737 mistake (self.instructions_editor.loc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/admin_users_page.py:220"
+        },
+        {
+          "kind": "defect",
+          "note": "Downstream consequence of the above: the test's Step 5 sortable/non-sortable assertions execute this non-compliant locator on both branches (count==1 for Name/Email/Last login, count==0 for Role/Actions), so the fix must touch both the page object and this call site's expectations once a real testid replaces the tag selector — flagging so the implementer scopes the fix correctly, not a second inde… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_users_page_layout.py (Step 5 block, calls users_page.get_column_sort_icon_count)"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocking finding (hardcoded USERS_TEAM_PROJECT_ID=\"400\" bypassing config/.env.test convention) is VERIFIED FIXED: config.py now defines `users_team_project_id: str = \"400\"` (case_sensitive=False SettingsConfigDict confirmed at config.py:33, so it correctly maps from env key USERS_TEAM_PROJECT_ID with no env_prefix collision), admin_users_page.py reads settings.users_team_project_id instead… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked clean: mechanical raw-handle grep on the rest of the diff (automation/pages/, automation/tests/) shows only [data-testid=] literals or UPPER_CASE class-constant references (COLUMN_HEADER_PREFIX_SELECTOR, USER_ROW_*_SELECTOR, USER_COLUMN_VALUE_*_SELECTOR, SELECT_OPTION template) — all compliant. All 17 case elements have Coverage Map rows with real per-step assertions in the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Added a component-level data-testid to the shared GridTableHeader.jsx sort-icon element (user-sort-icon-{field}), mirroring the existing columnTestIdPrefix mechanism. Available to any other grid-table-based page (TokensTable, etc.) once its own callers reference it — not yet referenced anywhere but Users, so no other page's coverage changes.",
+          "ref": "EliteaAI/EliteaUI@52582fe3"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha for future component-level dynamic-testid additions: naming a new testid so it starts with an EXISTING prefix-matched selector (e.g. [data-testid^=\"user-column-header-\"]) silently double-counts elements matched by that selector. Caught live here (8 vs expected 5 header count) rather than by inspection. Logged as .agents/memory/test-automation-engineer/component_level_testid_must_not_share_a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/admin_users_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing ruff I001 (unsorted imports) in automation/pages/admin_users_page.py predates this fix round (confirmed via git stash + ruff check on the unmodified file) — not introduced by this change, left as-is since it's outside this finding's scope."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS drift: test-specs/settings-users-and-roles/l2_users-page-layout-and-components_ELITEA-2292.md's Concrete Handles ('Sort-indicator icons ... NOT a separate testid ... Locate it via .locator(\"svg\") chained off the already-testid-scoped user-column-header-{field} element') and Automation Hints ('Sort-indicator assertion: self.column_header_name.locator(\"svg\") ...') sections both still describe th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l2_users-page-layout-and-components_ELITEA-2292.md"
+        },
+        {
+          "kind": "note",
+          "note": "Previous blocking finding (raw non-testid .locator(\"svg\") chained off an existing LocatorDescriptor field, admin_users_page.py:220) is FIXED. Mechanical grep on the full diff `git diff tests/batch-elitea-2292-users-page-layout...tests/ELITEA-2292-users-page-layout-components -- automation/ | grep -nE '(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case (.agents/automation/elitea-2292-users-page-layout/cases/ELITEA-2292.md) <-> AFS Coverage Map <-> implementation for all 17 case steps + Expected Final State row: every asserted row maps to a real, per-step assertion in test_users_page_layout.py (allure.step-wrapped), including the sort-indicator presence/absence checks (now testid-based, count==1/0), the disabled-header-buttons d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_users_page_layout.py"
+        },
+        {
+          "kind": "note",
+          "note": "Minor doc-accuracy nit (non-blocking): PR #1179 body claims '14 new testids' but the page-object docstring + EliteaUI commit e54a8bd7's own enumeration list 19 distinct new testid values (users-page-title, users-search-input, users-invite-button, users-header-edit-button, users-header-delete-button, user-row-edit-button, user-row-delete-button, user-select-all-checkbox, 5x user-column-header-*, us… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/settings-users-and-roles/l2_users-page-layout-and-components_ELITEA-2292.md",
+      "branch": "tests/ELITEA-2292-users-page-layout-components",
+      "pr": 1179
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

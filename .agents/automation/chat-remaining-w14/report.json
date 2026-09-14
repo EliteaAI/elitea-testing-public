@@ -1,0 +1,599 @@
+{
+  "batch": "chat-remaining-w14",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w14",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      303.56,
+      285.63,
+      360.89
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2205",
+      "outcome": "merged-sanctioned-red",
+      "note": "red by design pending https://github.com/EliteaAI/elitea-testing-public/issues/1596 — the gate ran it but could not count it; merged with the batch, re-enter once the product ships",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed https://github.com/EliteaAI/elitea-testing-public/issues/1596 (MINOR): a Toolkit or MCP participant with zero configured tools still opens the '{name} available tools' panel in the chat '/' slash-mention dropdown — header renders, zero rows, no empty-state message. Root-caused via source read: SlashSuggestionList.jsx's hide-guard only fires when a typed tool-name filter matches nothing, neve… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1596"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object gap for the implementer (not a defect, a wait-strategy note): ChatPage.select_slash_mention_toolkit() waits for the first tool-item row to ATTACH after clicking a toolkit/MCP card (ELITEA-2204's own fix for an isToolsFetching race). This will TIME OUT when reused unmodified against the zero-tools branch, since no row ever attaches. AFS's Automation Hints section flags two acceptable fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6406-6424"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed via source (not just live observation) that select_slash_mention_toolkit()/SLASH_MENTION_ITEM/slash_mention_tool_list/SLASH_MENTION_TOOL_ITEM are all participant-type-agnostic (onSlashSelectToolkit/onSlashCommitMention in useSlashMention.hooks.js have zero isMcp branching) — so this family AFS needed zero new testid work, purely consuming the ELITEA-2202/2203/2204 surface already on auto… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation-time page-object gap (not anticipated by the AFS's Automation Hints, which named add_mcp_participant_via_slash_menu() as fully reusable as-is): that method assumed the plus-menu popper was already open — its only prior callers (ELITEA-2203/2204) always call add_toolkit_participant_via_slash_menu() first, which opens it as a side effect. This case is MCP-only (no Toolkit participant)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:add_mcp_participant_via_slash_menu"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed the AFS's already-filed known defect #1596 is still OPEN with the bug label before wiring the sanctioned-RED soft assertion against it (env -u GITHUB_TOKEN gh issue view 1596). No new defect filed this pass — the AFS's analysis-time finding covered it fully; this implementation only converts it into a soft-asserted, ticket-linked, sanctioned-RED test per .agents/testing.md § Merge gate.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1596"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case ↔ AFS ↔ diff), both cases: ELITEA-2205 row 1 (composer shows '/{mcp_name}') and row 2 (tools shown / no-tools) both have real per-step asserts in BOTH test methods (composer input_value, tool-testid set, soft+hard no-tools checks). ELITEA-2468 rows 1-4 map 1:1 onto Setup + Step 1 + Step 2 + Step 3 assertions — no flattened/shared assertion across the two case ids; each case's d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity mechanical grep (full diff, automation/ scope) — command: `git diff <merge-base 0ef0d696b>...HEAD -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` — 0 hits. The only substitution in this unit is the `mcp_toolkit_no_tools` fixture's use of `create_remote_mcp_toolkit(..., tools=[])`, which is a transit/precondition-level real API call (a g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator mechanical grep — command: `git diff <base>...HEAD -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` — 2 hits, both `chat.slash_mention_tool_list.locator(SLASH_MENTION_TOOL_ITEM_PREFIX)` / `self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX)`… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both page-object changes are genuinely additive, verified by inspection: `select_slash_mention_toolkit(..., wait_for_first_tool: bool = True)` — default True preserves the exact prior unconditional wait; `add_mcp_participant_via_slash_menu(..., open_plus_menu: bool = False)` — default False preserves the prior 'popper already open' contract. Both of the method's pre-existing callers (`test_slash_m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #1596 verified live via `gh issue view` — OPEN, `bug`-labelled, body matches the AFS's root-cause/repro exactly. Ran the light bug-dedup sweep myself (`gh issue list --label bug --state all`, keyword scan for 'tools'/'available tools') — no pre-existing duplicate; #1596 was a correct fresh filing. The soft-assert (`soft_failures` list + trailing `pytest.fail()` + `# Known defect: #159… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS priority mapping (l2 for ELITEA-2468's 'high') double-checked against spec-format.md's canonical `1=critical,2=high,3=medium,4=low` and against the strong majority precedent in test-specs/ (29/34 'high' cases map to l2, 33/44 'medium' cases map to l3) — correct, not a defect (an earlier-seen minority of l1-for-high files are the outliers, not the norm)."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_slash-mention-mcp-selection-and-available-tools_ELITEA-2205_ELITEA-2468.md",
+      "branch": "tests/2205-2468-slash-mention-mcp-selection-and-available-tools",
+      "pr": 1597
+    },
+    {
+      "id": "ELITEA-2206",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2206's Steps 2-3 describe the dropdown's per-item subtitle as 'Agent'/'Pipeline' (capitalized); the live DOM text (NewParticipantCard.jsx's typeText) is lowercase 'agent'/'pipeline'. Reverse-masking guard applied — live product is self-consistent and correct, case wording is the stale half. AFS directs the implementer to assert the real lowercase value. Not filed as a separate tracker issue… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking tests in the pre-existing merged TestHashSearch class (test_hash_search_participants, test_add_participant_via_hash_search) wrap their core dropdown-appears wait in try/except PlaywrightTimeoutError: pytest.skip(...) — a genuine regression on the #-search feature's core open behavior would currently report SKIPPED, not FAILED, which is exactly the defect-masking shape the team's canon forbi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py:412,434"
+        },
+        {
+          "kind": "note",
+          "note": "Two new testids are needed before this AFS is implementable: chat-hash-search-results-list (container) and dynamic chat-hash-search-item-{project_id}_{id} (per-card), both needs-adding on main AND automation/testids (virgin ground — first case to touch this DOM at all). Requires threading containerTestId/getItemTestId props through SearchResultList.jsx into the shared NewParticipantList.jsx (curre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text wording drift (already dispositioned in the AFS, not new): ELITEA-2206's own steps say 'Agent'/'Pipeline' subtitle (capitalized); live DOM text is lowercase agent/pipeline (NewParticipantCard.jsx typeText). Asserted the real lowercase value per the reverse-masking guard — no defect filed, matches AFS Axis-2 disposition.",
+          "ref": "test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md"
+        },
+        {
+          "kind": "note",
+          "note": "Content-extraction helpers (subtitle text, icon presence, 'Public' label) scoped inside an already-testid'd item card do surface in the reviewer's mechanical non-testid-handle grep even though they match established precedent (_extract_message_body in mui-patterns.md, ELITEA-2196's attachment-chip icon check). Docstrings cite both precedents explicitly so the one-hop check resolves cleanly; record… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, out-of-scope observation carried from the AFS (not introduced or touched here): both covering tests (test_hash_search_participants, test_add_participant_via_hash_search) wrap their dropdown-open wait in try/except PlaywrightTimeoutError: pytest.skip(...) — a genuine timeout on the feature's core behavior currently reports SKIPPED not FAILED. Flagged for a future dedicated hardening p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (locator policy). Two new page-object handles are raw CSS tag selectors, not testid-based: `HASH_SEARCH_ITEM_SUBTITLE = 'p, span'` (line 3210) and `HASH_SEARCH_ITEM_ICON = 'img, svg, .MuiAvatar-root'` (line 3211), consumed at `item.locator(self.HASH_SEARCH_ITEM_SUBTITLE)` (line 3233) and `item.locator(self.HASH_SEARCH_ITEM_ICON)` (line 3244). A third new method, `hash_search_item_has_publ… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3210-3244"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (correctness, downstream of the same root cause). `get_hash_search_item_subtitle()`'s `item.locator('p, span').last` is scoped to the WHOLE item card (`item`), not to `NewParticipantCard.jsx`'s `bodyContainer`. Verified against `EliteaUI/src/pages/NewChat/Recommendations/NewParticipantCard.jsx` (origin/automation/testids): the card renders 3 Typography descendants in DOM order — nameText,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3222-3233"
+        },
+        {
+          "kind": "note",
+          "note": "Generalizable pitfall recorded in memory (dynamic_testid_suffix_collides_with_prefix_selector.md): deriving a child testid as `${itemTestId}-suffix` for content inside an item makes it collide with any pre-existing `^=` prefix selector scoped to that item family, silently inflating count-based item locators (6->188 in this case) and surfacing as an unrelated timeout several steps later. Worth a ca… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS Concrete Handles table (test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md, rows 'Card subtitle text', 'Card icon', \"'Public' source chip\", lines ~150-152) still says 'none needed / n/a' and describes the raw 'p, span' / 'img, svg, .MuiAvatar-root' / get_by_text('Public') scoped-read approach that fix round 1 removed from chat_page.py. The … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md:150"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings are genuinely fixed, verified against the diff (9ee2dbf68...a09e1597b) and the live EliteaUI commit: (1) raw CSS handles removed and replaced with real testids derived from the existing caller-supplied testId prop (NewParticipantCard.jsx, EliteaAI/EliteaUI@58d30f08 — pushed to origin/automation/testids, confirmed via `git branch -r --contains`); the JSX diff is purely … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on the scoped PR diff (9ee2dbf68...a09e1597b, automation/ only): fidelity substitution grep (.mock_/page.route/route.fulfill/monkeypatch/.evaluate) = 0 hits. Non-testid-handle grep = 5 hits, all `.locator()` calls against class-level constants (HASH_SEARCH_ITEM, HASH_SEARCH_ITEM_PREFIX, HASH_SEARCH_ITEM_TYPE, HASH_SEARCH_ITEM_ICON, HASH_SEARCH_ITEM_PUBLIC_LABEL) that are each veri… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Test method test_hash_search_shows_agents_and_pipelines_from_all_sources (test_chat_interface.py, unchanged in this fix round) has a real per-step assertion for every AFS gap (Steps 2-5), correctly falls back to a #pipe query when the bare '#' page lacks a pipeline card, and its docstring/PR carries a fidelity self-declaration ('No substitution ... nothing fabricated or injected') consistent with … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Docs-only fix round: AFS Concrete Handles table had drifted from the code after fix round 1 replaced raw selectors with real testids but never updated the AFS's own handle-provenance rows. Fixed by amending the AFS in the same PR (af2bda13f) with fresh-verified provenance.",
+          "ref": "test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (AFS Concrete Handles table still documenting the superseded raw-selector 'none needed' rows instead of the real testids fix round 1 added) is RESOLVED. Verified: commit af2bda13f (docs(afs), same PR) rewrote the three rows to {testId}-type / {testId}-icon / {testId}-public-label with provenance 'on-automation/testids ✓ (EliteaAI/EliteaUI@58d30f08), on-main ✗'. Independently… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md:150-152"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking documentation staleness: the PR description still narrates the PRE-round-1 approach ('item.locator(self.HASH_SEARCH_ITEM_SUBTITLE)' / 'item.get_by_text(\"Public\", ...)' / citing the ELITEA-2196 _extract_message_body() precedent as sanctioning it) as if still shipped. The actual diff no longer contains any of that — it was replaced by real {testId}-type/-icon/-public-label testid locato… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1598 body, 'Locator policy' section, item 3"
+        },
+        {
+          "kind": "note",
+          "note": "Independently confirmed (not just trusted the AFS/PR claims): (1) EliteaUI@7fe617e8 wires containerTestId/getItemTestId only at ChatBox.jsx's SearchResultList call site (line ~2705), NewConversationView.jsx untouched, matching canon ruling #511 scoping; (2) SearchResultList.jsx's own diff is pure prop-threading (no new hooks, no new DOM nodes); (3) NewParticipantCard.jsx's fix-round-1 diff (58d30f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md",
+      "branch": "tests/2206-hash-search-all-sources",
+      "pr": 1598,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          303.56,
+          285.63,
+          360.89
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2207",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2207 Step 2 and ELITEA-2469 Steps 3-4 say the selected agent's name/mention appears 'in the message field' / 'message input field'. Live-confirmed (screenshot evidence, /chat/9082): the message input (chat-message-input) stays completely empty after selecting an agent from the '#' dropdown -- the agent instead renders as a chip in the composer's active-participant control (chat-switch-parti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md"
+        },
+        {
+          "kind": "note",
+          "note": "New environment gotcha, distinct from the already-documented '/chat bare redirects to last-viewed conversation' gotcha: on this heavy DEV account (65+ folders, hundreds of conversations visible in the sidebar), navigating to bare /chat left a persistent MuiCircularProgress overlay intercepting the composer for 15+ seconds (8+ Playwright actionability retries, never resolved before this session swi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero product defects found for either case -- the select-agent -> participants-panel-update -> composer-chip -> send -> agent-responds -> remains-participant flow works correctly end to end on the live system, confirmed with a real network round trip (no substitution: real click, real send, real agent response, real participant-removal cleanup)."
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, unrelated flake found during regression checking: test_hash_search_shows_agents_and_pipelines_from_all_sources (ELITEA-2206, already merged to this batch trunk) fails 3/3 standalone with a raw playwright TimeoutError inside ChatPage.get_hash_search_item_subtitle() while resolving a '#pipe' pipeline-type card. This PR never touches that code path (HASH_SEARCH_ITEM_TYPE/HASH_SEARCH_ITE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No originating GitHub tracking issue found on board #9 for ELITEA-2207 or ELITEA-2469 (checked via the real-time gh issue list, per the dedup command) — skipped the 'comment PR link on originating issue' handoff step since there is nothing to comment on; flagging in case intake missed carding these two cases."
+        },
+        {
+          "kind": "note",
+          "note": "Discovered during implementation (not a defect, a shared-method correctness gap): ChatPage.get_agent_participant_row()/remove_agent_participant()/hover_agent_participant_row() all assumed a participant agent's home project equals settings.elitea_project_id. This is false for Agent-Hub (\"Public\") sourced agents, whose real participant-row unique id uses their OWN project id. Only get_agent_particip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, unrelated flake discovered by the implementer: TestHashSearch::test_hash_search_shows_agents_and_pipelines_from_all_sources (ELITEA-2206, already merged in PR #1598) reportedly fails 3/3 standalone on a '#pipe' lookup, on a code path this PR never touches (get_hash_search_item_subtitle/get_hash_search_items are unmodified in this diff). Reported to the lead per the implementer's dail… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py::TestHashSearch::test_hash_search_shows_agents_and_pipelines_from_all_sources"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map Axis-1 table has no explicit row for ELITEA-2469's own Step 1 (navigate to Chats + create a new conversation) — its disposition ('already-covered') is stated only in the prose 'Test Steps' section, not as a table row. Trivial/universal step (conversation creation), disposition is documented, so not blocking — but strictly the Axis-1 table should have one row per original-case elem… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md"
+        },
+        {
+          "kind": "note",
+          "note": "get_agent_participant_row()'s docstring lost its 'Returns:' section when the new agent_project_id Args paragraph was added in this diff — cosmetic doc regression, not a behavioral issue.",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4's version_text is derived by string-slicing the whole popover row's text_content() (row_text[len(agent_name):]) rather than reading a scoped version sub-element, relying on there being no separating whitespace between the name and version text in the DOM. Both shapes ('ver' and 'vX.Y') were live-confirmed this session so it works today, but it's slightly more fragile than the icon assertion… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md",
+      "branch": "tests/2207-2469-hash-search-select-agent-participant",
+      "pr": 1599,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          303.56,
+          285.63,
+          360.89
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2208",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Both cases' case text says the selected pipeline's mention appears 'in the message field' / 'message input field'. Live product: chat-message-input stays completely empty; the pipeline instead renders as a composer chip (chat-switch-participant-button, accessible name 'Switch Pipeline'). Identical drift to the already-filed ELITEA-2207/2469 clarification for agents — same established composer-chip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Axis 2 — Clarification 1"
+        },
+        {
+          "kind": "clarification",
+          "note": "Pipeline-specific, new this session: a dynamically-selected ambient pipeline may respond with a genuine execution-error card ('Pipeline has no nodes to execute...') rather than a substantive answer, and this still satisfies both cases' 'the pipeline processes and responds' / 'remains in PARTICIPANTS' expected result — neither case text demands specific response content. Live-confirmed: the respons… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Axis 2 — Clarification 2"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered live + via source (EliteaUI participants.helpers.js getChatParticipantUniqueId()): a pipeline participant's row testid uses uniqueId prefix 'pipeline_' (singular), NOT the agent family's 'application_' prefix — confirmed live as chat-participant-row-pipeline_8056_399. The existing get_agent_participant_row()/remove_agent_participant() page-object methods hardcode 'application_' and cann… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/pipeline_participant_uniqueid_prefix.md"
+        },
+        {
+          "kind": "note",
+          "note": "Popover-row version text for a pipeline participant is the pipeline's own literal version NAME (e.g. 'base' this session), not the agent family's auto-generated 'ver'/'vX.Y' shape. The implementer must not reuse ELITEA-2207/2469's re.match(r\"v(er\\b|\\d)\", ...) regex for the pipeline row — assert only that a non-empty version-text remainder exists.",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Bare /chat navigation on this heavy ambient account (65+ folders) hit a persistent MuiCircularProgress/MuiBox overlay blocking the composer's pointer events for >15s across 2 separate click attempts, never cleared within the session's patience budget — same class of account-data-volume hazard the ELITEA-2207/2469 AFS already documented (that occurrence resolved after 8+ retries; this one didn't re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Preconditions"
+        },
+        {
+          "kind": "defect",
+          "note": "Infra bug, FIXED this unit: HASH_SEARCH_ITEM_PREFIX in automation/pages/chat_page.py was missing a `:not([data-testid$=\"-name\"])` exclusion for the `-name` sub-testid the ELITEA-2207/2469 unit added, doubling get_hash_search_items()'s count and corrupting .nth() indices. This is very likely the same root cause as the ELITEA-2207/2469 Run Report's reported-but-unfixed \"pre-existing #pipe flake in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Infra bug, FIXED this unit: _is_transient_message() in automation/pages/chat_page.py misclassified an already-complete pipeline response (a real 'Thought for less than a second' reasoning summary followed by a real error card in the same message body) as permanently transient, because its dynamic-pattern check ran on the whole joined multi-line text instead of per-line. This affects any future tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "No tracking issue exists on board #9 for ELITEA-2208 or ELITEA-2470 (gh issue list search returned nothing) -- consistent with the AFS's 'Linked Story: none' note, so the PR-link comment step was skipped rather than omitted in error."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS partial-overclaim (same shape as .agents/memory/qa-engineer/coverage_map_row_can_partially_overclaim_one_clause.md). The Coverage Map row's \"Asserted where\" cell reads: `send_message(\"hello\")`; header shows \"to <Pipeline Name>\" attribution. Only the send action is implemented — no assertion anywhere checks that the message/response is attributed to the selected pipeline's name (a 'to <X>' head… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py:~830 (Step 5/6 of test_add_pipeline_via_hash_search_joins_participants_and_responds) + test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md Coverage Map row \"Type a message and send\""
+        },
+        {
+          "kind": "note",
+          "note": "Implementer's per-line transient-message fix is a genuine, well-documented, backward-compatible correctness fix — the old whole-string startswith('thought for ') check could only ever produce MORE false-transient positives than the new per-line all(...) check, so no existing caller can regress. No action needed.",
+          "ref": "automation/pages/chat_page.py:_is_transient_message (line ~2286)"
+        },
+        {
+          "kind": "note",
+          "note": "New entity_type/section params are additive with unchanged defaults; confirmed no other caller in the suite is affected by signature diff.",
+          "ref": "automation/pages/chat_page.py:get_agent_participant_row / remove_agent_participant"
+        },
+        {
+          "kind": "note",
+          "note": "No EliteaUI/JSX changes in this diff (no new testids needed, per the AFS's own claim) — zero-functional-impact and testid-convention checks don't apply here. Spot-checked 3 AFS provenance claims (chat-participants-badge-pipelines [runtime-composed via ${entity.section}, confirmed by reading CollapsedPerticapantsList.jsx directly since bare-substring grep can't see template literals], chat-particip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "N/A"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run on the full diff, both 0 hits: fidelity-substitution `git diff <base>...<branch> -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` and non-testid-handle `git diff <base>...<branch> -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "N/A"
+        },
+        {
+          "kind": "note",
+          "note": "ApplicationAnswer.jsx's response-header participant-name text ('<Name> to Message') carries no testid on either main or automation/testids — any future case asking to assert AI/agent/pipeline response attribution by that string needs a new testid first (add-data-testid), since this project's locator policy has no fallback ladder. Logged durably in .agents/memory/test-automation-engineer/chat_respo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1600"
+        },
+        {
+          "kind": "note",
+          "note": "The attribution-claim overclaim originated in the already-merged ELITEA-2207/2469 sibling AFS/PR #1599 (not caught at that PR's own review) and was propagated by copy-paste into this AFS. PR #1599 is already merged and out of scope for this fix, but its own AFS carries the same stale claim if anyone reads it later.",
+          "ref": "PR #1599 (merged)"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (attribution-clause overclaim) is genuinely fixed. AFS Coverage Map row 'Type a message and send' (test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md) and its Automation Hints bullet now correctly describe what the test asserts (message-count growth by 2 + PIPELINES badge persistence) and name why the literal 'attribute… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md:154"
+        },
+        {
+          "kind": "note",
+          "note": "New static regression-guard test automation/tests/unit/test_hash_search_pipeline_attribution_claim_consistency.py parses the live method's docstring + the AFS Coverage Map row and fails if either makes a bare 'attribut...' claim with no matching handle reference in the method body. Traced its 3 sub-tests by hand against the current diff (static review — did not execute): the docstring's own 'does … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/unit/test_hash_search_pipeline_attribution_claim_consistency.py"
+        },
+        {
+          "kind": "note",
+          "note": "Two infra fixes riding in the same fix-round commit history reviewed and confirmed sound: (1) HASH_SEARCH_ITEM_PREFIX gained a ':not([data-testid$=\"-name\"])' exclusion, closing a real index-corruption bug (the -name sub-testid the immediately-prior ELITEA-2207/2469 unit added was matching the ^= prefix selector, doubling get_hash_search_items() counts). (2) _is_transient_message() switched from a … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:2297"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on git diff tests/batch-chat-remaining-w14...tests/2208-2470-hash-search-select-pipeline-adds-participant -- automation/: fidelity-substitution grep (\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\() = 0 hits. Non-testid-handle grep (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.loc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md",
+      "branch": "tests/2208-2470-hash-search-select-pipeline-adds-participant",
+      "pr": 1600,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          303.56,
+          285.63,
+          360.89
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2468",
+      "outcome": "merged-sanctioned-red",
+      "note": "red by design pending https://github.com/EliteaAI/elitea-testing-public/issues/1596 — the gate ran it but could not count it; merged with the batch, re-enter once the product ships",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed https://github.com/EliteaAI/elitea-testing-public/issues/1596 (MINOR): a Toolkit or MCP participant with zero configured tools still opens the '{name} available tools' panel in the chat '/' slash-mention dropdown — header renders, zero rows, no empty-state message. Root-caused via source read: SlashSuggestionList.jsx's hide-guard only fires when a typed tool-name filter matches nothing, neve… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1596"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object gap for the implementer (not a defect, a wait-strategy note): ChatPage.select_slash_mention_toolkit() waits for the first tool-item row to ATTACH after clicking a toolkit/MCP card (ELITEA-2204's own fix for an isToolsFetching race). This will TIME OUT when reused unmodified against the zero-tools branch, since no row ever attaches. AFS's Automation Hints section flags two acceptable fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6406-6424"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed via source (not just live observation) that select_slash_mention_toolkit()/SLASH_MENTION_ITEM/slash_mention_tool_list/SLASH_MENTION_TOOL_ITEM are all participant-type-agnostic (onSlashSelectToolkit/onSlashCommitMention in useSlashMention.hooks.js have zero isMcp branching) — so this family AFS needed zero new testid work, purely consuming the ELITEA-2202/2203/2204 surface already on auto… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation-time page-object gap (not anticipated by the AFS's Automation Hints, which named add_mcp_participant_via_slash_menu() as fully reusable as-is): that method assumed the plus-menu popper was already open — its only prior callers (ELITEA-2203/2204) always call add_toolkit_participant_via_slash_menu() first, which opens it as a side effect. This case is MCP-only (no Toolkit participant)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:add_mcp_participant_via_slash_menu"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed the AFS's already-filed known defect #1596 is still OPEN with the bug label before wiring the sanctioned-RED soft assertion against it (env -u GITHUB_TOKEN gh issue view 1596). No new defect filed this pass — the AFS's analysis-time finding covered it fully; this implementation only converts it into a soft-asserted, ticket-linked, sanctioned-RED test per .agents/testing.md § Merge gate.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1596"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case ↔ AFS ↔ diff), both cases: ELITEA-2205 row 1 (composer shows '/{mcp_name}') and row 2 (tools shown / no-tools) both have real per-step asserts in BOTH test methods (composer input_value, tool-testid set, soft+hard no-tools checks). ELITEA-2468 rows 1-4 map 1:1 onto Setup + Step 1 + Step 2 + Step 3 assertions — no flattened/shared assertion across the two case ids; each case's d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity mechanical grep (full diff, automation/ scope) — command: `git diff <merge-base 0ef0d696b>...HEAD -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` — 0 hits. The only substitution in this unit is the `mcp_toolkit_no_tools` fixture's use of `create_remote_mcp_toolkit(..., tools=[])`, which is a transit/precondition-level real API call (a g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator mechanical grep — command: `git diff <base>...HEAD -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` — 2 hits, both `chat.slash_mention_tool_list.locator(SLASH_MENTION_TOOL_ITEM_PREFIX)` / `self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX)`… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both page-object changes are genuinely additive, verified by inspection: `select_slash_mention_toolkit(..., wait_for_first_tool: bool = True)` — default True preserves the exact prior unconditional wait; `add_mcp_participant_via_slash_menu(..., open_plus_menu: bool = False)` — default False preserves the prior 'popper already open' contract. Both of the method's pre-existing callers (`test_slash_m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #1596 verified live via `gh issue view` — OPEN, `bug`-labelled, body matches the AFS's root-cause/repro exactly. Ran the light bug-dedup sweep myself (`gh issue list --label bug --state all`, keyword scan for 'tools'/'available tools') — no pre-existing duplicate; #1596 was a correct fresh filing. The soft-assert (`soft_failures` list + trailing `pytest.fail()` + `# Known defect: #159… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS priority mapping (l2 for ELITEA-2468's 'high') double-checked against spec-format.md's canonical `1=critical,2=high,3=medium,4=low` and against the strong majority precedent in test-specs/ (29/34 'high' cases map to l2, 33/44 'medium' cases map to l3) — correct, not a defect (an earlier-seen minority of l1-for-high files are the outliers, not the norm)."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_slash-mention-mcp-selection-and-available-tools_ELITEA-2205_ELITEA-2468.md",
+      "branch": "tests/2205-2468-slash-mention-mcp-selection-and-available-tools",
+      "pr": 1597
+    },
+    {
+      "id": "ELITEA-2469",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2207 Step 2 and ELITEA-2469 Steps 3-4 say the selected agent's name/mention appears 'in the message field' / 'message input field'. Live-confirmed (screenshot evidence, /chat/9082): the message input (chat-message-input) stays completely empty after selecting an agent from the '#' dropdown -- the agent instead renders as a chip in the composer's active-participant control (chat-switch-parti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md"
+        },
+        {
+          "kind": "note",
+          "note": "New environment gotcha, distinct from the already-documented '/chat bare redirects to last-viewed conversation' gotcha: on this heavy DEV account (65+ folders, hundreds of conversations visible in the sidebar), navigating to bare /chat left a persistent MuiCircularProgress overlay intercepting the composer for 15+ seconds (8+ Playwright actionability retries, never resolved before this session swi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero product defects found for either case -- the select-agent -> participants-panel-update -> composer-chip -> send -> agent-responds -> remains-participant flow works correctly end to end on the live system, confirmed with a real network round trip (no substitution: real click, real send, real agent response, real participant-removal cleanup)."
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, unrelated flake found during regression checking: test_hash_search_shows_agents_and_pipelines_from_all_sources (ELITEA-2206, already merged to this batch trunk) fails 3/3 standalone with a raw playwright TimeoutError inside ChatPage.get_hash_search_item_subtitle() while resolving a '#pipe' pipeline-type card. This PR never touches that code path (HASH_SEARCH_ITEM_TYPE/HASH_SEARCH_ITE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No originating GitHub tracking issue found on board #9 for ELITEA-2207 or ELITEA-2469 (checked via the real-time gh issue list, per the dedup command) — skipped the 'comment PR link on originating issue' handoff step since there is nothing to comment on; flagging in case intake missed carding these two cases."
+        },
+        {
+          "kind": "note",
+          "note": "Discovered during implementation (not a defect, a shared-method correctness gap): ChatPage.get_agent_participant_row()/remove_agent_participant()/hover_agent_participant_row() all assumed a participant agent's home project equals settings.elitea_project_id. This is false for Agent-Hub (\"Public\") sourced agents, whose real participant-row unique id uses their OWN project id. Only get_agent_particip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, unrelated flake discovered by the implementer: TestHashSearch::test_hash_search_shows_agents_and_pipelines_from_all_sources (ELITEA-2206, already merged in PR #1598) reportedly fails 3/3 standalone on a '#pipe' lookup, on a code path this PR never touches (get_hash_search_item_subtitle/get_hash_search_items are unmodified in this diff). Reported to the lead per the implementer's dail… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py::TestHashSearch::test_hash_search_shows_agents_and_pipelines_from_all_sources"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map Axis-1 table has no explicit row for ELITEA-2469's own Step 1 (navigate to Chats + create a new conversation) — its disposition ('already-covered') is stated only in the prose 'Test Steps' section, not as a table row. Trivial/universal step (conversation creation), disposition is documented, so not blocking — but strictly the Axis-1 table should have one row per original-case elem… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md"
+        },
+        {
+          "kind": "note",
+          "note": "get_agent_participant_row()'s docstring lost its 'Returns:' section when the new agent_project_id Args paragraph was added in this diff — cosmetic doc regression, not a behavioral issue.",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4's version_text is derived by string-slicing the whole popover row's text_content() (row_text[len(agent_name):]) rather than reading a scoped version sub-element, relying on there being no separating whitespace between the name and version text in the DOM. Both shapes ('ver' and 'vX.Y') were live-confirmed this session so it works today, but it's slightly more fragile than the icon assertion… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md",
+      "branch": "tests/2207-2469-hash-search-select-agent-participant",
+      "pr": 1599,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          303.56,
+          285.63,
+          360.89
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2470",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Both cases' case text says the selected pipeline's mention appears 'in the message field' / 'message input field'. Live product: chat-message-input stays completely empty; the pipeline instead renders as a composer chip (chat-switch-participant-button, accessible name 'Switch Pipeline'). Identical drift to the already-filed ELITEA-2207/2469 clarification for agents — same established composer-chip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Axis 2 — Clarification 1"
+        },
+        {
+          "kind": "clarification",
+          "note": "Pipeline-specific, new this session: a dynamically-selected ambient pipeline may respond with a genuine execution-error card ('Pipeline has no nodes to execute...') rather than a substantive answer, and this still satisfies both cases' 'the pipeline processes and responds' / 'remains in PARTICIPANTS' expected result — neither case text demands specific response content. Live-confirmed: the respons… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Axis 2 — Clarification 2"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered live + via source (EliteaUI participants.helpers.js getChatParticipantUniqueId()): a pipeline participant's row testid uses uniqueId prefix 'pipeline_' (singular), NOT the agent family's 'application_' prefix — confirmed live as chat-participant-row-pipeline_8056_399. The existing get_agent_participant_row()/remove_agent_participant() page-object methods hardcode 'application_' and cann… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/pipeline_participant_uniqueid_prefix.md"
+        },
+        {
+          "kind": "note",
+          "note": "Popover-row version text for a pipeline participant is the pipeline's own literal version NAME (e.g. 'base' this session), not the agent family's auto-generated 'ver'/'vX.Y' shape. The implementer must not reuse ELITEA-2207/2469's re.match(r\"v(er\\b|\\d)\", ...) regex for the pipeline row — assert only that a non-empty version-text remainder exists.",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Bare /chat navigation on this heavy ambient account (65+ folders) hit a persistent MuiCircularProgress/MuiBox overlay blocking the composer's pointer events for >15s across 2 separate click attempts, never cleared within the session's patience budget — same class of account-data-volume hazard the ELITEA-2207/2469 AFS already documented (that occurrence resolved after 8+ retries; this one didn't re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md#Preconditions"
+        },
+        {
+          "kind": "defect",
+          "note": "Infra bug, FIXED this unit: HASH_SEARCH_ITEM_PREFIX in automation/pages/chat_page.py was missing a `:not([data-testid$=\"-name\"])` exclusion for the `-name` sub-testid the ELITEA-2207/2469 unit added, doubling get_hash_search_items()'s count and corrupting .nth() indices. This is very likely the same root cause as the ELITEA-2207/2469 Run Report's reported-but-unfixed \"pre-existing #pipe flake in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Infra bug, FIXED this unit: _is_transient_message() in automation/pages/chat_page.py misclassified an already-complete pipeline response (a real 'Thought for less than a second' reasoning summary followed by a real error card in the same message body) as permanently transient, because its dynamic-pattern check ran on the whole joined multi-line text instead of per-line. This affects any future tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "No tracking issue exists on board #9 for ELITEA-2208 or ELITEA-2470 (gh issue list search returned nothing) -- consistent with the AFS's 'Linked Story: none' note, so the PR-link comment step was skipped rather than omitted in error."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS partial-overclaim (same shape as .agents/memory/qa-engineer/coverage_map_row_can_partially_overclaim_one_clause.md). The Coverage Map row's \"Asserted where\" cell reads: `send_message(\"hello\")`; header shows \"to <Pipeline Name>\" attribution. Only the send action is implemented — no assertion anywhere checks that the message/response is attributed to the selected pipeline's name (a 'to <X>' head… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_interface.py:~830 (Step 5/6 of test_add_pipeline_via_hash_search_joins_participants_and_responds) + test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md Coverage Map row \"Type a message and send\""
+        },
+        {
+          "kind": "note",
+          "note": "Implementer's per-line transient-message fix is a genuine, well-documented, backward-compatible correctness fix — the old whole-string startswith('thought for ') check could only ever produce MORE false-transient positives than the new per-line all(...) check, so no existing caller can regress. No action needed.",
+          "ref": "automation/pages/chat_page.py:_is_transient_message (line ~2286)"
+        },
+        {
+          "kind": "note",
+          "note": "New entity_type/section params are additive with unchanged defaults; confirmed no other caller in the suite is affected by signature diff.",
+          "ref": "automation/pages/chat_page.py:get_agent_participant_row / remove_agent_participant"
+        },
+        {
+          "kind": "note",
+          "note": "No EliteaUI/JSX changes in this diff (no new testids needed, per the AFS's own claim) — zero-functional-impact and testid-convention checks don't apply here. Spot-checked 3 AFS provenance claims (chat-participants-badge-pipelines [runtime-composed via ${entity.section}, confirmed by reading CollapsedPerticapantsList.jsx directly since bare-substring grep can't see template literals], chat-particip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "N/A"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run on the full diff, both 0 hits: fidelity-substitution `git diff <base>...<branch> -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` and non-testid-handle `git diff <base>...<branch> -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "N/A"
+        },
+        {
+          "kind": "note",
+          "note": "ApplicationAnswer.jsx's response-header participant-name text ('<Name> to Message') carries no testid on either main or automation/testids — any future case asking to assert AI/agent/pipeline response attribution by that string needs a new testid first (add-data-testid), since this project's locator policy has no fallback ladder. Logged durably in .agents/memory/test-automation-engineer/chat_respo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1600"
+        },
+        {
+          "kind": "note",
+          "note": "The attribution-claim overclaim originated in the already-merged ELITEA-2207/2469 sibling AFS/PR #1599 (not caught at that PR's own review) and was propagated by copy-paste into this AFS. PR #1599 is already merged and out of scope for this fix, but its own AFS carries the same stale claim if anyone reads it later.",
+          "ref": "PR #1599 (merged)"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (attribution-clause overclaim) is genuinely fixed. AFS Coverage Map row 'Type a message and send' (test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md) and its Automation Hints bullet now correctly describe what the test asserts (message-count growth by 2 + PIPELINES badge persistence) and name why the literal 'attribute… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md:154"
+        },
+        {
+          "kind": "note",
+          "note": "New static regression-guard test automation/tests/unit/test_hash_search_pipeline_attribution_claim_consistency.py parses the live method's docstring + the AFS Coverage Map row and fails if either makes a bare 'attribut...' claim with no matching handle reference in the method body. Traced its 3 sub-tests by hand against the current diff (static review — did not execute): the docstring's own 'does … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/unit/test_hash_search_pipeline_attribution_claim_consistency.py"
+        },
+        {
+          "kind": "note",
+          "note": "Two infra fixes riding in the same fix-round commit history reviewed and confirmed sound: (1) HASH_SEARCH_ITEM_PREFIX gained a ':not([data-testid$=\"-name\"])' exclusion, closing a real index-corruption bug (the -name sub-testid the immediately-prior ELITEA-2207/2469 unit added was matching the ^= prefix selector, doubling get_hash_search_items() counts). (2) _is_transient_message() switched from a … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:2297"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on git diff tests/batch-chat-remaining-w14...tests/2208-2470-hash-search-select-pipeline-adds-participant -- automation/: fidelity-substitution grep (\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\() = 0 hits. Non-testid-handle grep (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.loc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md",
+      "branch": "tests/2208-2470-hash-search-select-pipeline-adds-participant",
+      "pr": 1600,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          303.56,
+          285.63,
+          360.89
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "merged-sanctioned-red": 2,
+    "automated": 5
+  },
+  "quality_flags": [
+    "extend-rate 5/7 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/chat/test_slash_mention_mcp_selection_and_available_tools.py",
+      "test_id": "tests.ui.chat.test_slash_mention_mcp_selection_and_available_tools.TestSlashMentionMcpSelectionAndAvailableTools.test_select_mcp_from_slash_mention_no_tools_shows_empty_panel",
+      "ticket": "https://github.com/EliteaAI/elitea-testing-public/issues/1596",
+      "why": "Zero-tools MCP still opens an empty, header-only 'available tools' panel instead of showing none — case's own stated expected result diverges from live product. Deterministic/single-cause/tail-isolable per .agents/testing.md § Merge gate Analysis-time entry; soft-asserted (this Python suite's soft_failures+pytest.fail() pattern, no expect.soft() available) with # Known defect: #1596.",
+      "case_ids": [
+        "ELITEA-2205",
+        "ELITEA-2468"
+      ],
+      "unit": "ELITEA-2205+ELITEA-2468"
+    }
+  ],
+  "parked": []
+}

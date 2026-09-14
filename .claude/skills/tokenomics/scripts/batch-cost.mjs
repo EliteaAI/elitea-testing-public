@@ -30,7 +30,8 @@
 //   * stats (avg/median/min/max) run over measured values only.
 //
 // STDLIB ONLY. Read-only except the cost.json writes.
-import { readFileSync, readdirSync, existsSync, writeFileSync, appendFileSync, mkdirSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { statSync, readFileSync, readdirSync, existsSync, writeFileSync, appendFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadLines, dedupLines } from './team-report.mjs';
@@ -249,6 +250,64 @@ export function classify(label, ids, declared = []) {
 }
 
 // --- the join ----------------------------------------------------------------
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WINDOW_MARGIN_MS = DAY_MS;          // scopes close late, sessions start early
+const WINDOW_LOOKBACK_MS = 14 * DAY_MS;   // only-an-end-known heuristic (pre-scope history)
+const windowCache = new Map();
+/** When did this batch's work happen? Strongest source first:
+ *  1. declared scopes naming the batch (declaredAt .. closedAt|updatedAt)
+ *  2. script-authored gate verdicts (gate-runs.jsonl `at` stamps)
+ *  3. the receipt's git commit time (mtime fallback) as the END, 14 days back
+ * `null` when nothing is known — the join then falls back to the bare id match. */
+export function batchWindow(slug, receipt, { scopes = [], dir = null, repo = null } = {}) {
+  const key = `${repo ?? ''}::${slug}`;
+  if (windowCache.has(key)) return windowCache.get(key);
+  let out = null;
+  const names = new Set([slug, receipt?.batch].filter(Boolean).map((s) => String(s).toLowerCase()));
+  const ts = scopes.filter((s) => s.batch && names.has(String(s.batch).toLowerCase()));
+  const starts = ts.map((s) => Date.parse(s.declaredAt)).filter(Number.isFinite);
+  const ends = ts.map((s) => Date.parse(s.closedAt ?? s.updatedAt)).filter(Number.isFinite);
+  if (starts.length) out = { start: Math.min(...starts), end: ends.length ? Math.max(...ends) : Math.max(...starts), source: 'scopes' };
+  if (!out && dir) {
+    const at = loadGateRuns(dir, { repo, slug }).map((g) => Date.parse(g.at)).filter(Number.isFinite);
+    if (at.length) out = { start: Math.min(...at), end: Math.max(...at), source: 'gate-runs' };
+  }
+  if (!out && dir) {
+    const p = join(dir, 'report.json');
+    let end = null;
+    try { const t = execFileSync('git', ['log', '-1', '--format=%ct', '--', p], { cwd: repo ?? dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 }).trim(); if (t) end = Number(t) * 1000; } catch { /* untracked or no git */ }
+    if (!end) { try { end = statSync(p).mtimeMs; } catch { /* no receipt */ } }
+    if (end) out = { start: end - WINDOW_LOOKBACK_MS, end, source: 'receipt-time (14-day look-back)' };
+  }
+  if (out) out = { ...out, start: out.start - WINDOW_MARGIN_MS, end: out.end + WINDOW_MARGIN_MS };
+  windowCache.set(key, out);
+  return out;
+}
+const overlapsWindow = (line, w) => {
+  if (!w) return true;
+  const s = Date.parse(line.startedAt ?? ''); const e = Date.parse(line.endedAt ?? '');
+  if (!Number.isFinite(s) && !Number.isFinite(e)) return true;      // undated → permissive (legacy)
+  return (!Number.isFinite(s) || s <= w.end) && (!Number.isFinite(e) || e >= w.start);
+};
+/** SCOPE-FIRST membership. A DECLARED session joins only what it declared:
+ *  its `scope.batch` (or `scope.cases` when no batch was named) — never by
+ *  mined ids, so a later FIX/triage session that merely mentions a case id
+ *  cannot be billed to the batch that delivered it (field case 2026-09-14:
+ *  approved-top10, whose own sessions had expired, showed $107 from five
+ *  September triage sessions). A non-automation intent joins no batch at all.
+ *  An UNDECLARED session keeps the id/slug/branch match, inside the batch's
+ *  time window when one is known. */
+export function lineBelongsToBatch(line, { keys = [], ids = [], branches = [], window = null } = {}) {
+  const sc = line.scope;
+  if (sc && typeof sc === 'object') {
+    if (sc.intent && sc.intent !== 'automation') return false;
+    if (sc.batch) return keys.some((k) => k && String(k).toLowerCase() === String(sc.batch).toLowerCase());
+    if (Array.isArray(sc.cases) && sc.cases.length) return sc.cases.some((c) => ids.includes(c));
+    return false;
+  }
+  return overlapsWindow(line, window) && lineMatchesBatch(line, { slug: keys, ids, branches });
+}
+
 /** Does this ledger line belong to this batch at all? `slug` may be a string
  * or a list (a nested wave passes its path slug + the receipt's batch name).
  * A DECLARED scope (work-scope.mjs, stamped by capture) is the strongest
@@ -433,30 +492,13 @@ export function applySizing(casesOut, sizings, baselines) {
   };
 }
 
-export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [], others = [], repo = null } = {}) {
+export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [], others = [], repo = null, window = undefined } = {}) {
   const ids = receipt.cases.map((c) => c.id).filter(Boolean);
   const branches = [receipt.integration_branch, ...receipt.cases.map((c) => c.branch)].filter(Boolean);
-  // BATCH TIME WINDOW — the guard against resurrected history. Case ids
-  // repeat across batch GENERATIONS (a re-run demo, a reset repo, a case
-  // re-entering a later batch), and transcripts outlive trees: the catch-up
-  // capture legitimately heals a pre-era session into the ledger, where a
-  // bare id-match would then attribute it here (field case 2026-08-18: a
-  // pre-reset session matched TC-001..004 and inflated a $27 batch to $45).
-  // A session that ENDED before this batch was FIRST DECLARED cannot be its
-  // work — unless its own scope names the batch outright. Batches with no
-  // scope record keep the old id-match behavior unchanged.
-  const declaredTs = scopes
-    .filter((s) => s.batch === slug || s.batch === receipt.batch)
-    .map((s) => Date.parse(s.declaredAt))
-    .filter(Number.isFinite);
-  const windowStart = declaredTs.length ? Math.min(...declaredTs) : null;
-  const inWindow = (l) => {
-    if (!windowStart) return true;
-    if (l.scope?.batch === slug || l.scope?.batch === receipt.batch) return true;
-    const ended = Date.parse(l.endedAt ?? '');
-    return !Number.isFinite(ended) || ended >= windowStart;
-  };
-  const lines = dedupLines(allLines).filter((l) => inWindow(l) && lineMatchesBatch(l, { slug: [slug, receipt.batch].filter(Boolean), ids, branches }));
+  // BATCH TIME WINDOW + SCOPE-FIRST JOIN — see lineBelongsToBatch()/batchWindow().
+  const win = window === undefined ? batchWindow(slug, receipt, { scopes, dir, repo }) : window;
+  const mine = { keys: [slug, receipt.batch].filter(Boolean), ids, branches, window: win };
+  const lines = dedupLines(allLines).filter((l) => lineBelongsToBatch(l, mine));
 
   const myKeys = [slug, receipt.batch].filter(Boolean).map((s) => String(s).toLowerCase());
   const foreignIds = new Set(others.flatMap((o) => o?.ids ?? []).filter((id) => !ids.includes(id)));
@@ -510,7 +552,7 @@ export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [
 
     // How many batches did this session serve? Its session-level figures split
     // evenly across them; a single-batch session divides by 1 (unchanged).
-    const div = 1 + others.filter((o) => o && lineMatchesBatch(line, { slug: o.keys ?? [], ids: o.ids ?? [], branches: o.branches ?? [] })).length;
+    const div = 1 + others.filter((o) => o && lineBelongsToBatch(line, o)).length;
     if (div > 1) sharedSessions++;
 
     // Partition dispatches: mine (named this batch's ids/slug) at full weight,
@@ -644,6 +686,7 @@ export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [
   return {
     v: COST_VERSION, batch: slug, generatedAt: new Date().toISOString(),
     sources: {
+      window: win ? { start: new Date(win.start).toISOString(), end: new Date(win.end).toISOString(), source: win.source } : null,
       sessions: lines.length, hosts: [...hosts].sort(), users: [...users].sort(), costSources: [...costSources].sort(), models: [...models].sort(),
       ...(lines.some((l) => l.live) ? {
         liveSessions: lines.filter((l) => l.live).length,
@@ -710,10 +753,11 @@ export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [
 }
 
 /** A receipt's identity for the cross-batch exclusion (see buildBatchCost). */
-const receiptIdentity = ({ slug, receipt }) => ({
+const receiptIdentity = ({ slug, dir, receipt }, { scopes = [], repo = null } = {}) => ({
   keys: [slug, receipt.batch].filter(Boolean),
   ids: receipt.cases.map((c) => c.id).filter(Boolean),
   branches: [receipt.integration_branch, ...receipt.cases.map((c) => c.branch)].filter(Boolean),
+  window: batchWindow(slug, receipt, { scopes, dir, repo }),
 });
 
 /** Recompute cost.json for every batch (or one) this repo's ledger can see.
@@ -740,7 +784,7 @@ export function updateBatchCosts(repo, { batch, write = true, live = true } = {}
   const scopes = listScopes(repo);
   const out = [];
   for (const { slug, dir, receipt } of receipts) {
-    const others = all.filter((r) => r.slug !== slug).map(receiptIdentity);
+    const others = all.filter((r) => r.slug !== slug).map((r) => receiptIdentity(r, { scopes, repo }));
     const cost = buildBatchCost(slug, receipt, allLines, { dir, scopes, others, repo });
     if (write) writeFileSync(join(dir, 'cost.json'), `${JSON.stringify(cost, null, 1)}\n`);
     out.push(cost);

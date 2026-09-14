@@ -1,0 +1,69 @@
+{
+  "batch": "elitea-2321",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2321",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      18.69,
+      15.28,
+      16.71
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2321",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed elitea-testing-public#1199: TMS case ELITEA-2321 step 4 lists 5 KPI cards on the agent/pipeline detail view including a non-existent 'Error Rate' KPI (no such KPI exists in source or live product at all — a step beyond simple omission, unlike prior siblings in this family); live has 8 (TOTAL RUNS, UNIQUE USERS, TOTAL COST, TOTAL TOKENS, INPUT TOKENS, OUTPUT TOKENS, AVG LATENCY, ERRORS). Step… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1199"
+        },
+        {
+          "kind": "note",
+          "note": "Step 1's case-text drift (case calls it the 'Agents tab', live label is 'Agents & Pipelines') is the identical fact already documented in elitea-testing-public#1195 for the sibling case ELITEA-2320 — not re-filed for ELITEA-2321 since this case's step 1 is pure transit reusing ELITEA-2320's already-merged tab-navigation, not a new observable.",
+          "ref": "elitea-testing-public#1195"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2320's merged AFS/page-object explicitly scoped the agent/pipeline detail sub-view's own content (KPI cards, chart, Users/Tools panels) OUT of its own case — 'Full detail-sub-view content ... is OUT OF SCOPE for this case'. That gap is exactly what ELITEA-2321 fills; classified fresh ready-for-automation rather than extend-existing because the actual overlap with ELITEA-2320's spec is only … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Errors-KPI-card positive-color branch (errors>0 -> red) and the Users-panel empty state ('No runs recorded') are documented Blocked Steps in the AFS — no live data exists in the Private fixture project at analysis time (identical gap already recorded for ELITEA-2320's Activity-table Errors column on the same project/range). Source-confirmed only; flagged for the implementer to fold in if the fixtu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "get_panel_summary's line split on a chartCard-style panel (Users/Tools/Models/Agents panels shared by AnalyticsUserDetailed.jsx and AnalyticsAgentDetailed.jsx) always includes the uppercase column-header row (2 lines for Tools: TOOL/CALLS; 4 lines for Users/Models/Agents), even in the empty-state branch. A test asserting the empty-state message must slice past the header, not assume the body colla… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/analytics_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's case-text-drift clarification elitea-testing-public#1199 (5 vs 8 KPI cards incl. non-existent 'Error Rate', 'Daily Usage' vs 'Runs by Day' chart title, 'Events' vs 'Runs' Users-panel column) was already filed by the analyst before this dispatch — confirmed present, not re-filed."
+        }
+      ],
+      "afs": "test-specs/settings-analytics/l2_agent-detail-view-kpi-charts-panels_ELITEA-2321.md",
+      "branch": "tests/2321-agent-detail-view-kpi-charts-panels",
+      "pr": 1200,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          18.69,
+          15.28,
+          16.71
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

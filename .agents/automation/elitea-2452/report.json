@@ -1,0 +1,144 @@
+{
+  "batch": "elitea-2452",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2452",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      28.31,
+      25.52,
+      23.41
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py",
+        "signature": "TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant FAILED — pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — steps 1-10 passed cleanly). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1039: a bare LLM node (added via + Add Node with zero further config) errors instead of respon… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "elitea-testing-public#1039"
+        ]
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py",
+        "signature": "test_hitl_node_runtime_behavior FAILED — pytest.fail: Soft assertion(s) failed (sanctioned RED — known defect #1103). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1103: Reject should end the pipeline at END with no further processing, but the backend re-emitted ['agent_start','start_task'] — the pipeline restarted from the entry point instead.",
+        "case_ids": [
+          "elitea-testing-public#1103"
+        ]
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_router_node_configuration.py",
+        "signature": "test_router_node_configuration_and_edge_wiring FAILED — pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — rest of the flow: Condition/Routes/Input/routes-edges/Save/reload passed cleanly). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036: default-output edge Router 1 default_output -> END did not render immediately after selec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "elitea-testing-public#1036"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2452",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1271 (bug): RunStateDialog.jsx's 'Before' value for the FIRST timeline step is hardcoded to the literal '' instead of reading the variable's real pre-run value (source: `valueBefore={selectedStep ? data.timeline[selectedStep-1].state[variable] : ''}`). Confirmed live with a second probe pipeline (id 7682, deleted after) seeding a state variable `seed_var` with … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1271"
+        },
+        {
+          "kind": "note",
+          "note": "The fullscreen value modal (PipelineStateViewModal.jsx, src/components/) shows only the variable name in its heading, not whether the expanded value was Before or After — a UX ambiguity, not filed as a ticket since the case never requires the modal to distinguish direction. Left as a documented AFS note; flagging in case the lead wants a UX ticket."
+        },
+        {
+          "kind": "note",
+          "note": "Live quirk for the implementer: the Run Details panel's default-selected timeline step on open is the LAST step, not index 0, for an already-Completed run (confirmed on 2 independent executions) — contradicts a naive reading of RunStateDialog's `useState(0)` initializer plus its InProgress-only auto-advance useEffect. Implementer should explicitly click the desired step rather than assuming index … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "BasicAccordion.jsx (src/[fsd]/shared/ui/accordion/) already supports a per-item `testId` prop threaded straight to data-testid — RunStateDialog.jsx just needs to pass it in its `items` array for the state-variable rows. Saves the implementer from re-plumbing a shared component; the Before/After value boxes and their expand-icon buttons (StateItemView/StateItemViewHeader) do need new prop plumbing … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Test asserts AFS Step 8 (messages @ LLM1, modified) before AFS Step 7 (input @ LLM2, unmodified) in execution/allure-step order, to avoid re-selecting the LLM1 timeline step twice — steps 3-6 already leave the panel on LLM1. Both case steps are fully covered; this is purely a technique/ordering choice within Phase 2 latitude, not a scope change. Flagging so the reviewer isn't surprised by the out-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live (no live-vs-code contradiction this run) known defect EliteaAI/elitea-testing-public#1271 still reproduces conceptually as documented in the AFS — the test deliberately never exercises the FIRST timeline step for the Before=After assertion, so the defect itself does not fire in this test (by design, per the AFS's own workaround instruction), and no new soft-assert / expected_red ent… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (PR #581 ruling / role-overrides.md § Reviewer slot / testing.md § Locator policy). `EliteaAI/EliteaUI@2b40e5a6` adds 4 literal, feature-scoped testids directly inside `src/components/PipelineStateViewModal.jsx` — `data-testid=\"pipeline-run-details-value-modal\"` (root Dialog), `-header` (DialogTitle), `-close-button` (IconButton), `-content` (DialogContent). Rule: a component under `src/c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI src/components/PipelineStateViewModal.jsx (commit 2b40e5a6, on automation/testids)"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: the `@allure.issue(...)` link in the new spec cites `ELITEA-2452_run-details-state-before-after-per-node.md`, but the real TMS file (confirmed via `find onetest-ai-tm-Elitea -iname '*2452*'`) is named `ELITEA-2452_run-details-state-beforeafter-per-node.md` (no hyphen between 'before' and 'after') — the traceability link 404s. Trivial one-line fix; doesn't affect test correctness. Com… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py (allure.issue decorator, ~line 60)"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking/cosmetic: the allure.step labels for case-steps 7 and 8 execute in reversed order in the code — the block labelled \"Step 8 — Modified variable…\" runs BEFORE the block labelled \"Step 7 — Unmodified variable…\". Functionally correct (both assertions land on the right timeline step and the right expected values, confirmed via full triangulation against the AFS's own step 7/8 text), but an… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py (Step 8 / Step 7 allure.step blocks)"
+        },
+        {
+          "kind": "note",
+          "note": "Positive: full triangulation (TMS case snapshot ↔ AFS ↔ diff) is clean otherwise. All 9 case steps map to real allure.step blocks with real assertions (no bare-action steps). Both AFS Axis-2 additions (known defect #1271 routing, console-error side-channel excluding filed #1267) and the modal-close-returns-focus smoke are implemented. Known defect #1271's workaround (asserting the unmodified-varia… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause pattern for reviewers to watch: an implementer can 'know' the caller-prop pattern (uses it correctly for sibling components in the SAME commit) yet still hardcode literals on one component because the AFS itself pre-argued a single-consumer exception. When an AFS argues an exception to a hard project rule, treat that argument as suspect by default rather than as license.",
+          "ref": "test-specs/pipelines/l3_run-details-state-before-after-per-node_ELITEA-2452.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding CONFIRMED FIXED: EliteaAI/EliteaUI@0f55411b threads testId/headerTestId/closeButtonTestId/contentTestId props (default undefined) into PipelineStateViewModal.jsx, wired from RunStateDialog.jsx's <PipelineStateViewModal> call site with the same literal values as before, mirroring the StateItemViewHeader/BasicAccordion caller-prop pattern already present in the same original c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@0f55411b (src/components/PipelineStateViewModal.jsx)"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep on the full automation/pages + automation/tests diff: 7 `.locator(` hits, all of the form `self.page.locator(<UPPER_CASE_CONSTANT>.format(...))` against class-level `[data-testid=\"...\"]` template constants (RUN_DETAILS_TIMELINE_STEP, RUN_DETAILS_STATE_ROW, RUN_DETAILS_STATE_VALUE_BEFORE/AFTER, RUN_DETAILS_STATE_EXPAND_BEFORE/AFTER) — 0 non-compliant hits. No `fallback=`/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation performed: TMS case ELITEA-2452 (9 steps) <-> AFS Coverage Map <-> test diff. All 9 case steps have a real allure.step + a real assertion at that step (not just an end-state check); step 6/7/8/9's expected results (Before/After columns, unmodified==, modified!=, fullscreen full-value) each map to a genuine expect()/assert in the test body. Axis-2 additions (console-error scoping… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_run-details-state-before-after-per-node_ELITEA-2452.md"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #1271 (first-timeline-step Before value hardcoded to '') is routed around legitimately, not masked: the test deliberately asserts the 'unmodified variable => Before=After' case at the SECOND timeline step, never the first, with an explanatory comment + module docstring pointing at the filed, open, DEV-verified issue. No test.fail()/xit/weakened assertion pattern present.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking documentation staleness: pipeline_detail_page.py:855-856's comment ('Fullscreen value modal (PipelineStateViewModal.jsx) — feature-scoped literal testids (single consumer, RunStateDialog.jsx)') still describes the PRE-fix shape. It wasn't touched by the fix-round commit (JSX-only change; testid *values* didn't change so the LocatorDescriptor lines themselves stay correct), but the pro… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:855-856"
+        },
+        {
+          "kind": "note",
+          "note": "Minor readability nit, non-blocking: the test's Allure step labels execute out of numeric order — the 'Step 8' block (messages Before!=After @ LLM1) runs before the 'Step 7' block (input Before==After @ LLM2) in source and in the Allure report. Functionally correct (each block is self-contained state-select + assert) but slightly confusing for a report reader following case-step order.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py"
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_run-details-state-before-after-per-node_ELITEA-2452.md",
+      "branch": "tests/2452-run-details-state-before-after",
+      "pr": 1272,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          28.31,
+          25.52,
+          23.41
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

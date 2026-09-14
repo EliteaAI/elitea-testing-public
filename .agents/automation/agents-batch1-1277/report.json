@@ -1,0 +1,430 @@
+{
+  "batch": "agents-batch1-1277",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-agents-batch1-1277",
+  "gate": {
+    "verdict": "not-run",
+    "runs": 0,
+    "seconds": [],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1873",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "A prior implementer note on automation/tests/ui/agents/test_agent_save_as_version.py (ELITEA-1888) claims the discard-button testid was 'confirmed absent from the DOM' on the Agent detail page. Re-verified live this run (DOM probe) — it IS present and correctly wired. That note is now stale; left as-is since it isn't this case's file to touch. Worth a cleanup pass someday.",
+          "ref": "test-specs/agents/lcritical_discard-changes-resets-all-unsaved-edits_ELITEA-1873.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case Step 3 offers two alternative triggers: 'Click the Discard button (or navigate away and confirm discard in any dialog)'. Implementation covers only the Discard-button path (deterministic, matches the case's own Objective phrasing). The navigate-away/route-guard variant is a distinct trigger not covered by this test — not filed as a gap, just noted in the AFS's Axis-1 coverage map as a narrowed scope with sound reasoning.",
+          "ref": "ELITEA-1873 case text, Step 3"
+        },
+        {
+          "kind": "question",
+          "note": "No GitHub tracking issue exists on board #9 for ELITEA-1873 (checked via gh issue list, no match). Per profile.md this batch's intake may not have filed one, or the case entered via a different intake path. Flagging so the lead can confirm whether a board card + comment is expected before Close."
+        },
+        {
+          "kind": "note",
+          "note": "PR body's Run Report omits the mandatory implementer self-check mechanical-grep paste (role-overrides.md § Implementer slot). Reviewer ran the grep independently and confirmed 0 hits on the full diff, so this is a process-discipline gap, not a code defect.",
+          "ref": "PR #1280 body"
+        },
+        {
+          "kind": "note",
+          "note": "Test asserts discard_confirm_modal.is_visible() immediately after click_discard(), which already blocks on wait_for(state='visible') internally with the same timeout — harmless redundancy, not a defect.",
+          "ref": "automation/tests/ui/agents/test_agent_management.py:894-896"
+        }
+      ],
+      "afs": "test-specs/agents/lcritical_discard-changes-resets-all-unsaved-edits_ELITEA-1873.md",
+      "branch": "tests/1873-discard-changes-reverts-all-fields",
+      "pr": 1280
+    },
+    {
+      "id": "ELITEA-1874",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No GitHub board issue exists for ELITEA-1874 or ELITEA-1875 (checked via gh issue list --state all). Intake may not have created board cards for this pair before dispatch — the lead may want to backfill/verify tracker linkage."
+        },
+        {
+          "kind": "note",
+          "note": "Both cases were fully satisfiable with zero new testids and zero page-object changes — the existing embedded-chat abstraction covered all paths identically."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1874 case text doesn't specify HOW the message is submitted at step 4 beyond 'Press Enter (without Shift)' — implemented as a literal keyboard Enter press on chat_message_input (not a click on chat_send_button), which is the only reading consistent with the case's own wording and worked correctly on first try.",
+          "ref": "ELITEA-1874"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (Important) — raw `page.wait_for_timeout(NEGATIVE_ASSERTION_WINDOW_MS=1500)` called directly in the test file (Step 3, proving Shift+Enter didn't submit). This is a mechanical violation of the project's explicit Hard Rule in .agents/conventions.md § Hard don'ts: 'No `sleep`/`waitForTimeout` — framework waits only.' The in-code comment justifies it with a false citation.",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_shift_enter.py:29-33,76-80"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — `UI_ELEMENT_TIMEOUT` and `NAVIGATION_TIMEOUT` module constants are defined but never referenced anywhere (dead code, boilerplate left over from a template).",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_send_message.py:30-31"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed reviewer finding: raw page.wait_for_timeout(1500) in test_agent_embedded_chat_shift_enter.py Step 3 replaced with a real framework-native wait — Locator.wait_for(state=\"attached\", timeout=...) + pytest.raises(PlaywrightTimeoutError). See commit 570c1a58 and PR #1281's \"Fix round 1\" section.",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_shift_enter.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the PR diff returned 0 hits — no new non-testid handles added. All handles used by the fix are pre-existing LocatorDescriptor fields.",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_send_message.py"
+        }
+      ],
+      "afs": "test-specs/agents/l2_embedded-chat-send-message-non-empty-response_ELITEA-1874.md",
+      "branch": "tests/1874-1875-embedded-chat-send-shift-enter",
+      "pr": 1281
+    },
+    {
+      "id": "ELITEA-1875",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No GitHub board issue exists for ELITEA-1874 or ELITEA-1875 (checked via gh issue list --state all). Intake may not have created board cards for this pair before dispatch — the lead may want to backfill/verify tracker linkage."
+        },
+        {
+          "kind": "note",
+          "note": "Both cases were fully satisfiable with zero new testids and zero page-object changes — the existing embedded-chat abstraction covered all paths identically."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1874 case text doesn't specify HOW the message is submitted at step 4 beyond 'Press Enter (without Shift)' — implemented as a literal keyboard Enter press on chat_message_input (not a click on chat_send_button), which is the only reading consistent with the case's own wording and worked correctly on first try.",
+          "ref": "ELITEA-1874"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (Important) — raw `page.wait_for_timeout(NEGATIVE_ASSERTION_WINDOW_MS=1500)` called directly in the test file (Step 3, proving Shift+Enter didn't submit). This is a mechanical violation of the project's explicit Hard Rule in .agents/conventions.md § Hard don'ts: 'No `sleep`/`waitForTimeout` — framework waits only.'",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_shift_enter.py:29-33,76-80"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — `UI_ELEMENT_TIMEOUT` and `NAVIGATION_TIMEOUT` module constants are defined but never referenced anywhere (dead code, boilerplate left over from a template).",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_send_message.py:30-31"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed reviewer finding: raw page.wait_for_timeout(1500) in test_agent_embedded_chat_shift_enter.py Step 3 replaced with a real framework-native wait — Locator.wait_for(state=\"attached\", timeout=...) + pytest.raises(PlaywrightTimeoutError). See commit 570c1a58 and PR #1281's \"Fix round 1\" section.",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_shift_enter.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the PR diff returned 0 hits — no new non-testid handles added. All handles used by the fix are pre-existing LocatorDescriptor fields.",
+          "ref": "automation/tests/ui/agents/test_agent_embedded_chat_send_message.py"
+        }
+      ],
+      "afs": "test-specs/agents/l2_embedded-chat-shift-enter-newline-enter-sends_ELITEA-1875.md",
+      "branch": "tests/1874-1875-embedded-chat-send-shift-enter",
+      "pr": 1281
+    },
+    {
+      "id": "ELITEA-1876",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1282 [Clarification][ELITEA-1876]: case step 6 expects each Run History entry to show 'a timestamp and a preview of the conversation (first message or title)'. Live product renders exactly Date/Version/Duration per row -- no preview/title anywhere in the row; that content only appears in the right-hand detail panel after a click.",
+          "ref": "EliteaAI/elitea-testing-public#1282"
+        },
+        {
+          "kind": "note",
+          "note": "Positive/bonus finding, not filed as a new issue: previously-reproduced defect EliteaAI/elitea-testing-public#1093 ('no UI way to close Run History once opened') now appears FIXED live.",
+          "ref": "EliteaAI/elitea-testing-public#1093"
+        },
+        {
+          "kind": "note",
+          "note": "Possible flakiness in the ALREADY-MERGED ELITEA-1877 spec unrelated to ELITEA-1876's own gap. Re-ran it twice locally as part of confirming the extension target was healthy before building on it, and it FAILED both times with different signatures.",
+          "ref": "automation/tests/ui/agents/test_agent_run_history_select_past_run.py"
+        },
+        {
+          "kind": "note",
+          "note": "Reproduced the pre-existing flakiness the analyst's AFS already flagged in ELITEA-1877's own Step 5: get_run_history_chat_messages_text() can transiently read \"\" because select_run_history_item() only awaits the conversation-detail GET response, not React committing the message list. Hardened the page-object method with a bounded wait (backward-compatible optional param).",
+          "ref": "automation/pages/agent_detail_page.py get_run_history_chat_messages_text()"
+        },
+        {
+          "kind": "note",
+          "note": "AFS PROVENANCE row for run-history-list-item testid claim on-main was verified incorrect — corrected to on-automation/testids-only, awaiting human promotion, with fresh git fetch + git grep evidence.",
+          "ref": "test-specs/agents/lextend_run-history-list-shows-timestamp-and-version-duration_ELITEA-1876.md"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS PROVENANCE row for run-history-list-item (test-specs/agents/lextend_run-history-list-shows-timestamp-and-version-duration_ELITEA-1876.md) falsely claimed on-main; corrected to on-automation/testids-only, awaiting human promotion. Fixed in commit a37912b6, PR #1283.",
+          "ref": "test-specs/agents/lextend_run-history-list-shows-timestamp-and-version-duration_ELITEA-1876.md"
+        }
+      ],
+      "afs": "test-specs/agents/lextend_run-history-list-shows-timestamp-and-version-duration_ELITEA-1876.md",
+      "branch": "tests/ELITEA-1876-run-history-timestamp-version-duration",
+      "pr": 1283
+    },
+    {
+      "id": "ELITEA-1878",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Agent detail page's Tags field has NO testids today - ApplicationEditForm.jsx:182-183 sets inputTestId/chipTestId to `undefined` for the Agent (non-pipeline) branch by an explicit prior-session design comment deferring it until a case exercises it. ELITEA-1878/1879 are that case.",
+          "ref": "ApplicationEditForm.jsx:174-188"
+        },
+        {
+          "kind": "note",
+          "note": "manual_test_agent (id 5189) is a shared fixture agent reused across many analyst sessions in this batch. This is the first session to click Save on it (prior sessions never saved) - fully reverted its tags to empty before handoff.",
+          "ref": "test-specs/agents/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1878's case text has a minor typo: Expected Final State says 'regression-test' (hyphen) while the Test Data table says 'regression_test' (underscore) - the literal tag actually typed and verified live.",
+          "ref": "test-specs/agents/l2_add-and-save-multiple-tags-persist-after-reload_ELITEA-1878.md"
+        },
+        {
+          "kind": "note",
+          "note": "Priority-marker convention inconsistency within test_agent_management.py: l2-prefixed AFS map to different pytest markers across cases already in this file. ELITEA-1878/1879's AFS text literally said 'medium (l2)'; resolved to p2 by majority sibling precedent in-file.",
+          "ref": "automation/tests/ui/agents/test_agent_management.py"
+        },
+        {
+          "kind": "note",
+          "note": "No per-case GitHub tracking issue exists on board #9 for ELITEA-1878/1879. This batch pipeline appears to handle status reporting centrally via the Report/Close phase rather than per-case tracking cards.",
+          "ref": "test-specs/agents/l2_add-and-save-multiple-tags-persist-after-reload_ELITEA-1878.md"
+        }
+      ],
+      "afs": "test-specs/agents/l2_add-and-save-multiple-tags-persist-after-reload_ELITEA-1878.md",
+      "branch": "tests/1878-1879-agent-tags-add-remove-persist",
+      "pr": 1284
+    },
+    {
+      "id": "ELITEA-1879",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Agent detail page's Tags field has NO testids today - ApplicationEditForm.jsx:182-183 sets inputTestId/chipTestId to `undefined` for the Agent (non-pipeline) branch by an explicit prior-session design comment deferring it until a case exercises it. ELITEA-1878/1879 are that case.",
+          "ref": "ApplicationEditForm.jsx:174-188"
+        },
+        {
+          "kind": "note",
+          "note": "manual_test_agent (id 5189) is a shared fixture agent reused across many analyst sessions in this batch. This is the first session to click Save on it (prior sessions never saved) - fully reverted its tags to empty before handoff.",
+          "ref": "test-specs/agents/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1878's case text has a minor typo: Expected Final State says 'regression-test' (hyphen) while the Test Data table says 'regression_test' (underscore) - the literal tag actually typed and verified live.",
+          "ref": "test-specs/agents/l2_add-and-save-multiple-tags-persist-after-reload_ELITEA-1878.md"
+        },
+        {
+          "kind": "note",
+          "note": "Priority-marker convention inconsistency within test_agent_management.py: l2-prefixed AFS map to different pytest markers across cases already in this file. ELITEA-1878/1879's AFS text literally said 'medium (l2)'; resolved to p2 by majority sibling precedent in-file.",
+          "ref": "automation/tests/ui/agents/test_agent_management.py"
+        },
+        {
+          "kind": "note",
+          "note": "No per-case GitHub tracking issue exists on board #9 for ELITEA-1878/1879. This batch pipeline appears to handle status reporting centrally via the Report/Close phase rather than per-case tracking cards.",
+          "ref": "test-specs/agents/l2_remove-tag-from-agent-removal-persists-after-reload_ELITEA-1879.md"
+        }
+      ],
+      "afs": "test-specs/agents/l2_remove-tag-from-agent-removal-persists-after-reload_ELITEA-1879.md",
+      "branch": "tests/1878-1879-agent-tags-add-remove-persist",
+      "pr": 1284
+    },
+    {
+      "id": "ELITEA-1882",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1882's case text names GPT-4.1 as one of 5 OpenAI models to verify in the LLM selector. Live product has NO GPT-4.1 in its model catalog at all -- confirmed via GET /api/v2/configurations/models/399?include_shared=true (total: 11, no GPT-4.1 under any name/alias).",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1285"
+        },
+        {
+          "kind": "note",
+          "note": "OpenAI models in the live catalog carry NO vendor prefix in display_name (e.g. 'GPT-5 mini'), unlike Anthropic/Azure entries which are all vendor-prefixed ('Anthropic Claude 4.5 Sonnet', 'Azure Claude Sonnet 4.5'). Automation should match OpenAI display names literally without a prefix.",
+          "ref": "test-specs/agents/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1881 (sibling case, Anthropic models) is already merged to origin/automation/base as automation/tests/ui/agents/test_agent_llm_selector_anthropic_models.py (commit 5e39cf52, PR #583).",
+          "ref": "automation/tests/ui/agents/test_agent_llm_selector_anthropic_models.py"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's GPT-4.1 clarification (case-text drift, not a defect) was already filed by the analyst as EliteaAI/elitea-testing-public#1285 before this dispatch; no new ticket needed, just referenced in code/PR."
+        }
+      ],
+      "afs": "test-specs/agents/l2_llm-selector-openai-models_ELITEA-1882.md",
+      "branch": "tests/ELITEA-1882-llm-selector-openai-models",
+      "pr": 1286
+    },
+    {
+      "id": "ELITEA-1886",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-1886's flow renders through Agent Detail page's embedded ChatBox (ChatConversationStarters.jsx), a testid-unwired call site distinct from ELITEA-2369's already-automated /chat/{id} standalone flow (NewConversationView.jsx, wired).",
+          "ref": "test-specs/agents/l2_conversation-starter-chips-visible-and-clickable_ELITEA-1886.md"
+        },
+        {
+          "kind": "note",
+          "note": "This exact ChatConversationStarters.jsx/NewConversationView.jsx call-site pair has a documented history of wrong-call-site wiring followed by an orphan-testid leftover that survived one review round.",
+          "ref": "qa-engineer memory, ELITEA-2369/PR#1235"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text calls the field 'Conversation Starters field' but the live UI accordion label reads 'Chat starters'. Cosmetic only, already reflected in the pre-existing page-object's testid/description (not a new drift).",
+          "ref": "test-specs/agents/l2_conversation-starter-chips-visible-and-clickable_ELITEA-1886.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live product gotcha (not a defect): an agent created with llm_settings.reasoning_effort:\"none\" silently no-ops an actual chat send (composer stays populated, chat-send-button click produces no POST .../conversations/... at all, zero console/network errors).",
+          "ref": "test-specs/agents/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "AgentFormPage.get_conversation_starter_counter_text(index) does not index into the starter's own array position — the character counter only renders for the currently-focused field, so at most ONE counter element exists in the DOM at a time.",
+          "ref": "automation/pages/agent_form_page.py"
+        }
+      ],
+      "afs": "test-specs/agents/l2_conversation-starter-chips-visible-and-clickable_ELITEA-1886.md",
+      "branch": "tests/ELITEA-1886-conversation-starter-chips",
+      "pr": 1287
+    },
+    {
+      "id": "ELITEA-1898",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1898 case text says 'Copy Link button' with a 'tooltip or icon change' confirmation. Live product: it's a 'Share' menu item (share-version-menuitem) inside the three-dot Agent Actions overflow menu, confirmed via a toast ('The link has been copied to the clipboard.'), not a tooltip/icon-change.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1288"
+        },
+        {
+          "kind": "note",
+          "note": "Two visually-identical 'Share' menu items exist on the agent detail page's overflow menu: share-version-menuitem (VERSION group, version-specific link) and share-agent-menuitem (AGENT group, version-less link).",
+          "ref": "test-specs/agents/l2_copy-version-link-produces-version-specific-url_ELITEA-1898.md"
+        },
+        {
+          "kind": "note",
+          "note": "Every useProjectEntityLink-based copy-link URL carries a leading /{projectId} segment that isn't a real matched route on its own -- a catch-all /:projectId/* route renders ProjectSwitcher, which validates+switches the project and does a hard window.location.replace() reload.",
+          "ref": "test-specs/agents/_surface.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Step 6's convergence wait re-types two testids as raw JS `document.querySelector('[data-testid=\"agent-version-selector-trigger\"]')` / `document.querySelector('[data-testid=\"copy-version-id\"]')` literals directly inside a `new_page.wait_for_function(...)` payload in the SPEC file — even though BOTH testids already exist as `LocatorDescriptor` fields.",
+          "ref": "automation/tests/ui/agents/test_agent_copy_version_link.py:278-292"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS Axis 2 lists 'Zero console errors across the full select-version → open-menu → copy → navigate-to-copied-URL round trip' as an observable 'asserted beyond the case'. The implementation contains NO console-message listener and NO console-error assertion anywhere.",
+          "ref": "test-specs/agents/l2_copy-version-link-produces-version-specific-url_ELITEA-1898.md (Coverage Map Axis 2)"
+        },
+        {
+          "kind": "note",
+          "note": "Both fix-round-1 blocking findings addressed and verified green twice; no new product defects or AFS drift surfaced during the fix.",
+          "ref": "PR #1289"
+        }
+      ],
+      "afs": "test-specs/agents/l2_copy-version-link-produces-version-specific-url_ELITEA-1898.md",
+      "branch": "tests/1898-copy-version-link-produces-version-specific-url",
+      "pr": 1289
+    },
+    {
+      "id": "ELITEA-1900",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Create Agent form's Name-field character limit (agent-name-input, MAX_NAME_LENGTH=32) required zero new testid work — all three handles the case needs were already present on both EliteaAI/EliteaUI main and automation/testids.",
+          "ref": "test-specs/agents/l3_agent-name-character-limit-32_ELITEA-1900.md"
+        },
+        {
+          "kind": "note",
+          "note": "The Name field's character-counter Text.CharacterCounter has no data-testid wired at its call site even though the shared CharacterCounter.jsx component already supports a dataTestId prop.",
+          "ref": "test-specs/agents/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "No per-case GitHub tracking issue exists for ELITEA-1900 — consistent with the pattern already logged for ELITEA-1876/1898 in this same batch.",
+          "ref": "ELITEA-1900"
+        },
+        {
+          "kind": "note",
+          "note": "Case implemented exactly as specified with no drift, no defect, no new testids. Added one additive page-object helper (AgentFormPage.is_name_invalid()) mirroring the pre-existing ArtifactsPage.is_bucket_name_invalid pattern.",
+          "ref": "automation/pages/agent_form_page.py"
+        }
+      ],
+      "afs": "test-specs/agents/l3_agent-name-character-limit-32_ELITEA-1900.md",
+      "branch": "tests/ELITEA-1900-agent-name-character-limit",
+      "pr": 1290
+    },
+    {
+      "id": "ELITEA-1951",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1951 case text describes an 'Agent tab' that becomes 'active' when clicked, and an explicit agent-level Save step (steps 2, 5). Live product has no tabs -- 4 independent + buttons (Toolkit/MCP/Agent/Pipeline) each opening a popper directly, and attach auto-persists via PATCH so Save stays disabled.",
+          "ref": "EliteaAI/elitea-testing-public#530"
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap: EliteaUI/src/pages/Applications/Components/Tools/AgentPipelineVersionSelector.jsx (the version-selector shown on an attached Agent/Pipeline sub-tool card) has ZERO data-testid anywhere in the file.",
+          "ref": "test-specs/agents/l3_nested-agent-with-mcp-tool-output_ELITEA-1951.md"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered a distinct attach-persistence endpoint for Agent/Pipeline-type tools: PATCH /api/v2/elitea_core/application_relation/prompt_lib/{project}/{app_id}/{version_id} -> 201, different from the Toolkit/MCP flow's PATCH .../tool/prompt_lib/{project}/{tool_id}.",
+          "ref": "test-specs/agents/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Whether a chat message actually triggers tool/sub-agent invocation is entirely message-specificity-dependent, not flaky infra: a vague message produced zero invocation; a fully-specified message produced the full round trip.",
+          "ref": "EliteaAI/elitea-testing-public#1127"
+        },
+        {
+          "kind": "defect",
+          "note": "IMPORTANT — AFS drift not reflected in the PR's AFS amendment. The AFS's Coverage Map row 6 and Concrete Handles table row still document a plain h3-text-match locating strategy that the actual implementation superseded with a real testid.",
+          "ref": "test-specs/agents/l3_nested-agent-with-mcp-tool-output_ELITEA-1951.md"
+        },
+        {
+          "kind": "note",
+          "note": "Doc-only fix-round-1: no code changed. The page object/test already used the real chat-answer-nested-agent-accordion-summary/details testid correctly; only the AFS's Concrete Handles/Coverage Map text still described the superseded h3-text-match approach.",
+          "ref": "test-specs/agents/l3_nested-agent-with-mcp-tool-output_ELITEA-1951.md"
+        },
+        {
+          "kind": "note",
+          "note": "Dead locator constants: `AGENT_TOOL_VERSION_SELECTOR_TRIGGER`, `AGENT_TOOL_VERSION_SELECTOR_MENU`, and `AGENT_TOOL_VERSION_OPTION` (the keyed, non-`_ANY` forms) are defined at class level but never referenced anywhere.",
+          "ref": "automation/pages/agent_detail_page.py:146-148"
+        }
+      ],
+      "afs": "test-specs/agents/l3_nested-agent-with-mcp-tool-output_ELITEA-1951.md",
+      "branch": "tests/1951-nested-agent-with-mcp-tool-output",
+      "pr": 1291
+    }
+  ],
+  "totals": {
+    "merged-ungated": 10,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

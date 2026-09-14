@@ -1,0 +1,81 @@
+{
+  "batch": "elitea-2277-personal-tokens",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2277-personal-tokens",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      9.590943583,
+      8.326479625,
+      11.229180041
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2277",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "DrawerPageHeader.jsx (shared component, used by 14+ Settings pages: Secrets, ProjectGeneral, AIProviders, Users, EnvironmentSettings, indexes pages, etc.) currently has NO testid threading at all for its title, search-input, or add-button slots. This AFS requests 3 new caller-supplied props (titleTestId, slotProps.searchInput.testId, slotProps.addButton.testId) rather than hardcoding a value in th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI src/[fsd]/features/settings/ui/drawer-page/DrawerPageHeader.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Icon-count precondition: TokensTable's action-icon set (4 vs 1) is gated by a single page-level boolean (showDownload = has a resolved default model AND project isn't Public), not per-row. Confirmed true on the standard test project (Private/399). If a future run targets a project with zero model configurations or the Public project, the case's 'exactly four icons' assertion would correctly fail (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI src/[fsd]/pages/settings/PersonalTokens.jsx:265"
+        },
+        {
+          "kind": "note",
+          "note": "No tracking issue found on board #9 for ELITEA-2277 (checked via `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json number,title | grep -i ELITEA-2277`, zero hits). Skipped the Phase 6 step-4 'comment PR link on originating issue' since no issue exists to comment on — flagging so the lead can create/link one if the intake step was missed for this case."
+        },
+        {
+          "kind": "note",
+          "note": "AFS for ELITEA-2277 was fully accurate against live EliteaUI source — all 8 concrete-handle rows (component file, existing shared-component prop, exact JSX insertion point) verified correct on read, zero drift, no AFS amendment needed.",
+          "ref": "test-specs/settings-personal-tokens/l3_personal-tokens-page-layout-and-components_ELITEA-2277.md"
+        },
+        {
+          "kind": "note",
+          "note": "DrawerPageHeader.jsx now exposes titleTestId / slotProps.searchInput.testId / slotProps.addButton.testId — reusable by all 14+ other settings pages built on this shared component (SecretsContent, ProjectGeneralContent, AIProvidersContent, Users.jsx, EnvironmentSettings.jsx, index pages, etc.) per the analyst's _surface.md note. Future cases on those surfaces should wire these props rather than re-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@606f6bf9"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep on `git diff origin/tests/batch-elitea-2277-personal-tokens...origin/tests/elitea-2277-personal-tokens-page-layout -- automation/pages automation/tests` for added `get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(` returned 3 hits, all in personal_tokens_page.py (lines 128, 136, 143) — all th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/personal_tokens_page.py:128,136,143"
+        },
+        {
+          "kind": "note",
+          "note": "Verified all 8 testid claims in the AFS provenance table against the actual EliteaUI diff (fresh `git fetch origin automation/testids`, then `git show 606f6bf9`) rather than trusting the AFS/PR-body claim: DrawerPageHeader gained caller-supplied `titleTestId`/`slotProps.searchInput.testId`/`slotProps.addButton.testId` props (not hardcoded), TokensTable wired the pre-existing `columnTestIdPrefix` p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-personal-tokens/l3_personal-tokens-page-layout-and-components_ELITEA-2277.md:146-156"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case → AFS → implementation for all 6 case steps + Expected Final State: every Coverage-Map row has a real per-step assertion at the correct allure.step (not just an end-state check) — step1 (token-row visible + count>0), step2 (exact title text), step3 (search input visible + exact placeholder), step4 (add button visible+enabled), step5 (4 exact column-header texts + count==4), step6… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_personal_tokens_page_layout.py:201-288"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_personal-tokens-page-layout-and-components_ELITEA-2277.md",
+      "branch": "tests/elitea-2277-personal-tokens-page-layout",
+      "pr": 1171,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          9.590943583,
+          8.326479625,
+          11.229180041
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

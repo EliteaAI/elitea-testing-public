@@ -1,0 +1,61 @@
+{
+  "batch": "settings-w07",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w07",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      204.36,
+      197.92,
+      199.07
+    ],
+    "spec_set": "the 3 spec files the trunk adds vs origin/automation/base, together in ONE invocation per run (24 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each. This wave finished the unit parked by wave 6 (PR #1945, auto-CLOSED when its base trunk was deleted; branch survived intact with all 11 commits). Re-homed onto a new trunk tests/batch-settings-w07, resolved the base merge, closed 3 review blockers in fix round 3, fresh review APPROVED.",
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2314",
+      "outcome": "automated",
+      "pr": 1958,
+      "note": "Lead gate 3/3 green (24 tests per run). Fix round 3 verified 2 of the 3 named blockers were ALREADY fixed in round 1 and found a real residual in each rather than accepting the brief's framing; ELITEA-2318's Agents-chart data assertion was genuinely missing and is now exact ordered tick equality under both presets."
+    },
+    {
+      "id": "ELITEA-2315",
+      "outcome": "automated",
+      "pr": 1958,
+      "note": "Lead gate 3/3 green (24 tests per run). Fix round 3 verified 2 of the 3 named blockers were ALREADY fixed in round 1 and found a real residual in each rather than accepting the brief's framing; ELITEA-2318's Agents-chart data assertion was genuinely missing and is now exact ordered tick equality under both presets."
+    },
+    {
+      "id": "ELITEA-2316",
+      "outcome": "automated",
+      "pr": 1958,
+      "note": "Lead gate 3/3 green (24 tests per run). Fix round 3 verified 2 of the 3 named blockers were ALREADY fixed in round 1 and found a real residual in each rather than accepting the brief's framing; ELITEA-2318's Agents-chart data assertion was genuinely missing and is now exact ordered tick equality under both presets."
+    },
+    {
+      "id": "ELITEA-2317",
+      "outcome": "automated",
+      "pr": 1958,
+      "note": "Lead gate 3/3 green (24 tests per run). Fix round 3 verified 2 of the 3 named blockers were ALREADY fixed in round 1 and found a real residual in each rather than accepting the brief's framing; ELITEA-2318's Agents-chart data assertion was genuinely missing and is now exact ordered tick equality under both presets."
+    },
+    {
+      "id": "ELITEA-2318",
+      "outcome": "automated",
+      "pr": 1958,
+      "note": "Lead gate 3/3 green (24 tests per run). Fix round 3 verified 2 of the 3 named blockers were ALREADY fixed in round 1 and found a real residual in each rather than accepting the brief's framing; ELITEA-2318's Agents-chart data assertion was genuinely missing and is now exact ordered tick equality under both presets."
+    },
+    {
+      "id": "ELITEA-2319",
+      "outcome": "automated",
+      "pr": 1958,
+      "note": "Lead gate 3/3 green (24 tests per run). Fix round 3 verified 2 of the 3 named blockers were ALREADY fixed in round 1 and found a real residual in each rather than accepting the brief's framing; ELITEA-2318's Agents-chart data assertion was genuinely missing and is now exact ordered tick equality under both presets."
+    }
+  ],
+  "totals": {
+    "automated": 6
+  },
+  "expected_red": [],
+  "quality_flags": [],
+  "parked": []
+}

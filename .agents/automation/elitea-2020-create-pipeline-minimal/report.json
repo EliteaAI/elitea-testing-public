@@ -1,0 +1,143 @@
+{
+  "batch": "elitea-2020-create-pipeline-minimal",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2020-create-pipeline-minimal",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      16.506688834,
+      16.444316583,
+      14.533182458
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2020",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Case ELITEA-2020's Objective says the pipeline is 'created with only the required Name field', but the case's own Test Data + Steps 3-4 fill both Name and Description, and live product requires BOTH non-empty for Save to enable (matches the covering spec's existing test_create_pipeline_required_fields_validation). Not filed as a clarification ticket — the steps themselves are unambiguous in execut… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New durable gotcha logged to role memory: the shared agent-name-input field (Agents AND Pipelines) has a hard 32-char cap (MAX_NAME_LENGTH, src/common/constants.js) and silently truncates typed input beyond it with no error/validation message — bit this implementation on the first run. Any future case that generates its own entity name should budget for this."
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL/blocking — `PipelineDetailPage.version_selector` (automation/pages/pipeline_detail_page.py:73, used by get_version_display() at :1007-1014, asserted at automation/tests/ui/pipelines/test_pipeline_management.py:253) targets testid `agent-version-selector-trigger-combobox`. That literal string does not exist anywhere in EliteaUI — repo-wide `git grep -n \"agent-version-selector-trigger-combo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:73"
+        },
+        {
+          "kind": "defect",
+          "note": "Downstream of the finding above: the AFS's Concrete Handles table (test-specs/pipelines/lextend_create-pipeline-minimal-sidebar_ELITEA-2020.md, VERSION selector row) and the _surface.md digest (test-specs/pipelines/_surface.md, 'Sidebar \"+\" create control and the VERSION selector' section) both assert 'Renders TWO testids... Confirmed both on `main` already' and 'on-main ✓ (confirmed live via DOM … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_create-pipeline-minimal-sidebar_ELITEA-2020.md:157"
+        },
+        {
+          "kind": "note",
+          "note": "Minor AFS drift, non-blocking: AFS § Test Data still shows the pipeline-name pattern `autotest_create_pipeline_minimal_<short-suffix>`, but the implementation uses `autotest_pipe_min_<8hex>` (27 chars) to stay under the newly-discovered 32-char MAX_NAME_LENGTH cap documented in the implementer's own memory entry (pipeline_agent_name_field_32char_silent_truncation.md) and in the _surface.md diff. T… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_create-pipeline-minimal-sidebar_ELITEA-2020.md:50"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates cleanly. Merged-target rule: covering spec `test_create_pipeline_via_ui` (commit 23c8035a) is confirmed an ancestor of origin/automation/base — valid extend-existing target. Gap claim verified: grepped the whole file for version_selector/get_version_display/information_section/sidebar_create_button/click_create_pipeline — only the new test uses them, and the covering s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed reviewer Finding 1 (fabricated testid agent-version-selector-trigger-combobox, zero grep hits repo-wide) was accurate before fixing. Root cause: the prior combined analyst/implementer session claimed a shared MUI Select component 'renders TWO testids' (outer wrapper + inner -combobox-suffixed element) without verifying the specific literal string via git grep -- it grepped only the base … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:73"
+        },
+        {
+          "kind": "note",
+          "note": "A pre-existing (not part of this branch's diff) similar claim exists elsewhere in test-specs/pipelines/_surface.md (~line 531): 'SingleSelect... auto-derives ${data-testid}-combobox on the SelectDisplayProps' for the HITL pipeline node's selects. Spot-checked against SingleSelect.jsx source and this also appears to be false (no such derivation exists in source) -- but it is out of scope for this f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md:531"
+        },
+        {
+          "kind": "defect",
+          "note": "CONFIRMED false claim shipped as verified fact in round-1's fix. The comment says 'There is NO `-combobox`-suffixed testid anywhere in EliteaUI (repo-wide grep, 2026-08-07 review fix) — the prior claim of \"two testids render\" was fabricated.' This is wrong. Fresh evidence (git fetch origin, then): `git grep -n -- \"-combobox\" origin/automation/testids -- src/` → 1 hit, `src/[fsd]/shared/ui/select/S… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:69-73"
+        },
+        {
+          "kind": "defect",
+          "note": "Same false claim ('was fabricated... zero hits... no -combobox-suffix derivation anywhere') in the surface digest's CORRECTION note. Needs the same fix as pipeline_detail_page.py: state that the -combobox variant is real, on automation/testids only (SelectDisplayProps mechanism), not promoted to main — not that it doesn't exist.",
+          "ref": "test-specs/pipelines/_surface.md:26-34"
+        },
+        {
+          "kind": "defect",
+          "note": "Same false claim in the AFS's Expected Results bullet and Concrete Handles table ('the originally-recorded ... testid does not exist ... there is only ONE element, ONE testid'). Needs correcting for the same reason — this is the AFS a future implementer/reviewer will trust as the case's ground truth.",
+          "ref": "test-specs/pipelines/lextend_create-pipeline-minimal-sidebar_ELITEA-2020.md:111,160"
+        },
+        {
+          "kind": "defect",
+          "note": "The 'Addendum (ELITEA-2020 fix round 1...)' section (a shared, cross-case memory entry, not scoped to this PR alone) states the same false claim as a general lesson ('wholly fabricated... not a wrong-component mix-up, a wrong-STRING invention... There is no -combobox-suffix derivation logic anywhere in SingleSelect.jsx'). This is the highest-leverage instance to fix since it's indexed as a reusabl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/afs_testid_can_name_a_real_but_wrong_component.md:176-212"
+        },
+        {
+          "kind": "note",
+          "note": "I corrected my OWN qa-engineer memory entry (.agents/memory/qa-engineer/elitea_2020_fabricated_combobox_suffix_testid.md) that carried the same false claim from the round-1 review, since I authored it and the reviewer contract treats memory as a deliverable — committed + pushed on this branch (commit 7fb71049, touches only .agents/memory/, nothing in automation/). The test-automation-engineer's da… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checks out on triangulation. Merged-target rule: covering spec commit 23c8035a confirmed via `git merge-base --is-ancestor 23c8035a origin/automation/base` (fresh fetch) to be an ancestor of origin/automation/base — extend-existing target is legitimate. Read the covering test (test_create_pipeline_via_ui, lines 108-153) directly: confirmed it navigates via direct URL (not the sideb… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_management.py:176-262"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 fix-round commit (06caaf2f) and its own memory addendum both asserted a grep-zero-hits result meant a claimed testid was 'fabricated' without checking whether the string could be template-constructed. The concatenated form of a SelectDisplayProps-suffixed testid (`${dataTestId}-combobox`) never appears literally in source, so a literal-string grep always reads as non-existent regardless of… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1305"
+        },
+        {
+          "kind": "note",
+          "note": "No functional/behavioral defect existed in this round — the underlying page-object code (version_selector using the no-suffix testid) was already correct in round 1 for reasons unrelated to the false claim. This round is a pure documentation-accuracy correction across 4 artifacts; no new regression test was warranted or added.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Re-verified the round-1 blocking finding's correction independently: fresh `git fetch origin` in ../EliteaUI, then `git grep -n -- \"-combobox\" origin/main -- src/` (0 hits) and `git grep -n -- \"-combobox\" origin/automation/testids -- src/` (1 hit: `src/[fsd]/shared/ui/select/SingleSelect.jsx:661`). This matches exactly what all 4 corrected artifacts now claim — the `-combobox` variant is real, ref… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:69-73"
+        },
+        {
+          "kind": "note",
+          "note": "All 4 artifacts named in the prior blocking finding were checked and are consistently corrected: pipeline_detail_page.py:69-73 (docstring), test-specs/pipelines/_surface.md:26-34, the AFS at lines 111+160 (both the 'Expected Results' bullet and the Concrete Handles table row), and .agents/memory/qa-engineer/elitea_2020_fabricated_combobox_suffix_testid.md (full self-correction with the original ro… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_create-pipeline-minimal-sidebar_ELITEA-2020.md:108-118"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid locators added in this diff (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator() over `git diff origin/automation/base...tests/ELITEA-2020-create-pipeline-minimal -- automation/`) returned zero hits — no non-testid handles introduced.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on the shared page-object files (pipeline_detail_page.py, pipelines_list_page.py) and the shared test file (test_pipeline_management.py): `git diff ... | grep -cE '^-[^-]'` = 0. No existing method or test body was touched; the covering spec's two existing tests are byte-identical. Extend-target validity confirmed: `test_create_pipeline_via_ui` (TestCreatePipeline, test_pipeline… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_management.py:176-263"
+        },
+        {
+          "kind": "note",
+          "note": "New test's cleanup uses a real try/finally around steps 8+9 (unlike the covering spec's try/except-only pattern for its own single cleanup step) — guarantees pipeline_api.delete_pipeline() runs even if the step-9 VERSION assertion fails, since pipeline_id_str is already captured by then. A minor improvement over the sibling pattern it otherwise mirrors, not a defect.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_management.py:240-262"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_create-pipeline-minimal-sidebar_ELITEA-2020.md",
+      "branch": "tests/ELITEA-2020-create-pipeline-minimal",
+      "pr": 1305,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          16.506688834,
+          16.444316583,
+          14.533182458
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -1,0 +1,850 @@
+{
+  "batch": "artifacts-w03",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1392",
+  "integration_branch": "tests/batch-artifacts-w03",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      204.34,
+      191.86,
+      197.33
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1842",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "New testid artifacts-zip-download-progress-close-button is on automation/testids (EliteaAI/EliteaUI@b93c631b) but NOT on main — verified with the fetch+two-stage-grep block; every other handle this unit uses is on main. The closure record's promotability row must say: merged to the batch, testids pending human cherry-pick, therefore not deployed-env-promotable yet. The spec carries pytest.mark.new… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@b93c631b"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha that cost ~20 min and will hit the next agent adding a testid: Vite on this OneDrive checkout NEVER picked up the JSX edit — a full browser reload still rendered the old component, and `touch` did not help (fsevents is unreliable on OneDrive paths). Diagnosis: `curl -s http://localhost:5173/src/<path>.jsx | grep -c <testid>` returns 0 while the same URL with `?t=<ts>` returns 1 … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "question",
+          "note": "ArtifactAPI.delete_bucket('autotest-analysis-1842-1843') returned 404 for the scratch bucket I created during live analysis, so that bucket is still on DEV project 399 (harmless, but it is one more of the ~700 autotest-* buckets in the list). Caveat before anyone calls it a defect: my call used ArtifactAPI(browser_cookies=[]) i.e. Bearer-token auth, whereas the artifact_bucket fixture uses browser… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/api/client.py ArtifactAPI.delete_bucket"
+        },
+        {
+          "kind": "note",
+          "note": "Product mechanism worth knowing for any future download-flow case (source-confirmed + live-confirmed): cancelZipDownload closes the dialog SYNCHRONOUSLY, while the 'Download cancelled' toast only fires once the aborted in-flight fetch rejects with AbortError and downloadArtifactsAsZip maps it to onCancel(). Never assert dialog-hidden and toast-visible in one expectation; the toast needs its own ge… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaUI src/pages/Artifacts/hooks/useZipDownload.hooks.js"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance for the closure record: artifacts-zip-download-progress-close-button is on origin/automation/testids ONLY (EliteaAI/EliteaUI@b93c631b, prop-only add on the existing BaseModal), verified after `git fetch origin` in ../EliteaUI — main:no / testids:YES. Every other testid this spec uses is on main. So the unit is NOT deployed-env promotable until a human cherry-picks b93c631b to Eli… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@b93c631b"
+        },
+        {
+          "kind": "question",
+          "note": "Declared improvisation needing a canon card before the batch closes (role-overrides.md § declared-improvisation protocol, limit 2): the 6 s fixed `time.sleep(NO_DOWNLOAD_OBSERVATION_SECONDS)` used as an observation window for the absence-of-download assertion is a NEW shape in this suite — the only other tests/ui/ sleeps are route-handler delays and poll intervals. The reasoning is sound and I ver… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:343"
+        },
+        {
+          "kind": "note",
+          "note": "Detector validity of the negative assertion CHECKED, not assumed: `assert downloads == []` is only evidence if page.on(\"download\") can fire for this product's ZIP save path (a blob-URL anchor with `download` attr). It can — merged ELITEA-1840 captures the identical flow via page.expect_download and asserts suggested_filename == f\"{bucket_name}.zip\" (test_artifacts_download_multiple_files_zip.py:25… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:344"
+        },
+        {
+          "kind": "note",
+          "note": "Low flakiness risk for the hardening gate, not worth a change: wait_for_zip_progress_at_least(1) polls for `current >= 1` but Step 4 then asserts exact equality to the row's expected counter (\"1 of N files\") and aria-valuenow. If a poll ever starves past a full 1.2 s route-delayed file transfer it would sample \"2 of N\" and go red on a non-defect. The window is ~1.2 s against a 100 ms poll and the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:302"
+        },
+        {
+          "kind": "note",
+          "note": "Console-error assertion is unfiltered (`assert not console_errors`), matching the artifacts neighbours ELITEA-1840/1841 exactly — correct, not a finding. But .agents/testing.md records a CONFIRMED recurring environmental pattern (unrelated-resource console 500/404 on a background request, never reproducing on re-run). If the hardening gate trips this assertion on a resource the test does not itsel… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:369"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, non-blocking: @allure.title is a single static string shared by both parameterized rows, so the Allure report distinguishes ELITEA-1842 from ELITEA-1843 only by the pytest param id. Every allure.step name already carries [{case_id}], so traceability survives; embedding {case_id} in the title would just make the report row self-describing.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:236"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendment discipline satisfied: the AFS docs change (timing baseline 61 s for both rows + the shipped constants ROUTE_DELAY_SECONDS/NO_DOWNLOAD_OBSERVATION_SECONDS/TOAST_TIMEOUT) ships in the same PR as the code, so the AFS matches what was built. No selector or observable drift between AFS and implementation.",
+          "ref": "test-specs/artifacts/l3_download-flow-cancel-zip-progress-modal_ELITEA-1842-1843.md:232"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_download-flow-cancel-zip-progress-modal_ELITEA-1842-1843.md",
+      "branch": "tests/ELITEA-1842-1843-download-cancel-zip",
+      "pr": 1637,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          204.34,
+          191.86,
+          197.33
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1843",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "New testid artifacts-zip-download-progress-close-button is on automation/testids (EliteaAI/EliteaUI@b93c631b) but NOT on main — verified with the fetch+two-stage-grep block; every other handle this unit uses is on main. The closure record's promotability row must say: merged to the batch, testids pending human cherry-pick, therefore not deployed-env-promotable yet. The spec carries pytest.mark.new… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@b93c631b"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha that cost ~20 min and will hit the next agent adding a testid: Vite on this OneDrive checkout NEVER picked up the JSX edit — a full browser reload still rendered the old component, and `touch` did not help (fsevents is unreliable on OneDrive paths). Diagnosis: `curl -s http://localhost:5173/src/<path>.jsx | grep -c <testid>` returns 0 while the same URL with `?t=<ts>` returns 1 … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "question",
+          "note": "ArtifactAPI.delete_bucket('autotest-analysis-1842-1843') returned 404 for the scratch bucket I created during live analysis, so that bucket is still on DEV project 399 (harmless, but it is one more of the ~700 autotest-* buckets in the list). Caveat before anyone calls it a defect: my call used ArtifactAPI(browser_cookies=[]) i.e. Bearer-token auth, whereas the artifact_bucket fixture uses browser… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/api/client.py ArtifactAPI.delete_bucket"
+        },
+        {
+          "kind": "note",
+          "note": "Product mechanism worth knowing for any future download-flow case (source-confirmed + live-confirmed): cancelZipDownload closes the dialog SYNCHRONOUSLY, while the 'Download cancelled' toast only fires once the aborted in-flight fetch rejects with AbortError and downloadArtifactsAsZip maps it to onCancel(). Never assert dialog-hidden and toast-visible in one expectation; the toast needs its own ge… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaUI src/pages/Artifacts/hooks/useZipDownload.hooks.js"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance for the closure record: artifacts-zip-download-progress-close-button is on origin/automation/testids ONLY (EliteaAI/EliteaUI@b93c631b, prop-only add on the existing BaseModal), verified after `git fetch origin` in ../EliteaUI — main:no / testids:YES. Every other testid this spec uses is on main. So the unit is NOT deployed-env promotable until a human cherry-picks b93c631b to Eli… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@b93c631b"
+        },
+        {
+          "kind": "question",
+          "note": "Declared improvisation needing a canon card before the batch closes (role-overrides.md § declared-improvisation protocol, limit 2): the 6 s fixed `time.sleep(NO_DOWNLOAD_OBSERVATION_SECONDS)` used as an observation window for the absence-of-download assertion is a NEW shape in this suite — the only other tests/ui/ sleeps are route-handler delays and poll intervals. The reasoning is sound and I ver… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:343"
+        },
+        {
+          "kind": "note",
+          "note": "Detector validity of the negative assertion CHECKED, not assumed: `assert downloads == []` is only evidence if page.on(\"download\") can fire for this product's ZIP save path (a blob-URL anchor with `download` attr). It can — merged ELITEA-1840 captures the identical flow via page.expect_download and asserts suggested_filename == f\"{bucket_name}.zip\" (test_artifacts_download_multiple_files_zip.py:25… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:344"
+        },
+        {
+          "kind": "note",
+          "note": "Low flakiness risk for the hardening gate, not worth a change: wait_for_zip_progress_at_least(1) polls for `current >= 1` but Step 4 then asserts exact equality to the row's expected counter (\"1 of N files\") and aria-valuenow. If a poll ever starves past a full 1.2 s route-delayed file transfer it would sample \"2 of N\" and go red on a non-defect. The window is ~1.2 s against a 100 ms poll and the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:302"
+        },
+        {
+          "kind": "note",
+          "note": "Console-error assertion is unfiltered (`assert not console_errors`), matching the artifacts neighbours ELITEA-1840/1841 exactly — correct, not a finding. But .agents/testing.md records a CONFIRMED recurring environmental pattern (unrelated-resource console 500/404 on a background request, never reproducing on re-run). If the hardening gate trips this assertion on a resource the test does not itsel… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:369"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, non-blocking: @allure.title is a single static string shared by both parameterized rows, so the Allure report distinguishes ELITEA-1842 from ELITEA-1843 only by the pytest param id. Every allure.step name already carries [{case_id}], so traceability survives; embedding {case_id} in the title would just make the report row self-describing.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_download_cancel_zip_progress.py:236"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendment discipline satisfied: the AFS docs change (timing baseline 61 s for both rows + the shipped constants ROUTE_DELAY_SECONDS/NO_DOWNLOAD_OBSERVATION_SECONDS/TOAST_TIMEOUT) ships in the same PR as the code, so the AFS matches what was built. No selector or observable drift between AFS and implementation.",
+          "ref": "test-specs/artifacts/l3_download-flow-cancel-zip-progress-modal_ELITEA-1842-1843.md:232"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_download-flow-cancel-zip-progress-modal_ELITEA-1842-1843.md",
+      "branch": "tests/ELITEA-1842-1843-download-cancel-zip",
+      "pr": 1637,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          204.34,
+          191.86,
+          197.33
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1844",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "CLARIFICATION #1638 filed (sibling of #659/#660, #664/#665): the row-level single-file delete's confirmation message and success toast both differ from the ELITEA-1844/1845 case text. Live: 'Are you sure to delete the sample.md? It can't be restored.' (DeleteEntityModal's textContent default carries 'the') and 'The sample.md file has been successfully deleted.' (ArtifactTable.jsx:433). The cases' … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1638"
+        },
+        {
+          "kind": "note",
+          "note": "Product-path fact worth propagating: a FILE row's dropdown delete drives the SINGULAR deleteArtifact endpoint (DELETE /artifacts/artifact/default/{project}/{bucket}?filename=...), not the bulk plural one. ArtifactsPage.confirm_delete()'s expect_response matcher ('artifacts/artifacts' in r.url) therefore hangs for its full timeout on this path even though the delete succeeds — cost one exploratory … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale claim that had propagated into artifacts_page.py: the shared DeleteEntityModal's Cancel button DOES carry data-testid='delete-confirm-cancel-button' and it is on origin/main (EliteaAI/EliteaUI@bf4a13ad, promoted 2026-08-12) — the ELITEA-1847-era note asserting 'confirmed absent' predates that promotion. The correction is in the page object, the digest and both AFS files.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha, now in role memory and the surface digest: the running Vite dev server served a STALE transform of src/[fsd]/shared/ui/modal/DeleteEntityModal.jsx after two committed testid edits (both locators resolved to count=0 while older testids in the same file resolved fine) — the OneDrive-backed file watcher missed the change. Diagnose with `curl -s http://localhost:5173/src/<path> | g… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/vite_hmr_misses_src_edits_restart_dev_server.md"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation for the lead's batch-close ledger (role-overrides.md § declared-improvisation protocol, limit 2): ELITEA-1844 step 8's 'sample.md highlighted in blue' is asserted as the file name rendered in its own dedicated emphasis element (new testid delete-confirm-entity-name), NOT as a computed colour — the canon has no shape for asserting a computed style under a testid-only locator … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md"
+        },
+        {
+          "kind": "note",
+          "note": "Two testids were added to a SHARED component (DeleteEntityModal.jsx) using its own already-established generic 'delete-confirm-*' namespace, matching the four sibling testids hardcoded in the same file — not a feature-scoped literal. Both are zero-functional-impact (one prop forward that BaseModal already accepted; one attribute on an existing element). They are pushed to automation/testids and aw… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@08d9bb4f, EliteaAI/EliteaUI@e59d0c97"
+        },
+        {
+          "kind": "defect",
+          "note": "FALSE PROVENANCE ROW (blocking). The row for `delete-confirm-title-icon` reads `on-main ✓`. Fresh ground truth after `cd ../EliteaUI && git fetch origin`:\n\n```\ndelete-confirm-entity-name       main:no   testids:YES\ndelete-confirm-close-button      main:no   testids:YES\ndelete-confirm-title-icon        main:no   testids:YES   <-- AFS says on-main ✓\ndelete-confirm-cancel-button     main:YES  testids… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS/implementation drift (fold into the same docs commit): the implementation introduces two handles the AFS never documents — `ArtifactsPage.ARTIFACT_ACTIONS_MENU` (`artifact-actions-{name}-menu`, the DotMenu paper container, verified main:YES via DotMenu.jsx:371 `data-testid={id ? `${id}-menu` : undefined}`) and `ROW_ACTIONS_MENU_ITEM_SELECTOR` (the two menuitem testids, both main:YES via `key: … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md § Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Allure step 9's title claims \"exactly one DELETE fires\", but nothing counts requests — the assertions cover the single captured response (status 200, `/artifacts/artifact/` path, `filename=[sample.md]`). The AFS's own § Network Behavior makes the same one-request claim. Not a coverage gap against the case (step 9's expected result is \"deletion completes\", which IS asserted), but the report text as… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:223"
+        },
+        {
+          "kind": "note",
+          "note": "Toast-absence assertion is weaker than its comment says. `expect(success_toast_message).to_have_count(0, timeout=3000)` passes on the FIRST poll (count is already 0), so `TOAST_ABSENCE_TIMEOUT` is a ceiling, not a dwell — the comment \"auto-retrying count-0 expectation, correct in both directions\" overstates it. Judged acceptable rather than blocking: (a) the detector is proven in the positive dire… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:389"
+        },
+        {
+          "kind": "note",
+          "note": "Asymmetric declaration of the two unassertable colours. The case's step 8 \"sample.md highlighted in blue\" is properly handled — asserted via the dedicated `delete-confirm-entity-name` element, with the colour omission declared in the AFS Coverage Map, § Automation Hints, and an inline comment. The case's step 11 \"green success notification\" gets the same treatment in code (text asserted, colour no… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:250"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result (case ↔ AFS ↔ diff), both cases clean apart from the above. ELITEA-1844: all 15 case steps have Axis-1 rows and every `asserted` row maps to a real assertion at that step — steps 1-3 set-equality on 4 names (:158), step 4 pagination (:164), steps 5-6 exact `[\"Download\",\"Delete\"]` label list in DOM order + both locators visible (:174-181), steps 7-8 dialog/title/warning-icon/li… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR 1639"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer memory committed on the branch under review (53ef3a3c1, docs-only, touches nothing under automation/): a testid another case put on `automation/testids` reads as \"pre-existing\" and gets logged `on-main ✓` — the two-ref grep, or a `git diff origin/main origin/automation/testids -- <component>`, is what catches it. Daily log appended.",
+          "ref": ".agents/memory/qa-engineer/pre_existing_testid_is_not_the_same_as_on_main.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "My dispatch prompt was TRUNCATED mid-finding: it ends at \"(2) add the two undocumented \" with no object. I resolved it empirically by diffing the implementation's handles against the AFS § Concrete Handles table — exactly two testid handles were undocumented (artifact-actions-{name}-menu, artifacts-file-row), which matches \"the two\". Confidence is high but the lead should confirm nothing further w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1639 dispatch prompt"
+        },
+        {
+          "kind": "defect",
+          "note": "The two-ref provenance grep in .agents/workflow.md § Closure record has a structural blind spot beyond the documented one. Its own caveat mentions runtime-composed testids, but the FIELD RATE is higher than that note implies: on this one small case, 4 of 13 handles (31%) read `main:no testids:no` while all four were genuinely on main. Composition shapes hit: `${id}-menu-button` / `${id}-menu` (Dot… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/workflow.md § Closure record"
+        },
+        {
+          "kind": "note",
+          "note": "No code-level regression test exists for this finding's defect class and none was added. A wrong AFS provenance row is not observable to pytest — nothing runtime changes, so no assertion can go red on it. Declared per role-overrides.md § declared-improvisation protocol (the canon has no shape for regression-testing a documentation artifact). Per that protocol's limit 2, this declaration is an open… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability is FILE-scoped, not case-scoped, and the closure record should say so. ELITEA-1845's own handles (delete-confirm-cancel-button, artifacts-file-row) are all on main, but it ships as a sibling test method in the SAME spec file as ELITEA-1844, whose three testids are not. So the whole file is green on localhost and red on any deployed env until a human cherry-picks delete-confirm-entity… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@7b359d32"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKER RESOLVED — verified independently, not taken on the commit message's word. After `cd ../EliteaUI && git fetch origin` I re-ran the two-ref grep from .agents/workflow.md § Closure record for every handle row: delete-confirm-dialog main:YES/testids:YES · delete-confirm-title YES/YES · delete-confirm-title-icon main:no/testids:YES · delete-confirm-message YES/YES · delete-confirm-entity… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "ASSERTION STRENGTH (Important, non-blocking): `expect(success_toast_message).to_have_count(0, timeout=TOAST_ABSENCE_TIMEOUT)` cannot see a toast that renders later. Playwright's web-first assertions poll until the condition becomes TRUE — for an absence assertion that is true at the FIRST poll, so the 3s timeout buys nothing and the call returns in milliseconds, right after the modal-hidden check.… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:~395 (ELITEA-1845 Step 8)"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS wording is technically wrong on the same point: 'Assert \"no toast\" with a count-0 expectation on toast-message (auto-retrying, and correct in both directions)'. It is auto-retrying only toward a TRUE condition, so it is NOT correct in both directions. Worth a one-line amendment next time the AFS is touched; not worth a round on its own.",
+          "ref": "test-specs/artifacts/l3_delete-flow-single-file-actions-dropdown-cancel_ELITEA-1845.md § Automation Hints"
+        },
+        {
+          "kind": "note",
+          "note": "Step-title overclaim: the allure step says 'verify exactly one DELETE fires', and AFS § Network Behavior says 'exactly one request per confirm', but the code asserts only the FIRST matching response (page.expect_response) — no request-count assertion exists. The observables that actually discriminate this path (singular /artifacts/artifact/ path, filename=sample.md, status 200) are all genuinely a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:~250 (ELITEA-1844 Step 9 allure.step title)"
+        },
+        {
+          "kind": "note",
+          "note": "Marker semantics: pytestmark carries `new_verified` ('New tests validated on deployed environments, ready for promotion to main' — automation/pytest.ini:36), yet this spec depends on three testids that are on automation/testids only, so it CANNOT be green on a deployed env until a human cherry-picks them. `new` is the accurate marker. Not raised as blocking because 15+ existing artifacts specs use… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:63"
+        },
+        {
+          "kind": "note",
+          "note": "Case step 11 says 'a GREEN success notification is displayed'; the colour is not asserted and, unlike the 'highlighted in blue' entity name (declared in § Automation Hints as an un-assertable computed style under the testid-only policy), the Coverage Map row for step 11 carries no equivalent declaration. Substantively fine — the asserted toast text is exact and could not be produced by an error to… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md Coverage Map Axis 1, Step 11"
+        },
+        {
+          "kind": "note",
+          "note": "Scope note on 'exactly [\"Download\", \"Delete\"]': ROW_ACTIONS_MENU_ITEM_SELECTOR matches only the two known testid'd MenuItems, so the assertion proves those two exist in that render order — it cannot detect a hypothetical third item that carries no testid. That is the correct trade under the testid-only policy (a raw [role=menuitem] read would be CHANGES_REQUESTED), but the AFS's word 'exactly' is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:~2396 get_file_actions_menu_item_labels"
+        },
+        {
+          "kind": "question",
+          "note": "LEAD ACTION at batch close: this unit carries a declared improvisation — 'the blue colour of the entity name is not assertable under a testid-only locator policy; the dedicated delete-confirm-entity-name element is asserted by text instead' (AFS § Automation Hints + the in-test comment). The reasoning is sound and it is a how-not-what, so it does not block. Per the protocol's limit 2 it must produ… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/role-overrides.md § declared-improvisation protocol (limit 2)"
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md",
+      "branch": "tests/ELITEA-1844-1845-delete-single-file-dropdown",
+      "pr": 1639,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          204.34,
+          191.86,
+          197.33
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1845",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "CLARIFICATION #1638 filed (sibling of #659/#660, #664/#665): the row-level single-file delete's confirmation message and success toast both differ from the ELITEA-1844/1845 case text. Live: 'Are you sure to delete the sample.md? It can't be restored.' (DeleteEntityModal's textContent default carries 'the') and 'The sample.md file has been successfully deleted.' (ArtifactTable.jsx:433). The cases' … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1638"
+        },
+        {
+          "kind": "note",
+          "note": "Product-path fact worth propagating: a FILE row's dropdown delete drives the SINGULAR deleteArtifact endpoint (DELETE /artifacts/artifact/default/{project}/{bucket}?filename=...), not the bulk plural one. ArtifactsPage.confirm_delete()'s expect_response matcher ('artifacts/artifacts' in r.url) therefore hangs for its full timeout on this path even though the delete succeeds — cost one exploratory … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale claim that had propagated into artifacts_page.py: the shared DeleteEntityModal's Cancel button DOES carry data-testid='delete-confirm-cancel-button' and it is on origin/main (EliteaAI/EliteaUI@bf4a13ad, promoted 2026-08-12) — the ELITEA-1847-era note asserting 'confirmed absent' predates that promotion. The correction is in the page object, the digest and both AFS files.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha, now in role memory and the surface digest: the running Vite dev server served a STALE transform of src/[fsd]/shared/ui/modal/DeleteEntityModal.jsx after two committed testid edits (both locators resolved to count=0 while older testids in the same file resolved fine) — the OneDrive-backed file watcher missed the change. Diagnose with `curl -s http://localhost:5173/src/<path> | g… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/vite_hmr_misses_src_edits_restart_dev_server.md"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation for the lead's batch-close ledger (role-overrides.md § declared-improvisation protocol, limit 2): ELITEA-1844 step 8's 'sample.md highlighted in blue' is asserted as the file name rendered in its own dedicated emphasis element (new testid delete-confirm-entity-name), NOT as a computed colour — the canon has no shape for asserting a computed style under a testid-only locator … [clipped; full text in the unit's receipt under .authors/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md"
+        },
+        {
+          "kind": "note",
+          "note": "Two testids were added to a SHARED component (DeleteEntityModal.jsx) using its own already-established generic 'delete-confirm-*' namespace, matching the four sibling testids hardcoded in the same file — not a feature-scoped literal. Both are zero-functional-impact (one prop forward that BaseModal already accepted; one attribute on an existing element). They are pushed to automation/testids and aw… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@08d9bb4f, EliteaAI/EliteaUI@e59d0c97"
+        },
+        {
+          "kind": "defect",
+          "note": "FALSE PROVENANCE ROW (blocking). The row for `delete-confirm-title-icon` reads `on-main ✓`. Fresh ground truth after `cd ../EliteaUI && git fetch origin`:\n\n```\ndelete-confirm-entity-name       main:no   testids:YES\ndelete-confirm-close-button      main:no   testids:YES\ndelete-confirm-title-icon        main:no   testids:YES   <-- AFS says on-main ✓\ndelete-confirm-cancel-button     main:YES  testids… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS/implementation drift (fold into the same docs commit): the implementation introduces two handles the AFS never documents — `ArtifactsPage.ARTIFACT_ACTIONS_MENU` (`artifact-actions-{name}-menu`, the DotMenu paper container, verified main:YES via DotMenu.jsx:371 `data-testid={id ? `${id}-menu` : undefined}`) and `ROW_ACTIONS_MENU_ITEM_SELECTOR` (the two menuitem testids, both main:YES via `key: … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md § Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Allure step 9's title claims \"exactly one DELETE fires\", but nothing counts requests — the assertions cover the single captured response (status 200, `/artifacts/artifact/` path, `filename=[sample.md]`). The AFS's own § Network Behavior makes the same one-request claim. Not a coverage gap against the case (step 9's expected result is \"deletion completes\", which IS asserted), but the report text as… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:223"
+        },
+        {
+          "kind": "note",
+          "note": "Toast-absence assertion is weaker than its comment says. `expect(success_toast_message).to_have_count(0, timeout=3000)` passes on the FIRST poll (count is already 0), so `TOAST_ABSENCE_TIMEOUT` is a ceiling, not a dwell — the comment \"auto-retrying count-0 expectation, correct in both directions\" overstates it. Judged acceptable rather than blocking: (a) the detector is proven in the positive dire… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:389"
+        },
+        {
+          "kind": "note",
+          "note": "Asymmetric declaration of the two unassertable colours. The case's step 8 \"sample.md highlighted in blue\" is properly handled — asserted via the dedicated `delete-confirm-entity-name` element, with the colour omission declared in the AFS Coverage Map, § Automation Hints, and an inline comment. The case's step 11 \"green success notification\" gets the same treatment in code (text asserted, colour no… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:250"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result (case ↔ AFS ↔ diff), both cases clean apart from the above. ELITEA-1844: all 15 case steps have Axis-1 rows and every `asserted` row maps to a real assertion at that step — steps 1-3 set-equality on 4 names (:158), step 4 pagination (:164), steps 5-6 exact `[\"Download\",\"Delete\"]` label list in DOM order + both locators visible (:174-181), steps 7-8 dialog/title/warning-icon/li… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR 1639"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer memory committed on the branch under review (53ef3a3c1, docs-only, touches nothing under automation/): a testid another case put on `automation/testids` reads as \"pre-existing\" and gets logged `on-main ✓` — the two-ref grep, or a `git diff origin/main origin/automation/testids -- <component>`, is what catches it. Daily log appended.",
+          "ref": ".agents/memory/qa-engineer/pre_existing_testid_is_not_the_same_as_on_main.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "My dispatch prompt was TRUNCATED mid-finding: it ends at \"(2) add the two undocumented \" with no object. I resolved it empirically by diffing the implementation's handles against the AFS § Concrete Handles table — exactly two testid handles were undocumented (artifact-actions-{name}-menu, artifacts-file-row), which matches \"the two\". Confidence is high but the lead should confirm nothing further w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1639 dispatch prompt"
+        },
+        {
+          "kind": "defect",
+          "note": "The two-ref provenance grep in .agents/workflow.md § Closure record has a structural blind spot beyond the documented one. Its own caveat mentions runtime-composed testids, but the FIELD RATE is higher than that note implies: on this one small case, 4 of 13 handles (31%) read `main:no testids:no` while all four were genuinely on main. Composition shapes hit: `${id}-menu-button` / `${id}-menu` (Dot… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/workflow.md § Closure record"
+        },
+        {
+          "kind": "note",
+          "note": "No code-level regression test exists for this finding's defect class and none was added. A wrong AFS provenance row is not observable to pytest — nothing runtime changes, so no assertion can go red on it. Declared per role-overrides.md § declared-improvisation protocol (the canon has no shape for regression-testing a documentation artifact). Per that protocol's limit 2, this declaration is an open… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability is FILE-scoped, not case-scoped, and the closure record should say so. ELITEA-1845's own handles (delete-confirm-cancel-button, artifacts-file-row) are all on main, but it ships as a sibling test method in the SAME spec file as ELITEA-1844, whose three testids are not. So the whole file is green on localhost and red on any deployed env until a human cherry-picks delete-confirm-entity… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@7b359d32"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKER RESOLVED — verified independently, not taken on the commit message's word. After `cd ../EliteaUI && git fetch origin` I re-ran the two-ref grep from .agents/workflow.md § Closure record for every handle row: delete-confirm-dialog main:YES/testids:YES · delete-confirm-title YES/YES · delete-confirm-title-icon main:no/testids:YES · delete-confirm-message YES/YES · delete-confirm-entity… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "ASSERTION STRENGTH (Important, non-blocking): `expect(success_toast_message).to_have_count(0, timeout=TOAST_ABSENCE_TIMEOUT)` cannot see a toast that renders later. Playwright's web-first assertions poll until the condition becomes TRUE — for an absence assertion that is true at the FIRST poll, so the 3s timeout buys nothing and the call returns in milliseconds, right after the modal-hidden check.… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:~395 (ELITEA-1845 Step 8)"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS wording is technically wrong on the same point: 'Assert \"no toast\" with a count-0 expectation on toast-message (auto-retrying, and correct in both directions)'. It is auto-retrying only toward a TRUE condition, so it is NOT correct in both directions. Worth a one-line amendment next time the AFS is touched; not worth a round on its own.",
+          "ref": "test-specs/artifacts/l3_delete-flow-single-file-actions-dropdown-cancel_ELITEA-1845.md § Automation Hints"
+        },
+        {
+          "kind": "note",
+          "note": "Step-title overclaim: the allure step says 'verify exactly one DELETE fires', and AFS § Network Behavior says 'exactly one request per confirm', but the code asserts only the FIRST matching response (page.expect_response) — no request-count assertion exists. The observables that actually discriminate this path (singular /artifacts/artifact/ path, filename=sample.md, status 200) are all genuinely a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:~250 (ELITEA-1844 Step 9 allure.step title)"
+        },
+        {
+          "kind": "note",
+          "note": "Marker semantics: pytestmark carries `new_verified` ('New tests validated on deployed environments, ready for promotion to main' — automation/pytest.ini:36), yet this spec depends on three testids that are on automation/testids only, so it CANNOT be green on a deployed env until a human cherry-picks them. `new` is the accurate marker. Not raised as blocking because 15+ existing artifacts specs use… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_single_file_dropdown.py:63"
+        },
+        {
+          "kind": "note",
+          "note": "Case step 11 says 'a GREEN success notification is displayed'; the colour is not asserted and, unlike the 'highlighted in blue' entity name (declared in § Automation Hints as an un-assertable computed style under the testid-only policy), the Coverage Map row for step 11 carries no equivalent declaration. Substantively fine — the asserted toast text is exact and could not be produced by an error to… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-single-file-actions-dropdown_ELITEA-1844.md Coverage Map Axis 1, Step 11"
+        },
+        {
+          "kind": "note",
+          "note": "Scope note on 'exactly [\"Download\", \"Delete\"]': ROW_ACTIONS_MENU_ITEM_SELECTOR matches only the two known testid'd MenuItems, so the assertion proves those two exist in that render order — it cannot detect a hypothetical third item that carries no testid. That is the correct trade under the testid-only policy (a raw [role=menuitem] read would be CHANGES_REQUESTED), but the AFS's word 'exactly' is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:~2396 get_file_actions_menu_item_labels"
+        },
+        {
+          "kind": "question",
+          "note": "LEAD ACTION at batch close: this unit carries a declared improvisation — 'the blue colour of the entity name is not assertable under a testid-only locator policy; the dedicated delete-confirm-entity-name element is asserted by text instead' (AFS § Automation Hints + the in-test comment). The reasoning is sound and it is a how-not-what, so it does not block. Per the protocol's limit 2 it must produ… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/role-overrides.md § declared-improvisation protocol (limit 2)"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_delete-flow-single-file-actions-dropdown-cancel_ELITEA-1845.md",
+      "branch": "tests/ELITEA-1844-1845-delete-single-file-dropdown",
+      "pr": 1639,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          204.34,
+          191.86,
+          197.33
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1848",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed [ELITEA-1848][ELITEA-1849][CLARIFICATION] #1640, sibling of #659: the all-selected delete confirmation renders 'Are you sure to delete the all files?' — the cases say 'Are you sure to delete all files?'. Beyond the case-text drift, the live string is ungrammatical: ArtifactTableToolbar.jsx:154 passes name='all files' into DeleteEntityModal, whose fixed textContent prefix is 'Are you sure to … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "1640"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1848's success-toast drift is an exact duplicate of #660 (same component, same trigger family, byte-identical expected/actual) — commented the new occurrence there rather than re-filing. Newly confirmed detail worth knowing: the bulk toast is NOT branched on all-vs-partial selection; ArtifactTable.jsx:431 fires 'The selected files have been successfully deleted.' in both cases, so there is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "660"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha (cost the single rerun, now in the digest + role memory): ArtifactsPage.get_file_row_text() is anchored on artifacts-file-row, so it times out at 10s on a FOLDER row (artifacts-folder-row). Folders also carry no Type/Size metadata to snapshot — assert their presence via get_file_names() and the left-panel tree instead."
+        },
+        {
+          "kind": "note",
+          "note": "Behaviour newly confirmed live and recorded in _surface.md: dismissing the delete-confirmation modal via EITHER Cancel or the X preserves the file table's selection exactly (selection lives in ArtifactTable's rowSelectionModel, which DeleteEntityModal never touches; it passes ONE onClose to both BaseModal and the Cancel button). Also: deleting every file does NOT delete the bucket — it stays in th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Adjacent, deliberately not asserted by this cluster: #677 (toolbar Delete/tooltip stays enabled with a stale selection after a multi-file delete) concerns the post-DELETE path, whereas ELITEA-1849/1850 cover the dismissal path. No new occurrence observed.",
+          "ref": "677"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — @allure.issue link filename drift, 2 of 3 tests. test_artifacts_delete_all_and_dismissal.py:142 (ELITEA-1848) and :512 (ELITEA-1850) cite TMS filenames that do not exist; the real ones are ELITEA-1848_delete-flow-all-files-select-all-checkbox.md and ELITEA-1850_delete-flow-close-x-modal-keeps-items.md (verified against a freshly fetched origin/main of EliteaAI/onetest-ai-tm-Elitea). Th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:142"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — step title overclaims. Step 7's title says 'verify exactly one DELETE request fires'; the assertions are `response.status == 200` and the fname[] set. `page.expect_response` proves at least one matching response, not exactly one. The two dismissal tests in the same file already carry the `page.on(\"request\")` DELETE listener pattern, so adding `assert len(delete_requests) == 1` is a 3-l… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:257"
+        },
+        {
+          "kind": "question",
+          "note": "Note for the lead (NOT blocking) — the test hard-asserts the live, ungrammatical product copy `Are you sure to delete the all files?` (line 103). That is consistent with the reverse-masking guard and with established house precedent (test_artifacts_delete_single_file_dropdown.py:93, test_artifacts_create_bucket_55char_name_and_delete.py:98 all hard-assert the shared DeleteEntityModal's 'delete the… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:103"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — ELITEA-1848 Step 10 calls `get_file_names(timeout=UI_ELEMENT_TIMEOUT)` on a table that `wait_for_file_count(0)` has just confirmed empty. `get_file_names` waits for the first row to become visible and only returns [] after that wait times out, so this burns a full 10 s of dead wall-clock per run — meaningful against the 3x hardening gate. Passing a short timeout (e.g. 1000) keeps the asserti… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:293"
+        },
+        {
+          "kind": "note",
+          "note": "Independently re-verified the AFS promotability claim with `git fetch origin` in ../EliteaUI + the two-stage `-i`/`[:=]` grep on both refs: delete-confirm-title-icon, delete-confirm-entity-name, delete-confirm-close-button are main:no / testids:YES, and artifacts-bucket-tree-empty-label-* exists only on automation/testids (BucketContent.jsx:87, runtime-composed template). All 8 other testids the s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-delete-all-select-all-checkbox_ELITEA-1848.md"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage/dedup claims verified against the trunk, not merely asserted: `git grep click_select_all_checkbox`, `delete_confirm_close_button|click_delete_close_button` and `click_delete_cancel_button` over tests/batch-artifacts-w03 -- automation/tests all return zero hits, so the AFSs' 'no existing test drives select-all / the modal X / bulk Cancel' claims hold. No Coverage-Map row in any of the thre… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_delete-flow-cancel-delete-all-keeps-items_ELITEA-1849.md"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt clean, and the AFS drift was swept: no skip/xfail/soft-assert/weakened expect anywhere in the diff (grep 0 hits); the case-text drifts are handled by the reverse-masking guard with tracker records verified live (#1640 OPEN, label `question`; #660 carries a 2026-08-21 'Another occurrence — ELITEA-1848 ... not filed separately' comment rather than a duplicate issue, matching profile.md'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_delete-flow-close-x-on-delete-confirmation_ELITEA-1850.md"
+        },
+        {
+          "kind": "note",
+          "note": "Team-wide, not this PR's defect: `.agents/testing.md` § Markers says new tests carry priority + feature + regression, but zero of the ~30 specs in automation/tests/ui/artifacts/ use a feature marker (`grep -rn 'mark.artifacts'` → no hits) and `artifacts` is not in pytest.ini's marker list either. This PR follows the directory's actual convention (ui/regression/new_verified + per-test p1/p2). Flagg… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:64"
+        },
+        {
+          "kind": "note",
+          "note": "Dead @allure.issue TMS links are now a 5-occurrence class (ELITEA-2609, ELITEA-2612, ELITEA-1836/1837/1838, and now ELITEA-1848+1850). A dead link never fails a run — it only 404s in Allure — so only a human reviewer ever catches it, and each catch costs a fix round. Per-spec guard files (3 now exist) will not close it: a 2026-08-21 measurement found 115 of 420 @allure.issue links across 282 specs… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1641"
+        },
+        {
+          "kind": "note",
+          "note": "New product fact, now test-enforced: the artifacts bulk-delete endpoint batches an entire selection into a SINGLE DELETE with repeated fname[] params (4 expanded storage keys here), never a per-key fan-out. Previously assumed by the AFS wording, unasserted; now asserted in Step 7 and passing live.",
+          "ref": "test-specs/artifacts/l2_delete-flow-delete-all-select-all-checkbox_ELITEA-1848.md"
+        },
+        {
+          "kind": "note",
+          "note": "Self-correction worth the lead's attention: the memory entry that would have prevented finding 1 already existed and was thorough — but carried no MEMORY.md index line, so it was never in front of the dispatch that needed it. Indexed now. Any role writing a genuinely preventive entry should check the index line landed; an unindexed preventive fact is only findable by someone who already suspects t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1849's @allure.issue slug was correct only by coincidence — the derived slug matched the real TMS filename. Worth knowing when reading the round-1 review: the finding was not 'the implementer got 1 of 3 right', it was 'a partially-resolving set looks clean'. No change was needed to 1849.",
+          "ref": "ELITEA-1849"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (dead @allure.issue TMS links, ELITEA-1848 + ELITEA-1850) is FIXED and independently re-verified: all three decorator paths resolve on TMS origin/main (git ls-tree -r origin/main in ../onetest-ai-tm-Elitea) — ELITEA-1848_delete-flow-all-files-select-all-checkbox.md, ELITEA-1849_delete-flow-cancel-delete-all-keeps-items.md, ELITEA-1850_delete-flow-close-x-modal-keeps-items.md.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:140"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (Step 7 allure title claiming an unmade 'exactly one DELETE' verification) is FIXED: the test now registers page.on('request', ...) like its two sibling tests and asserts `delete_requests == [response.url]` inside the Step 7 block, with a matching AFS Axis-2 row added.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:264"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the single-DELETE assertion compares the captured request URL to `response.url`. Playwright's response.url is the FINAL url after any redirect, so a future 30x on the bulk-delete endpoint would fail this equality for a reason unrelated to the fan-out being tested. `len(delete_requests) == 1` plus a path/fname check would be redundancy-proof. Green 3/3 today, so cosmetic only.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:277"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the new allure-link guard resolves paths against the sibling clone's WORKING TREE, while the URL it validates points at blob/main. A case file that exists locally on a branch but not yet on TMS main would pass the guard and still 404 in the report. Verified irrelevant for this PR (all three exist on origin/main), and it matches the two pre-existing guards' shape — flagging only… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_delete_all_specs_allure_issue_links.py:118"
+        },
+        {
+          "kind": "note",
+          "note": "The only masking-grep hit on the diff is the guard unit test's @pytest.mark.skipif for an absent ../onetest-ai-tm-Elitea clone — an environment precondition with a reason naming .agents/architecture.md, not a product-defect mask. Locator and fidelity greps are both 0 hits.",
+          "ref": "automation/tests/unit/test_artifacts_delete_all_specs_allure_issue_links.py:113"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendments shipped in the same PR as required: 1848 Axis-1 Step-10 row + a new Axis-2 row for the single-DELETE assertion; 1849/1850 amended to record that get_file_row_text() is artifacts-file-row-anchored so only the two FILE rows get byte-for-byte snapshots (folders covered by the name set + left-tree check). test-specs/artifacts/_surface.md carries the same gotcha for the next analyst.",
+          "ref": "test-specs/artifacts/_surface.md:742"
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_delete-flow-delete-all-select-all-checkbox_ELITEA-1848.md",
+      "branch": "tests/1848-1850-artifacts-delete-all-and-dismissal",
+      "pr": 1641,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          204.34,
+          191.86,
+          197.33
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1849",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed [ELITEA-1848][ELITEA-1849][CLARIFICATION] #1640, sibling of #659: the all-selected delete confirmation renders 'Are you sure to delete the all files?' — the cases say 'Are you sure to delete all files?'. Beyond the case-text drift, the live string is ungrammatical: ArtifactTableToolbar.jsx:154 passes name='all files' into DeleteEntityModal, whose fixed textContent prefix is 'Are you sure to … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "1640"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1848's success-toast drift is an exact duplicate of #660 (same component, same trigger family, byte-identical expected/actual) — commented the new occurrence there rather than re-filing. Newly confirmed detail worth knowing: the bulk toast is NOT branched on all-vs-partial selection; ArtifactTable.jsx:431 fires 'The selected files have been successfully deleted.' in both cases, so there is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "660"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha (cost the single rerun, now in the digest + role memory): ArtifactsPage.get_file_row_text() is anchored on artifacts-file-row, so it times out at 10s on a FOLDER row (artifacts-folder-row). Folders also carry no Type/Size metadata to snapshot — assert their presence via get_file_names() and the left-panel tree instead."
+        },
+        {
+          "kind": "note",
+          "note": "Behaviour newly confirmed live and recorded in _surface.md: dismissing the delete-confirmation modal via EITHER Cancel or the X preserves the file table's selection exactly (selection lives in ArtifactTable's rowSelectionModel, which DeleteEntityModal never touches; it passes ONE onClose to both BaseModal and the Cancel button). Also: deleting every file does NOT delete the bucket — it stays in th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Adjacent, deliberately not asserted by this cluster: #677 (toolbar Delete/tooltip stays enabled with a stale selection after a multi-file delete) concerns the post-DELETE path, whereas ELITEA-1849/1850 cover the dismissal path. No new occurrence observed.",
+          "ref": "677"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — @allure.issue link filename drift, 2 of 3 tests. test_artifacts_delete_all_and_dismissal.py:142 (ELITEA-1848) and :512 (ELITEA-1850) cite TMS filenames that do not exist; the real ones are ELITEA-1848_delete-flow-all-files-select-all-checkbox.md and ELITEA-1850_delete-flow-close-x-modal-keeps-items.md (verified against a freshly fetched origin/main of EliteaAI/onetest-ai-tm-Elitea). Th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:142"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — step title overclaims. Step 7's title says 'verify exactly one DELETE request fires'; the assertions are `response.status == 200` and the fname[] set. `page.expect_response` proves at least one matching response, not exactly one. The two dismissal tests in the same file already carry the `page.on(\"request\")` DELETE listener pattern, so adding `assert len(delete_requests) == 1` is a 3-l… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:257"
+        },
+        {
+          "kind": "question",
+          "note": "Note for the lead (NOT blocking) — the test hard-asserts the live, ungrammatical product copy `Are you sure to delete the all files?` (line 103). That is consistent with the reverse-masking guard and with established house precedent (test_artifacts_delete_single_file_dropdown.py:93, test_artifacts_create_bucket_55char_name_and_delete.py:98 all hard-assert the shared DeleteEntityModal's 'delete the… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:103"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — ELITEA-1848 Step 10 calls `get_file_names(timeout=UI_ELEMENT_TIMEOUT)` on a table that `wait_for_file_count(0)` has just confirmed empty. `get_file_names` waits for the first row to become visible and only returns [] after that wait times out, so this burns a full 10 s of dead wall-clock per run — meaningful against the 3x hardening gate. Passing a short timeout (e.g. 1000) keeps the asserti… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:293"
+        },
+        {
+          "kind": "note",
+          "note": "Independently re-verified the AFS promotability claim with `git fetch origin` in ../EliteaUI + the two-stage `-i`/`[:=]` grep on both refs: delete-confirm-title-icon, delete-confirm-entity-name, delete-confirm-close-button are main:no / testids:YES, and artifacts-bucket-tree-empty-label-* exists only on automation/testids (BucketContent.jsx:87, runtime-composed template). All 8 other testids the s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-delete-all-select-all-checkbox_ELITEA-1848.md"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage/dedup claims verified against the trunk, not merely asserted: `git grep click_select_all_checkbox`, `delete_confirm_close_button|click_delete_close_button` and `click_delete_cancel_button` over tests/batch-artifacts-w03 -- automation/tests all return zero hits, so the AFSs' 'no existing test drives select-all / the modal X / bulk Cancel' claims hold. No Coverage-Map row in any of the thre… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_delete-flow-cancel-delete-all-keeps-items_ELITEA-1849.md"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt clean, and the AFS drift was swept: no skip/xfail/soft-assert/weakened expect anywhere in the diff (grep 0 hits); the case-text drifts are handled by the reverse-masking guard with tracker records verified live (#1640 OPEN, label `question`; #660 carries a 2026-08-21 'Another occurrence — ELITEA-1848 ... not filed separately' comment rather than a duplicate issue, matching profile.md'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_delete-flow-close-x-on-delete-confirmation_ELITEA-1850.md"
+        },
+        {
+          "kind": "note",
+          "note": "Team-wide, not this PR's defect: `.agents/testing.md` § Markers says new tests carry priority + feature + regression, but zero of the ~30 specs in automation/tests/ui/artifacts/ use a feature marker (`grep -rn 'mark.artifacts'` → no hits) and `artifacts` is not in pytest.ini's marker list either. This PR follows the directory's actual convention (ui/regression/new_verified + per-test p1/p2). Flagg… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:64"
+        },
+        {
+          "kind": "note",
+          "note": "Dead @allure.issue TMS links are now a 5-occurrence class (ELITEA-2609, ELITEA-2612, ELITEA-1836/1837/1838, and now ELITEA-1848+1850). A dead link never fails a run — it only 404s in Allure — so only a human reviewer ever catches it, and each catch costs a fix round. Per-spec guard files (3 now exist) will not close it: a 2026-08-21 measurement found 115 of 420 @allure.issue links across 282 specs… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1641"
+        },
+        {
+          "kind": "note",
+          "note": "New product fact, now test-enforced: the artifacts bulk-delete endpoint batches an entire selection into a SINGLE DELETE with repeated fname[] params (4 expanded storage keys here), never a per-key fan-out. Previously assumed by the AFS wording, unasserted; now asserted in Step 7 and passing live.",
+          "ref": "test-specs/artifacts/l2_delete-flow-delete-all-select-all-checkbox_ELITEA-1848.md"
+        },
+        {
+          "kind": "note",
+          "note": "Self-correction worth the lead's attention: the memory entry that would have prevented finding 1 already existed and was thorough — but carried no MEMORY.md index line, so it was never in front of the dispatch that needed it. Indexed now. Any role writing a genuinely preventive entry should check the index line landed; an unindexed preventive fact is only findable by someone who already suspects t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1849's @allure.issue slug was correct only by coincidence — the derived slug matched the real TMS filename. Worth knowing when reading the round-1 review: the finding was not 'the implementer got 1 of 3 right', it was 'a partially-resolving set looks clean'. No change was needed to 1849.",
+          "ref": "ELITEA-1849"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (dead @allure.issue TMS links, ELITEA-1848 + ELITEA-1850) is FIXED and independently re-verified: all three decorator paths resolve on TMS origin/main (git ls-tree -r origin/main in ../onetest-ai-tm-Elitea) — ELITEA-1848_delete-flow-all-files-select-all-checkbox.md, ELITEA-1849_delete-flow-cancel-delete-all-keeps-items.md, ELITEA-1850_delete-flow-close-x-modal-keeps-items.md.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:140"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (Step 7 allure title claiming an unmade 'exactly one DELETE' verification) is FIXED: the test now registers page.on('request', ...) like its two sibling tests and asserts `delete_requests == [response.url]` inside the Step 7 block, with a matching AFS Axis-2 row added.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:264"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the single-DELETE assertion compares the captured request URL to `response.url`. Playwright's response.url is the FINAL url after any redirect, so a future 30x on the bulk-delete endpoint would fail this equality for a reason unrelated to the fan-out being tested. `len(delete_requests) == 1` plus a path/fname check would be redundancy-proof. Green 3/3 today, so cosmetic only.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:277"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the new allure-link guard resolves paths against the sibling clone's WORKING TREE, while the URL it validates points at blob/main. A case file that exists locally on a branch but not yet on TMS main would pass the guard and still 404 in the report. Verified irrelevant for this PR (all three exist on origin/main), and it matches the two pre-existing guards' shape — flagging only… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_delete_all_specs_allure_issue_links.py:118"
+        },
+        {
+          "kind": "note",
+          "note": "The only masking-grep hit on the diff is the guard unit test's @pytest.mark.skipif for an absent ../onetest-ai-tm-Elitea clone — an environment precondition with a reason naming .agents/architecture.md, not a product-defect mask. Locator and fidelity greps are both 0 hits.",
+          "ref": "automation/tests/unit/test_artifacts_delete_all_specs_allure_issue_links.py:113"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendments shipped in the same PR as required: 1848 Axis-1 Step-10 row + a new Axis-2 row for the single-DELETE assertion; 1849/1850 amended to record that get_file_row_text() is artifacts-file-row-anchored so only the two FILE rows get byte-for-byte snapshots (folders covered by the name set + left-tree check). test-specs/artifacts/_surface.md carries the same gotcha for the next analyst.",
+          "ref": "test-specs/artifacts/_surface.md:742"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_delete-flow-cancel-delete-all-keeps-items_ELITEA-1849.md",
+      "branch": "tests/1848-1850-artifacts-delete-all-and-dismissal",
+      "pr": 1641,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          204.34,
+          191.86,
+          197.33
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1850",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed [ELITEA-1848][ELITEA-1849][CLARIFICATION] #1640, sibling of #659: the all-selected delete confirmation renders 'Are you sure to delete the all files?' — the cases say 'Are you sure to delete all files?'. Beyond the case-text drift, the live string is ungrammatical: ArtifactTableToolbar.jsx:154 passes name='all files' into DeleteEntityModal, whose fixed textContent prefix is 'Are you sure to … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "1640"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1848's success-toast drift is an exact duplicate of #660 (same component, same trigger family, byte-identical expected/actual) — commented the new occurrence there rather than re-filing. Newly confirmed detail worth knowing: the bulk toast is NOT branched on all-vs-partial selection; ArtifactTable.jsx:431 fires 'The selected files have been successfully deleted.' in both cases, so there is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "660"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha (cost the single rerun, now in the digest + role memory): ArtifactsPage.get_file_row_text() is anchored on artifacts-file-row, so it times out at 10s on a FOLDER row (artifacts-folder-row). Folders also carry no Type/Size metadata to snapshot — assert their presence via get_file_names() and the left-panel tree instead."
+        },
+        {
+          "kind": "note",
+          "note": "Behaviour newly confirmed live and recorded in _surface.md: dismissing the delete-confirmation modal via EITHER Cancel or the X preserves the file table's selection exactly (selection lives in ArtifactTable's rowSelectionModel, which DeleteEntityModal never touches; it passes ONE onClose to both BaseModal and the Cancel button). Also: deleting every file does NOT delete the bucket — it stays in th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Adjacent, deliberately not asserted by this cluster: #677 (toolbar Delete/tooltip stays enabled with a stale selection after a multi-file delete) concerns the post-DELETE path, whereas ELITEA-1849/1850 cover the dismissal path. No new occurrence observed.",
+          "ref": "677"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — @allure.issue link filename drift, 2 of 3 tests. test_artifacts_delete_all_and_dismissal.py:142 (ELITEA-1848) and :512 (ELITEA-1850) cite TMS filenames that do not exist; the real ones are ELITEA-1848_delete-flow-all-files-select-all-checkbox.md and ELITEA-1850_delete-flow-close-x-modal-keeps-items.md (verified against a freshly fetched origin/main of EliteaAI/onetest-ai-tm-Elitea). Th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:142"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — step title overclaims. Step 7's title says 'verify exactly one DELETE request fires'; the assertions are `response.status == 200` and the fname[] set. `page.expect_response` proves at least one matching response, not exactly one. The two dismissal tests in the same file already carry the `page.on(\"request\")` DELETE listener pattern, so adding `assert len(delete_requests) == 1` is a 3-l… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:257"
+        },
+        {
+          "kind": "question",
+          "note": "Note for the lead (NOT blocking) — the test hard-asserts the live, ungrammatical product copy `Are you sure to delete the all files?` (line 103). That is consistent with the reverse-masking guard and with established house precedent (test_artifacts_delete_single_file_dropdown.py:93, test_artifacts_create_bucket_55char_name_and_delete.py:98 all hard-assert the shared DeleteEntityModal's 'delete the… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:103"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — ELITEA-1848 Step 10 calls `get_file_names(timeout=UI_ELEMENT_TIMEOUT)` on a table that `wait_for_file_count(0)` has just confirmed empty. `get_file_names` waits for the first row to become visible and only returns [] after that wait times out, so this burns a full 10 s of dead wall-clock per run — meaningful against the 3x hardening gate. Passing a short timeout (e.g. 1000) keeps the asserti… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:293"
+        },
+        {
+          "kind": "note",
+          "note": "Independently re-verified the AFS promotability claim with `git fetch origin` in ../EliteaUI + the two-stage `-i`/`[:=]` grep on both refs: delete-confirm-title-icon, delete-confirm-entity-name, delete-confirm-close-button are main:no / testids:YES, and artifacts-bucket-tree-empty-label-* exists only on automation/testids (BucketContent.jsx:87, runtime-composed template). All 8 other testids the s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_delete-flow-delete-all-select-all-checkbox_ELITEA-1848.md"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage/dedup claims verified against the trunk, not merely asserted: `git grep click_select_all_checkbox`, `delete_confirm_close_button|click_delete_close_button` and `click_delete_cancel_button` over tests/batch-artifacts-w03 -- automation/tests all return zero hits, so the AFSs' 'no existing test drives select-all / the modal X / bulk Cancel' claims hold. No Coverage-Map row in any of the thre… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_delete-flow-cancel-delete-all-keeps-items_ELITEA-1849.md"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt clean, and the AFS drift was swept: no skip/xfail/soft-assert/weakened expect anywhere in the diff (grep 0 hits); the case-text drifts are handled by the reverse-masking guard with tracker records verified live (#1640 OPEN, label `question`; #660 carries a 2026-08-21 'Another occurrence — ELITEA-1848 ... not filed separately' comment rather than a duplicate issue, matching profile.md'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_delete-flow-close-x-on-delete-confirmation_ELITEA-1850.md"
+        },
+        {
+          "kind": "note",
+          "note": "Team-wide, not this PR's defect: `.agents/testing.md` § Markers says new tests carry priority + feature + regression, but zero of the ~30 specs in automation/tests/ui/artifacts/ use a feature marker (`grep -rn 'mark.artifacts'` → no hits) and `artifacts` is not in pytest.ini's marker list either. This PR follows the directory's actual convention (ui/regression/new_verified + per-test p1/p2). Flagg… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:64"
+        },
+        {
+          "kind": "note",
+          "note": "Dead @allure.issue TMS links are now a 5-occurrence class (ELITEA-2609, ELITEA-2612, ELITEA-1836/1837/1838, and now ELITEA-1848+1850). A dead link never fails a run — it only 404s in Allure — so only a human reviewer ever catches it, and each catch costs a fix round. Per-spec guard files (3 now exist) will not close it: a 2026-08-21 measurement found 115 of 420 @allure.issue links across 282 specs… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1641"
+        },
+        {
+          "kind": "note",
+          "note": "New product fact, now test-enforced: the artifacts bulk-delete endpoint batches an entire selection into a SINGLE DELETE with repeated fname[] params (4 expanded storage keys here), never a per-key fan-out. Previously assumed by the AFS wording, unasserted; now asserted in Step 7 and passing live.",
+          "ref": "test-specs/artifacts/l2_delete-flow-delete-all-select-all-checkbox_ELITEA-1848.md"
+        },
+        {
+          "kind": "note",
+          "note": "Self-correction worth the lead's attention: the memory entry that would have prevented finding 1 already existed and was thorough — but carried no MEMORY.md index line, so it was never in front of the dispatch that needed it. Indexed now. Any role writing a genuinely preventive entry should check the index line landed; an unindexed preventive fact is only findable by someone who already suspects t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1849's @allure.issue slug was correct only by coincidence — the derived slug matched the real TMS filename. Worth knowing when reading the round-1 review: the finding was not 'the implementer got 1 of 3 right', it was 'a partially-resolving set looks clean'. No change was needed to 1849.",
+          "ref": "ELITEA-1849"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (dead @allure.issue TMS links, ELITEA-1848 + ELITEA-1850) is FIXED and independently re-verified: all three decorator paths resolve on TMS origin/main (git ls-tree -r origin/main in ../onetest-ai-tm-Elitea) — ELITEA-1848_delete-flow-all-files-select-all-checkbox.md, ELITEA-1849_delete-flow-cancel-delete-all-keeps-items.md, ELITEA-1850_delete-flow-close-x-modal-keeps-items.md.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:140"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (Step 7 allure title claiming an unmade 'exactly one DELETE' verification) is FIXED: the test now registers page.on('request', ...) like its two sibling tests and asserts `delete_requests == [response.url]` inside the Step 7 block, with a matching AFS Axis-2 row added.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:264"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the single-DELETE assertion compares the captured request URL to `response.url`. Playwright's response.url is the FINAL url after any redirect, so a future 30x on the bulk-delete endpoint would fail this equality for a reason unrelated to the fan-out being tested. `len(delete_requests) == 1` plus a path/fname check would be redundancy-proof. Green 3/3 today, so cosmetic only.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_delete_all_and_dismissal.py:277"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the new allure-link guard resolves paths against the sibling clone's WORKING TREE, while the URL it validates points at blob/main. A case file that exists locally on a branch but not yet on TMS main would pass the guard and still 404 in the report. Verified irrelevant for this PR (all three exist on origin/main), and it matches the two pre-existing guards' shape — flagging only… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_delete_all_specs_allure_issue_links.py:118"
+        },
+        {
+          "kind": "note",
+          "note": "The only masking-grep hit on the diff is the guard unit test's @pytest.mark.skipif for an absent ../onetest-ai-tm-Elitea clone — an environment precondition with a reason naming .agents/architecture.md, not a product-defect mask. Locator and fidelity greps are both 0 hits.",
+          "ref": "automation/tests/unit/test_artifacts_delete_all_specs_allure_issue_links.py:113"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendments shipped in the same PR as required: 1848 Axis-1 Step-10 row + a new Axis-2 row for the single-DELETE assertion; 1849/1850 amended to record that get_file_row_text() is artifacts-file-row-anchored so only the two FILE rows get byte-for-byte snapshots (folders covered by the name set + left-tree check). test-specs/artifacts/_surface.md carries the same gotcha for the next analyst.",
+          "ref": "test-specs/artifacts/_surface.md:742"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_delete-flow-close-x-on-delete-confirmation_ELITEA-1850.md",
+      "branch": "tests/1848-1850-artifacts-delete-all-and-dismissal",
+      "pr": 1641,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          204.34,
+          191.86,
+          197.33
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 7
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

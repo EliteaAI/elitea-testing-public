@@ -1,0 +1,74 @@
+{
+  "batch": "elitea-2068",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2068",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      18.103615,
+      19.71095575,
+      16.750017542
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant",
+        "signature": "FAILED (pytest.fail via soft_failures aggregation) — screenshot automation/screenshots/test_add_llm_node_save_pipeline_and_verify_participant_FAIL_20260805_005147.png. Test's own docstring documents this as a deterministic, already-filed known defect (issue #1039: bare LLM node added via chat canvas does not respond as a chat participant — soft-asserted via the pytest-native soft_failures/pytest.f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2079"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2068",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "CodeMirror's YAML-mode auto-close-brackets/quotes extension silently auto-closes a typed opening quote when edited via edit_yaml_line()'s real keyboard.type() keystrokes, turning an intended-invalid `transition: \"END` into the VALID `transition: \"END\"` and saving successfully instead of failing. Colon removal (no bracket/quote) is the reliable invalid-YAML technique for this editor. Recorded in te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "No GitHub tracker issue exists yet for ELITEA-2068 in EliteaAI/elitea-testing-public (checked via the real-time list API — no hit). This looks like an intake gap for this combined-slot dispatch; I did not create the board card myself since intake wasn't in scope for this dispatch. Flagging so the lead either confirms it was intentionally deferred or backfills the card."
+        },
+        {
+          "kind": "defect",
+          "note": "Module docstring ('Introduces invalid YAML syntax (an unterminated quote)...') and the Step-2 allure.step label ('Introduce invalid YAML syntax (unterminated quote)') both describe the WRONG technique. The actual code (INVALID_TRANSITION_LINE = 'transition END invalid_no_colon_xyz123') uses colon-removal, not an unterminated quote — this PR's own memory entry (.agents/memory/test-automation-engine… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_yaml_editor_invalid_syntax.py:6,72"
+        },
+        {
+          "kind": "note",
+          "note": "The digest amendment left a duplicated paragraph — 'The Flow canvas does NOT error or blank out when switched to with invalid YAML pending...' appears twice, back-to-back (lines 807-810 and 811-814, identical text), an artifact of the in-place edit. Cosmetic only; doesn't affect any test or handle, but worth a quick de-dup on the next _surface.md touch.",
+          "ref": "test-specs/pipelines/_surface.md:807-814"
+        },
+        {
+          "kind": "note",
+          "note": "Two assertions in the implementation aren't reflected in the AFS's Axis-2 'Analyst additions' list: (1) step 1 asserts is_flow_view_active() as a default-view precondition before switching to Yaml view, (2) step 2 asserts the pre-edit YAML still contains 'transition: END' as a baseline precondition. Both are harmless, grounded sanity checks (not scope creep) but the Coverage Map's Axis-2 enumerati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_pipeline-yaml-editor-invalid-syntax_ELITEA-2068.md — Coverage Map"
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_pipeline-yaml-editor-invalid-syntax_ELITEA-2068.md",
+      "branch": "tests/ELITEA-2068-yaml-editor-invalid-syntax",
+      "pr": 1159,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          18.103615,
+          19.71095575,
+          16.750017542
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

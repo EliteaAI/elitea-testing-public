@@ -1,0 +1,679 @@
+{
+  "batch": "artifacts-w02",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1392",
+  "integration_branch": "tests/batch-artifacts-w02",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      367.06,
+      259.49,
+      288.34
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1825",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Re-dispatch of a unit that was already built, reviewed and merged (PR #1627, merge commit 1a6ee7758). No harm done — I detected it before writing anything and spent the dispatch on verification instead — but the lead may want to check why the batch workflow re-issued a merged unit, since a less careful re-dispatch would have rebuilt the spec on top of itself or force-created the branch. The reliab… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1825"
+        },
+        {
+          "kind": "note",
+          "note": "Regression re-check passed: the merged spec is still green on the current trunk head after ELITEA-1830, ELITEA-1833 and ELITEA-1834 merged behind it. 1 passed in 69.76s, 0 reruns, no console errors, no network failures. This is an extra independent data point the lead can count toward the batch hardening gate for this node id.",
+          "ref": "ELITEA-1825"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text typo carried over from the analysis half and NOT filed as a tracker issue (deliberately): case step 10 says 'sample.txt' while the Test Data table and step 5 both say 'sample1.txt'. Intent is unambiguous — it is the file selected in step 5 — and the shipped test asserts the absence of sample1.txt. Recorded in the AFS § Findings so it is not re-litigated. Worth a TMS case-text fix at batc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1825"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability gap (unchanged from the merged unit, restated so it does not get lost in a re-dispatch): the spec depends on artifacts-upload-path-cancel-button (EliteaAI/EliteaUI@6d360e82) and artifacts-pagination-page-info (EliteaAI/EliteaUI@6449a5c4), both currently on automation/testids only and awaiting a HUMAN cherry-pick to EliteaUI main. The test is green on localhost and would be red on any… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1825"
+        },
+        {
+          "kind": "note",
+          "note": "Suite-hygiene note from the AFS, still open: ArtifactsPage.get_total_file_count_from_pagination() locates via raw CSS ('main *:has-text(\"of \"):not(:has(*))') — pre-existing tech debt #25/#42. A testid-backed replacement now exists, get_pagination_info_text() on artifacts-pagination-page-info, and this case uses the testid-backed one. Future artifacts cases should prefer it; the raw-CSS method is a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1825"
+        },
+        {
+          "kind": "note",
+          "note": "STATE: this unit was already merged into tests/batch-artifacts-w02 before this dispatch, so `git diff tests/batch-artifacts-w02...tests/1825-upload-cancel-discards-selection` is EMPTY. I reviewed the actual build range e82607546..d06204a58 (AFS commit -> reviewer-memory commit). A prior reviewer round also already APPROVED it (its note is committed at d06204a58). This is a re-verification, not a r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1627 / merge 1a6ee7758"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit / stale AFS amendment: the Handles table and the Test Steps section were both amended at implementation time, but the Coverage Map was not. Row 8 still reads `click on artifacts-upload-path-cancel-button (**testid needed**)` although the testid now exists (EliteaAI/EliteaUI@6d360e82), and row 7 still reads `prefix contains {bucket}/` although the implementation strengthened it to equality (`as… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_upload-flow-cancel-upload-modal-discards-file-selection_ELITEA-1825.md — Coverage Map Axis 1, rows 7 and 8"
+        },
+        {
+          "kind": "defect",
+          "note": "Important, non-blocking: `expect(success_toast_message).to_have_count(0, timeout=2000)` is NOT an absence window. Playwright web-first assertions retry until the condition HOLDS — with count already 0 on the first poll it returns immediately, so a toast rendering 300 ms later is not caught. The comment above the constant asserts the opposite (\"over a short POLLED window ... robust whether no toast… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_path_cancel.py:~118 (TOAST_ABSENCE_POLL_TIMEOUT comment) and :~247 (step-11 assertion)"
+        },
+        {
+          "kind": "note",
+          "note": "Latent-flake note (verified-live, so not blocking): `assert not requests_during_cancel` uses `capture_requests_matching(\"artifacts\")` with no method filter, so it asserts ZERO requests whose URL merely contains `artifacts` — broader than the case's \"nothing was uploaded\". Any future product change that refreshes the bucket listing on dialog close would turn this red for a non-defect. The analyst o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_path_cancel.py:~236"
+        },
+        {
+          "kind": "note",
+          "note": "The blanket `assert not console_errors` inherits the project's documented recurring background-resource console noise (.agents/testing.md — unrelated-resource 500/404 blips, 4+ confirmed occurrences on other surfaces). It matches the convention of all five sibling artifacts specs, so it is not a deviation — recorded only so a future non-reproducing console failure on this spec is recognized as tha… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_path_cancel.py:~299"
+        },
+        {
+          "kind": "clarification",
+          "note": "TMS case-text typo carried through unfiled: case step 10 says `\"sample.txt\"` while the Test Data table and step 5 say `\"sample1.txt\"`. The AFS § Findings resolves it correctly (the assertion targets the file actually selected) and the spec encodes that in SELECTED_FILE_NAME, so there is no coverage risk — but the analyst explicitly chose NOT to file a tracker clarification, whereas .agents/profile… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/automation/artifacts-w02/cases/ELITEA-1825.md — step 10"
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_upload-flow-cancel-upload-modal-discards-file-selection_ELITEA-1825.md",
+      "branch": "tests/1825-upload-cancel-discards-selection",
+      "pr": 1627,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          367.06,
+          259.49,
+          288.34
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1830",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This unit was dispatched a second time after it was already complete and merged (PR #1628, trunk commit 0bf73950b). Same thing happened to ELITEA-1825 (PR #1627) ~40 minutes earlier in this same batch. Two occurrences in one batch suggests the batch's unit-completion bookkeeping is not reflecting merged units back to the dispatcher — worth checking before the next wave, since the cost of a mis-rea… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1628"
+        },
+        {
+          "kind": "note",
+          "note": "The dispatch's own resume-check heuristic is ambiguous and nearly caused a rebuild: `git log <trunk>..<branch>` returns EMPTY both when a branch never started AND when it is already merged (an ancestor of the trunk). Recommend the checkpoint-discipline wording add the disambiguator — check the trunk's recent merge commits for the case ids, whether the AFS is already committed, and the PR state — b… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/redispatch_of_already_merged_unit_verify_dont_rebuild.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1833's merged AFS carries a deliberate, reviewer-visible honesty note: in the current build the Resolve-duplicates X button and Cancel button are wired to the SAME onCancel handler (DuplicateResolutionDialog.jsx passes onCancel to both Modal.BaseModal's onClose and the Cancel button's onClick), so ELITEA-1833 and the already-merged ELITEA-1832 exercise one product path today. It was still c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1833"
+        },
+        {
+          "kind": "note",
+          "note": "Environment detail worth reusing on this surface: the Artifacts duplicate-dialog source lives at ../EliteaUI/src/pages/Artifacts/component/DuplicateResolutionDialog.jsx — 'component' singular. A curl of the .../components/... (plural) path returns nothing and looks exactly like an unserved testid, which is this repo's known false-alarm signature for a fresh testid not yet HMR'd."
+        },
+        {
+          "kind": "note",
+          "note": "STALE AFS PROVENANCE — do not copy into the closure record. Both AFS files claim artifacts-resolve-duplicates-{dialog,filename,message-text,replace-button} are 'on-automation/testids only (@918b8b22), human cherry-pick to main pending'. Fresh verification (cd ../EliteaUI && git fetch origin, 2026-08-21): dialog=YES, filename=YES, message-text=YES, replace-button=YES on origin/main. Only artifacts-… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_upload-flow-duplicate-replace-overwrites-existing_ELITEA-1830.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "Important, not blocking (redundant strong evidence exists). expect(success_toast_message).to_have_count(0, timeout=TOAST_ABSENCE_POLL_TIMEOUT) does NOT observe a 2s window — Playwright web-first assertions return on the first poll where the condition holds, so with count already 0 this passes instantly and a toast rendering 300ms later is never caught. Same for expect(upload_path_dialog).to_have_c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_duplicate_close_x.py:~250 (Step 10) and :~240 (Step 9)"
+        },
+        {
+          "kind": "defect",
+          "note": "Important, not blocking. Three capture_requests_matching() calls across the two specs never call .stop(). BasePage.capture_requests_matching (base_page.py:366) attaches page.on('request') AND page.on('response') listeners and its own docstring warns 'Failing to call .stop() can cause test hangs in subsequent tests'. Second-order effect specific to these specs: in ELITEA-1830 the step-8 'artifacts'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_duplicate_replace.py:~270,~285 and test_artifacts_upload_duplicate_close_x.py:~230,~248"
+        },
+        {
+          "kind": "note",
+          "note": "Accepted-visible-duplication, declared honestly and correctly. DuplicateResolutionDialog.jsx passes the same onCancel handler to BaseModal's onClose (the X) and to the Cancel button's onClick, so ELITEA-1833 and the merged ELITEA-1832 exercise ONE product path today. The analyst classified ready-for-automation rather than already-covered per the standing asymmetry (redundant test = visible and del… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_upload-flow-duplicate-close-x-button_ELITEA-1833.md § Overlap check"
+        },
+        {
+          "kind": "note",
+          "note": "New shared-file page-object work is additive-only (one new LocatorDescriptor class field, three new methods); no existing method signature or body was touched, so no shared-caller risk. wait_for_file_row_to_contain_text correctly replaces a single-shot get_file_row_text() read that would race the post-PUT table refetch, using Playwright's auto-retrying expect over the existing ARTIFACT_FILE_ROW cl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1886 wait_for_file_row_to_contain_text"
+        },
+        {
+          "kind": "note",
+          "note": "New durable gotcha found while verifying provenance, committed as 44a374003 on tests/batch-artifacts-w02. The closure record's two-stage grep reported artifacts-file-row as absent from BOTH main and automation/testids; it is in fact on both. Cause: the stage-2 line filter (data-testid|testid[[:space:]]*[:=]) drops a hit whose line carries only the testid string because the prop wrapped across line… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/provenance_grep_false_negative_multiline_testid_prop.md"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_upload-flow-duplicate-replace-overwrites-existing_ELITEA-1830.md",
+      "branch": "tests/ELITEA-1830-1833-duplicate-replace-and-close-x",
+      "pr": 1628,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          367.06,
+          259.49,
+          288.34
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1833",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "This unit was dispatched a second time after it was already complete and merged (PR #1628, trunk commit 0bf73950b). Same thing happened to ELITEA-1825 (PR #1627) ~40 minutes earlier in this same batch. Two occurrences in one batch suggests the batch's unit-completion bookkeeping is not reflecting merged units back to the dispatcher — worth checking before the next wave, since the cost of a mis-rea… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1628"
+        },
+        {
+          "kind": "note",
+          "note": "The dispatch's own resume-check heuristic is ambiguous and nearly caused a rebuild: `git log <trunk>..<branch>` returns EMPTY both when a branch never started AND when it is already merged (an ancestor of the trunk). Recommend the checkpoint-discipline wording add the disambiguator — check the trunk's recent merge commits for the case ids, whether the AFS is already committed, and the PR state — b… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/redispatch_of_already_merged_unit_verify_dont_rebuild.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1833's merged AFS carries a deliberate, reviewer-visible honesty note: in the current build the Resolve-duplicates X button and Cancel button are wired to the SAME onCancel handler (DuplicateResolutionDialog.jsx passes onCancel to both Modal.BaseModal's onClose and the Cancel button's onClick), so ELITEA-1833 and the already-merged ELITEA-1832 exercise one product path today. It was still c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1833"
+        },
+        {
+          "kind": "note",
+          "note": "Environment detail worth reusing on this surface: the Artifacts duplicate-dialog source lives at ../EliteaUI/src/pages/Artifacts/component/DuplicateResolutionDialog.jsx — 'component' singular. A curl of the .../components/... (plural) path returns nothing and looks exactly like an unserved testid, which is this repo's known false-alarm signature for a fresh testid not yet HMR'd."
+        },
+        {
+          "kind": "note",
+          "note": "STALE AFS PROVENANCE — do not copy into the closure record. Both AFS files claim artifacts-resolve-duplicates-{dialog,filename,message-text,replace-button} are 'on-automation/testids only (@918b8b22), human cherry-pick to main pending'. Fresh verification (cd ../EliteaUI && git fetch origin, 2026-08-21): dialog=YES, filename=YES, message-text=YES, replace-button=YES on origin/main. Only artifacts-… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_upload-flow-duplicate-replace-overwrites-existing_ELITEA-1830.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "Important, not blocking (redundant strong evidence exists). expect(success_toast_message).to_have_count(0, timeout=TOAST_ABSENCE_POLL_TIMEOUT) does NOT observe a 2s window — Playwright web-first assertions return on the first poll where the condition holds, so with count already 0 this passes instantly and a toast rendering 300ms later is never caught. Same for expect(upload_path_dialog).to_have_c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_duplicate_close_x.py:~250 (Step 10) and :~240 (Step 9)"
+        },
+        {
+          "kind": "defect",
+          "note": "Important, not blocking. Three capture_requests_matching() calls across the two specs never call .stop(). BasePage.capture_requests_matching (base_page.py:366) attaches page.on('request') AND page.on('response') listeners and its own docstring warns 'Failing to call .stop() can cause test hangs in subsequent tests'. Second-order effect specific to these specs: in ELITEA-1830 the step-8 'artifacts'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_duplicate_replace.py:~270,~285 and test_artifacts_upload_duplicate_close_x.py:~230,~248"
+        },
+        {
+          "kind": "note",
+          "note": "Accepted-visible-duplication, declared honestly and correctly. DuplicateResolutionDialog.jsx passes the same onCancel handler to BaseModal's onClose (the X) and to the Cancel button's onClick, so ELITEA-1833 and the merged ELITEA-1832 exercise ONE product path today. The analyst classified ready-for-automation rather than already-covered per the standing asymmetry (redundant test = visible and del… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_upload-flow-duplicate-close-x-button_ELITEA-1833.md § Overlap check"
+        },
+        {
+          "kind": "note",
+          "note": "New shared-file page-object work is additive-only (one new LocatorDescriptor class field, three new methods); no existing method signature or body was touched, so no shared-caller risk. wait_for_file_row_to_contain_text correctly replaces a single-shot get_file_row_text() read that would race the post-PUT table refetch, using Playwright's auto-retrying expect over the existing ARTIFACT_FILE_ROW cl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1886 wait_for_file_row_to_contain_text"
+        },
+        {
+          "kind": "note",
+          "note": "New durable gotcha found while verifying provenance, committed as 44a374003 on tests/batch-artifacts-w02. The closure record's two-stage grep reported artifacts-file-row as absent from BOTH main and automation/testids; it is in fact on both. Cause: the stage-2 line filter (data-testid|testid[[:space:]]*[:=]) drops a hit whose line carries only the testid string because the prop wrapped across line… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/provenance_grep_false_negative_multiline_testid_prop.md"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_upload-flow-duplicate-close-x-button_ELITEA-1833.md",
+      "branch": "tests/ELITEA-1830-1833-duplicate-replace-and-close-x",
+      "pr": 1628,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          367.06,
+          259.49,
+          288.34
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1834",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Unit was already complete and merged (PR #1630, merge commit e16728043) when this dispatch arrived — third such re-dispatch in batch artifacts-w02 after ELITEA-1825 and ELITEA-1830/1833. All three cost a dispatch to verify what was already on the trunk. Worth checking whether the batch's unit-completion bookkeeping is losing merged units, since the pattern is now consistent rather than incidental.",
+          "ref": "ELITEA-1834"
+        },
+        {
+          "kind": "clarification",
+          "note": "UNRESOLVED, and it gates the durability of this test. ELITEA-1834 says the bucket-actions upload dialog SHOULD pre-fill the selected subfolder ({bucket}/a1/); the live product does exactly that, so this spec asserts it as CORRECT with hard assertions. But open bug #649 (filed from ELITEA-1824) calls that same behaviour a MAJOR defect, and the merged spec test_artifacts_upload_three_options_verify_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1629"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical-grep gotcha for re-dispatches: running the reviewer greps against the FULL trunk diff (origin/automation/base...tests/batch-artifacts-w02) surfaces hits from every unit already merged into the trunk, not just yours. Attribute each hit to its commit with `git log -S'<line>'` before treating it as your own violation — I nearly reported a sibling unit's compliant line as a finding on this … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1834"
+        },
+        {
+          "kind": "note",
+          "note": "Still relevant to anyone touching artifacts bucket rows: clicking an ALREADY-selected bucket row TOGGLES tree expand/collapse rather than re-expanding. The shipped spec guards its bucket-row clicks with a post-condition visibility check plus a conditional second click; a spec that assumes expand will flake here.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/651"
+        },
+        {
+          "kind": "question",
+          "note": "OPEN CONTRADICTION, needs a human ruling before batch close. This spec HARD-asserts `{bucket}/a1/` in the bucket-menu upload dialog as CORRECT (step 12). The merged sibling `automation/tests/ui/artifacts/test_artifacts_upload_three_options_verify_selection.py:459-467` SOFT-asserts the OPPOSITE value at the same DOM node as `# Known defect: #649` (verified by reading the actual assertion, not its e… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_to_selected_subfolder.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Duplicate dispatch. This unit had already been reviewed (qa-engineer daily log 2026-08-21 21:32, 'Reviewed ELITEA-1834 (PR #1630) — APPROVED') and was already merged into the batch trunk as e16728043 before this dispatch arrived; the case branch tip 61ae1b597 equals the trunk's merge-base. I re-ran the full case↔AFS↔diff triangulation independently rather than deferring to the prior verdict, and r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "tests/batch-artifacts-w02"
+        },
+        {
+          "kind": "defect",
+          "note": "Weak-oracle caveat (non-blocking, pre-existing page-object behaviour, not introduced by this diff). `get_breadcrumb_folder_names()` swallows its wait and returns `[]` on timeout — absence is treated as a normal root state. So both `== []` assertions in this spec (step 2 'bucket opens at ROOT', step 18 'view is back at the bucket root') are satisfied by a breadcrumb that simply has not rendered yet… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3014"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: `pytest.mark.p2` is applied twice — once via module-level `pytestmark` (line ~101) and again as `@pytest.mark.p2` on the test method. Harmless duplication; markers `ui`, `regression`, `p2`, `new` are all registered in `automation/pytest.ini` (and the AFS's amendment note is correct — `artifacts` is NOT a registered marker).",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_upload_to_selected_subfolder.py:130"
+        },
+        {
+          "kind": "note",
+          "note": "The artifacts surface digest is now 573 lines after this unit's append — well past the ~150-line split-into-index smell the skill names, and past the 469 lines the analyst already flagged to the lead on 2026-08-21. Every artifacts analyst and implementer now pays a 573-line read. Recommend scheduling the index split between waves, not mid-batch.",
+          "ref": "test-specs/artifacts/_surface.md"
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_upload-flow-file-uploaded-to-selected-subfolder-via-bucket-actions_ELITEA-1834.md",
+      "branch": "tests/ELITEA-1834-upload-to-selected-subfolder",
+      "pr": 1630,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          367.06,
+          259.49,
+          288.34
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1836",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1631 (bug, MINOR): a click landing inside the Artifacts folder-expand animation (~300ms MUI Collapse enter transition) interrupts it, onExited never fires, unmountOnExit never unmounts, and the folder stays expanded PERMANENTLY - a 10s retrying assertion never sees it collapse. Measured 3/3 fail inside the window vs 18/18 pass outside. User impact: a fast doubl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "I posted a correction comment on #1631: the mechanism I first wrote there (BucketContent's isFetching early-return remounting the FileTreeItem subtree) is WRONG - a request capture across the whole window came back empty, and page.wait_for_load_state('networkidle') did not fix it. Anyone reading the issue body alone would chase the wrong theory; the comment and the _surface.md digest carry the cor… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631#issuecomment-5374385013"
+        },
+        {
+          "kind": "note",
+          "note": "New reusable primitive for this surface: ArtifactsPage.wait_for_tree_item_stable(item_key) - a polled geometry settle wait (bounding_box repeated twice) for any expand/collapse tree interaction. Any future artifacts-tree case must use it between two tree clicks rather than firing them back-to-back; recorded in test-specs/artifacts/_surface.md.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1838 needed a SECOND bucket, which no existing fixture provides. Pattern used (suite-local fixture, documented in the AFS + digest): create it as f\"{artifact_bucket['name']}-b\" so it sorts immediately after the fixture bucket in the alphanumeric ~760-bucket list, keeping both rows in one scroll band, with its own try/except teardown. If a second two-bucket case appears, this is a candidate … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py"
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket-leak is still live: the artifact_bucket fixture teardown 404s on every run (delete via the path form; the UI uses the query form). Reconfirmed on all 4 buckets this unit created. Out of scope for a case to fix, but the Private/399 project keeps accumulating autotest-* buckets.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/636"
+        },
+        {
+          "kind": "note",
+          "note": "Playwright MCP was again not attempted (9th consecutive session per the digest gotcha). All live execution ran as throwaway pytest specs under automation/tests/ui/artifacts/ driving the framework's own page/auth_state fixtures with -s prints, then deleted - auth and config come free, and one full case run costs 20-45s.",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "pages/artifacts_page.py carries a pre-existing ruff I001 (unsorted import block) at HEAD, unrelated to this unit. Left untouched to keep the diff additive on a heavily shared file; worth a one-line cleanup in some future suite-health pass.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot ↔ AFS ↔ diff) is CLEAN for all three cases on substance. Every numbered case step has a real assertion AT that step: 1836 steps 1-6 (incl. the pre-state to_have_count(0) that makes the expansion observable, and the collapse asserted on both child nodes); 1837 steps 1-10 (breadcrumb crumb text + folder-crumb list at root and inside the subfolder, anchored full-query URL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: clean. No skip/xfail/soft-assert/weakened expects anywhere in the diff. The only try/except added is the second_artifact_bucket teardown (test_artifacts_tree_switch_between_buckets.py:100-103), which logs and cannot mask a test result. The known product defect #1631 is NOT masked — the test asserts full-strength collapse and merely waits out the animation before the second click (a r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/"
+        },
+        {
+          "kind": "defect",
+          "note": "Latent strict-mode collision class (NOT introduced by this PR — flagging for a suite-wide follow-up, not blocking here). FileTreeItem.jsx:107 renders data-testid={`artifacts-tree-item-${item.key}`} with a BUCKET-RELATIVE key and no bucket qualifier, while BucketsListContent.jsx:39-53 sets expandedBuckets[selectedBucketName]=true for any selected bucket — including the one /artifacts auto-selects o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py:68-71"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object helper wait_for_tree_item_stable() (artifacts_page.py:1667-1719) uses self.page.wait_for_timeout(TREE_ITEM_STABLE_POLL_INTERVAL_MS) as the POLL INTERVAL of a bounded geometry condition loop, returning False on timeout with the spec asserting on the return value — not a fixed sleep standing in for a wait. I read this as compliant with the 'no sleep/waitForTimeout' hard-don't (same s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1718"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1631's TITLE and BODY still carry the retracted framing ('a rapid second click … fails to collapse it (2 of 5 live attempts)', isFetching hypothesis). Only a comment (2026-08-21T19:34Z) corrects it. A reader scanning the bug list gets the wrong mechanism and the wrong severity shape (it is deterministic inside the transition window and PERMANENT, not intermittent). Suggest retitling to some… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: transit-only substitution in all three cases (bucket + files created via ArtifactAPI), declared in the AFS § Fidelity Declaration AND in each test's module docstring and method docstring per role-overrides § Implementer slot. Every asserted observable (tree nodes, data-selected attributes, breadcrumb text, main-panel rows, browser URL) is product-rendered. Provenance grep returned 0 hits… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_file-tree-switching-buckets-updates-tree-and-main-panel_ELITEA-1838.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendment discipline satisfied for ELITEA-1836: the AFS (§ Page-object gap, § Test Steps ordering/settle discipline, § Findings, § Live-execution evidence) and the surface digest were both amended in the same PR to match the shipped implementation, including the added wait_for_tree_item_stable helper. ELITEA-1837/1838 AFS files were already on the trunk and needed no change — their handles tab… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Suite-wide traceability debt, out of this unit's scope: a repo-wide scan (same ast-based guard logic, run against a freshly fetched origin/main of onetest-ai-tm-Elitea) finds 115 of 420 @allure.issue TMS case links across 282 specs do NOT resolve (~27%) - every one of them a 404 in the Allure report. Examples: tests/ui/artifacts/test_artifacts_upload_duplicate_replace.py (ELITEA-1830_upload-flow-d… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_tree_specs_allure_issue_links.py"
+        },
+        {
+          "kind": "note",
+          "note": "Process lesson worth propagating to the doc-sync pass: the AFS and the _surface digest were correctly re-synced when the #1631 mechanism was corrected mid-implementation, but the SPEC MODULE DOCSTRING was not - and that is the artifact a reader of the test actually reads (they do not open the AFS). Any fix round that changes a mechanism/measurement should treat the spec docstring as a first-class … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_subfolder_expand_collapse.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing lint debt observed while linting (NOT introduced by this diff, not touched): 'ruff check tests/unit/ tests/ui/artifacts/' reports 17 errors across merged files - I001 unsorted imports in ~12 artifacts specs plus tests/unit/test_actions.py, F401 unused import in tests/unit/test_actions.py, and E501 long @allure.issue URL lines in test_artifacts_multi_file.py:101 and test_bucket_permiss… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/"
+        },
+        {
+          "kind": "note",
+          "note": "Important, non-blocking (scope): the fix round answered a documentation blocker by adding a PERMANENT unit test that asserts the spec's module-docstring WORDING (3 tests: must contain the literal 'wait_for_tree_item_stable'; may cite isFetching/FileTreeItem only alongside a retraction word; must not contain two hard-coded stale phrases). Two problems: (a) it freezes one review round's prose into a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_tree_expand_collapse_docstring_mechanism.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1631's TITLE still carries the retracted framing '(2 of 5 live attempts)'. The body has a correct correction comment (2026-08-21T19:34Z) and the AFS/docstring/_surface.md are all re-synced, but anyone scanning issue titles still reads the superseded number. One-line title edit for the lead at close: the measured signature is 3/3 failures inside the transition window, 18/18 successes after i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity/masking judgement, recorded explicitly so it is not re-litigated: the wait_for_tree_item_stable() call before ELITEA-1836's second click is NOT defect masking. The TMS case specifies no click timing (a human reading the Step-4 breadcrumb naturally waits), the collapse assertion stays a hard to_have_count(0) with a 10s web-first timeout, the underlying product defect is filed and OPEN (#16… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_subfolder_expand_collapse.py:512-521"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, not introduced here: `ruff check automation/pages/artifacts_page.py` fails I001 (import block un-sorted, lines 18-25). The diff does not touch that region — the file is already red on the trunk. Flagging so nobody attributes it to this PR; a separate hygiene commit, not this unit's work.",
+          "ref": "automation/pages/artifacts_page.py:18"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1's page-wide tree-locator collision risk (artifacts-tree-item-{key} keys are BUCKET-RELATIVE, so two simultaneously-expanded buckets can produce a strict-mode violation) is correctly handled in ELITEA-1838: bucket B is seeded with a distinct filename (b-root.txt) precisely so no tree assertion can match A's node, and the AFS Axis-2 says so. Worth keeping in the surface digest for any future… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py:1"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_file-tree-subfolder-expands-and-collapses-on-click_ELITEA-1836.md",
+      "branch": "tests/1836-1838-artifacts-file-tree",
+      "pr": 1632,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          367.06,
+          259.49,
+          288.34
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1837",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1631 (bug, MINOR): a click landing inside the Artifacts folder-expand animation (~300ms MUI Collapse enter transition) interrupts it, onExited never fires, unmountOnExit never unmounts, and the folder stays expanded PERMANENTLY - a 10s retrying assertion never sees it collapse. Measured 3/3 fail inside the window vs 18/18 pass outside. User impact: a fast doubl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "I posted a correction comment on #1631: the mechanism I first wrote there (BucketContent's isFetching early-return remounting the FileTreeItem subtree) is WRONG - a request capture across the whole window came back empty, and page.wait_for_load_state('networkidle') did not fix it. Anyone reading the issue body alone would chase the wrong theory; the comment and the _surface.md digest carry the cor… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631#issuecomment-5374385013"
+        },
+        {
+          "kind": "note",
+          "note": "New reusable primitive for this surface: ArtifactsPage.wait_for_tree_item_stable(item_key) - a polled geometry settle wait (bounding_box repeated twice) for any expand/collapse tree interaction. Any future artifacts-tree case must use it between two tree clicks rather than firing them back-to-back; recorded in test-specs/artifacts/_surface.md.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1838 needed a SECOND bucket, which no existing fixture provides. Pattern used (suite-local fixture, documented in the AFS + digest): create it as f\"{artifact_bucket['name']}-b\" so it sorts immediately after the fixture bucket in the alphanumeric ~760-bucket list, keeping both rows in one scroll band, with its own try/except teardown. If a second two-bucket case appears, this is a candidate … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py"
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket-leak is still live: the artifact_bucket fixture teardown 404s on every run (delete via the path form; the UI uses the query form). Reconfirmed on all 4 buckets this unit created. Out of scope for a case to fix, but the Private/399 project keeps accumulating autotest-* buckets.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/636"
+        },
+        {
+          "kind": "note",
+          "note": "Playwright MCP was again not attempted (9th consecutive session per the digest gotcha). All live execution ran as throwaway pytest specs under automation/tests/ui/artifacts/ driving the framework's own page/auth_state fixtures with -s prints, then deleted - auth and config come free, and one full case run costs 20-45s.",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "pages/artifacts_page.py carries a pre-existing ruff I001 (unsorted import block) at HEAD, unrelated to this unit. Left untouched to keep the diff additive on a heavily shared file; worth a one-line cleanup in some future suite-health pass.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot ↔ AFS ↔ diff) is CLEAN for all three cases on substance. Every numbered case step has a real assertion AT that step: 1836 steps 1-6 (incl. the pre-state to_have_count(0) that makes the expansion observable, and the collapse asserted on both child nodes); 1837 steps 1-10 (breadcrumb crumb text + folder-crumb list at root and inside the subfolder, anchored full-query URL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: clean. No skip/xfail/soft-assert/weakened expects anywhere in the diff. The only try/except added is the second_artifact_bucket teardown (test_artifacts_tree_switch_between_buckets.py:100-103), which logs and cannot mask a test result. The known product defect #1631 is NOT masked — the test asserts full-strength collapse and merely waits out the animation before the second click (a r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/"
+        },
+        {
+          "kind": "defect",
+          "note": "Latent strict-mode collision class (NOT introduced by this PR — flagging for a suite-wide follow-up, not blocking here). FileTreeItem.jsx:107 renders data-testid={`artifacts-tree-item-${item.key}`} with a BUCKET-RELATIVE key and no bucket qualifier, while BucketsListContent.jsx:39-53 sets expandedBuckets[selectedBucketName]=true for any selected bucket — including the one /artifacts auto-selects o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py:68-71"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object helper wait_for_tree_item_stable() (artifacts_page.py:1667-1719) uses self.page.wait_for_timeout(TREE_ITEM_STABLE_POLL_INTERVAL_MS) as the POLL INTERVAL of a bounded geometry condition loop, returning False on timeout with the spec asserting on the return value — not a fixed sleep standing in for a wait. I read this as compliant with the 'no sleep/waitForTimeout' hard-don't (same s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1718"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1631's TITLE and BODY still carry the retracted framing ('a rapid second click … fails to collapse it (2 of 5 live attempts)', isFetching hypothesis). Only a comment (2026-08-21T19:34Z) corrects it. A reader scanning the bug list gets the wrong mechanism and the wrong severity shape (it is deterministic inside the transition window and PERMANENT, not intermittent). Suggest retitling to some… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: transit-only substitution in all three cases (bucket + files created via ArtifactAPI), declared in the AFS § Fidelity Declaration AND in each test's module docstring and method docstring per role-overrides § Implementer slot. Every asserted observable (tree nodes, data-selected attributes, breadcrumb text, main-panel rows, browser URL) is product-rendered. Provenance grep returned 0 hits… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_file-tree-switching-buckets-updates-tree-and-main-panel_ELITEA-1838.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendment discipline satisfied for ELITEA-1836: the AFS (§ Page-object gap, § Test Steps ordering/settle discipline, § Findings, § Live-execution evidence) and the surface digest were both amended in the same PR to match the shipped implementation, including the added wait_for_tree_item_stable helper. ELITEA-1837/1838 AFS files were already on the trunk and needed no change — their handles tab… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Suite-wide traceability debt, out of this unit's scope: a repo-wide scan (same ast-based guard logic, run against a freshly fetched origin/main of onetest-ai-tm-Elitea) finds 115 of 420 @allure.issue TMS case links across 282 specs do NOT resolve (~27%) - every one of them a 404 in the Allure report. Examples: tests/ui/artifacts/test_artifacts_upload_duplicate_replace.py (ELITEA-1830_upload-flow-d… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_tree_specs_allure_issue_links.py"
+        },
+        {
+          "kind": "note",
+          "note": "Process lesson worth propagating to the doc-sync pass: the AFS and the _surface digest were correctly re-synced when the #1631 mechanism was corrected mid-implementation, but the SPEC MODULE DOCSTRING was not - and that is the artifact a reader of the test actually reads (they do not open the AFS). Any fix round that changes a mechanism/measurement should treat the spec docstring as a first-class … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_subfolder_expand_collapse.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing lint debt observed while linting (NOT introduced by this diff, not touched): 'ruff check tests/unit/ tests/ui/artifacts/' reports 17 errors across merged files - I001 unsorted imports in ~12 artifacts specs plus tests/unit/test_actions.py, F401 unused import in tests/unit/test_actions.py, and E501 long @allure.issue URL lines in test_artifacts_multi_file.py:101 and test_bucket_permiss… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/"
+        },
+        {
+          "kind": "note",
+          "note": "Important, non-blocking (scope): the fix round answered a documentation blocker by adding a PERMANENT unit test that asserts the spec's module-docstring WORDING (3 tests: must contain the literal 'wait_for_tree_item_stable'; may cite isFetching/FileTreeItem only alongside a retraction word; must not contain two hard-coded stale phrases). Two problems: (a) it freezes one review round's prose into a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_tree_expand_collapse_docstring_mechanism.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1631's TITLE still carries the retracted framing '(2 of 5 live attempts)'. The body has a correct correction comment (2026-08-21T19:34Z) and the AFS/docstring/_surface.md are all re-synced, but anyone scanning issue titles still reads the superseded number. One-line title edit for the lead at close: the measured signature is 3/3 failures inside the transition window, 18/18 successes after i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity/masking judgement, recorded explicitly so it is not re-litigated: the wait_for_tree_item_stable() call before ELITEA-1836's second click is NOT defect masking. The TMS case specifies no click timing (a human reading the Step-4 breadcrumb naturally waits), the collapse assertion stays a hard to_have_count(0) with a 10s web-first timeout, the underlying product defect is filed and OPEN (#16… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_subfolder_expand_collapse.py:512-521"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, not introduced here: `ruff check automation/pages/artifacts_page.py` fails I001 (import block un-sorted, lines 18-25). The diff does not touch that region — the file is already red on the trunk. Flagging so nobody attributes it to this PR; a separate hygiene commit, not this unit's work.",
+          "ref": "automation/pages/artifacts_page.py:18"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1's page-wide tree-locator collision risk (artifacts-tree-item-{key} keys are BUCKET-RELATIVE, so two simultaneously-expanded buckets can produce a strict-mode violation) is correctly handled in ELITEA-1838: bucket B is seeded with a distinct filename (b-root.txt) precisely so no tree assertion can match A's node, and the AFS Axis-2 says so. Worth keeping in the surface digest for any future… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py:1"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_file-tree-breadcrumb-path-updates-on-navigation_ELITEA-1837.md",
+      "branch": "tests/1836-1838-artifacts-file-tree",
+      "pr": 1632,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          367.06,
+          259.49,
+          288.34
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1838",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1631 (bug, MINOR): a click landing inside the Artifacts folder-expand animation (~300ms MUI Collapse enter transition) interrupts it, onExited never fires, unmountOnExit never unmounts, and the folder stays expanded PERMANENTLY - a 10s retrying assertion never sees it collapse. Measured 3/3 fail inside the window vs 18/18 pass outside. User impact: a fast doubl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "I posted a correction comment on #1631: the mechanism I first wrote there (BucketContent's isFetching early-return remounting the FileTreeItem subtree) is WRONG - a request capture across the whole window came back empty, and page.wait_for_load_state('networkidle') did not fix it. Anyone reading the issue body alone would chase the wrong theory; the comment and the _surface.md digest carry the cor… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631#issuecomment-5374385013"
+        },
+        {
+          "kind": "note",
+          "note": "New reusable primitive for this surface: ArtifactsPage.wait_for_tree_item_stable(item_key) - a polled geometry settle wait (bounding_box repeated twice) for any expand/collapse tree interaction. Any future artifacts-tree case must use it between two tree clicks rather than firing them back-to-back; recorded in test-specs/artifacts/_surface.md.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1838 needed a SECOND bucket, which no existing fixture provides. Pattern used (suite-local fixture, documented in the AFS + digest): create it as f\"{artifact_bucket['name']}-b\" so it sorts immediately after the fixture bucket in the alphanumeric ~760-bucket list, keeping both rows in one scroll band, with its own try/except teardown. If a second two-bucket case appears, this is a candidate … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py"
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket-leak is still live: the artifact_bucket fixture teardown 404s on every run (delete via the path form; the UI uses the query form). Reconfirmed on all 4 buckets this unit created. Out of scope for a case to fix, but the Private/399 project keeps accumulating autotest-* buckets.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/636"
+        },
+        {
+          "kind": "note",
+          "note": "Playwright MCP was again not attempted (9th consecutive session per the digest gotcha). All live execution ran as throwaway pytest specs under automation/tests/ui/artifacts/ driving the framework's own page/auth_state fixtures with -s prints, then deleted - auth and config come free, and one full case run costs 20-45s.",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "pages/artifacts_page.py carries a pre-existing ruff I001 (unsorted import block) at HEAD, unrelated to this unit. Left untouched to keep the diff additive on a heavily shared file; worth a one-line cleanup in some future suite-health pass.",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot ↔ AFS ↔ diff) is CLEAN for all three cases on substance. Every numbered case step has a real assertion AT that step: 1836 steps 1-6 (incl. the pre-state to_have_count(0) that makes the expansion observable, and the collapse asserted on both child nodes); 1837 steps 1-10 (breadcrumb crumb text + folder-crumb list at root and inside the subfolder, anchored full-query URL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: clean. No skip/xfail/soft-assert/weakened expects anywhere in the diff. The only try/except added is the second_artifact_bucket teardown (test_artifacts_tree_switch_between_buckets.py:100-103), which logs and cannot mask a test result. The known product defect #1631 is NOT masked — the test asserts full-strength collapse and merely waits out the animation before the second click (a r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/"
+        },
+        {
+          "kind": "defect",
+          "note": "Latent strict-mode collision class (NOT introduced by this PR — flagging for a suite-wide follow-up, not blocking here). FileTreeItem.jsx:107 renders data-testid={`artifacts-tree-item-${item.key}`} with a BUCKET-RELATIVE key and no bucket qualifier, while BucketsListContent.jsx:39-53 sets expandedBuckets[selectedBucketName]=true for any selected bucket — including the one /artifacts auto-selects o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py:68-71"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object helper wait_for_tree_item_stable() (artifacts_page.py:1667-1719) uses self.page.wait_for_timeout(TREE_ITEM_STABLE_POLL_INTERVAL_MS) as the POLL INTERVAL of a bounded geometry condition loop, returning False on timeout with the spec asserting on the return value — not a fixed sleep standing in for a wait. I read this as compliant with the 'no sleep/waitForTimeout' hard-don't (same s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1718"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1631's TITLE and BODY still carry the retracted framing ('a rapid second click … fails to collapse it (2 of 5 live attempts)', isFetching hypothesis). Only a comment (2026-08-21T19:34Z) corrects it. A reader scanning the bug list gets the wrong mechanism and the wrong severity shape (it is deterministic inside the transition window and PERMANENT, not intermittent). Suggest retitling to some… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: transit-only substitution in all three cases (bucket + files created via ArtifactAPI), declared in the AFS § Fidelity Declaration AND in each test's module docstring and method docstring per role-overrides § Implementer slot. Every asserted observable (tree nodes, data-selected attributes, breadcrumb text, main-panel rows, browser URL) is product-rendered. Provenance grep returned 0 hits… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_file-tree-switching-buckets-updates-tree-and-main-panel_ELITEA-1838.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendment discipline satisfied for ELITEA-1836: the AFS (§ Page-object gap, § Test Steps ordering/settle discipline, § Findings, § Live-execution evidence) and the surface digest were both amended in the same PR to match the shipped implementation, including the added wait_for_tree_item_stable helper. ELITEA-1837/1838 AFS files were already on the trunk and needed no change — their handles tab… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Suite-wide traceability debt, out of this unit's scope: a repo-wide scan (same ast-based guard logic, run against a freshly fetched origin/main of onetest-ai-tm-Elitea) finds 115 of 420 @allure.issue TMS case links across 282 specs do NOT resolve (~27%) - every one of them a 404 in the Allure report. Examples: tests/ui/artifacts/test_artifacts_upload_duplicate_replace.py (ELITEA-1830_upload-flow-d… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_tree_specs_allure_issue_links.py"
+        },
+        {
+          "kind": "note",
+          "note": "Process lesson worth propagating to the doc-sync pass: the AFS and the _surface digest were correctly re-synced when the #1631 mechanism was corrected mid-implementation, but the SPEC MODULE DOCSTRING was not - and that is the artifact a reader of the test actually reads (they do not open the AFS). Any fix round that changes a mechanism/measurement should treat the spec docstring as a first-class … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_subfolder_expand_collapse.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing lint debt observed while linting (NOT introduced by this diff, not touched): 'ruff check tests/unit/ tests/ui/artifacts/' reports 17 errors across merged files - I001 unsorted imports in ~12 artifacts specs plus tests/unit/test_actions.py, F401 unused import in tests/unit/test_actions.py, and E501 long @allure.issue URL lines in test_artifacts_multi_file.py:101 and test_bucket_permiss… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/"
+        },
+        {
+          "kind": "note",
+          "note": "Important, non-blocking (scope): the fix round answered a documentation blocker by adding a PERMANENT unit test that asserts the spec's module-docstring WORDING (3 tests: must contain the literal 'wait_for_tree_item_stable'; may cite isFetching/FileTreeItem only alongside a retraction word; must not contain two hard-coded stale phrases). Two problems: (a) it freezes one review round's prose into a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_tree_expand_collapse_docstring_mechanism.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1631's TITLE still carries the retracted framing '(2 of 5 live attempts)'. The body has a correct correction comment (2026-08-21T19:34Z) and the AFS/docstring/_surface.md are all re-synced, but anyone scanning issue titles still reads the superseded number. One-line title edit for the lead at close: the measured signature is 3/3 failures inside the transition window, 18/18 successes after i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1631"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity/masking judgement, recorded explicitly so it is not re-litigated: the wait_for_tree_item_stable() call before ELITEA-1836's second click is NOT defect masking. The TMS case specifies no click timing (a human reading the Step-4 breadcrumb naturally waits), the collapse assertion stays a hard to_have_count(0) with a 10s web-first timeout, the underlying product defect is filed and OPEN (#16… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_subfolder_expand_collapse.py:512-521"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, not introduced here: `ruff check automation/pages/artifacts_page.py` fails I001 (import block un-sorted, lines 18-25). The diff does not touch that region — the file is already red on the trunk. Flagging so nobody attributes it to this PR; a separate hygiene commit, not this unit's work.",
+          "ref": "automation/pages/artifacts_page.py:18"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1's page-wide tree-locator collision risk (artifacts-tree-item-{key} keys are BUCKET-RELATIVE, so two simultaneously-expanded buckets can produce a strict-mode violation) is correctly handled in ELITEA-1838: bucket B is seeded with a distinct filename (b-root.txt) precisely so no tree assertion can match A's node, and the AFS Axis-2 says so. Worth keeping in the surface digest for any future… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_tree_switch_between_buckets.py:1"
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_file-tree-switching-buckets-updates-tree-and-main-panel_ELITEA-1838.md",
+      "branch": "tests/1836-1838-artifacts-file-tree",
+      "pr": 1632,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          367.06,
+          259.49,
+          288.34
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 7
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

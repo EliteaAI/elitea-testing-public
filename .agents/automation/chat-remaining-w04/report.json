@@ -1,0 +1,627 @@
+{
+  "batch": "chat-remaining-w04",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w04",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      227.94
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py",
+        "signature": "AssertionError: Locator expected to have count '2' — Actual value: 8 → 0 (never reached 2). tests/ui/chat/test_chat_search_and_modules_panel.py:573 in test_search_input_cleared_by_deleting_text_updates_dynamically: expect(chat.get_conversation_item_rows()).to_have_count(2, timeout=UI_ELEMENT_TIMEOUT). Call log: locator [data-testid^=\"chat-conversation-item-\"] resolved to 8 elements 23x in a row, t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2165"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2115",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED product defect, filed elitea-testing-public#1523: deleting the LAST remaining conversation in a project transitions all VISIBLE UI state correctly (empty sidebar, welcome greeting, active input) but never updates the browser URL within the same SPA session — page.url stays at /chat/{deleted_id}?name={deleted_name} until a hard reload (which then correctly resolves to a 'Conversation not … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1523"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered project 400 ('UI Testing') is a genuinely empty sandbox project (0 conversations/folders, confirmed via bearer-token ConversationAPI before and after this session) — used for all 3 new tests instead of the shared Team project 471 ('Review attached documents' id 420, repeatedly reused by other chat analyses per _surface.md) or the default Private project 399 (already carries 4 non-autote… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "findNextConversation() (useDeleteConversation.js) is scope-aware for ungrouped conversations — it searches only the project's OTHER ungrouped conversations, never folder-nested ones, when the deleted conversation is itself ungrouped. This means the 'last remaining conversation' welcome-state branch can trigger even with folders still present elsewhere in the sidebar (not exploited by ELITEA-2117's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2456's case text drift (context-menu item list 'Delete, Edit, Move to, Export, Playback, Pin on top' vs. the live 5/8-item set, and the modal title/body wording) is the SAME already-tracked drift documented for ELITEA-2114 (issue #695) — not re-filed, just re-confirmed live during the already-covered dedup check.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/695"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2117 (test_last_remaining_conversation_deletion.py, Step 1, ~line 168): the AFS Coverage Map row 1 and the AFS's own step-1 Verify text explicitly promise the implementation checks 'no chat-folder-item-* present' (translating the case's literal precondition 'no other conversations or folders'). The implementation only asserts `chat.get_conversation_link_count() == 1` — no folder-count/absen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:168"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2116 AFS (test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md) step 4/Coverage Map specify 'DOM order' as the technique proving Cancel renders left of Delete; the implementation instead compares `bounding_box()['x']` — a stronger, more literal proof of the case's own 'on the left' wording, but the AFS text wasn't updated to match. Non-blocking (the implemente… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2117 AFS step 10 names `expect.soft()` literally; the implementation instead uses a manual `soft_failures: list[str]` + a single `pytest.fail()` at the end. This is explicitly the alternate mechanism `.agents/testing.md`'s closed-set sanctioned-RED variant names as acceptable ('one soft_failures/pytest.fail() aggregation, not separate ad-hoc catches'), so it is NOT a masking violation — jus… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py"
+        },
+        {
+          "kind": "note",
+          "note": "No literal `# Known defect: #1523` Python comment exists on the soft-asserted line (testing.md's decision-tree names that exact comment shape). The linkage is unambiguous by other means instead: docstring, `@allure.issue` decorator pointing at EliteaAI/elitea-testing-public#1523, and the issue URL embedded directly in the soft-failure message text. Purely a style nit, not blocking.",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:231"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run on the full diff (`git diff origin/automation/base...origin/tests/2115-2116-2117-conversation-deletion-variants -- automation/`): substitution grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) → 2 hits, both compliant: one is prose inside a docstring explicitly disclaiming a page.evaluate() substitution (not code), the other is `chat.delete_confirm_butt… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2456 (lcovered_conversation-deletion-cancel-confirm-flow_ELITEA-2456.md, bundled in the same PR though outside my named dispatch scope) verified per the mandatory 'covered-by rows verified against assertions, not existence' check: cross-checked its cited line ranges against the actual merged covering spec on origin/automation/base, automation/tests/ui/chat/test_conversation_deletion_flow.py… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lcovered_conversation-deletion-cancel-confirm-flow_ELITEA-2456.md"
+        },
+        {
+          "kind": "note",
+          "note": "Filed defect EliteaAI/elitea-testing-public#1523 (URL doesn't clear after deleting the last remaining conversation) verified live: issue exists, OPEN, labelled `bug`, dedup language present. Root cause claim (useDeleteConversation.js's dummyConversation fallback branch never calls a router/navigate function, unlike the has-next-conversation branch) spot-checked directly against ../EliteaUI/src/hoo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2117 AFS step 2 translates the case's 'Messages are displayed in the main panel' into URL+message_input-visible+data-active checks only, since conv_last is an API-created zero-message conversation (nothing to display). This mirrors the precedent set in ELITEA-2456's AFS ('both test conversations are zero-message by design') but isn't called out as an explicit footnote in ELITEA-2117's own C… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_deletion-of-last-remaining-conversation_ELITEA-2117.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding CONFIRMED FIXED: ELITEA-2117 Step 1 now asserts folder absence. Fix-round commit d725e73d adds ChatPage.FOLDER_ITEM_PREFIX ('[data-testid^=\"chat-folder-item-\"]', UPPER_CASE class constant per locator policy) + get_folder_link_count(), and test_last_remaining_conversation_deletion.py Step 1 asserts count == 0. Verified against AFS Coverage Map row 1 ('no chat-folder-item-* pr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:1234-1246; automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:150-160"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run on the full PR diff (git diff origin/tests/batch-chat-remaining-w04...origin/tests/2115-2116-2117-conversation-deletion-variants -- automation/): fidelity/substitution grep (.mock_|page.route\\(|route.fulfill\\(|monkeypatch|.evaluate\\() → 2 hits, both compliant (one is docstring prose mentioning 'page.evaluate()' by name to explain what a technique is NOT, not actual code; the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3784-3830"
+        },
+        {
+          "kind": "note",
+          "note": "Minor AFS/implementation technique drift on ELITEA-2116 steps 4-5 (not a coverage gap, not blocking): the AFS specifies 'Cancel is the FIRST of the two action buttons in DOM order' as the concrete proxy for 'on the left', but the implementation instead does a bounding_box() X-coordinate comparison (cancel_box['x'] < delete_box['x']). This is a more literal check of the case's actual spatial claim,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_delete_confirmation_modal_ui_validation.py:104-116; test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md:59"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all three cases (case snapshot <-> AFS <-> diff) end to end: every Coverage-Map row for ELITEA-2115 (6 case steps + 2 preconditions), ELITEA-2116 (7 case steps + 1 precondition), and ELITEA-2117 (11 case steps, all 'asserted' except step 10's declared expect.soft()) has a real, per-step assertion in the corresponding test file, all pre-existing page-object helpers used (open_conversat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-deletion-inside-folder_ELITEA-2115.md",
+      "branch": "tests/2115-2116-2117-conversation-deletion-variants",
+      "pr": 1524
+    },
+    {
+      "id": "ELITEA-2116",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED product defect, filed elitea-testing-public#1523: deleting the LAST remaining conversation in a project transitions all VISIBLE UI state correctly (empty sidebar, welcome greeting, active input) but never updates the browser URL within the same SPA session — page.url stays at /chat/{deleted_id}?name={deleted_name} until a hard reload (which then correctly resolves to a 'Conversation not … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1523"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered project 400 ('UI Testing') is a genuinely empty sandbox project (0 conversations/folders, confirmed via bearer-token ConversationAPI before and after this session) — used for all 3 new tests instead of the shared Team project 471 ('Review attached documents' id 420, repeatedly reused by other chat analyses per _surface.md) or the default Private project 399 (already carries 4 non-autote… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "findNextConversation() (useDeleteConversation.js) is scope-aware for ungrouped conversations — it searches only the project's OTHER ungrouped conversations, never folder-nested ones, when the deleted conversation is itself ungrouped. This means the 'last remaining conversation' welcome-state branch can trigger even with folders still present elsewhere in the sidebar (not exploited by ELITEA-2117's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2456's case text drift (context-menu item list 'Delete, Edit, Move to, Export, Playback, Pin on top' vs. the live 5/8-item set, and the modal title/body wording) is the SAME already-tracked drift documented for ELITEA-2114 (issue #695) — not re-filed, just re-confirmed live during the already-covered dedup check.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/695"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2117 (test_last_remaining_conversation_deletion.py, Step 1, ~line 168): the AFS Coverage Map row 1 and the AFS's own step-1 Verify text explicitly promise the implementation checks 'no chat-folder-item-* present' (translating the case's literal precondition 'no other conversations or folders'). The implementation only asserts `chat.get_conversation_link_count() == 1` — no folder-count/absen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:168"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2116 AFS (test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md) step 4/Coverage Map specify 'DOM order' as the technique proving Cancel renders left of Delete; the implementation instead compares `bounding_box()['x']` — a stronger, more literal proof of the case's own 'on the left' wording, but the AFS text wasn't updated to match. Non-blocking (the implemente… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2117 AFS step 10 names `expect.soft()` literally; the implementation instead uses a manual `soft_failures: list[str]` + a single `pytest.fail()` at the end. This is explicitly the alternate mechanism `.agents/testing.md`'s closed-set sanctioned-RED variant names as acceptable ('one soft_failures/pytest.fail() aggregation, not separate ad-hoc catches'), so it is NOT a masking violation — jus… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py"
+        },
+        {
+          "kind": "note",
+          "note": "No literal `# Known defect: #1523` Python comment exists on the soft-asserted line (testing.md's decision-tree names that exact comment shape). The linkage is unambiguous by other means instead: docstring, `@allure.issue` decorator pointing at EliteaAI/elitea-testing-public#1523, and the issue URL embedded directly in the soft-failure message text. Purely a style nit, not blocking.",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:231"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run on the full diff (`git diff origin/automation/base...origin/tests/2115-2116-2117-conversation-deletion-variants -- automation/`): substitution grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) → 2 hits, both compliant: one is prose inside a docstring explicitly disclaiming a page.evaluate() substitution (not code), the other is `chat.delete_confirm_butt… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2456 (lcovered_conversation-deletion-cancel-confirm-flow_ELITEA-2456.md, bundled in the same PR though outside my named dispatch scope) verified per the mandatory 'covered-by rows verified against assertions, not existence' check: cross-checked its cited line ranges against the actual merged covering spec on origin/automation/base, automation/tests/ui/chat/test_conversation_deletion_flow.py… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lcovered_conversation-deletion-cancel-confirm-flow_ELITEA-2456.md"
+        },
+        {
+          "kind": "note",
+          "note": "Filed defect EliteaAI/elitea-testing-public#1523 (URL doesn't clear after deleting the last remaining conversation) verified live: issue exists, OPEN, labelled `bug`, dedup language present. Root cause claim (useDeleteConversation.js's dummyConversation fallback branch never calls a router/navigate function, unlike the has-next-conversation branch) spot-checked directly against ../EliteaUI/src/hoo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2117 AFS step 2 translates the case's 'Messages are displayed in the main panel' into URL+message_input-visible+data-active checks only, since conv_last is an API-created zero-message conversation (nothing to display). This mirrors the precedent set in ELITEA-2456's AFS ('both test conversations are zero-message by design') but isn't called out as an explicit footnote in ELITEA-2117's own C… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_deletion-of-last-remaining-conversation_ELITEA-2117.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding CONFIRMED FIXED: ELITEA-2117 Step 1 now asserts folder absence. Fix-round commit d725e73d adds ChatPage.FOLDER_ITEM_PREFIX ('[data-testid^=\"chat-folder-item-\"]', UPPER_CASE class constant per locator policy) + get_folder_link_count(), and test_last_remaining_conversation_deletion.py Step 1 asserts count == 0. Verified against AFS Coverage Map row 1 ('no chat-folder-item-* pr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:1234-1246; automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:150-160"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run on the full PR diff (git diff origin/tests/batch-chat-remaining-w04...origin/tests/2115-2116-2117-conversation-deletion-variants -- automation/): fidelity/substitution grep (.mock_|page.route\\(|route.fulfill\\(|monkeypatch|.evaluate\\() → 2 hits, both compliant (one is docstring prose mentioning 'page.evaluate()' by name to explain what a technique is NOT, not actual code; the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3784-3830"
+        },
+        {
+          "kind": "note",
+          "note": "Minor AFS/implementation technique drift on ELITEA-2116 steps 4-5 (not a coverage gap, not blocking): the AFS specifies 'Cancel is the FIRST of the two action buttons in DOM order' as the concrete proxy for 'on the left', but the implementation instead does a bounding_box() X-coordinate comparison (cancel_box['x'] < delete_box['x']). This is a more literal check of the case's actual spatial claim,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_delete_confirmation_modal_ui_validation.py:104-116; test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md:59"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all three cases (case snapshot <-> AFS <-> diff) end to end: every Coverage-Map row for ELITEA-2115 (6 case steps + 2 preconditions), ELITEA-2116 (7 case steps + 1 precondition), and ELITEA-2117 (11 case steps, all 'asserted' except step 10's declared expect.soft()) has a real, per-step assertion in the corresponding test file, all pre-existing page-object helpers used (open_conversat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md",
+      "branch": "tests/2115-2116-2117-conversation-deletion-variants",
+      "pr": 1524
+    },
+    {
+      "id": "ELITEA-2117",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED product defect, filed elitea-testing-public#1523: deleting the LAST remaining conversation in a project transitions all VISIBLE UI state correctly (empty sidebar, welcome greeting, active input) but never updates the browser URL within the same SPA session — page.url stays at /chat/{deleted_id}?name={deleted_name} until a hard reload (which then correctly resolves to a 'Conversation not … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1523"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered project 400 ('UI Testing') is a genuinely empty sandbox project (0 conversations/folders, confirmed via bearer-token ConversationAPI before and after this session) — used for all 3 new tests instead of the shared Team project 471 ('Review attached documents' id 420, repeatedly reused by other chat analyses per _surface.md) or the default Private project 399 (already carries 4 non-autote… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "findNextConversation() (useDeleteConversation.js) is scope-aware for ungrouped conversations — it searches only the project's OTHER ungrouped conversations, never folder-nested ones, when the deleted conversation is itself ungrouped. This means the 'last remaining conversation' welcome-state branch can trigger even with folders still present elsewhere in the sidebar (not exploited by ELITEA-2117's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2456's case text drift (context-menu item list 'Delete, Edit, Move to, Export, Playback, Pin on top' vs. the live 5/8-item set, and the modal title/body wording) is the SAME already-tracked drift documented for ELITEA-2114 (issue #695) — not re-filed, just re-confirmed live during the already-covered dedup check.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/695"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2117 (test_last_remaining_conversation_deletion.py, Step 1, ~line 168): the AFS Coverage Map row 1 and the AFS's own step-1 Verify text explicitly promise the implementation checks 'no chat-folder-item-* present' (translating the case's literal precondition 'no other conversations or folders'). The implementation only asserts `chat.get_conversation_link_count() == 1` — no folder-count/absen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:168"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2116 AFS (test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md) step 4/Coverage Map specify 'DOM order' as the technique proving Cancel renders left of Delete; the implementation instead compares `bounding_box()['x']` — a stronger, more literal proof of the case's own 'on the left' wording, but the AFS text wasn't updated to match. Non-blocking (the implemente… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2117 AFS step 10 names `expect.soft()` literally; the implementation instead uses a manual `soft_failures: list[str]` + a single `pytest.fail()` at the end. This is explicitly the alternate mechanism `.agents/testing.md`'s closed-set sanctioned-RED variant names as acceptable ('one soft_failures/pytest.fail() aggregation, not separate ad-hoc catches'), so it is NOT a masking violation — jus… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py"
+        },
+        {
+          "kind": "note",
+          "note": "No literal `# Known defect: #1523` Python comment exists on the soft-asserted line (testing.md's decision-tree names that exact comment shape). The linkage is unambiguous by other means instead: docstring, `@allure.issue` decorator pointing at EliteaAI/elitea-testing-public#1523, and the issue URL embedded directly in the soft-failure message text. Purely a style nit, not blocking.",
+          "ref": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:231"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run on the full diff (`git diff origin/automation/base...origin/tests/2115-2116-2117-conversation-deletion-variants -- automation/`): substitution grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) → 2 hits, both compliant: one is prose inside a docstring explicitly disclaiming a page.evaluate() substitution (not code), the other is `chat.delete_confirm_butt… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2456 (lcovered_conversation-deletion-cancel-confirm-flow_ELITEA-2456.md, bundled in the same PR though outside my named dispatch scope) verified per the mandatory 'covered-by rows verified against assertions, not existence' check: cross-checked its cited line ranges against the actual merged covering spec on origin/automation/base, automation/tests/ui/chat/test_conversation_deletion_flow.py… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lcovered_conversation-deletion-cancel-confirm-flow_ELITEA-2456.md"
+        },
+        {
+          "kind": "note",
+          "note": "Filed defect EliteaAI/elitea-testing-public#1523 (URL doesn't clear after deleting the last remaining conversation) verified live: issue exists, OPEN, labelled `bug`, dedup language present. Root cause claim (useDeleteConversation.js's dummyConversation fallback branch never calls a router/navigate function, unlike the has-next-conversation branch) spot-checked directly against ../EliteaUI/src/hoo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2117 AFS step 2 translates the case's 'Messages are displayed in the main panel' into URL+message_input-visible+data-active checks only, since conv_last is an API-created zero-message conversation (nothing to display). This mirrors the precedent set in ELITEA-2456's AFS ('both test conversations are zero-message by design') but isn't called out as an explicit footnote in ELITEA-2117's own C… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_deletion-of-last-remaining-conversation_ELITEA-2117.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding CONFIRMED FIXED: ELITEA-2117 Step 1 now asserts folder absence. Fix-round commit d725e73d adds ChatPage.FOLDER_ITEM_PREFIX ('[data-testid^=\"chat-folder-item-\"]', UPPER_CASE class constant per locator policy) + get_folder_link_count(), and test_last_remaining_conversation_deletion.py Step 1 asserts count == 0. Verified against AFS Coverage Map row 1 ('no chat-folder-item-* pr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:1234-1246; automation/tests/ui/chat/test_last_remaining_conversation_deletion.py:150-160"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run on the full PR diff (git diff origin/tests/batch-chat-remaining-w04...origin/tests/2115-2116-2117-conversation-deletion-variants -- automation/): fidelity/substitution grep (.mock_|page.route\\(|route.fulfill\\(|monkeypatch|.evaluate\\() → 2 hits, both compliant (one is docstring prose mentioning 'page.evaluate()' by name to explain what a technique is NOT, not actual code; the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3784-3830"
+        },
+        {
+          "kind": "note",
+          "note": "Minor AFS/implementation technique drift on ELITEA-2116 steps 4-5 (not a coverage gap, not blocking): the AFS specifies 'Cancel is the FIRST of the two action buttons in DOM order' as the concrete proxy for 'on the left', but the implementation instead does a bounding_box() X-coordinate comparison (cancel_box['x'] < delete_box['x']). This is a more literal check of the case's actual spatial claim,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_delete_confirmation_modal_ui_validation.py:104-116; test-specs/chat-interface/l3_delete-confirmation-modal-ui-validation_ELITEA-2116.md:59"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all three cases (case snapshot <-> AFS <-> diff) end to end: every Coverage-Map row for ELITEA-2115 (6 case steps + 2 preconditions), ELITEA-2116 (7 case steps + 1 precondition), and ELITEA-2117 (11 case steps, all 'asserted' except step 10's declared expect.soft()) has a real, per-step assertion in the corresponding test file, all pre-existing page-object helpers used (open_conversat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_deletion-of-last-remaining-conversation_ELITEA-2117.md",
+      "branch": "tests/2115-2116-2117-conversation-deletion-variants",
+      "pr": 1524
+    },
+    {
+      "id": "ELITEA-2456",
+      "outcome": "already-covered",
+      "note": "All 13 case steps map 1:1 onto the already-merged test_conversation_deletion_flow.py::test_conversation_deletion_cancel_then_delete_active_conversation (ELITEA-2114, PR #696, confirmed on origin/automation/base). Traceability AFS only, no new test written.",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED product defect, filed elitea-testing-public#1523: deleting the LAST remaining conversation in a project transitions all VISIBLE UI state correctly (empty sidebar, welcome greeting, active input) but never updates the browser URL within the same SPA session — page.url stays at /chat/{deleted_id}?name={deleted_name} until a hard reload (which then correctly resolves to a 'Conversation not … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1523"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered project 400 ('UI Testing') is a genuinely empty sandbox project (0 conversations/folders, confirmed via bearer-token ConversationAPI before and after this session) — used for all 3 new tests instead of the shared Team project 471 ('Review attached documents' id 420, repeatedly reused by other chat analyses per _surface.md) or the default Private project 399 (already carries 4 non-autote… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "findNextConversation() (useDeleteConversation.js) is scope-aware for ungrouped conversations — it searches only the project's OTHER ungrouped conversations, never folder-nested ones, when the deleted conversation is itself ungrouped. This means the 'last remaining conversation' welcome-state branch can trigger even with folders still present elsewhere in the sidebar (not exploited by ELITEA-2117's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2456's case text drift (context-menu item list 'Delete, Edit, Move to, Export, Playback, Pin on top' vs. the live 5/8-item set, and the modal title/body wording) is the SAME already-tracked drift documented for ELITEA-2114 (issue #695) — not re-filed, just re-confirmed live during the already-covered dedup check.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/695"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_conversation-deletion-cancel-confirm-flow_ELITEA-2456.md"
+    },
+    {
+      "id": "ELITEA-2163",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Chat search no-results state: GroupedConversations.jsx's 'Still no conversations created.' text incorrectly co-renders alongside the correct 'No conversations found' message when a search query matches nothing on a project that HAS other, non-matching conversations/folders — GroupedConversations receives the search-FILTERED totalConversationsAmount (0) rather than the true unfiltered project total… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1525"
+        },
+        {
+          "kind": "clarification",
+          "note": "Modules panel now shows 10 toggle switches, not 8 (or the case-era 7) — two new live product toggles appeared since ELITEA-2464's analysis: 'Skill Builder' (skill_builder) and 'Project Context Builder' (project_context_builder), confirmed via internalTools.constants.js source read + a live DOM count of 10 modules-toggle-* elements. Not a defect — extended ChatPage.MODULE_TOGGLE_ORDER additively (8… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1526"
+        },
+        {
+          "kind": "note",
+          "note": "Live-confirmed and documented (new memory entry + _surface.md section): a query-client cache can serve a search value already fetched this session — or the field cleared back to the page's initial no-query state — with ZERO new network round-trip, which defeats page.expect_response() waits (real TimeoutError, not a product issue). Two implementation-time bugs traced to this; fixed by waiting on UI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Folders can visibly lag conversation items on re-render after clearing a search — a plain ChatPage.get_folder_link_count() read immediately after clearing raced the DOM and returned 0. Added a new settle-wait method, ChatPage.wait_for_any_folder_visible(timeout), called before any folder-count read post-search-clear."
+        },
+        {
+          "kind": "defect",
+          "note": "Coverage-Map row disposition mismatch (verified against actual assertions, not existence). Case step 6 ('Verify results are grouped by pinned and date sections') is marked 'asserted' via new Step 3b, but Step 3b only asserts: chat.is_conversation_pinned(sibling_conv_id) is True, chat.get_conversation_item(sibling_conv_id) is visible, and chat.get_conversation_item(conv_id) is NOT visible. None of … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py:~155-165 (Step 3b, ELITEA-2463 extension); AFS test-specs/chat-interface/lextend_search-opens-filters-dynamically-conversation-interactable_ELITEA-2463.md Coverage Map row for case step 6"
+        },
+        {
+          "kind": "defect",
+          "note": "The @allure.issue URL for ELITEA-2463 references 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversation-is-interactable.md', but the actual file in EliteaAI/onetest-ai-tm-Elitea's tests/automated-full-regression-ui/chat/ is named 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversa.md' (verified via `find ... -iname \"*2463*\"` in the TMS repo clone). The … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py (new @allure.issue decorator on test_search_filters_and_modules_panel_toggles, ELITEA-2463 link)"
+        },
+        {
+          "kind": "note",
+          "note": "Unrelated to all four target cases (none of the 2163/2164/2165/2463 AFS mention module toggles) -- this is a live-product-drift fix needed to keep the shared test_search_filters_and_modules_panel_toggles method (which ELITEA-2463 additively extends) green after the product added two new modules. Correctly filed as a CLARIFICATION, EliteaAI/elitea-testing-public#1526 (labelled question, names 'Foun… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py MODULE_TOGGLE_ORDER (8->10 entries) + verify_module_toggle_order docstring"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2163's test (test_search_no_results_state) is intentionally sanctioned-RED (expect.soft() on chat.conversations_empty_state_message, tied to open defect #1525, per .agents/testing.md Merge gate exception -- verified: #1525 is open, evidence embedded, dedup-checked). The AFS itself flags 'Declare it in expected_red[] at handoff -- an undeclared RED here would hold the whole batch's gate.' St… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS test-specs/chat-interface/lextend_search-no-results-state_ELITEA-2163.md (Known Defects section, sanctioned-RED)"
+        },
+        {
+          "kind": "note",
+          "note": "Lesson for future rounds (also logged to role memory): a narrow query that only surfaces one of two tiers (pinned vs date-grouped) can make 'item A present + item B absent' LOOK like a containment proof when it isn't -- it can't distinguish a genuine split from 'this tier just never matches that query'. The durable fix pattern is to pick test data/queries that force both branches to co-occur, then… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1527"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified FIXED in fix round 1 (commit 01c5264e / PR #1527): (1) ELITEA-2463 Step 3b now queries the shared prefix \"Automation\" (matches both conv_name=AutomationUnique... and sibling_conv_name=AutomationOther... simultaneously) and asserts `not chat.is_conversation_in_group(sibling_conv_id, group=\"today\")` (pinned match outside) AND `chat.is_conversation_in_group(conv_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (case snapshot ↔ AFS ↔ diff) run for all 4 cases; every Axis-1 Coverage Map row for ELITEA-2163/2164/2165/2463 maps to a real assertion at the claimed step (verified by reading the actual test code, not just row existence). Mechanical greps run against the unit-scoped diff (`git diff 3aa185ec...tests/2163-2164-2165-2463-chat-search-gap-family`, i.e. this unit only, not the whole… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "PROVENANCE drift (informational for the lead's closure record, not a code defect): several 'Concrete Handles' rows across the 4 AFS files claim a testid is 'on-automation/testids only (awaiting human promotion to main)' but a fresh `git fetch origin` + `git grep` against `origin/main` in `../EliteaUI` shows it is ALREADY on main — specifically `chat-conversation-item-{}` (`ConversationItem.jsx:369… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_search-cleared-by-x-icon-restores-default-view_ELITEA-2164.md"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing tech debt, not introduced by this diff: `ChatPage.get_conversation_item` is defined twice in `automation/pages/chat_page.py` (lines 3121 and 3405 on `origin/automation/base`, confirmed via `git show origin/automation/base:automation/pages/chat_page.py`), which violates `.claude/rules/page-objects.md`'s 'no method duplication' rule. Neither definition was touched by this unit's diff. F… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_search-no-results-state_ELITEA-2163.md",
+      "branch": "tests/2163-2164-2165-2463-chat-search-gap-family",
+      "pr": 1527
+    },
+    {
+      "id": "ELITEA-2164",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Chat search no-results state: GroupedConversations.jsx's 'Still no conversations created.' text incorrectly co-renders alongside the correct 'No conversations found' message when a search query matches nothing on a project that HAS other, non-matching conversations/folders — GroupedConversations receives the search-FILTERED totalConversationsAmount (0) rather than the true unfiltered project total… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1525"
+        },
+        {
+          "kind": "clarification",
+          "note": "Modules panel now shows 10 toggle switches, not 8 (or the case-era 7) — two new live product toggles appeared since ELITEA-2464's analysis: 'Skill Builder' (skill_builder) and 'Project Context Builder' (project_context_builder), confirmed via internalTools.constants.js source read + a live DOM count of 10 modules-toggle-* elements. Not a defect — extended ChatPage.MODULE_TOGGLE_ORDER additively (8… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1526"
+        },
+        {
+          "kind": "note",
+          "note": "Live-confirmed and documented (new memory entry + _surface.md section): a query-client cache can serve a search value already fetched this session — or the field cleared back to the page's initial no-query state — with ZERO new network round-trip, which defeats page.expect_response() waits (real TimeoutError, not a product issue). Two implementation-time bugs traced to this; fixed by waiting on UI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Folders can visibly lag conversation items on re-render after clearing a search — a plain ChatPage.get_folder_link_count() read immediately after clearing raced the DOM and returned 0. Added a new settle-wait method, ChatPage.wait_for_any_folder_visible(timeout), called before any folder-count read post-search-clear."
+        },
+        {
+          "kind": "defect",
+          "note": "Coverage-Map row disposition mismatch (verified against actual assertions, not existence). Case step 6 ('Verify results are grouped by pinned and date sections') is marked 'asserted' via new Step 3b, but Step 3b only asserts: chat.is_conversation_pinned(sibling_conv_id) is True, chat.get_conversation_item(sibling_conv_id) is visible, and chat.get_conversation_item(conv_id) is NOT visible. None of … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py:~155-165 (Step 3b, ELITEA-2463 extension); AFS test-specs/chat-interface/lextend_search-opens-filters-dynamically-conversation-interactable_ELITEA-2463.md Coverage Map row for case step 6"
+        },
+        {
+          "kind": "defect",
+          "note": "The @allure.issue URL for ELITEA-2463 references 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversation-is-interactable.md', but the actual file in EliteaAI/onetest-ai-tm-Elitea's tests/automated-full-regression-ui/chat/ is named 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversa.md' (verified via `find ... -iname \"*2463*\"` in the TMS repo clone). The … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py (new @allure.issue decorator on test_search_filters_and_modules_panel_toggles, ELITEA-2463 link)"
+        },
+        {
+          "kind": "note",
+          "note": "Unrelated to all four target cases (none of the 2163/2164/2165/2463 AFS mention module toggles) -- this is a live-product-drift fix needed to keep the shared test_search_filters_and_modules_panel_toggles method (which ELITEA-2463 additively extends) green after the product added two new modules. Correctly filed as a CLARIFICATION, EliteaAI/elitea-testing-public#1526 (labelled question, names 'Foun… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py MODULE_TOGGLE_ORDER (8->10 entries) + verify_module_toggle_order docstring"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2163's test (test_search_no_results_state) is intentionally sanctioned-RED (expect.soft() on chat.conversations_empty_state_message, tied to open defect #1525, per .agents/testing.md Merge gate exception -- verified: #1525 is open, evidence embedded, dedup-checked). The AFS itself flags 'Declare it in expected_red[] at handoff -- an undeclared RED here would hold the whole batch's gate.' St… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS test-specs/chat-interface/lextend_search-no-results-state_ELITEA-2163.md (Known Defects section, sanctioned-RED)"
+        },
+        {
+          "kind": "note",
+          "note": "Lesson for future rounds (also logged to role memory): a narrow query that only surfaces one of two tiers (pinned vs date-grouped) can make 'item A present + item B absent' LOOK like a containment proof when it isn't -- it can't distinguish a genuine split from 'this tier just never matches that query'. The durable fix pattern is to pick test data/queries that force both branches to co-occur, then… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1527"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified FIXED in fix round 1 (commit 01c5264e / PR #1527): (1) ELITEA-2463 Step 3b now queries the shared prefix \"Automation\" (matches both conv_name=AutomationUnique... and sibling_conv_name=AutomationOther... simultaneously) and asserts `not chat.is_conversation_in_group(sibling_conv_id, group=\"today\")` (pinned match outside) AND `chat.is_conversation_in_group(conv_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (case snapshot ↔ AFS ↔ diff) run for all 4 cases; every Axis-1 Coverage Map row for ELITEA-2163/2164/2165/2463 maps to a real assertion at the claimed step (verified by reading the actual test code, not just row existence). Mechanical greps run against the unit-scoped diff (`git diff 3aa185ec...tests/2163-2164-2165-2463-chat-search-gap-family`, i.e. this unit only, not the whole… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "PROVENANCE drift (informational for the lead's closure record, not a code defect): several 'Concrete Handles' rows across the 4 AFS files claim a testid is 'on-automation/testids only (awaiting human promotion to main)' but a fresh `git fetch origin` + `git grep` against `origin/main` in `../EliteaUI` shows it is ALREADY on main — specifically `chat-conversation-item-{}` (`ConversationItem.jsx:369… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_search-cleared-by-x-icon-restores-default-view_ELITEA-2164.md"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing tech debt, not introduced by this diff: `ChatPage.get_conversation_item` is defined twice in `automation/pages/chat_page.py` (lines 3121 and 3405 on `origin/automation/base`, confirmed via `git show origin/automation/base:automation/pages/chat_page.py`), which violates `.claude/rules/page-objects.md`'s 'no method duplication' rule. Neither definition was touched by this unit's diff. F… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_search-cleared-by-x-icon-restores-default-view_ELITEA-2164.md",
+      "branch": "tests/2163-2164-2165-2463-chat-search-gap-family",
+      "pr": 1527
+    },
+    {
+      "id": "ELITEA-2165",
+      "outcome": "blocked",
+      "note": "gate red: AssertionError: Locator expected to have count '2' — Actual value: 8 → 0 (never reached 2). tests/ui/chat/test_chat_search_and_modules_panel.py:573 in test_search_input_cleared_by_deleting_text_update",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Chat search no-results state: GroupedConversations.jsx's 'Still no conversations created.' text incorrectly co-renders alongside the correct 'No conversations found' message when a search query matches nothing on a project that HAS other, non-matching conversations/folders — GroupedConversations receives the search-FILTERED totalConversationsAmount (0) rather than the true unfiltered project total… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1525"
+        },
+        {
+          "kind": "clarification",
+          "note": "Modules panel now shows 10 toggle switches, not 8 (or the case-era 7) — two new live product toggles appeared since ELITEA-2464's analysis: 'Skill Builder' (skill_builder) and 'Project Context Builder' (project_context_builder), confirmed via internalTools.constants.js source read + a live DOM count of 10 modules-toggle-* elements. Not a defect — extended ChatPage.MODULE_TOGGLE_ORDER additively (8… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1526"
+        },
+        {
+          "kind": "note",
+          "note": "Live-confirmed and documented (new memory entry + _surface.md section): a query-client cache can serve a search value already fetched this session — or the field cleared back to the page's initial no-query state — with ZERO new network round-trip, which defeats page.expect_response() waits (real TimeoutError, not a product issue). Two implementation-time bugs traced to this; fixed by waiting on UI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Folders can visibly lag conversation items on re-render after clearing a search — a plain ChatPage.get_folder_link_count() read immediately after clearing raced the DOM and returned 0. Added a new settle-wait method, ChatPage.wait_for_any_folder_visible(timeout), called before any folder-count read post-search-clear."
+        },
+        {
+          "kind": "defect",
+          "note": "Coverage-Map row disposition mismatch (verified against actual assertions, not existence). Case step 6 ('Verify results are grouped by pinned and date sections') is marked 'asserted' via new Step 3b, but Step 3b only asserts: chat.is_conversation_pinned(sibling_conv_id) is True, chat.get_conversation_item(sibling_conv_id) is visible, and chat.get_conversation_item(conv_id) is NOT visible. None of … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py:~155-165 (Step 3b, ELITEA-2463 extension); AFS test-specs/chat-interface/lextend_search-opens-filters-dynamically-conversation-interactable_ELITEA-2463.md Coverage Map row for case step 6"
+        },
+        {
+          "kind": "defect",
+          "note": "The @allure.issue URL for ELITEA-2463 references 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversation-is-interactable.md', but the actual file in EliteaAI/onetest-ai-tm-Elitea's tests/automated-full-regression-ui/chat/ is named 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversa.md' (verified via `find ... -iname \"*2463*\"` in the TMS repo clone). The … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py (new @allure.issue decorator on test_search_filters_and_modules_panel_toggles, ELITEA-2463 link)"
+        },
+        {
+          "kind": "note",
+          "note": "Unrelated to all four target cases (none of the 2163/2164/2165/2463 AFS mention module toggles) -- this is a live-product-drift fix needed to keep the shared test_search_filters_and_modules_panel_toggles method (which ELITEA-2463 additively extends) green after the product added two new modules. Correctly filed as a CLARIFICATION, EliteaAI/elitea-testing-public#1526 (labelled question, names 'Foun… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py MODULE_TOGGLE_ORDER (8->10 entries) + verify_module_toggle_order docstring"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2163's test (test_search_no_results_state) is intentionally sanctioned-RED (expect.soft() on chat.conversations_empty_state_message, tied to open defect #1525, per .agents/testing.md Merge gate exception -- verified: #1525 is open, evidence embedded, dedup-checked). The AFS itself flags 'Declare it in expected_red[] at handoff -- an undeclared RED here would hold the whole batch's gate.' St… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS test-specs/chat-interface/lextend_search-no-results-state_ELITEA-2163.md (Known Defects section, sanctioned-RED)"
+        },
+        {
+          "kind": "note",
+          "note": "Lesson for future rounds (also logged to role memory): a narrow query that only surfaces one of two tiers (pinned vs date-grouped) can make 'item A present + item B absent' LOOK like a containment proof when it isn't -- it can't distinguish a genuine split from 'this tier just never matches that query'. The durable fix pattern is to pick test data/queries that force both branches to co-occur, then… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1527"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified FIXED in fix round 1 (commit 01c5264e / PR #1527): (1) ELITEA-2463 Step 3b now queries the shared prefix \"Automation\" (matches both conv_name=AutomationUnique... and sibling_conv_name=AutomationOther... simultaneously) and asserts `not chat.is_conversation_in_group(sibling_conv_id, group=\"today\")` (pinned match outside) AND `chat.is_conversation_in_group(conv_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (case snapshot ↔ AFS ↔ diff) run for all 4 cases; every Axis-1 Coverage Map row for ELITEA-2163/2164/2165/2463 maps to a real assertion at the claimed step (verified by reading the actual test code, not just row existence). Mechanical greps run against the unit-scoped diff (`git diff 3aa185ec...tests/2163-2164-2165-2463-chat-search-gap-family`, i.e. this unit only, not the whole… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "PROVENANCE drift (informational for the lead's closure record, not a code defect): several 'Concrete Handles' rows across the 4 AFS files claim a testid is 'on-automation/testids only (awaiting human promotion to main)' but a fresh `git fetch origin` + `git grep` against `origin/main` in `../EliteaUI` shows it is ALREADY on main — specifically `chat-conversation-item-{}` (`ConversationItem.jsx:369… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_search-cleared-by-x-icon-restores-default-view_ELITEA-2164.md"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing tech debt, not introduced by this diff: `ChatPage.get_conversation_item` is defined twice in `automation/pages/chat_page.py` (lines 3121 and 3405 on `origin/automation/base`, confirmed via `git show origin/automation/base:automation/pages/chat_page.py`), which violates `.claude/rules/page-objects.md`'s 'no method duplication' rule. Neither definition was touched by this unit's diff. F… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_search-input-cleared-by-deleting-text-updates-dynamically_ELITEA-2165.md",
+      "branch": "tests/2163-2164-2165-2463-chat-search-gap-family",
+      "pr": 1527
+    },
+    {
+      "id": "ELITEA-2463",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Chat search no-results state: GroupedConversations.jsx's 'Still no conversations created.' text incorrectly co-renders alongside the correct 'No conversations found' message when a search query matches nothing on a project that HAS other, non-matching conversations/folders — GroupedConversations receives the search-FILTERED totalConversationsAmount (0) rather than the true unfiltered project total… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1525"
+        },
+        {
+          "kind": "clarification",
+          "note": "Modules panel now shows 10 toggle switches, not 8 (or the case-era 7) — two new live product toggles appeared since ELITEA-2464's analysis: 'Skill Builder' (skill_builder) and 'Project Context Builder' (project_context_builder), confirmed via internalTools.constants.js source read + a live DOM count of 10 modules-toggle-* elements. Not a defect — extended ChatPage.MODULE_TOGGLE_ORDER additively (8… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1526"
+        },
+        {
+          "kind": "note",
+          "note": "Live-confirmed and documented (new memory entry + _surface.md section): a query-client cache can serve a search value already fetched this session — or the field cleared back to the page's initial no-query state — with ZERO new network round-trip, which defeats page.expect_response() waits (real TimeoutError, not a product issue). Two implementation-time bugs traced to this; fixed by waiting on UI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Folders can visibly lag conversation items on re-render after clearing a search — a plain ChatPage.get_folder_link_count() read immediately after clearing raced the DOM and returned 0. Added a new settle-wait method, ChatPage.wait_for_any_folder_visible(timeout), called before any folder-count read post-search-clear."
+        },
+        {
+          "kind": "defect",
+          "note": "Coverage-Map row disposition mismatch (verified against actual assertions, not existence). Case step 6 ('Verify results are grouped by pinned and date sections') is marked 'asserted' via new Step 3b, but Step 3b only asserts: chat.is_conversation_pinned(sibling_conv_id) is True, chat.get_conversation_item(sibling_conv_id) is visible, and chat.get_conversation_item(conv_id) is NOT visible. None of … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py:~155-165 (Step 3b, ELITEA-2463 extension); AFS test-specs/chat-interface/lextend_search-opens-filters-dynamically-conversation-interactable_ELITEA-2463.md Coverage Map row for case step 6"
+        },
+        {
+          "kind": "defect",
+          "note": "The @allure.issue URL for ELITEA-2463 references 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversation-is-interactable.md', but the actual file in EliteaAI/onetest-ai-tm-Elitea's tests/automated-full-regression-ui/chat/ is named 'ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversa.md' (verified via `find ... -iname \"*2463*\"` in the TMS repo clone). The … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py (new @allure.issue decorator on test_search_filters_and_modules_panel_toggles, ELITEA-2463 link)"
+        },
+        {
+          "kind": "note",
+          "note": "Unrelated to all four target cases (none of the 2163/2164/2165/2463 AFS mention module toggles) -- this is a live-product-drift fix needed to keep the shared test_search_filters_and_modules_panel_toggles method (which ELITEA-2463 additively extends) green after the product added two new modules. Correctly filed as a CLARIFICATION, EliteaAI/elitea-testing-public#1526 (labelled question, names 'Foun… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py MODULE_TOGGLE_ORDER (8->10 entries) + verify_module_toggle_order docstring"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2163's test (test_search_no_results_state) is intentionally sanctioned-RED (expect.soft() on chat.conversations_empty_state_message, tied to open defect #1525, per .agents/testing.md Merge gate exception -- verified: #1525 is open, evidence embedded, dedup-checked). The AFS itself flags 'Declare it in expected_red[] at handoff -- an undeclared RED here would hold the whole batch's gate.' St… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS test-specs/chat-interface/lextend_search-no-results-state_ELITEA-2163.md (Known Defects section, sanctioned-RED)"
+        },
+        {
+          "kind": "note",
+          "note": "Lesson for future rounds (also logged to role memory): a narrow query that only surfaces one of two tiers (pinned vs date-grouped) can make 'item A present + item B absent' LOOK like a containment proof when it isn't -- it can't distinguish a genuine split from 'this tier just never matches that query'. The durable fix pattern is to pick test data/queries that force both branches to co-occur, then… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1527"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified FIXED in fix round 1 (commit 01c5264e / PR #1527): (1) ELITEA-2463 Step 3b now queries the shared prefix \"Automation\" (matches both conv_name=AutomationUnique... and sibling_conv_name=AutomationOther... simultaneously) and asserts `not chat.is_conversation_in_group(sibling_conv_id, group=\"today\")` (pinned match outside) AND `chat.is_conversation_in_group(conv_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (case snapshot ↔ AFS ↔ diff) run for all 4 cases; every Axis-1 Coverage Map row for ELITEA-2163/2164/2165/2463 maps to a real assertion at the claimed step (verified by reading the actual test code, not just row existence). Mechanical greps run against the unit-scoped diff (`git diff 3aa185ec...tests/2163-2164-2165-2463-chat-search-gap-family`, i.e. this unit only, not the whole… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "PROVENANCE drift (informational for the lead's closure record, not a code defect): several 'Concrete Handles' rows across the 4 AFS files claim a testid is 'on-automation/testids only (awaiting human promotion to main)' but a fresh `git fetch origin` + `git grep` against `origin/main` in `../EliteaUI` shows it is ALREADY on main — specifically `chat-conversation-item-{}` (`ConversationItem.jsx:369… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_search-cleared-by-x-icon-restores-default-view_ELITEA-2164.md"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing tech debt, not introduced by this diff: `ChatPage.get_conversation_item` is defined twice in `automation/pages/chat_page.py` (lines 3121 and 3405 on `origin/automation/base`, confirmed via `git show origin/automation/base:automation/pages/chat_page.py`), which violates `.claude/rules/page-objects.md`'s 'no method duplication' rule. Neither definition was touched by this unit's diff. F… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_search-opens-filters-dynamically-conversation-interactable_ELITEA-2463.md",
+      "branch": "tests/2163-2164-2165-2463-chat-search-gap-family",
+      "pr": 1527
+    }
+  ],
+  "totals": {
+    "blocked": 7,
+    "already-covered": 1
+  },
+  "quality_flags": [
+    "extend-rate 5/8 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/chat/test_last_remaining_conversation_deletion.py",
+      "ticket": "https://github.com/EliteaAI/elitea-testing-public/issues/1523",
+      "why": "Step 10 (page URL does not clear/update after deleting the LAST remaining conversation within the same SPA session) is a live, isolated, deterministic product defect specced with expect.soft() + '# Known defect: #1523' per the AFS. Sanctioned-RED, unrelated to this fix round; every other step (including the newly added Step 1 folder-count assertion) passes cleanly.",
+      "case_ids": [
+        "ELITEA-2117"
+      ],
+      "test_id": "tests.ui.chat.test_last_remaining_conversation_deletion.TestLastRemainingConversationDeletion.test_delete_last_remaining_conversation_shows_welcome_state",
+      "unit": "ELITEA-2115+ELITEA-2116+ELITEA-2117"
+    },
+    {
+      "spec": "automation/tests/ui/chat/test_chat_search_and_modules_panel.py::TestChatSearchAndModulesPanel::test_search_no_results_state",
+      "ticket": "EliteaAI/elitea-testing-public#1525",
+      "why": "expect.soft() asserts the CORRECT expected behavior (chat-conversations-empty-state-message should NOT co-render with the no-results message) — currently fails because the product bug is open. Every other assertion in the test is a hard assert and passes. Sanctioned RED per .agents/testing.md § Merge gate, same shape as the pre-existing test_attach_unsupported_file_format_error.py / ELITEA-2200 precedent.",
+      "case_ids": [
+        "ELITEA-2163"
+      ],
+      "test_id": "test_search_no_results_state",
+      "unit": "ELITEA-2163+ELITEA-2164+ELITEA-2165+ELITEA-2463"
+    }
+  ],
+  "parked": []
+}

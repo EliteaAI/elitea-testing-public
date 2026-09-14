@@ -63,7 +63,17 @@ automation/=*
 
 # Reversible process-change notes (local-only; how to restore a suspended policy)
 .agents/_reverted/
-.agents/automation/
+# Batch working dirs are local — EXCEPT the records tokenomics/team reports join on
+# (receipt, gate verdicts, cost record, batch report), which must travel with the repo.
+.agents/automation/**
+!.agents/automation/**/
+!.agents/automation/**/report.json
+!.agents/automation/**/gate-runs.jsonl
+!.agents/automation/**/cost.json
+!.agents/automation/**/batch-report.md
+!.agents/automation/**/batch-report.html
+!.agents/automation/**/batch-tokenomics.md
+!.agents/automation/**/batch-tokenomics.html
 .agents/efficiency/
 
 
@@ -89,3 +99,10 @@ coverage/**/node_modules/
 !.claude/hooks/
 !.claude/rules/
 !.claude/settings.json
+
+# >>> tokenomics (managed) — working state only; the ledger/scopes/receipts stay COMMITTED
+.agents/telemetry/automation/live/
+.agents/telemetry/automation/scopes/.pending-*
+.agents/telemetry/automation/scopes/.nagged-*
+.agents/telemetry/automation/scopes/.unclosed-*
+# <<< tokenomics

@@ -1,0 +1,134 @@
+{
+  "batch": "elitea-2344-hide-secret",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2344-hide-secret",
+  "gate": {
+    "verdict": "not-run",
+    "runs": 1,
+    "seconds": [
+      28.81
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/admin/test_secret_hide_via_three_dot_menu.py::TestSecretHideViaThreeDotMenu::test_hide_secret_via_three_dot_menu",
+        "signature": "pytest.fail — 'Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React \"Maximum update depth exceeded\" console error(s) on /settings/secrets mount: 15 occurrence(s)'. This IS the pre-declared RED-BY-DESIGN spec — ticket #1203 confirmed OPEN via `gh issue view 1203` befo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2344"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py::TestSecretCreateInlineCheckmarkXCancel::test_create_secret_inline_checkmark_saves_x_cancels",
+        "signature": "pytest.fail — same #1203 known-defect soft-assert signature: 'Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React \"Maximum update depth exceeded\" console error(s) on /settings/secrets mount: 22 occurrence(s)'. Pre-existing (BLAST-RADIUS scope, not the batch's own spec).",
+        "case_ids": [
+          "ELITEA-2336"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py::TestSecretCreateInlineCheckmarkXCancel::test_secret_name_rejects_hyphen_and_special_chars_valid_name_clears_error",
+        "signature": "pytest.fail — same #1203 known-defect soft-assert signature: '... 20 occurrence(s)'. Pre-existing (BLAST-RADIUS scope).",
+        "case_ids": [
+          "ELITEA-2336"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/admin/test_secret_delete_via_three_dot_menu.py::TestSecretDeleteViaThreeDotMenu::test_delete_secret_via_three_dot_menu",
+        "signature": "pytest.fail — same #1203 known-defect soft-assert signature: '... 20 occurrence(s)'. Pre-existing (BLAST-RADIUS scope).",
+        "case_ids": [
+          "ELITEA-2338"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/admin/test_secret_eye_icon_reveal_and_mask_toggle.py::TestSecretEyeIconRevealAndMaskToggle::test_secret_eye_icon_reveal_and_mask_toggle",
+        "signature": "pytest.fail — same #1203 known-defect soft-assert signature: '... 23 occurrence(s)'. Pre-existing (BLAST-RADIUS scope).",
+        "case_ids": [
+          "ELITEA-2343"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2344",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case ELITEA-2344 step 5's quoted confirmation-warning text is stale -- live dialog text is materially shorter/different. Filed EliteaAI/elitea-testing-public#1226 (label: question), not a bug, per the reverse-masking guard. AFS asserts the live copy.",
+          "ref": "EliteaAI/elitea-testing-public#1226"
+        },
+        {
+          "kind": "note",
+          "note": "Three-dot 'more actions' menu's known real-click non-determinism (root-cause tracked at #1222) reproduced a SECOND time within one session -- first menu-open worked with a plain .click(), second (same button, same page) needed the existing React-onClick workaround. Recorded in test-specs/settings-secrets/_surface.md so implementers never simplify open_row_actions_menu() away.",
+          "ref": "EliteaAI/elitea-testing-public#1222"
+        },
+        {
+          "kind": "note",
+          "note": "One new testid requested for the implementer: alert-dialog-content on the shared/generic src/components/AlertDialog.jsx's body-text element (StyledDialogContentText) -- currently zero data-testid, only an ARIA id. Must stay generic (not secrets-scoped) since AlertDialog is used by multiple features app-wide."
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live: hiding a secret does NOT reserve its name server-side -- recreating an identical name immediately after hide returns 201 Created (not 409/400). AFS step 9 asserts this concretely rather than just checking button visibility."
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift on the case's own step 5 (stale confirmation-dialog copy) was already flagged by the analyst and filed as clarification EliteaAI/elitea-testing-public#1226 before my dispatch — the AFS instructs asserting the LIVE copy, which I implemented as specified (reverse-masking guard). No new action needed from me; noting for visibility since it affects what the merged test actually asserts… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect EliteaAI/elitea-testing-public#1203 (React 'Maximum update depth exceeded' console warning on every /settings/secrets mount) fired deterministically in this automated run (11 occurrences) despite the AFS's own analyst-session note that it was NOT observed live this session. This is now a 4th data point (after ELITEA-2337/2338/2343) that #1203 reproduces reliably under automation even … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The three-dot menu's open_row_actions_menu() React-onClick declared-improvisation workaround (documented non-determinism per ELITEA-2343's digest entry and this case's own AFS reminder) worked on the first try this run with zero issues — 3rd independent data point, still net in favour of keeping the workaround unconditionally per the AFS's explicit instruction not to simplify it."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot (.agents/automation/elitea-2344-hide-secret/cases/ELITEA-2344.md) vs AFS (test-specs/settings-secrets/l3_hide-secret-via-three-dot-menu_ELITEA-2344.md) vs diff (PR #1227). All 9 case steps map to Coverage Map rows with a real per-step assertion, either inline in the allure.step block or embedded in the called page-object method (open_row_actions_menu()'s expect(actions_m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_hide_via_three_dot_menu.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case step 5's confirmation-dialog copy is stale case text (deletion-style wording); the live dialog says 'Once hidden, the secret will no longer be visible.' Correctly handled per the reverse-masking guard: filed as a question-labelled clarification (EliteaAI/elitea-testing-public#1226, confirmed OPEN), and the test asserts the LIVE copy verbatim, which matches the AlertDialog invocation read stra… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/l3_hide-secret-via-three-dot-menu_ELITEA-2344.md"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified fresh (git fetch origin in ../EliteaUI first): alert-dialog-content exists ONLY on automation/testids (commit EliteaAI/EliteaUI@6a4e4f22, a 1-line unconditional/generic addition to the shared AlertDialog.jsx, not yet on main) exactly as claimed. alert-dialog-confirm-button, secret-actions-menu-hide, secret-row-actions-button provenance also confirmed in source. Mechanica… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/secrets_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-checked the hide-mutation wiring against EliteaUI source beyond the AFS's own claims: secrets.js's secretHide RTK-Query mutation (POST /secrets/hide/default/{projectId}/{name}) carries no invalidatesTags, so the list refetch the test waits on (confirm_hide()'s concurrent expect_response for the GET) depends entirely on useSecretVisibility.hooks.js's handleHideSecretPermanently manually calli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/secrets_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: logger = logging.getLogger(__name__) is declared in the new spec file but never used (no logger.* calls in the test body).",
+          "ref": "automation/tests/ui/admin/test_secret_hide_via_three_dot_menu.py"
+        }
+      ],
+      "afs": "test-specs/settings-secrets/l3_hide-secret-via-three-dot-menu_ELITEA-2344.md",
+      "branch": "tests/ELITEA-2344-hide-secret-three-dot-menu",
+      "pr": 1227
+    }
+  ],
+  "totals": {
+    "merged-ungated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/admin/test_secret_hide_via_three_dot_menu.py",
+      "test_id": "tests.ui.admin.test_secret_hide_via_three_dot_menu.TestSecretHideViaThreeDotMenu.test_hide_secret_via_three_dot_menu",
+      "ticket": "EliteaAI/elitea-testing-public#1203",
+      "why": "Known, OPEN React 'Maximum update depth exceeded' console warning fires on every /settings/secrets mount (11 occurrences this run). Soft-asserted via the project's established soft_failures/pytest.fail() idiom (same as ELITEA-2337/2338/2343). All 9 functional AFS steps passed cleanly; only this known-defect assertion is red.",
+      "case_ids": [
+        "ELITEA-2344"
+      ],
+      "unit": "ELITEA-2344"
+    }
+  ],
+  "parked": []
+}

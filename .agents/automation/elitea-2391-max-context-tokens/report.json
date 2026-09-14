@@ -1,0 +1,79 @@
+{
+  "batch": "elitea-2391-max-context-tokens",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2391-max-context-tokens",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      63.948526041,
+      62.264480583,
+      61.242546709
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2391",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1247: ELITEA-2391 case steps 2/4's literal Expected Result text ('action completes without error', 'field accepts the input and displays the entered value') implies the raw invalid string ('abc', '-100') is accepted and shown as typed. Live product actually filters non-digit and minus-sign keystrokes client-side before they ever reach the field — 'abc' ends up … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1247"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed at source that Max Context Tokens and Target Summary Tokens share the identical onChange filter helper (handleConvertToNumberChange in context-budget/lib/validation.js) despite living in separate feature components (MemoryContextManagement.jsx vs MemorySummarization.jsx) and having separate Yup validation limits (VALIDATION_LIMITS.MAX_CONTEXT_TOKENS {1000,10000000} vs VALIDATION_LIMITS.M… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The existing set_max_context_tokens(value: int) page-object setter (user_profile_settings_page.py:303) cannot drive this case directly — it forces str(int) typing (can't send a non-numeric string) and unconditionally calls wait_for_autosave(), which is a best-effort networkidle wait that silently falls back to a fixed sleep on timeout, so it can't reliably distinguish 'PUT fired' from 'PUT did not… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (steps 2/4 imply raw invalid input is accepted/displayed as typed; live product filters non-digit/minus keystrokes client-side before they ever reach the field) was already identified and filed by the analyst - no new clarification needed from the implementer side. Confirmed the analyst's finding live via the test run.",
+          "ref": "EliteaAI/elitea-testing-public#1247"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation-time robustness fix (not from a test failure, proactive): the test's failure-cleanup finally block calls get_max_context_tokens() which does int(raw) internally - if a mid-flow assertion failure happened right after typing 'abc' (field left on the empty string), that call would raise ValueError and mask the real test failure instead of restoring the shared TEST_USER account. Wrapped… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Row 6's 'Asserted where' column reads 'step 6: field set to 64000, blurred' — that's the ACTION, not the assertion. The real assertion (aria-invalid absence + PUT response echo of 64000) lives a few lines below in the same AFS step. Cosmetic only — the assertion itself is present and correct in the implementation; just tighten the wording next time this AFS is touched.",
+          "ref": "test-specs/settings-user-profile/lextend_max-context-tokens-non-numeric-negative-validation_ELITEA-2391.md — Coverage Map row 6"
+        },
+        {
+          "kind": "note",
+          "note": "Step 6 (valid value 64000) asserts aria-invalid absence + PUT response body echo, but not expect(field).to_have_value('64000') — asymmetric vs steps 4/5 which do assert the field's literal displayed value. Checked this against precedent: the sibling test_target_summary_tokens_range_validation (ELITEA-2378, already merged to automation/base) uses the identical shape for its own valid-value step (PU… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py:~640-660 (Step 6 block, new test_max_context_tokens_rejects_non_numeric_and_negative_input)"
+        },
+        {
+          "kind": "note",
+          "note": "Verified: real, OPEN, correctly labelled 'question', body correctly names ELITEA-2391 + the originating tracking issue #899, and accurately quotes the case's steps 2/4 text-vs-live-behaviour mismatch. Reverse-masking guard applied correctly (case text is stale, product is correct — not a product defect).",
+          "ref": "EliteaAI/elitea-testing-public#1247"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/lextend_max-context-tokens-non-numeric-negative-validation_ELITEA-2391.md",
+      "branch": "tests/ELITEA-2391-max-context-tokens-validation",
+      "pr": 1248,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          63.948526041,
+          62.264480583,
+          61.242546709
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

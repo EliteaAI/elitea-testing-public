@@ -1,0 +1,111 @@
+{
+  "batch": "elitea-2320",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2320",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      14.27,
+      15.78,
+      12.68
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2320",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case ELITEA-2320's text is stale across nearly every named string (tab name, both chart titles/subtitles except Chat Messages, table title/subtitle format, all 5 claimed column names, search placeholder) — matches the family-wide pattern already documented for ELITEA-2310/2312/2313. Filed as one bundled clarification: elitea-testing-public#1195.",
+          "ref": "elitea-testing-public#1195"
+        },
+        {
+          "kind": "note",
+          "note": "Both charts on the Agents & Pipelines tab are conditionally rendered (agentChartData.length > 0 / chat_daily.length > 0) — absent entirely when the selected project has zero agent/pipeline activity in the date range (confirmed live against project 'UI Testing', id 400). The case's steps implicitly assume active data; the AFS documents this as a precondition (use project 'Private', id 399) rather t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Table columns are NOT fixed: a 'Users' column is conditionally shown only for non-personal projects (isPersonalProject check). Personal project 'Private' -> 8 columns; non-personal 'UI Testing' -> 9 columns (Users inserted after Runs). AFS specs both branches and the implementer should assert against the fixture's actual (personal) project type as the primary case, with the non-personal branch as … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Errors-column positive branch (errors>0 -> red/rejected color) has no live data in the 'Private' project's Agent & Pipeline Activity rows at analysis time (all 20 visible rows show errors:0), unlike the Users tab which does have errors>0 rows in this same project. Documented as a Blocked Step (source-confirmed only, AnalyticsAgents.jsx:317) rather than blocking the case — matches the Users-tab (EL… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Row click (whole-row onClick, not a literal <a> element) opens a same-page agent/pipeline-detail sub-view, mirroring the AnalyticsUserDetailed pattern from ELITEA-2313 (KPI cards, a 'Runs by Day' chart, Users/Tools breakdown tables, Back button — confirmed live). Functionally satisfies the case's step 6 'clickable links' premise; not filed as a defect. The detail sub-view's own content is out of s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage cross-check clean: all 7 ELITEA-2320 case steps have a Coverage Map disposition in the AFS (6 asserted, 1 clarification group tied to already-filed elitea-testing-public#1195). No needs-analyst-rerun needed."
+        },
+        {
+          "kind": "defect",
+          "note": "Edge case found during exploration but NOT exercised by the test (out of AFS scope): switching the active project via the sidebar while the Agents & Pipelines row-click detail sub-view is open does not reset AnalyticsAgents.jsx's local selectedAgent state, so the analytics_agent_detail query refires with the NEW project id but the STALE entity_id, producing a 404 (confirmed live). AFS explicitly s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1196 description"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed a wait-strategy design flaw in AnalyticsPage.switch_project() before reaching green: wrapping the click in expect_response times out on a cache-hit leg (switching back to a project whose RTK-Query result is already cached from tab-mount, e.g. personal -> non-personal -> personal). Replaced with wait_for_network + loading-indicator-hidden wait, mirroring the established clear_users_search pat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/analytics_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles: `git diff origin/tests/batch-elitea-2320...origin/tests/ELITEA-2320-... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(')` -> one hit: `automation/pages/analytics_page.py:249: option = self.page.locator(self.SELECT_OPTION.format(project_id))`. Comp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/analytics_page.py:249"
+        },
+        {
+          "kind": "note",
+          "note": "All 17 testids the diff introduces confirmed live on EliteaAI/EliteaUI@automation/testids (fetched fresh: `git fetch origin` then `git show origin/automation/testids:'src/[fsd]/features/settings/ui/analytics/AnalyticsAgents.jsx' | grep -n 'data-testid|testId='` -> 17/17 present, matching the page object 1:1). Additive-only on the shared `analytics_page.py` confirmed via `git diff ... -- automation… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/analytics_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulated against the TMS snapshot and the PR diff: all 7 original case steps map to a real assertion at the claimed allure.step (title/subtitle/container presence, column-set branch across personal/non-personal project switch, Errors-color negative branch with values matching the sibling Users-tab spec's precedent, row-click -> 200 + no URL change + header count 0). No case elemen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_analytics_agents_pipelines_tab.py"
+        },
+        {
+          "kind": "note",
+          "note": "Clarification issue elitea-testing-public#1195 verified to exist, labelled `question`, content matches the case-text-drift family (tab name, chart/table titles, subtitle wording, column list, search placeholder) the AFS and test docstring both cite."
+        },
+        {
+          "kind": "note",
+          "note": "No masking markers found (`pytest.skip|mark.skip|xfail|test.fail|expect.soft`) in the diff; console-error capture wraps the whole test in try/finally with a single aggregate assertion, consistent with the sibling ELITEA-2312/2313 specs.",
+          "ref": "automation/tests/ui/admin/test_analytics_agents_pipelines_tab.py"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the already-merged AFS (test-specs/settings-analytics/l2_agents-pipelines-tab-charts-and-activity-table_ELITEA-2320.md, not part of this PR's diff) states testid counts inconsistently ('all 15 new testids' in prose vs 17 rows in its handles table vs 'none of the 16 testids exist' in its bash-loop comment). The actual implementation is internally consistent (17 testids, verifie… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-analytics/l2_agents-pipelines-tab-charts-and-activity-table_ELITEA-2320.md"
+        },
+        {
+          "kind": "note",
+          "note": "Cosmetic only: in-code allure.step ordering runs Step 1, 2, 3, 4, 7, 5, 5b, 6 (search-input step placed before the column/project-switch step) rather than numeric case order. No functional effect — each step is self-contained and doesn't depend on step-number ordering — but flagging for awareness since it could look like a missing step on a quick skim.",
+          "ref": "automation/tests/ui/admin/test_analytics_agents_pipelines_tab.py"
+        }
+      ],
+      "afs": "test-specs/settings-analytics/l2_agents-pipelines-tab-charts-and-activity-table_ELITEA-2320.md",
+      "branch": "tests/ELITEA-2320-agents-pipelines-tab-charts-and-activity-table",
+      "pr": 1196,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          14.27,
+          15.78,
+          12.68
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

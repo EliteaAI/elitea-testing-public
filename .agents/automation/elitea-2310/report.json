@@ -1,0 +1,113 @@
+{
+  "batch": "elitea-2310",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2310",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      9.522687083,
+      8.575502041,
+      9.756571583
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2310",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2310 case text is stale vs the live Analytics page: claims 6 tabs (no 'Costs', 'Agents' instead of 'Agents & Pipelines'), default preset labelled 'Last 24d' (typo), and pickers reflecting a 'Last 7d' default range (live default is 1 day / Last 24h, matching the case's own step 3/4 preset list). Filed as elitea-testing-public#1185, labelled `question`. AFS asserts the live 7-tab / Last-24h c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1185"
+        },
+        {
+          "kind": "note",
+          "note": "Same stale-count pattern likely recurs across the wider settings-analytics case family (ELITEA-2310..2329, GH #818-#837) — spot-checked #819 (ELITEA-2311, 'six KPI cards' vs live 8: TEAM/AI ACTIVE/LLM CALLS/TOOL RUNS/CHAT MSG/AGENT & PIPELINE RUNS/TOKENS/COST) and #828 (ELITEA-2320, 'Agents tab' naming). Recorded in qa-engineer memory (indexed) so future analysts on this family don't misclassify a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-analytics/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "settings-analytics is a brand-new automation surface: zero pre-existing testids on anything the case touches (only analytics-export-button exists, unused by this case). 15 new testids requested with exact naming, JSX locations, and shared-component wiring notes (TabButtonItem.buttonProps spread, BaseTab restProps spread, DateTimePicker slotProps.textField.inputProps) — all confirmed unique against… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-2310.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's original Concrete Handles table had no named handle for step 8's \"Overview tab's content (KPI row) is rendered\" clause. Added analytics-overview-kpi-row testid on AnalyticsOverview.jsx's KPI-row Box during Phase 2 implementation exploration and amended the AFS in the same PR (spirit-compliant, in-scope addition, not scope creep — same case, same step, just closing a handle gap the analyst's … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-2310.md"
+        },
+        {
+          "kind": "note",
+          "note": "First test-run invocation hit pytest.ini's built-in transient-error auto-retry (--only-rerun patterns for 502/503/504/connection/timeout errors) on the very first attempt against a freshly-created browser context. The retry passed and two subsequent clean single-attempt runs (8.03s, 8.92s) confirmed stability, but the exact matched error pattern was not recoverable from captured output since pytes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_analytics_default_load.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift for ELITEA-2310 (6 tabs / \"Last 24d\" / \"Last 7d\" default range, all stale vs. live product) was already filed by the analyst as elitea-testing-public#1185 before this dispatch started — no new filing needed, just confirmed consistency between the AFS's clarification note and the implemented assertions."
+        },
+        {
+          "kind": "defect",
+          "note": "Priority marker drift (blocking): case ELITEA-2310 frontmatter says priority: high; AFS correctly maps to l2. But the module-level pytestmark declares pytest.mark.p2 (medium) instead of pytest.mark.p1 (high) per pytest.ini's p1=high/p2=medium and the established l2(high)->p1 convention confirmed across 8+ sibling AFS/tests with zero exceptions. As-is, this test is silently excluded from the `pytes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_analytics_default_load.py:23"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift correctly handled: case claims 6 tabs / 'Last 24d' default / 'Last 7d' range; live product has 7 tabs (incl. 'Costs', 'Agents & Pipelines'), 'Last 24h' default, 1-day range. Reverse-masking guard applied correctly by the analyst — filed as clarification elitea-testing-public#1185, AFS/test assert the live contract, not the stale case text. Matches the settings-analytics family-wide… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-2310.md"
+        },
+        {
+          "kind": "note",
+          "note": "Testid discipline verified clean: mechanical grep for added non-testid handles (get_by_role/get_by_label/get_by_text/get_by_placeholder/get_by_title/get_by_alt_text/get_by_test_id/query_selector/page.locator/.locator() across the full diff) returned 0 hits. All 17 testids (16 AFS-listed + analytics-overview-kpi-row, added mid-implementation and amended into the AFS in the same PR) confirmed presen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Source cross-check (AnalyticsContainer.jsx / AnalyticsOverview.jsx on automation/testids) confirms: ANALYTICS_TABS/DEFAULT_PRESETS render order matches the test's expected-order tuples, activeTab defaults to 0 (Overview), selectedDatePreset defaults to 1 (Last 24h / 1-day span), ampm:false + adapterLocale={enGB} is consistent with the test's dd/MM/yyyy HH:mm picker-value parsing, and analytics-ove… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Priority-marker-drift finding from round 1 went unaddressed with no visible fix attempt in the diff, forcing a full extra review round for a one-line change. This is the 3rd recurrence of the same pattern across the test-automation-engineer's history (ELITEA-1846/PR#678, ELITEA-2284/PR#1175, now ELITEA-2310/PR#1186) — recommend the implementer's fix-round checklist explicitly enumerate every revie… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_analytics_default_load.py:30"
+        },
+        {
+          "kind": "note",
+          "note": "Updated the recurring memory entry afs_priority_vs_pytest_mark_preflight_check.md (test-automation-engineer role memory) with this 3rd recurrence, and appended a daily log line for 2026-08-05.",
+          "ref": ".agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker (priority marker pytest.mark.p2 should be p1) verified fixed at automation/tests/ui/admin/test_analytics_default_load.py:30 — matches AFS Priority: l2 and pytest.ini's p1: Priority 1 (high) mapping.",
+          "ref": "automation/tests/ui/admin/test_analytics_default_load.py:30"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-run of the standing checklist (not delta-only) came back clean: mechanical raw-handle grep on the whole PR diff = 0 hits in code (the one substring hit was inside a committed daily-log sentence, not a code line); all 16 new EliteaUI testids confirmed 0 hits on a freshly-fetched origin/main (genuinely new, no collisions); the two EliteaUI JSX commits (AnalyticsContainer.jsx, AnalyticsOvervi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map verified against the full fetched TMS case: all 8 case elements have a row (5 asserted, 3 clarification), and the 3 clarification rows (tab count/names, default preset label, default date range) correctly trace to the linked case-text-drift issue elitea-testing-public#1185, which itself matches what the live product actually shows. Every AFS step has a real assertion in the test at th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-2310.md"
+        }
+      ],
+      "afs": "test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-2310.md",
+      "branch": "tests/ELITEA-2310-analytics-default-load",
+      "pr": 1186,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          9.522687083,
+          8.575502041,
+          9.756571583
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -1,0 +1,104 @@
+{
+  "batch": "elitea-2435-skill-pin-unpin",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2435-skill-pin-unpin",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      35.59,
+      35.5,
+      32.08
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2435",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Testid gap: SkillControls.jsx's overflow-menu pin-toggle item has no data-testid (menuItems array spreads pinMenuItem without a key, so DotMenu.jsx's testId:item.key -> undefined). Fix: add key: 'pin-toggle-skill' to the spread in SkillControls.jsx (EliteaUI/src/[fsd]/features/skill/ui/SkillControls.jsx) -> yields data-testid=\"pin-toggle-skill-menuitem\" via DotMenu's ${testId}-menuitem convention.… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/features/skill/ui/SkillControls.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "The list-view pin/unpin icon button (skill-pin-toggle-button-{id}, PinButton.jsx) already carries a testid live for Skills -- it was apparently fixed generically (not credential-scoped) when EliteaAI/EliteaUI#569 landed. No add-data-testid round-trip needed for this element. Corrected a stale claim to the contrary in .agents/memory/qa-engineer/pin_toggler_widget_testid_gaps.md.",
+          "ref": ".agents/memory/qa-engineer/pin_toggler_widget_testid_gaps.md"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha for whoever implements or re-explores this: pinning a skill that is already the list's newest/topmost item (default sort_by=created_at desc) produces no visible position change, only the icon/menu-label flip. Must seed or target a non-topmost record to actually prove reordering -- the AFS specs a two-skill seeded pattern for this reason.",
+          "ref": "test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md"
+        },
+        {
+          "kind": "note",
+          "note": "Board #9 status move (assign self / In Progress) not performed by this implementer dispatch — per team-comms.md that's the orchestrator's (Tal's) responsibility, and the dispatch prompt did not ask for it. The PR-link comment on issue #943 was posted per profile.md's explicit 'yes' for that specific step.",
+          "ref": "#943"
+        },
+        {
+          "kind": "note",
+          "note": "No new observable behavior found during exploration beyond what the AFS already documented — the case's pin/unpin mechanism worked exactly as the AFS's live-confirmed steps describe; only gap was the pre-flagged testid, which is now closed."
+        },
+        {
+          "kind": "defect",
+          "note": "Priority marker mismatch (5th recurrence of a documented class): AFS states Priority l3 (case frontmatter + body both say 'medium', explicitly 'no drift'). Per pytest.ini (p2 = medium) and an 11/13-sibling sweep of test-specs/skills/l3_*.md vs their compiled markers (all l3-medium siblings compile to p2, zero exceptions among directly comparable ones), this should be @pytest.mark.p2. The test inst… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_pin_unpin.py:19,30"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking Coverage Map precision gap: Axis-1 row for case step 1 lists disposition 'asserted' citing a data-level check ('all is_pinned: false' from the skills-list GET response) in its 'Asserted where' cell, but the implementation's Step 1 block only asserts DOM card order + one skill's aria-label — it never inspects the API response body for is_pinned. The case's actual requirement ('note whi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md:204"
+        },
+        {
+          "kind": "note",
+          "note": "Verified: testid EliteaAI/EliteaUI@292fcd02 (pin-toggle-skill-menuitem) landed on automation/testids only, correctly not yet on main (human-promotion pending, as expected at this pipeline stage). Mechanical locator-policy grep on the full diff: 0 non-compliant hits (the one `.locator(` hit uses the compliant SKILL_PIN_TOGGLE_BUTTON class constant). Additive-only check: only 1 removed line across p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "5th recurrence in ~2 weeks of the AFS-priority-vs-pytest-mark drift class (l3/medium AFS priority compiled to p3 instead of p2, both at module pytestmark and per-function decorator level) despite an existing implementer preflight-check memory entry documenting the exact grep to run before handoff. The check exists but isn't being executed reliably pre-handoff, only caught at review each time.",
+          "ref": "automation/tests/ui/skills/test_skill_pin_unpin.py"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED and verified: priority marker fixed at both sites in automation/tests/ui/skills/test_skill_pin_unpin.py — module-level `pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression]` (line 22) and the per-function `@pytest.mark.p2` decorator (line 33) — matching AFS `Priority: l3 (medium)` per pytest.ini's `p2: Priority 2 (medium)` mappin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_pin_unpin.py:22,33"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added non-testid handles (`git diff origin/automation/base...origin/tests/ELITEA-2435-skill-pin-unpin-flow | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(')`) returns exactly one code hit — `automation/pages/skills_list_page.py:289` `return self.page.locator(self.SKIL… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation (case ↔ AFS ↔ diff) confirms all 15 case steps have a Coverage-Map row and a real per-step assertion in the test (not just an end-state assertion): step 1 baseline order + label, step 4/7/13 exact menu-label text, step 5/11 network response status codes (201/204) via `page.expect_response`, step 9/15 relative card-order reordering assertions, step 9 icon-label flip. Cleanup d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_pin_unpin.py"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking Coverage-Map precision nit (present since round 1, still unaddressed, still correctly non-blocking): AFS Coverage Map row 1 states the step-1 disposition as 'asserted' citing the list response's `is_pinned: false` field, but the implemented test only asserts visual order + the list-row button's accessible label — it never reads the API's `is_pinned` field directly. The original case's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md:204"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md",
+      "branch": "tests/ELITEA-2435-skill-pin-unpin-flow",
+      "pr": 1256,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          35.59,
+          35.5,
+          32.08
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

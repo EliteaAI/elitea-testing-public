@@ -1,0 +1,361 @@
+{
+  "batch": "chat-remaining-w05",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w05",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      181.94
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py",
+        "signature": "TestChatFolderCreationCustomNameAndCancel::test_cancel_folder_creation_discards_folder — AssertionError: Unexpected console errors during cancelled folder creation: ['Failed to load resource: the server responded with a status of 500 (Internal Server Error)']. Steps 1-4 passed (editor opened, name typed, cancel clicked, no folder created); failed on the console-cleanliness assertion after cancel —… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2120",
+          "ELITEA-2134"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2118",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "browser_evaluate-injected fetch() to the app's own same-origin /api/v2/... endpoint fails with 'TypeError: Failed to fetch' from the MCP evaluate context (confirmed for both GET and DELETE) — not usable as an ad-hoc exploration-session cleanup shortcut. Real pytest tests are unaffected (page.request / Playwright's APIRequestContext is a different, working mechanism, e.g. ChatPage.delete_folder_via… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "One exploration-only folder ('My Sprint Folder', created live via Playwright MCP while confirming ELITEA-2119's flow before writing the AFS/test) was left undeleted in the shared DEV project — the evaluate-fetch cleanup shortcut above failed and the UI delete flow was not attempted mid-exploration. Acceptable given the project's already-extensive pre-existing folder pollution documented in test-sp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2118 decision: rather than writing a whole fresh duplicate test, the appended test isolates ONLY the one genuinely uncovered assertion (checkmark active state at creation time) and marks every other Coverage Map row 'already-covered' by the merged ELITEA-2132 test — avoids re-duplicating an elaborate existing test (baseline-folder seeding, expand/collapse, empty-state checks) for a one-line… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "POM construction-site violation (blocking). `test_cancel_folder_creation_discards_folder` (ELITEA-2120) calls `chat.page.locator(chat.FOLDER_ITEM_PREFIX)` directly in the spec file three times — lines 220, 239, 254 of `automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py`. `.agents/testing.md` § Locator policy and `.claude/rules/page-objects.md` (Anti-Patterns + Sign-off ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py:220"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation confirmed sound on every other axis. ELITEA-2118's extend-existing disposition was verified line-by-line against the covering test (`test_folder_creation.py::test_create_folder_via_chats_header_icon`): its Step 4 genuinely only asserts icon `.is_visible()` (never `data-disabled`), and its Step 5 genuinely asserts `POST .../folder/prompt_lib/{id}` -> 201 with `name == DEFAULT_FOLDER_N… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking housekeeping: the implementer's daily log and `_surface.md` disclose leaving one exploration-only folder ('My Sprint Folder') undeleted in the shared DEV project 399, because `browser_evaluate`-injected `fetch()` to the same-origin API fails from the MCP context (new memory entry `mcp_evaluate_fetch_to_same_origin_api_fails.md` documents this correctly and notes real pytest tests are … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of round-1 miss: a twin method (ChatPage.get_folder_link_count()) already existed in the same file, ~100 lines above the code that needed fixing, but was not reused when the original test was written — the raw page.locator(...).count() calls at lines 220/254 could have used it from the start. Logged as a lesson in role memory: grep for an existing get_X_count()-shaped counterpart before… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "test_create_folder_with_custom_name (ELITEA-2119, untouched by this fix round) failed once in a standalone full-file run on an unrelated transient 500 surfaced via the console-error side-channel assertion. Re-ran solo and together with its sibling twice, both clean. Not a regression from this change — flagging in case the batch hardening gate sees it recur."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS drift (Important, new — not previously raised): test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md § Automation Hints still says 'Page object: automation/pages/chat_page.py — no changes needed, every method/constant both scenarios require already exists (click_create_folder_button(), set_folder_name(), is_folder_name_confirm_enabled(), get_folder_item(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep against the diff (automation/) yields exactly 1 hit: `items = self.page.locator(self.FOLDER_ITEM_PREFIX)` inside the new `ChatPage.get_folder_names_containing()` page-object method (chat_page.py:3199) — compliant: `FOLDER_ITEM_PREFIX` is a pre-existing UPPER_CASE class-level `[data-testid^=\"chat-folder-item-\"]` constant, and this is the same call-site pattern already used a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3186-3204"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity/substitution grep (`.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(`) against the full diff: 0 hits. No masking markers (skip/xfail/xit/test.fail/.only) anywhere in the diff."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (AFS docs not reflecting the new get_folder_names_containing page-object method) is resolved: both § Concrete Handles and § Automation Hints of the ELITEA-2119/2120 AFS now name the method with an accurate file:line citation, verified against the actual diff (chat_page.py:3186 matches exactly).",
+          "ref": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md"
+        },
+        {
+          "kind": "note",
+          "note": "Both AFS Coverage Maps triangulate cleanly against their case snapshots and the implementation: ELITEA-2118's extend-existing correctly targets the merged test_folder_creation.py (ELITEA-2132) covering test with an accurate, narrow gap (checkmark data-disabled state, never asserted by the covering test — only its visibility). ELITEA-2119/2120's family AFS asserts every case step at the step it bel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Analyst's own daily-memory note discloses one stray exploration-only folder ('My Sprint Folder') left undeleted in the shared DEV project from live exploration (not from the actual pytest test runs, which clean up via delete_folder_via_menu/API fallback) — transparently documented in _surface.md and memory rather than silently dropped; not a masking issue, just noted for visibility.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_chat-folder-creation-checkmark-active-state_ELITEA-2118.md",
+      "branch": "tests/2118-2119-2120-chat-folder-creation-inline-edit",
+      "pr": 1529
+    },
+    {
+      "id": "ELITEA-2119",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "browser_evaluate-injected fetch() to the app's own same-origin /api/v2/... endpoint fails with 'TypeError: Failed to fetch' from the MCP evaluate context (confirmed for both GET and DELETE) — not usable as an ad-hoc exploration-session cleanup shortcut. Real pytest tests are unaffected (page.request / Playwright's APIRequestContext is a different, working mechanism, e.g. ChatPage.delete_folder_via… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "One exploration-only folder ('My Sprint Folder', created live via Playwright MCP while confirming ELITEA-2119's flow before writing the AFS/test) was left undeleted in the shared DEV project — the evaluate-fetch cleanup shortcut above failed and the UI delete flow was not attempted mid-exploration. Acceptable given the project's already-extensive pre-existing folder pollution documented in test-sp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2118 decision: rather than writing a whole fresh duplicate test, the appended test isolates ONLY the one genuinely uncovered assertion (checkmark active state at creation time) and marks every other Coverage Map row 'already-covered' by the merged ELITEA-2132 test — avoids re-duplicating an elaborate existing test (baseline-folder seeding, expand/collapse, empty-state checks) for a one-line… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "POM construction-site violation (blocking). `test_cancel_folder_creation_discards_folder` (ELITEA-2120) calls `chat.page.locator(chat.FOLDER_ITEM_PREFIX)` directly in the spec file three times — lines 220, 239, 254 of `automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py`. `.agents/testing.md` § Locator policy and `.claude/rules/page-objects.md` (Anti-Patterns + Sign-off ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py:220"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation confirmed sound on every other axis. ELITEA-2118's extend-existing disposition was verified line-by-line against the covering test (`test_folder_creation.py::test_create_folder_via_chats_header_icon`): its Step 4 genuinely only asserts icon `.is_visible()` (never `data-disabled`), and its Step 5 genuinely asserts `POST .../folder/prompt_lib/{id}` -> 201 with `name == DEFAULT_FOLDER_N… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking housekeeping: the implementer's daily log and `_surface.md` disclose leaving one exploration-only folder ('My Sprint Folder') undeleted in the shared DEV project 399, because `browser_evaluate`-injected `fetch()` to the same-origin API fails from the MCP context (new memory entry `mcp_evaluate_fetch_to_same_origin_api_fails.md` documents this correctly and notes real pytest tests are … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of round-1 miss: a twin method (ChatPage.get_folder_link_count()) already existed in the same file, ~100 lines above the code that needed fixing, but was not reused when the original test was written — the raw page.locator(...).count() calls at lines 220/254 could have used it from the start. Logged as a lesson in role memory: grep for an existing get_X_count()-shaped counterpart before… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "test_create_folder_with_custom_name (ELITEA-2119, untouched by this fix round) failed once in a standalone full-file run on an unrelated transient 500 surfaced via the console-error side-channel assertion. Re-ran solo and together with its sibling twice, both clean. Not a regression from this change — flagging in case the batch hardening gate sees it recur."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS drift (Important, new — not previously raised): test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md § Automation Hints still says 'Page object: automation/pages/chat_page.py — no changes needed, every method/constant both scenarios require already exists (click_create_folder_button(), set_folder_name(), is_folder_name_confirm_enabled(), get_folder_item(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep against the diff (automation/) yields exactly 1 hit: `items = self.page.locator(self.FOLDER_ITEM_PREFIX)` inside the new `ChatPage.get_folder_names_containing()` page-object method (chat_page.py:3199) — compliant: `FOLDER_ITEM_PREFIX` is a pre-existing UPPER_CASE class-level `[data-testid^=\"chat-folder-item-\"]` constant, and this is the same call-site pattern already used a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3186-3204"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity/substitution grep (`.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(`) against the full diff: 0 hits. No masking markers (skip/xfail/xit/test.fail/.only) anywhere in the diff."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (AFS docs not reflecting the new get_folder_names_containing page-object method) is resolved: both § Concrete Handles and § Automation Hints of the ELITEA-2119/2120 AFS now name the method with an accurate file:line citation, verified against the actual diff (chat_page.py:3186 matches exactly).",
+          "ref": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md"
+        },
+        {
+          "kind": "note",
+          "note": "Both AFS Coverage Maps triangulate cleanly against their case snapshots and the implementation: ELITEA-2118's extend-existing correctly targets the merged test_folder_creation.py (ELITEA-2132) covering test with an accurate, narrow gap (checkmark data-disabled state, never asserted by the covering test — only its visibility). ELITEA-2119/2120's family AFS asserts every case step at the step it bel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Analyst's own daily-memory note discloses one stray exploration-only folder ('My Sprint Folder') left undeleted in the shared DEV project from live exploration (not from the actual pytest test runs, which clean up via delete_folder_via_menu/API fallback) — transparently documented in _surface.md and memory rather than silently dropped; not a masking issue, just noted for visibility.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md",
+      "branch": "tests/2118-2119-2120-chat-folder-creation-inline-edit",
+      "pr": 1529
+    },
+    {
+      "id": "ELITEA-2120",
+      "outcome": "blocked",
+      "note": "gate red: TestChatFolderCreationCustomNameAndCancel::test_cancel_folder_creation_discards_folder — AssertionError: Unexpected console errors during cancelled folder creation: ['Failed to load resource: the serv",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "browser_evaluate-injected fetch() to the app's own same-origin /api/v2/... endpoint fails with 'TypeError: Failed to fetch' from the MCP evaluate context (confirmed for both GET and DELETE) — not usable as an ad-hoc exploration-session cleanup shortcut. Real pytest tests are unaffected (page.request / Playwright's APIRequestContext is a different, working mechanism, e.g. ChatPage.delete_folder_via… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "One exploration-only folder ('My Sprint Folder', created live via Playwright MCP while confirming ELITEA-2119's flow before writing the AFS/test) was left undeleted in the shared DEV project — the evaluate-fetch cleanup shortcut above failed and the UI delete flow was not attempted mid-exploration. Acceptable given the project's already-extensive pre-existing folder pollution documented in test-sp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2118 decision: rather than writing a whole fresh duplicate test, the appended test isolates ONLY the one genuinely uncovered assertion (checkmark active state at creation time) and marks every other Coverage Map row 'already-covered' by the merged ELITEA-2132 test — avoids re-duplicating an elaborate existing test (baseline-folder seeding, expand/collapse, empty-state checks) for a one-line… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "POM construction-site violation (blocking). `test_cancel_folder_creation_discards_folder` (ELITEA-2120) calls `chat.page.locator(chat.FOLDER_ITEM_PREFIX)` directly in the spec file three times — lines 220, 239, 254 of `automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py`. `.agents/testing.md` § Locator policy and `.claude/rules/page-objects.md` (Anti-Patterns + Sign-off ch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py:220"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation confirmed sound on every other axis. ELITEA-2118's extend-existing disposition was verified line-by-line against the covering test (`test_folder_creation.py::test_create_folder_via_chats_header_icon`): its Step 4 genuinely only asserts icon `.is_visible()` (never `data-disabled`), and its Step 5 genuinely asserts `POST .../folder/prompt_lib/{id}` -> 201 with `name == DEFAULT_FOLDER_N… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking housekeeping: the implementer's daily log and `_surface.md` disclose leaving one exploration-only folder ('My Sprint Folder') undeleted in the shared DEV project 399, because `browser_evaluate`-injected `fetch()` to the same-origin API fails from the MCP context (new memory entry `mcp_evaluate_fetch_to_same_origin_api_fails.md` documents this correctly and notes real pytest tests are … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of round-1 miss: a twin method (ChatPage.get_folder_link_count()) already existed in the same file, ~100 lines above the code that needed fixing, but was not reused when the original test was written — the raw page.locator(...).count() calls at lines 220/254 could have used it from the start. Logged as a lesson in role memory: grep for an existing get_X_count()-shaped counterpart before… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "test_create_folder_with_custom_name (ELITEA-2119, untouched by this fix round) failed once in a standalone full-file run on an unrelated transient 500 surfaced via the console-error side-channel assertion. Re-ran solo and together with its sibling twice, both clean. Not a regression from this change — flagging in case the batch hardening gate sees it recur."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS drift (Important, new — not previously raised): test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md § Automation Hints still says 'Page object: automation/pages/chat_page.py — no changes needed, every method/constant both scenarios require already exists (click_create_folder_button(), set_folder_name(), is_folder_name_confirm_enabled(), get_folder_item(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep against the diff (automation/) yields exactly 1 hit: `items = self.page.locator(self.FOLDER_ITEM_PREFIX)` inside the new `ChatPage.get_folder_names_containing()` page-object method (chat_page.py:3199) — compliant: `FOLDER_ITEM_PREFIX` is a pre-existing UPPER_CASE class-level `[data-testid^=\"chat-folder-item-\"]` constant, and this is the same call-site pattern already used a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:3186-3204"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity/substitution grep (`.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(`) against the full diff: 0 hits. No masking markers (skip/xfail/xit/test.fail/.only) anywhere in the diff."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (AFS docs not reflecting the new get_folder_names_containing page-object method) is resolved: both § Concrete Handles and § Automation Hints of the ELITEA-2119/2120 AFS now name the method with an accurate file:line citation, verified against the actual diff (chat_page.py:3186 matches exactly).",
+          "ref": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md"
+        },
+        {
+          "kind": "note",
+          "note": "Both AFS Coverage Maps triangulate cleanly against their case snapshots and the implementation: ELITEA-2118's extend-existing correctly targets the merged test_folder_creation.py (ELITEA-2132) covering test with an accurate, narrow gap (checkmark data-disabled state, never asserted by the covering test — only its visibility). ELITEA-2119/2120's family AFS asserts every case step at the step it bel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Analyst's own daily-memory note discloses one stray exploration-only folder ('My Sprint Folder') left undeleted in the shared DEV project from live exploration (not from the actual pytest test runs, which clean up via delete_folder_via_menu/API fallback) — transparently documented in _surface.md and memory rather than silently dropped; not a masking issue, just noted for visibility.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_chat-folder-creation-custom-name-and-cancel_ELITEA-2119_2120.md",
+      "branch": "tests/2118-2119-2120-chat-folder-creation-inline-edit",
+      "pr": 1529
+    },
+    {
+      "id": "ELITEA-2133",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "chat-interface TMS module carries near-duplicate case pairs across ID ranges: ELITEA-2133/2134 turned out to be the same two flows as the just-merged ELITEA-2119/2120 (only test-data literals differ). Caught by reading test-specs/chat-interface/_surface.md before driving the live app. Durable pattern recorded in .agents/memory/test-automation-engineer/chat_module_carries_near_duplicate_case_id_pai… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both extend-existing targets (test_chat_folder_creation_custom_name_and_cancel.py) are merged onto this batch's own trunk (tests/batch-chat-remaining-w05, commit ec4c9e29) but NOT yet on origin/automation/base. Per the merged-target rule this is legitimate for extend-existing (not already-covered, which requires a base-merged target) — flagging so the orchestrator's merge-order tracking accounts f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1529"
+        },
+        {
+          "kind": "note",
+          "note": "Verified reviewer mechanical checks (fresh clone refs, all commands+output below). Substitution grep: `git diff origin/tests/batch-chat-remaining-w05...origin/tests/2133-2134-folder-create-expand-and-cancel-tag -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` -> 0 hits. Locator grep: same diff piped to `grep -nE '^[+].*(get_by_role|get_by_label|g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2134's routing — `extend-existing` with a tag-only change (zero new assertions, second `@allure.issue` decorator only) because the covering spec is a full behavioural duplicate but is merged only onto the batch trunk (not yet `origin/automation/base`, so `already-covered`'s base-merged-target requirement isn't met) — is a genuine canon gap: `extend-existing`'s definition in spec-format.md a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "role-overrides.md § Declared-improvisation protocol"
+        },
+        {
+          "kind": "note",
+          "note": "Both cases' own literal test data (\"My Test Folder\" for ELITEA-2133, \"Cancelled Folder\" for ELITEA-2134) was exercised live only during analysis; the merged automated test keeps the original constants (`CUSTOM_FOLDER_NAME = \"My Sprint Folder\"`, `CANCEL_FOLDER_NAME = \"Temp Folder\"`) unchanged, so those exact case-literal strings never run in CI going forward. This is consistent with Rule-6 behaviou… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New memory entry `.agents/memory/test-automation-engineer/chat_module_carries_near_duplicate_case_id_pairs.md` was written but no `MEMORY.md` index line was added for it, even though it arguably passes the memory skill's preventive test (\"check `_surface.md` before classifying a fresh chat-interface case as ready-for-automation\" would change a future analyst's first move). Non-blocking — the entry… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_chat-folder-creation-custom-name-expand-empty-state_ELITEA-2133.md",
+      "branch": "tests/2133-2134-folder-create-expand-and-cancel-tag",
+      "pr": 1530
+    },
+    {
+      "id": "ELITEA-2134",
+      "outcome": "blocked",
+      "note": "gate red: TestChatFolderCreationCustomNameAndCancel::test_cancel_folder_creation_discards_folder — AssertionError: Unexpected console errors during cancelled folder creation: ['Failed to load resource: the serv",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "chat-interface TMS module carries near-duplicate case pairs across ID ranges: ELITEA-2133/2134 turned out to be the same two flows as the just-merged ELITEA-2119/2120 (only test-data literals differ). Caught by reading test-specs/chat-interface/_surface.md before driving the live app. Durable pattern recorded in .agents/memory/test-automation-engineer/chat_module_carries_near_duplicate_case_id_pai… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both extend-existing targets (test_chat_folder_creation_custom_name_and_cancel.py) are merged onto this batch's own trunk (tests/batch-chat-remaining-w05, commit ec4c9e29) but NOT yet on origin/automation/base. Per the merged-target rule this is legitimate for extend-existing (not already-covered, which requires a base-merged target) — flagging so the orchestrator's merge-order tracking accounts f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1529"
+        },
+        {
+          "kind": "note",
+          "note": "Verified reviewer mechanical checks (fresh clone refs, all commands+output below). Substitution grep: `git diff origin/tests/batch-chat-remaining-w05...origin/tests/2133-2134-folder-create-expand-and-cancel-tag -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` -> 0 hits. Locator grep: same diff piped to `grep -nE '^[+].*(get_by_role|get_by_label|g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2134's routing — `extend-existing` with a tag-only change (zero new assertions, second `@allure.issue` decorator only) because the covering spec is a full behavioural duplicate but is merged only onto the batch trunk (not yet `origin/automation/base`, so `already-covered`'s base-merged-target requirement isn't met) — is a genuine canon gap: `extend-existing`'s definition in spec-format.md a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "role-overrides.md § Declared-improvisation protocol"
+        },
+        {
+          "kind": "note",
+          "note": "Both cases' own literal test data (\"My Test Folder\" for ELITEA-2133, \"Cancelled Folder\" for ELITEA-2134) was exercised live only during analysis; the merged automated test keeps the original constants (`CUSTOM_FOLDER_NAME = \"My Sprint Folder\"`, `CANCEL_FOLDER_NAME = \"Temp Folder\"`) unchanged, so those exact case-literal strings never run in CI going forward. This is consistent with Rule-6 behaviou… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New memory entry `.agents/memory/test-automation-engineer/chat_module_carries_near_duplicate_case_id_pairs.md` was written but no `MEMORY.md` index line was added for it, even though it arguably passes the memory skill's preventive test (\"check `_surface.md` before classifying a fresh chat-interface case as ready-for-automation\" would change a future analyst's first move). Non-blocking — the entry… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_chat-folder-creation-cancel-discard-tag-only_ELITEA-2134.md",
+      "branch": "tests/2133-2134-folder-create-expand-and-cancel-tag",
+      "pr": 1530
+    },
+    {
+      "id": "ELITEA-2457",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "TMS case priority metadata says 'high' but the case is a near-total duplicate of an already-merged p2 flow (ELITEA-2119/2133); kept the covering test's existing @pytest.mark.p2 rather than forking a priority marker mid-test. Flagging for awareness, not blocking -- no case-text drift, just a priority-vs-coverage-reality mismatch worth the lead's eyes if it recurs."
+        },
+        {
+          "kind": "note",
+          "note": "Reinforces (now a 3rd confirmed instance, ID range 2118-2134 -> 2457) that this chat-interface TMS module carries near-duplicate case-ID clusters that are NOT confined to adjacent ID ranges -- durable memory entry chat_module_carries_near_duplicate_case_id_pairs.md updated accordingly so future dispatches on this module check _surface.md by flow description, not ID proximity."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation held across all three artifacts for ELITEA-2457 (case snapshot -> AFS -> diff, base=tests/batch-chat-remaining-w05). Every Coverage-Map row disposed 'already-covered' was verified against the covering test's ACTUAL assertions, not mere existence: test_create_folder_with_custom_name (automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py) contains, at the claimed… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py:100-203"
+        },
+        {
+          "kind": "note",
+          "note": "Diff is genuinely additive-only: 3 files (2 memory, 1 test file), 0 deletions, PR base is the batch trunk tests/batch-chat-remaining-w05 (confirmed via gh pr view). The AFS itself already lives on the trunk (commit 22856039, landed by the analyst phase before this branch was cut), so it correctly does not appear in this PR's diff. Change is exactly one stacked @allure.issue decorator + docstring u… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py:92-96"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run against the full diff (git diff origin/tests/batch-chat-remaining-w05...origin/tests/2457-chat-folder-custom-name-tag-only -- automation/): substitution grep (mock_/page.route/route.fulfill/monkeypatch/.evaluate) = 0 hits; non-testid-handle grep (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.loc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case's own literal ('My Test Folder') differs from the tagged test's hardcoded constant ('My Sprint Folder'). Not a defect: TMS case step 3 text reads 'type a custom name (e.g. \"My Test Folder\")' -- an example, not a required exact string -- so the tag-only extension's mechanism-equivalence argument holds. Same interpretation already used for sibling ELITEA-2133/2134 tag-only extensions on this sa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_chat-folder-creation-custom-name-and-expand-tag-only_ELITEA-2457.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Test Data section uses a bare '### literal' subsection instead of spec-format's three-bucket shape (reuse-existing / generate-per-test / generate-shared-with-cleanup). Not blocking here -- it matches the identical convention already established by sibling tag-only AFS files ELITEA-2133 and ELITEA-2134 on this same batch trunk (grepped, same heading in both), so it is a batch-established patter… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_chat-folder-creation-custom-name-and-expand-tag-only_ELITEA-2457.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_chat-folder-creation-custom-name-and-expand-tag-only_ELITEA-2457.md",
+      "branch": "tests/2457-chat-folder-custom-name-tag-only",
+      "pr": 1531
+    }
+  ],
+  "totals": {
+    "blocked": 6
+  },
+  "quality_flags": [
+    "extend-rate 4/6 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

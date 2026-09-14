@@ -1,0 +1,141 @@
+{
+  "slug": "credentials-w01",
+  "runId": "wf_8a9b5968-939",
+  "workItemRef": "#1394",
+  "base": "origin/automation/base",
+  "trunk": "tests/batch-credentials-w01",
+  "batchPr": 1704,
+  "mergedSha": "a099bc803",
+  "note": "The workflow run was killed after the last unit merged and after 2 of its internal gate runs (both green); it never wrote this report. Report reconstructed by the lead from the run journal + git, and the gate re-run independently by the lead.",
+  "cases": [
+    {
+      "id": "ELITEA-1964",
+      "title": "Delete Credential",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_delete.TestCredentialDelete.test_delete_credential_via_three_dot_menu",
+      "unitPr": 1667
+    },
+    {
+      "id": "ELITEA-1966",
+      "title": "Filter Credentials by Type",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_filter_by_type.TestCredentialFilterByType.test_filter_credentials_by_type",
+      "unitPr": 1668
+    },
+    {
+      "id": "ELITEA-1973",
+      "title": "Credential Dashboard \u2014 View Toggle (Table/Card)",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_view_toggle.TestCredentialViewToggle.test_credential_dashboard_view_toggle_table_card",
+      "unitPr": 1668
+    },
+    {
+      "id": "ELITEA-1967",
+      "title": "Credential \u2014 Type-Specific Form Fields",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_type_specific_form_fields.TestCredentialTypeSpecificFormFields.test_type_specific_form_fields",
+      "unitPr": 1669
+    },
+    {
+      "id": "ELITEA-1968",
+      "title": "Credential \u2014 Secret/Password Storage Toggle",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_secret_password_toggle.TestCredentialSecretPasswordToggle.test_secret_password_storage_toggle",
+      "unitPr": 1670
+    },
+    {
+      "id": "ELITEA-1969",
+      "title": "Credential \u2014 Create New Project Secret from Secret Toggle",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_secret_password_toggle.TestCredentialSecretPasswordToggle.test_create_new_project_secret_from_secret_toggle",
+      "unitPr": 1670
+    },
+    {
+      "id": "ELITEA-1970",
+      "title": "Credential \u2014 Test Connection",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_test_connection.test_credential_test_connection",
+      "unitPr": 1674
+    },
+    {
+      "id": "ELITEA-1977",
+      "title": "Credential \u2014 Create Project Credential from Toolkit Flow",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_create_project_from_toolkit_dropdown.TestCredentialCreateProjectFromToolkitDropdown.test_create_project_credential_from_toolkit_dropdown",
+      "unitPr": 1675
+    },
+    {
+      "id": "ELITEA-1980",
+      "title": "Credential \u2014 Error States",
+      "outcome": "automated",
+      "automation_test_id": "tests.ui.toolkits.test_credential_error_states.test_credential_error_states",
+      "unitPr": 1676
+    }
+  ],
+  "gate": {
+    "verdict": "green",
+    "n": 3,
+    "runs": [
+      {
+        "n": 1,
+        "seconds": 231.05,
+        "passed": 17
+      },
+      {
+        "n": 2,
+        "seconds": 228.69,
+        "passed": 17
+      },
+      {
+        "n": 3,
+        "seconds": 228.28,
+        "passed": 17
+      }
+    ],
+    "runBy": "lead (independent)",
+    "specs": 9,
+    "blastRadius": {
+      "specs": 11,
+      "result": "3 failed, 10 passed",
+      "verdict": "no regression",
+      "control": "identical 3 failures reproduced on origin/automation/base @ b1be8d208 with no batch code",
+      "failures": [
+        {
+          "spec": "test_credential_search_by_name",
+          "class": "sanctioned-RED",
+          "defect": 551
+        },
+        {
+          "spec": "test_credential_duplicate_mismatch_validation",
+          "class": "sanctioned-RED",
+          "defect": 1004
+        },
+        {
+          "spec": "test_credential_usage_in_toolkit_flows",
+          "class": "pre-existing uncontrolled red",
+          "filed": 1703
+        }
+      ]
+    }
+  },
+  "findings": {
+    "productDefects": [
+      1666
+    ],
+    "suiteHealth": [
+      1703
+    ],
+    "testidCommits": [
+      "5892ae48 EL-1967",
+      "84446b15 EL-1973",
+      "29214bf1 EL-1968",
+      "58955184 EL-1970",
+      "54ce148e EL-1980"
+    ],
+    "declarationsPendingQuestionCards": true
+  },
+  "next": [
+    "file question cards for the declared canon gaps",
+    "wave-02: the 5 OAuth cases (1981-1985)"
+  ]
+}

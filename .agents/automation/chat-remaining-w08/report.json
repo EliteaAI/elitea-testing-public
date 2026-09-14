@@ -1,0 +1,321 @@
+{
+  "batch": "chat-remaining-w08",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w08",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      141.74,
+      139.06,
+      137.96
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2150",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Live-confirmed via browser_evaluate DOM-chain inspection: a PINNED conversation's row carries the same aria-disabled=\"true\" draggable-wrapper ancestor already documented for pinned FOLDERS (isDragDisabled={isPinned}) — a plain (non-forced) click on the scoped 3-dot menu button times out (\"element is not enabled\"). Not a defect: ChatPage.open_conversation_context_menu() already calls menu_button.cl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2150"
+        },
+        {
+          "kind": "note",
+          "note": "Chose extend-existing (new sibling test class/method in test_pin_conversation.py) over a fresh file, following the in-suite precedent set by ELITEA-2141 (new class+method added to test_move_conversation_to_folder.py) — pin/unpin share the exact surface_key (chat-conversation-context-menu), page object, fixtures, and console filter, and the covering ELITEA-2149 test is already merged to origin/auto… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2150"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated TMS case ELITEA-2150 (.agents/automation/chat-remaining-w08/cases/ELITEA-2150.md) ↔ AFS (test-specs/chat-interface/lextend_unpin-a-pinned-conversation_ELITEA-2150.md) ↔ PR #1547 diff (automation/tests/ui/chat/test_pin_conversation.py, +168/-6). All 3 original case steps + preconditions + Expected-Final-State + Pass/Fail-Fail-condition are represented in the AFS Coverage Map with real,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Extend-existing merged-target rule satisfied — verified via `git log origin/automation/base | grep e06c3bd6` that the ELITEA-2149 test (TestPinConversationViaPinOnTop) this PR is additive alongside is actually merged to automation/base, not a same-batch/in-flight target."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run against full diff (git diff origin/tests/batch-chat-remaining-w08...origin/tests/2150-unpin-a-pinned-conversation -- automation/): substitution grep `^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()` → 0 hits; raw-handle grep `^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.l… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on the extension file (`git diff origin/automation/base...HEAD -- test_pin_conversation.py | grep '^-[^-]'`) shows only module-docstring line replacements (updated to describe both ELITEA-2149 and ELITEA-2150) — zero code deletions, confirming the AFS's own additive-only claim."
+        },
+        {
+          "kind": "note",
+          "note": "`_surface.md` digest correctly updated (chat-interface/_surface.md around line 1290) with the aria-disabled draggable-wrapper ancestor gotcha for a PINNED conversation's own context menu, matching what the test docstring cites — cross-checked, consistent, not just documentation-only (the existing force=True click already covers it, correctly not re-implemented)."
+        },
+        {
+          "kind": "note",
+          "note": "No transit/terminal-substitution fidelity issue: the AFS's 'pin conv_target via UI in Setup, not a case step' precondition-reach is real UI interaction (not mocked/injected), reusing the already-merged, already-proven ELITEA-2149 pin flow — correctly transit, correctly declared in both AFS and test docstring."
+        },
+        {
+          "kind": "note",
+          "note": "No defect masking (no pytest.skip/test.fail/xfail/weakened asserts in the diff); cleanup of both conv_target and conv_sibling handled in a try/finally per convention; markers (`@pytest.mark.p2` only, no `regression`/`chat` marker) match the merged sibling test and the whole tests/ui/chat/ directory (0/49 files use those markers) — a pre-existing suite-wide gap, not a deviation introduced by this P… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_unpin-a-pinned-conversation_ELITEA-2150.md",
+      "branch": "tests/2150-unpin-a-pinned-conversation",
+      "pr": 1547,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          141.74,
+          139.06,
+          137.96
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2151",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Closed a previously-flagged-but-deferred coverage gap: ELITEA-2149's AFS (test-specs/chat-interface/l3_pin-conversation-via-pin-on-top_ELITEA-2149.md § Automation Hints) explicitly named this exact follow-up (seed a pinned folder to complete a 4-tier live panel-order check) and left it undone as out-of-scope for that case. ELITEA-2151 was precisely that follow-up; digest (_surface.md § Pin convers… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2149 AFS"
+        },
+        {
+          "kind": "note",
+          "note": "Module-level docstring at the top of automation/tests/ui/chat/test_pin_conversation.py still reads 'UI Tests for ELITEA-2149 / ELITEA-2150' — not updated to mention the new TestChatPanelOrderingPinnedFoldersAndConversations class (ELITEA-2151). Cosmetic only; the new class's own docstring is thorough.",
+          "ref": "automation/tests/ui/chat/test_pin_conversation.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (locator-policy + fidelity/substitution) both ran against the full diff origin/tests/batch-chat-remaining-w08...origin/tests/ELITEA-2151-pinned-panel-ordering -- automation/: 0 hits each. Pasted verbatim in the review reply."
+        },
+        {
+          "kind": "note",
+          "note": "extend-existing target validated against the merged-target rule: covering spec (ELITEA-2149/2150 in test_pin_conversation.py) is already merged onto this batch's trunk (commit 9f546ed2), not an off-trunk sibling. Diff is purely additive (224 insertions, 0 deletions) — zero modification to the two existing test classes.",
+          "ref": "automation/tests/ui/chat/test_pin_conversation.py:402"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_pinned-conversation-panel-ordering_ELITEA-2151.md",
+      "branch": "tests/ELITEA-2151-pinned-panel-ordering",
+      "pr": 1548,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          141.74,
+          139.06,
+          137.96
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2152",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Chat folder pin/unpin remounts the row (moves between pinned/unpinned list partitions) and resets local expand state (data-expanded) to false — true for BOTH pin and unpin. A synchronous post-click MCP evaluate() read can see the stale pre-remount value and falsely conclude persistence; only a polling/web-first assertion (or a genuinely time-separated re-check) reveals the settled state. Recorded … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1549"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.expand_folder() gained an additive force:bool=False parameter to support re-expanding a PINNED folder (same disabled-ancestor gotcha already documented for the dot-menu button in ELITEA-2130's AFS, but applying to the whole row for a plain click). Backward-compatible for all existing callers.",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "A folder created MORE RECENTLY renders ABOVE an older sibling folder under the default sort_by=updated_at&sort_order=desc folder-list query — useful for any future case needing a deterministic before/after Y-position baseline between two fresh folders without depending on ambient DEV-project data."
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): automation/tests/ui/chat/test_pin_folder.py:174 — the baseline assertion's failure message reads \"Baseline: folder_sibling (created first) should render ABOVE folder_target\", but per the AFS's own corrected creation-order rule (and the Setup block's own code, lines ~121-124: folder_target created FIRST, folder_sibling created SECOND/AFTER), folder_sibling is actually the more-r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py:174"
+        },
+        {
+          "kind": "note",
+          "note": "Verified (not a gap): the AFS's testid-provenance table cites `chat-folder-menu-pin-menuitem` as pre-existing on `automation/testids` (EliteaUI@be489cee). A literal-string grep for that testid returns 0 hits on BOTH origin/main and origin/automation/testids in EliteaUI. This is not drift — DotMenu.jsx composes the final testid at render time (`data-testid={testId ? \\`${testId}-menuitem\\` … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified (not a gap): cross-checked the AFS's \"why ready-for-automation, not extend-existing\" claim by grepping the two named prior tests. test_chat_folder_rename_checkmark_validation.py (ELITEA-2130) asserts data-pinned=\"true\" once as setup for a rename test and never touches bounding_box/is_conversation_in_folder for the folder. test_pin_conversation.py's ELITEA-2151 ordering test captures folde… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_pin-a-folder-via-pin-on-top-option_ELITEA-2152.md",
+      "branch": "tests/ELITEA-2152-2153-pin-unpin-folder",
+      "pr": 1549,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          141.74,
+          139.06,
+          137.96
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2153",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Chat folder pin/unpin remounts the row (moves between pinned/unpinned list partitions) and resets local expand state (data-expanded) to false — true for BOTH pin and unpin. A synchronous post-click MCP evaluate() read can see the stale pre-remount value and falsely conclude persistence; only a polling/web-first assertion (or a genuinely time-separated re-check) reveals the settled state. Recorded … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1549"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.expand_folder() gained an additive force:bool=False parameter to support re-expanding a PINNED folder (same disabled-ancestor gotcha already documented for the dot-menu button in ELITEA-2130's AFS, but applying to the whole row for a plain click). Backward-compatible for all existing callers.",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "A folder created MORE RECENTLY renders ABOVE an older sibling folder under the default sort_by=updated_at&sort_order=desc folder-list query — useful for any future case needing a deterministic before/after Y-position baseline between two fresh folders without depending on ambient DEV-project data."
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): automation/tests/ui/chat/test_pin_folder.py:174 — the baseline assertion's failure message reads \"Baseline: folder_sibling (created first) should render ABOVE folder_target\", but per the AFS's own corrected creation-order rule (and the Setup block's own code, lines ~121-124: folder_target created FIRST, folder_sibling created SECOND/AFTER), folder_sibling is actually the more-r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py:174"
+        },
+        {
+          "kind": "note",
+          "note": "Verified (not a gap): the AFS's testid-provenance table cites `chat-folder-menu-pin-menuitem` as pre-existing on `automation/testids` (EliteaUI@be489cee). A literal-string grep for that testid returns 0 hits on BOTH origin/main and origin/automation/testids in EliteaUI. This is not drift — DotMenu.jsx composes the final testid at render time (`data-testid={testId ? \\`${testId}-menuitem\\` … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified (not a gap): cross-checked the AFS's \"why ready-for-automation, not extend-existing\" claim by grepping the two named prior tests. test_chat_folder_rename_checkmark_validation.py (ELITEA-2130) asserts data-pinned=\"true\" once as setup for a rename test and never touches bounding_box/is_conversation_in_folder for the folder. test_pin_conversation.py's ELITEA-2151 ordering test captures folde… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_unpin-a-pinned-folder_ELITEA-2153.md",
+      "branch": "tests/ELITEA-2152-2153-pin-unpin-folder",
+      "pr": 1549,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          141.74,
+          139.06,
+          137.96
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2154",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2154's case text overlaps ELITEA-2152's already-built pin-folder test almost entirely, but with a plural qualifier ('multiple conversations' / 'no conversations were lost') the existing single-conversation test cannot prove. Classified extend-existing rather than duplicate/skip. Durable lesson recorded: .agents/memory/test-automation-engineer/plural_wording_in_case_text_signals_real_extend_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2154"
+        },
+        {
+          "kind": "note",
+          "note": "Zero product defects found — pinning a folder with multiple conversations preserves all of them (by id and exact name text) across the pin+re-expand round-trip, consistent with ELITEA-2152/2153's single-conversation finding.",
+          "ref": "ELITEA-2154"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory fidelity/substitution grep — 0 hits: `git diff tests/batch-chat-remaining-w08...tests/ELITEA-2154-pinned-folder-retains-conversations -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → (no matches). All observables (folder pin PATCH response, data-pinned/data-expanded attributes, conversation text_content) are read off the real system t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory locator-policy grep — 2 hits, both COMPLIANT: `git diff ... -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → two hits of `folder_item.locator(chat.CONVERSATION_ITEM.format(conv_id))`. One-hop check: `CONVERSATION_ITEM = '[data-testid=\"chat-conversation-item-{… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case ↔ AFS ↔ diff for ELITEA-2154 end to end. All 4 case steps + preconditions + pass/fail criteria map to Coverage-Map rows with real per-step assertions in the diff (baseline id+name check before pin, data-pinned flip + 200 PATCH response after pin, force-expand, id+name re-check after pin, console side-channel). The extend-existing rationale (ELITEA-2152 seeds only 1 conversation; … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_pinned-folder-retains-all-conversations_ELITEA-2154.md",
+      "branch": "tests/ELITEA-2154-pinned-folder-retains-conversations",
+      "pr": 1550,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          141.74,
+          139.06,
+          137.96
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2155",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "New environmental-noise flavor observed on this surface: a full-file run of test_pin_folder.py hit one console-error failure on the PRE-EXISTING (untouched) ELITEA-2152 test — 'WebSocket connection ... failed: Connection closed before receiving a handshake response' (socket.io handshake, not the already-documented console-500 pattern in .agents/testing.md § Unconfirmed). Re-ran standalone immediat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py::TestPinFolderViaPinOnTop::test_pin_folder_via_pin_on_top"
+        },
+        {
+          "kind": "note",
+          "note": "Both AFS classified extend-existing rather than a family AFS: ELITEA-2155 (pin) and ELITEA-2156 (unpin) are two distinct flows sharing one mechanism/file, mirroring how ELITEA-2152/2153 were themselves two separate AFS targeting the same test file rather than one parameterized spec — consistent with the batch's own precedent for this surface."
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: PR #1551's Run Report 'Self-check greps' section claims the non-testid-handle mechanical grep returned 0 hits; re-running the identical command against the real diff (origin/tests/batch-chat-remaining-w08...origin/tests/2155-2156-pin-unpin-empty-folder) returns 2 hits: page.locator(chat.FOLDER_MENU_PIN_ITEM) at lines 105 and 281. Both hits are COMPLIANT per the reviewer-contract one-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py:105,281"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean: both ELITEA-2155 and ELITEA-2156 case snapshots map 1:1 to their respective AFS Coverage Maps, and every AFS step (including the analyst's pre-pin/post-pin baseline Axis-2 additions) has a real assertion at that exact step in the diff. extend-existing targets (ELITEA-2152/2153) confirmed present on the PR's actual base branch tests/batch-chat-remaining-w08 at commit 63ffa308 (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_pin-empty-folder-retains-empty-state_ELITEA-2155.md",
+      "branch": "tests/2155-2156-pin-unpin-empty-folder",
+      "pr": 1551,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          141.74,
+          139.06,
+          137.96
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2156",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "New environmental-noise flavor observed on this surface: a full-file run of test_pin_folder.py hit one console-error failure on the PRE-EXISTING (untouched) ELITEA-2152 test — 'WebSocket connection ... failed: Connection closed before receiving a handshake response' (socket.io handshake, not the already-documented console-500 pattern in .agents/testing.md § Unconfirmed). Re-ran standalone immediat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py::TestPinFolderViaPinOnTop::test_pin_folder_via_pin_on_top"
+        },
+        {
+          "kind": "note",
+          "note": "Both AFS classified extend-existing rather than a family AFS: ELITEA-2155 (pin) and ELITEA-2156 (unpin) are two distinct flows sharing one mechanism/file, mirroring how ELITEA-2152/2153 were themselves two separate AFS targeting the same test file rather than one parameterized spec — consistent with the batch's own precedent for this surface."
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: PR #1551's Run Report 'Self-check greps' section claims the non-testid-handle mechanical grep returned 0 hits; re-running the identical command against the real diff (origin/tests/batch-chat-remaining-w08...origin/tests/2155-2156-pin-unpin-empty-folder) returns 2 hits: page.locator(chat.FOLDER_MENU_PIN_ITEM) at lines 105 and 281. Both hits are COMPLIANT per the reviewer-contract one-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py:105,281"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean: both ELITEA-2155 and ELITEA-2156 case snapshots map 1:1 to their respective AFS Coverage Maps, and every AFS step (including the analyst's pre-pin/post-pin baseline Axis-2 additions) has a real assertion at that exact step in the diff. extend-existing targets (ELITEA-2152/2153) confirmed present on the PR's actual base branch tests/batch-chat-remaining-w08 at commit 63ffa308 (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_unpin-empty-folder-retains-empty-state_ELITEA-2156.md",
+      "branch": "tests/2155-2156-pin-unpin-empty-folder",
+      "pr": 1551,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          141.74,
+          139.06,
+          137.96
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 7
+  },
+  "quality_flags": [
+    "extend-rate 5/7 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

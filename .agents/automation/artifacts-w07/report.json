@@ -1,0 +1,45 @@
+{
+  "batch": "artifacts-w07",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1392",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-1865",
+      "outcome": "blocked",
+      "note": "RE-ANALYSIS per the human ruling on #1695 (\"Panel is expected to be in place. Double check UI.\"). Verdict UNCHANGED but the evidence is upgraded from a single negative observation to positive disproof, which is what the bounce was really asking for. (1) The 'afa' bucket the case names DOES NOT EXIST - project 471 has 11 buckets, all rendered without pagination, none named afa (it would sort betwee… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1865 is confirmed case-text drift, not a product defect, on a second independent pass. The human's ruling on #1695 was answered with positive disproof (positive control on /settings/memory + closed source affordance list + no-mount-path grep + the named bucket not existing) rather than another bare negative. It still needs a HUMAN decision to unblock - retarget the case to the context-budge… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1695"
+        },
+        {
+          "kind": "note",
+          "note": "The 'afa' bucket does not exist in project 471 (11 buckets: abc-test, alita, all-file-types-attachment-small-size, attachments, autotest-elitea1828-dupmodal, bucket-a1b2c3d4...w3x4, file-upload, ggr, intesting, scout-probe-shortname, temp). Several TMS cases in this folder name 'afa' in their Preconditions/Test Data. Any future analyst on those cases should not hunt for it - seed a fixture bucket … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer gotcha, newly recorded: the Artifacts bucket 3-dot menu (bucket-menu-<name>-menu-button) is HOVER-GATED. It is present in the DOM at all times but invisible until its row is hovered, so a direct click fails with Playwright's 'element is not visible' AFTER the locator resolves - which reads like a timing flake rather than a hover gate. Hover artifacts-bucket-row-<name> first. Note the c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Technique worth reusing across the team when a case claims a UI element that is not there: do not stop at '0 matches'. Run the IDENTICAL probe on the surface where the thing genuinely lives (here /settings/memory), same session, and report both side by side. That converts a negative observation into positive disproof a human can act on, and it cost one extra navigation. The 2026-08-23 pass on this… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The artifacts _surface.md now carries a CLOSED affordance inventory for the file-preview surface (exactly 7 chrome elements, cross-verified live and against PreviewHeader.jsx line numbers). Future artifacts-preview cases can use it to distinguish 'missing testid' (work to do) from 'case names something the surface never renders' (case-text drift) without re-deriving it. Also note the surface has N… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_file-preview-context-management-panel_ELITEA-1865.md"
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

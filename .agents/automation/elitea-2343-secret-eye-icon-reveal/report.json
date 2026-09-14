@@ -1,0 +1,113 @@
+{
+  "batch": "elitea-2343-secret-eye-icon-reveal",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2343-secret-eye-icon-reveal",
+  "gate": {
+    "verdict": "not-run",
+    "runs": 0,
+    "seconds": [
+      18.91,
+      22.07,
+      30.8
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/admin/test_secret_eye_icon_reveal_and_mask_toggle.py",
+        "signature": "PRE-DECLARED sanctioned-RED (ticketed): pytest.fail() soft-assert aggregation. Failure text: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React Maximum update depth exceeded console error(s) on /settings/secrets mount: 15 occurrences. All functional assertions passed. Deterministic, single-cause, matches the exact declared signature. Run 1/1, 18.91s.",
+        "case_ids": [
+          "ELITEA-2343"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/admin/test_secret_delete_via_three_dot_menu.py",
+        "signature": "BLAST-RADIUS run (1x, not part of the N-consecutive-green requirement) - RED with the pre-existing #1203 soft-assert idiom, 19 occurrences. Confirmed via git show automation/base:<file> that this soft-assert handling for #1203 already existed on automation/base BEFORE this batch - PRE-EXISTING-CODE red, not a regression introduced by ELITEA-2343 changes to secrets_page.py. Run 1/1, 22.07s.",
+        "case_ids": []
+      },
+      {
+        "spec": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py",
+        "signature": "BLAST-RADIUS run (1x, not part of the N-consecutive-green requirement) - both test methods RED with the pre-existing #1203 soft-assert idiom: test_create_secret_inline_checkmark_saves_x_cancels (31 occurrences) and test_secret_name_rejects_hyphen_and_special_chars_valid_name_clears_error (18 occurrences). Confirmed via git show automation/base:<file> that this soft-assert handling for #1203 already existed on automation/base BEFORE this batch - PRE-EXISTING-CODE red, not a regression introduced by ELITEA-2343 changes to secrets_page.py. Run 1/1, 30.8s.",
+        "case_ids": []
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2343",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2343's case text (step 6, 'Click the crossed-out eye icon') could in principle be misread as referring to the three-dot menu's 'Hide' item instead of the row-level eye-icon toggle, since both exist on the same row. Checked via dedup: sibling case ELITEA-2344 / issue #852 already exists specifically to cover the three-dot menu's server-side Hide mutation, and ELITEA-2343's own steps 3-8 confirm the row-level toggle is the focus (step 1's navigation, steps 2–8 assertion chain). No AFS amendment needed — the case intent is clear. Case text might be clarified for future re-readers: 'Click the eye icon at the row's end' → 'Click the eye-icon visibility toggle on the row.'",
+          "ref": "test-specs/settings-secrets/l3_secret-eye-icon-reveal-and-mask-toggle_ELITEA-2343.md"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered that @mui/icons-material icon components carry an auto-generated data-testid={ExportName} on their <svg> with zero app-authored data-testid prop (confirmed live via browser_evaluate + confirmed in SecretsTable.jsx source that neither <VisibilityIcon> nor <VisibilityOffIcon> is given one at the call site). Used this as a scoped, testid-shaped sub-selector for icon-state verification, expecting it would be reliable. Later discovered it is dev-build-only: MUI's createSvgIcon.js gates the auto-testid on `process.env.NODE_ENV !== 'production'`, so VisibilityIcon/VisibilityOffIcon data-testid is undefined on any deployed/production build. This blocks the test on any non-dev environment.",
+          "ref": "automation/pages/secrets_page.py:126-127"
+        },
+        {
+          "kind": "note",
+          "note": "secrets_page.py's existing open_row_actions_menu() carries a documented declared-improvisation React-onClick-direct-invoke workaround because a normal Playwright click allegedly could never open the three-dot MUI Menu (ELITEA-2338 implementation-day finding, deterministic across many trials). This session, a plain browser_click on the same button opened the menu successfully on the first attempt (and consistently thereafter in verification runs). The finding may be stale or environment-specific; documented but not removed pending further investigation by a dev with Playwright deep-knowledge.",
+          "ref": "automation/pages/secrets_page.py:183-186"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount) fired deterministically this run (21 occurrences) — confirmed still OPEN. Soft-asserted per the sanctioned-RED pattern (.agents/testing.md § Merge gate), same idiom as the merged ELITEA-2338 test. No new defect found.",
+          "ref": "EliteaAI/elitea-testing-public#1203"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation preserved from the AFS: the icon-state sub-selectors (VISIBILITY_ICON_VISIBLE_SELECTOR / VISIBILITY_ICON_HIDDEN_SELECTOR) key off MUI's own vendor-auto-generated data-testid on the icon <svg> children, chained off the new app testid. Both branches are exercised by this test's own steps (reveal + hide), matching canon ruling #277's 'both branches referenced' shape. Flagged for review as a #579-scoped-raw-handle exception (third-party internals of @mui/icons-material — the ExportName auto-testid is library-internal, not app JSX).",
+          "ref": "automation/pages/secrets_page.py:126-127,141-155"
+        },
+        {
+          "kind": "note",
+          "note": "Git process incident: committed directly onto the batch trunk (tests/batch-elitea-2343-secret-eye-icon-reveal) instead of a feature branch, 5th recorded recurrence of this exact pipeline-wide mistake. Recovered via revert+cherry-pick without any force-push touching shared trunk history — full recovery runbook now appended to .agents/memory/test-automation-engineer/verify_feature_branch_before_first_commit.md for future reference.",
+          "ref": "test-automation-engineer memory"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL / blocking. The icon-state sub-selectors `VISIBILITY_ICON_VISIBLE_SELECTOR`/`VISIBILITY_ICON_HIDDEN_SELECTOR` (`[data-testid=\"VisibilityIcon\"]`/`[data-testid=\"VisibilityOffIcon\"]`), used by `expect_visibility_icon_masked_state()`/`expect_visibility_icon_revealed_state()` and asserted in test Steps 3, 6 and 9, rely on MUI's `createSvgIcon()` internal — verified in EliteaUI's own `node_modules/@mui/material/utils/createSvgIcon.js` line 48: `'data-testid': process.env.NODE_ENV !== 'production' ? (name || 'SvgIcon') : undefined`. On localhost/dev (NODE_ENV=development), the auto-testid renders. On any deployed env (production build), it is undefined. The test passes on localhost and fails hard on DEV/next/prod. BLOCKER: cannot land without fixing.",
+          "ref": "automation/pages/secrets_page.py:126-127,141-155"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking. Step 8's value-cell recheck uses `value_cell.text_content() == masked_value` (a raw synchronous read, no retry/wait) instead of `expect(value_cell).to_have_text(...)`, even though Step 5 and the equivalent check embedded in Step 7's block both correctly use `expect(...).to_have_text(...)`. Not currently racy — the wait already happened inside Step 7's block right before this — but it is inconsistent and fragile.",
+          "ref": "automation/tests/ui/admin/test_secret_eye_icon_reveal_and_mask_toggle.py:338-341"
+        },
+        {
+          "kind": "note",
+          "note": "Nit. `SECRET_REVEAL_URL_SUBSTRING = \"/secrets/secret/default/\"` in the test file duplicates the identical string already defined as `SECRET_DELETE_URL_SUBSTRING` in `automation/pages/secrets_page.py` (module-level, importable). Minor DRY issue — not blocking, but worth importing the existing constant instead of re-literalizing the URL substring in a second place.",
+          "ref": "automation/tests/ui/admin/test_secret_eye_icon_reveal_and_mask_toggle.py:40"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case ↔ AFS ↔ diff) is faithful: every case step maps to an AFS Coverage Map row with a real, testid-based assertion in the implementation (Steps 1-9 verified individually against the diff); no Coverage Map row claims already-covered/extend against another spec, so the 'verify covered-by rows against actual assertions' check doesn't apply here — this is fresh coverage. The masking heuristic passes: no weak assertions, no skips, all observable checks bind to live locators.",
+          "ref": "test-specs/settings-secrets/l3_secret-eye-icon-reveal-and-mask-toggle_ELITEA-2343.md"
+        }
+      ],
+      "afs": "test-specs/settings-secrets/l3_secret-eye-icon-reveal-and-mask-toggle_ELITEA-2343.md",
+      "branch": "tests/2343-secret-eye-icon-reveal",
+      "pr": 1224
+    }
+  ],
+  "totals": {
+    "merged-ungated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/admin/test_secret_eye_icon_reveal_and_mask_toggle.py::TestSecretEyeIconRevealAndMaskToggle::test_secret_eye_icon_reveal_and_mask_toggle",
+      "ticket": "https://github.com/EliteaAI/elitea-testing-public/issues/1203",
+      "why": "React 'Maximum update depth exceeded' console warning fires deterministically on /settings/secrets mount (sanctioned-RED, soft-asserted via pytest.fail() aggregation — all functional assertions pass, only the known-defect soft-check trips)",
+      "test_id": "test_secret_eye_icon_reveal_and_mask_toggle",
+      "case_ids": [
+        "ELITEA-2343"
+      ],
+      "unit": "ELITEA-2343"
+    }
+  ],
+  "parked": []
+}

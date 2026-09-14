@@ -1,0 +1,866 @@
+{
+  "batch": "help-center-remaining",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-help-center-remaining",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      122.775098334,
+      122.229437292,
+      125.763364875
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2220",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Help Center Release Notes card's 'Release 2.0.2 (latest)' link 404s on docs.elitea.ai (confirmed live; stale CMS config -- the docs site's real latest is rn-2-0-5). Filed EliteaAI/elitea-testing-public#1492, dedup-checked before filing. Test asserts the correct expected value via expect.soft(), sanctioned RED per .agents/testing.md merge-gate exception.",
+          "ref": "EliteaAI/elitea-testing-public#1492"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed a real testid collision found during exploration: help-center-tour-link-more matched 2 elements (Video Library's and Tutorials' generic 'More...' links both slugify identically). Fixed on EliteaUI automation/testids by adding a per-card testidCategory prefix for that one generic title; zero other testids touched, zero regression to the already-merged ELITEA-2227 sidebar/chat tour test's test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@81d7a377"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2223's case steps 6-8 (video-portal channel-page identity, Videos/Playlists tabs, video listing with thumbnails/authors/durations) are not automatable in this environment: the destination (videoportal.epam.com) requires authenticated EPAM corporate SSO (access.epam.com), and no credentials for that exist anywhere in this project. Documented as a partial block in the AFS with a recommendatio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2224 case text implies the Tutorials card's 'More...' link goes to 'a page listing all available tutorials'; the live product actually routes it to the general docs.elitea.ai homepage (same generic docs-site nav as every other section), not a dedicated tutorials-list page. Asserted the honest live-contract form (page loads + nav has more linked topics than the 3-link card preview) rather th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared-improvisation canon gap: no prior AFS/PR states whether the testid-only locator policy extends to third-party redirect destinations. Resolved by scope-by-rationale (the policy's own stated purpose is coverage measurement via data-testid presence in OUR source, which is meaningless on a page we don't own) and declared explicitly in the AFS, code comments, and PR body so the reviewer's mech… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Four page.locator(HelpCenterPage.TOUR_LINK.format(...)) calls are constructed directly in the spec file, violating the auto-applied .claude/rules/ui-tests.md ('Use Page Objects - Never Direct Locators... All UI interactions must go through page objects') and .claude/rules/page-objects.md ('Locators live only as class-level fields on page objects - never constructed inside method bodies, never in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:129,133,201,205"
+        },
+        {
+          "kind": "clarification",
+          "note": "The new_page.get_by_role('navigation', name='Pages').get_by_role('link') call (ELITEA-2224, destination docs.elitea.ai) is a legitimate exception to the testid-only policy - a genuine third-party host, not EliteaUI/elitea_assistant source - and it is properly DECLARED per role-overrides.md Declared-improvisation protocol: a code comment at the call site, an AFS Automation Hints note, and a dedicat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:316"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation against the TMS case snapshots and PR diff checks out for all five cases: every case-text step has a Coverage Map row with a real assertion at that step, the family-vs-separate split is justified by a genuine steps difference, and each family row's distinct expected value is actually asserted via the parametrize table. ELITEA-2221's known-defect row is a correctly-scoped expect.soft(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the new index line for testid_only_policy_scope_is_our_own_app_source.md is 170 characters, over the memory skill's roughly 120-character index-line budget. A future compaction pass will catch it.",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "note",
+          "note": "Bug #1492 says 'Found while working #ELITEA-2221' but no [Automate][ELITEA-2221] (or 2220/2222/2223/2224) tracking issue exists on board 9 - confirmed via gh issue list; only the prior sibling ELITEA-2227 (#734) has one, and #ELITEA-2221 is not a valid GitHub cross-reference. Likely a batch-intake gap (no board cards filed for these five cases), not something the implementer could fix alone and no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "GitHub issue #1492 body"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2220 AFS's Automation Hints section claimed the direct page.locator(HelpCenterPage.TOUR_LINK.format(slug)) usage in the spec file was 'per the same pattern the ELITEA-2227 implementer already established' — verified false: test_help_center_sidebar_tour.py (ELITEA-2227) never constructs a TOUR_LINK locator inline, it exclusively calls the page-object method open_resource_link_in_new_tab(). A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fully fixed: HelpCenterPage.resource_link(slug) extracted as a class method wrapping the pre-existing TOUR_LINK UPPER_CASE dynamic-testid constant (automation/pages/help_center_page.py:41-51); all 4 former direct page.locator(HelpCenterPage.TOUR_LINK.format(...)) call sites in test_help_center_resource_links.py now go through it, and open_resource_link_in_new_tab() itself de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS itself was corrected in the same PR: the family AFS's Automation Hints previously claimed a false ELITEA-2227 precedent for inline TOUR_LINK construction in spec files; that claim is now struck through with an amendment paragraph documenting the actual fix and citing the real precedent shape (ai_providers_page.py's card_for_model() / agent_form_page.py's get_tag_chip()). Also caught and fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation across all 5 case snapshots, both AFS files, and the diff: every TMS-case step/data-value (card link slugs, click slug, expected href, expected title substring, expect_ok flag) matches 1:1 between the case text, the AFS Parameter Table / Coverage Map, and the test's RESOURCE_LINK_CASES parametrization. ELITEA-2221's sanctioned-RED row uses expect.soft() against the CORRECT ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the new MEMORY.md index line for testid_only_policy_scope_is_our_own_app_source.md is 168 characters (measured), over the memory skill's own ≤120-char index-line budget. Cosmetic — leave for a future compaction pass, not worth another round.",
+          "ref": "automation/../.agents/memory/test-automation-engineer/MEMORY.md:61"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the PR #1493 description's 'Mechanical reviewer grep (self-run)' section pastes a stale grep output (5 hits at old line numbers 135/139/167/211/215, from before this fix round) that no longer matches the current diff (now 2 hits). Doesn't affect the actual code — just a stale PR-body artifact worth a one-line edit if anyone revisits the PR description, not a re-review bloc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No line-length violations (ruff 120-col limit) in either changed file; ruff/mypy not re-run here (static review, no execution) — that's the hardening gate's job."
+        }
+      ],
+      "afs": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md",
+      "branch": "tests/help-center-resource-links-ELITEA-2220",
+      "pr": 1493,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2221",
+      "outcome": "merged-sanctioned-red",
+      "note": "red by design pending EliteaAI/elitea-testing-public#1492 — the gate ran it but could not count it; merged with the batch, re-enter once the product ships",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Help Center Release Notes card's 'Release 2.0.2 (latest)' link 404s on docs.elitea.ai (confirmed live; stale CMS config -- the docs site's real latest is rn-2-0-5). Filed EliteaAI/elitea-testing-public#1492, dedup-checked before filing. Test asserts the correct expected value via expect.soft(), sanctioned RED per .agents/testing.md merge-gate exception.",
+          "ref": "EliteaAI/elitea-testing-public#1492"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed a real testid collision found during exploration: help-center-tour-link-more matched 2 elements (Video Library's and Tutorials' generic 'More...' links both slugify identically). Fixed on EliteaUI automation/testids by adding a per-card testidCategory prefix for that one generic title; zero other testids touched, zero regression to the already-merged ELITEA-2227 sidebar/chat tour test's test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@81d7a377"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2223's case steps 6-8 (video-portal channel-page identity, Videos/Playlists tabs, video listing with thumbnails/authors/durations) are not automatable in this environment: the destination (videoportal.epam.com) requires authenticated EPAM corporate SSO (access.epam.com), and no credentials for that exist anywhere in this project. Documented as a partial block in the AFS with a recommendatio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2224 case text implies the Tutorials card's 'More...' link goes to 'a page listing all available tutorials'; the live product actually routes it to the general docs.elitea.ai homepage (same generic docs-site nav as every other section), not a dedicated tutorials-list page. Asserted the honest live-contract form (page loads + nav has more linked topics than the 3-link card preview) rather th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared-improvisation canon gap: no prior AFS/PR states whether the testid-only locator policy extends to third-party redirect destinations. Resolved by scope-by-rationale (the policy's own stated purpose is coverage measurement via data-testid presence in OUR source, which is meaningless on a page we don't own) and declared explicitly in the AFS, code comments, and PR body so the reviewer's mech… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Four page.locator(HelpCenterPage.TOUR_LINK.format(...)) calls are constructed directly in the spec file, violating the auto-applied .claude/rules/ui-tests.md ('Use Page Objects - Never Direct Locators... All UI interactions must go through page objects') and .claude/rules/page-objects.md ('Locators live only as class-level fields on page objects - never constructed inside method bodies, never in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:129,133,201,205"
+        },
+        {
+          "kind": "clarification",
+          "note": "The new_page.get_by_role('navigation', name='Pages').get_by_role('link') call (ELITEA-2224, destination docs.elitea.ai) is a legitimate exception to the testid-only policy - a genuine third-party host, not EliteaUI/elitea_assistant source - and it is properly DECLARED per role-overrides.md Declared-improvisation protocol: a code comment at the call site, an AFS Automation Hints note, and a dedicat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:316"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation against the TMS case snapshots and PR diff checks out for all five cases: every case-text step has a Coverage Map row with a real assertion at that step, the family-vs-separate split is justified by a genuine steps difference, and each family row's distinct expected value is actually asserted via the parametrize table. ELITEA-2221's known-defect row is a correctly-scoped expect.soft(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the new index line for testid_only_policy_scope_is_our_own_app_source.md is 170 characters, over the memory skill's roughly 120-character index-line budget. A future compaction pass will catch it.",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "note",
+          "note": "Bug #1492 says 'Found while working #ELITEA-2221' but no [Automate][ELITEA-2221] (or 2220/2222/2223/2224) tracking issue exists on board 9 - confirmed via gh issue list; only the prior sibling ELITEA-2227 (#734) has one, and #ELITEA-2221 is not a valid GitHub cross-reference. Likely a batch-intake gap (no board cards filed for these five cases), not something the implementer could fix alone and no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "GitHub issue #1492 body"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2220 AFS's Automation Hints section claimed the direct page.locator(HelpCenterPage.TOUR_LINK.format(slug)) usage in the spec file was 'per the same pattern the ELITEA-2227 implementer already established' — verified false: test_help_center_sidebar_tour.py (ELITEA-2227) never constructs a TOUR_LINK locator inline, it exclusively calls the page-object method open_resource_link_in_new_tab(). A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fully fixed: HelpCenterPage.resource_link(slug) extracted as a class method wrapping the pre-existing TOUR_LINK UPPER_CASE dynamic-testid constant (automation/pages/help_center_page.py:41-51); all 4 former direct page.locator(HelpCenterPage.TOUR_LINK.format(...)) call sites in test_help_center_resource_links.py now go through it, and open_resource_link_in_new_tab() itself de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS itself was corrected in the same PR: the family AFS's Automation Hints previously claimed a false ELITEA-2227 precedent for inline TOUR_LINK construction in spec files; that claim is now struck through with an amendment paragraph documenting the actual fix and citing the real precedent shape (ai_providers_page.py's card_for_model() / agent_form_page.py's get_tag_chip()). Also caught and fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation across all 5 case snapshots, both AFS files, and the diff: every TMS-case step/data-value (card link slugs, click slug, expected href, expected title substring, expect_ok flag) matches 1:1 between the case text, the AFS Parameter Table / Coverage Map, and the test's RESOURCE_LINK_CASES parametrization. ELITEA-2221's sanctioned-RED row uses expect.soft() against the CORRECT ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the new MEMORY.md index line for testid_only_policy_scope_is_our_own_app_source.md is 168 characters (measured), over the memory skill's own ≤120-char index-line budget. Cosmetic — leave for a future compaction pass, not worth another round.",
+          "ref": "automation/../.agents/memory/test-automation-engineer/MEMORY.md:61"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the PR #1493 description's 'Mechanical reviewer grep (self-run)' section pastes a stale grep output (5 hits at old line numbers 135/139/167/211/215, from before this fix round) that no longer matches the current diff (now 2 hits). Doesn't affect the actual code — just a stale PR-body artifact worth a one-line edit if anyone revisits the PR description, not a re-review bloc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No line-length violations (ruff 120-col limit) in either changed file; ruff/mypy not re-run here (static review, no execution) — that's the hardening gate's job."
+        }
+      ],
+      "afs": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md",
+      "branch": "tests/help-center-resource-links-ELITEA-2220",
+      "pr": 1493
+    },
+    {
+      "id": "ELITEA-2222",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Help Center Release Notes card's 'Release 2.0.2 (latest)' link 404s on docs.elitea.ai (confirmed live; stale CMS config -- the docs site's real latest is rn-2-0-5). Filed EliteaAI/elitea-testing-public#1492, dedup-checked before filing. Test asserts the correct expected value via expect.soft(), sanctioned RED per .agents/testing.md merge-gate exception.",
+          "ref": "EliteaAI/elitea-testing-public#1492"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed a real testid collision found during exploration: help-center-tour-link-more matched 2 elements (Video Library's and Tutorials' generic 'More...' links both slugify identically). Fixed on EliteaUI automation/testids by adding a per-card testidCategory prefix for that one generic title; zero other testids touched, zero regression to the already-merged ELITEA-2227 sidebar/chat tour test's test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@81d7a377"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2223's case steps 6-8 (video-portal channel-page identity, Videos/Playlists tabs, video listing with thumbnails/authors/durations) are not automatable in this environment: the destination (videoportal.epam.com) requires authenticated EPAM corporate SSO (access.epam.com), and no credentials for that exist anywhere in this project. Documented as a partial block in the AFS with a recommendatio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2224 case text implies the Tutorials card's 'More...' link goes to 'a page listing all available tutorials'; the live product actually routes it to the general docs.elitea.ai homepage (same generic docs-site nav as every other section), not a dedicated tutorials-list page. Asserted the honest live-contract form (page loads + nav has more linked topics than the 3-link card preview) rather th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared-improvisation canon gap: no prior AFS/PR states whether the testid-only locator policy extends to third-party redirect destinations. Resolved by scope-by-rationale (the policy's own stated purpose is coverage measurement via data-testid presence in OUR source, which is meaningless on a page we don't own) and declared explicitly in the AFS, code comments, and PR body so the reviewer's mech… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Four page.locator(HelpCenterPage.TOUR_LINK.format(...)) calls are constructed directly in the spec file, violating the auto-applied .claude/rules/ui-tests.md ('Use Page Objects - Never Direct Locators... All UI interactions must go through page objects') and .claude/rules/page-objects.md ('Locators live only as class-level fields on page objects - never constructed inside method bodies, never in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:129,133,201,205"
+        },
+        {
+          "kind": "clarification",
+          "note": "The new_page.get_by_role('navigation', name='Pages').get_by_role('link') call (ELITEA-2224, destination docs.elitea.ai) is a legitimate exception to the testid-only policy - a genuine third-party host, not EliteaUI/elitea_assistant source - and it is properly DECLARED per role-overrides.md Declared-improvisation protocol: a code comment at the call site, an AFS Automation Hints note, and a dedicat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:316"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation against the TMS case snapshots and PR diff checks out for all five cases: every case-text step has a Coverage Map row with a real assertion at that step, the family-vs-separate split is justified by a genuine steps difference, and each family row's distinct expected value is actually asserted via the parametrize table. ELITEA-2221's known-defect row is a correctly-scoped expect.soft(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the new index line for testid_only_policy_scope_is_our_own_app_source.md is 170 characters, over the memory skill's roughly 120-character index-line budget. A future compaction pass will catch it.",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "note",
+          "note": "Bug #1492 says 'Found while working #ELITEA-2221' but no [Automate][ELITEA-2221] (or 2220/2222/2223/2224) tracking issue exists on board 9 - confirmed via gh issue list; only the prior sibling ELITEA-2227 (#734) has one, and #ELITEA-2221 is not a valid GitHub cross-reference. Likely a batch-intake gap (no board cards filed for these five cases), not something the implementer could fix alone and no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "GitHub issue #1492 body"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2220 AFS's Automation Hints section claimed the direct page.locator(HelpCenterPage.TOUR_LINK.format(slug)) usage in the spec file was 'per the same pattern the ELITEA-2227 implementer already established' — verified false: test_help_center_sidebar_tour.py (ELITEA-2227) never constructs a TOUR_LINK locator inline, it exclusively calls the page-object method open_resource_link_in_new_tab(). A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fully fixed: HelpCenterPage.resource_link(slug) extracted as a class method wrapping the pre-existing TOUR_LINK UPPER_CASE dynamic-testid constant (automation/pages/help_center_page.py:41-51); all 4 former direct page.locator(HelpCenterPage.TOUR_LINK.format(...)) call sites in test_help_center_resource_links.py now go through it, and open_resource_link_in_new_tab() itself de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS itself was corrected in the same PR: the family AFS's Automation Hints previously claimed a false ELITEA-2227 precedent for inline TOUR_LINK construction in spec files; that claim is now struck through with an amendment paragraph documenting the actual fix and citing the real precedent shape (ai_providers_page.py's card_for_model() / agent_form_page.py's get_tag_chip()). Also caught and fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation across all 5 case snapshots, both AFS files, and the diff: every TMS-case step/data-value (card link slugs, click slug, expected href, expected title substring, expect_ok flag) matches 1:1 between the case text, the AFS Parameter Table / Coverage Map, and the test's RESOURCE_LINK_CASES parametrization. ELITEA-2221's sanctioned-RED row uses expect.soft() against the CORRECT ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the new MEMORY.md index line for testid_only_policy_scope_is_our_own_app_source.md is 168 characters (measured), over the memory skill's own ≤120-char index-line budget. Cosmetic — leave for a future compaction pass, not worth another round.",
+          "ref": "automation/../.agents/memory/test-automation-engineer/MEMORY.md:61"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the PR #1493 description's 'Mechanical reviewer grep (self-run)' section pastes a stale grep output (5 hits at old line numbers 135/139/167/211/215, from before this fix round) that no longer matches the current diff (now 2 hits). Doesn't affect the actual code — just a stale PR-body artifact worth a one-line edit if anyone revisits the PR description, not a re-review bloc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No line-length violations (ruff 120-col limit) in either changed file; ruff/mypy not re-run here (static review, no execution) — that's the hardening gate's job."
+        }
+      ],
+      "afs": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md",
+      "branch": "tests/help-center-resource-links-ELITEA-2220",
+      "pr": 1493,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2223",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Help Center Release Notes card's 'Release 2.0.2 (latest)' link 404s on docs.elitea.ai (confirmed live; stale CMS config -- the docs site's real latest is rn-2-0-5). Filed EliteaAI/elitea-testing-public#1492, dedup-checked before filing. Test asserts the correct expected value via expect.soft(), sanctioned RED per .agents/testing.md merge-gate exception.",
+          "ref": "EliteaAI/elitea-testing-public#1492"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed a real testid collision found during exploration: help-center-tour-link-more matched 2 elements (Video Library's and Tutorials' generic 'More...' links both slugify identically). Fixed on EliteaUI automation/testids by adding a per-card testidCategory prefix for that one generic title; zero other testids touched, zero regression to the already-merged ELITEA-2227 sidebar/chat tour test's test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@81d7a377"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2223's case steps 6-8 (video-portal channel-page identity, Videos/Playlists tabs, video listing with thumbnails/authors/durations) are not automatable in this environment: the destination (videoportal.epam.com) requires authenticated EPAM corporate SSO (access.epam.com), and no credentials for that exist anywhere in this project. Documented as a partial block in the AFS with a recommendatio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2224 case text implies the Tutorials card's 'More...' link goes to 'a page listing all available tutorials'; the live product actually routes it to the general docs.elitea.ai homepage (same generic docs-site nav as every other section), not a dedicated tutorials-list page. Asserted the honest live-contract form (page loads + nav has more linked topics than the 3-link card preview) rather th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared-improvisation canon gap: no prior AFS/PR states whether the testid-only locator policy extends to third-party redirect destinations. Resolved by scope-by-rationale (the policy's own stated purpose is coverage measurement via data-testid presence in OUR source, which is meaningless on a page we don't own) and declared explicitly in the AFS, code comments, and PR body so the reviewer's mech… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Four page.locator(HelpCenterPage.TOUR_LINK.format(...)) calls are constructed directly in the spec file, violating the auto-applied .claude/rules/ui-tests.md ('Use Page Objects - Never Direct Locators... All UI interactions must go through page objects') and .claude/rules/page-objects.md ('Locators live only as class-level fields on page objects - never constructed inside method bodies, never in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:129,133,201,205"
+        },
+        {
+          "kind": "clarification",
+          "note": "The new_page.get_by_role('navigation', name='Pages').get_by_role('link') call (ELITEA-2224, destination docs.elitea.ai) is a legitimate exception to the testid-only policy - a genuine third-party host, not EliteaUI/elitea_assistant source - and it is properly DECLARED per role-overrides.md Declared-improvisation protocol: a code comment at the call site, an AFS Automation Hints note, and a dedicat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:316"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation against the TMS case snapshots and PR diff checks out for all five cases: every case-text step has a Coverage Map row with a real assertion at that step, the family-vs-separate split is justified by a genuine steps difference, and each family row's distinct expected value is actually asserted via the parametrize table. ELITEA-2221's known-defect row is a correctly-scoped expect.soft(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the new index line for testid_only_policy_scope_is_our_own_app_source.md is 170 characters, over the memory skill's roughly 120-character index-line budget. A future compaction pass will catch it.",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "note",
+          "note": "Bug #1492 says 'Found while working #ELITEA-2221' but no [Automate][ELITEA-2221] (or 2220/2222/2223/2224) tracking issue exists on board 9 - confirmed via gh issue list; only the prior sibling ELITEA-2227 (#734) has one, and #ELITEA-2221 is not a valid GitHub cross-reference. Likely a batch-intake gap (no board cards filed for these five cases), not something the implementer could fix alone and no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "GitHub issue #1492 body"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2220 AFS's Automation Hints section claimed the direct page.locator(HelpCenterPage.TOUR_LINK.format(slug)) usage in the spec file was 'per the same pattern the ELITEA-2227 implementer already established' — verified false: test_help_center_sidebar_tour.py (ELITEA-2227) never constructs a TOUR_LINK locator inline, it exclusively calls the page-object method open_resource_link_in_new_tab(). A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fully fixed: HelpCenterPage.resource_link(slug) extracted as a class method wrapping the pre-existing TOUR_LINK UPPER_CASE dynamic-testid constant (automation/pages/help_center_page.py:41-51); all 4 former direct page.locator(HelpCenterPage.TOUR_LINK.format(...)) call sites in test_help_center_resource_links.py now go through it, and open_resource_link_in_new_tab() itself de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS itself was corrected in the same PR: the family AFS's Automation Hints previously claimed a false ELITEA-2227 precedent for inline TOUR_LINK construction in spec files; that claim is now struck through with an amendment paragraph documenting the actual fix and citing the real precedent shape (ai_providers_page.py's card_for_model() / agent_form_page.py's get_tag_chip()). Also caught and fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation across all 5 case snapshots, both AFS files, and the diff: every TMS-case step/data-value (card link slugs, click slug, expected href, expected title substring, expect_ok flag) matches 1:1 between the case text, the AFS Parameter Table / Coverage Map, and the test's RESOURCE_LINK_CASES parametrization. ELITEA-2221's sanctioned-RED row uses expect.soft() against the CORRECT ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the new MEMORY.md index line for testid_only_policy_scope_is_our_own_app_source.md is 168 characters (measured), over the memory skill's own ≤120-char index-line budget. Cosmetic — leave for a future compaction pass, not worth another round.",
+          "ref": "automation/../.agents/memory/test-automation-engineer/MEMORY.md:61"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the PR #1493 description's 'Mechanical reviewer grep (self-run)' section pastes a stale grep output (5 hits at old line numbers 135/139/167/211/215, from before this fix round) that no longer matches the current diff (now 2 hits). Doesn't affect the actual code — just a stale PR-body artifact worth a one-line edit if anyone revisits the PR description, not a re-review bloc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No line-length violations (ruff 120-col limit) in either changed file; ruff/mypy not re-run here (static review, no execution) — that's the hardening gate's job."
+        }
+      ],
+      "afs": "test-specs/help-center/l2_video-library-more-redirects-external-portal_ELITEA-2223.md",
+      "branch": "tests/help-center-resource-links-ELITEA-2220",
+      "pr": 1493,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2224",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Help Center Release Notes card's 'Release 2.0.2 (latest)' link 404s on docs.elitea.ai (confirmed live; stale CMS config -- the docs site's real latest is rn-2-0-5). Filed EliteaAI/elitea-testing-public#1492, dedup-checked before filing. Test asserts the correct expected value via expect.soft(), sanctioned RED per .agents/testing.md merge-gate exception.",
+          "ref": "EliteaAI/elitea-testing-public#1492"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed a real testid collision found during exploration: help-center-tour-link-more matched 2 elements (Video Library's and Tutorials' generic 'More...' links both slugify identically). Fixed on EliteaUI automation/testids by adding a per-card testidCategory prefix for that one generic title; zero other testids touched, zero regression to the already-merged ELITEA-2227 sidebar/chat tour test's test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@81d7a377"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2223's case steps 6-8 (video-portal channel-page identity, Videos/Playlists tabs, video listing with thumbnails/authors/durations) are not automatable in this environment: the destination (videoportal.epam.com) requires authenticated EPAM corporate SSO (access.epam.com), and no credentials for that exist anywhere in this project. Documented as a partial block in the AFS with a recommendatio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2224 case text implies the Tutorials card's 'More...' link goes to 'a page listing all available tutorials'; the live product actually routes it to the general docs.elitea.ai homepage (same generic docs-site nav as every other section), not a dedicated tutorials-list page. Asserted the honest live-contract form (page loads + nav has more linked topics than the 3-link card preview) rather th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared-improvisation canon gap: no prior AFS/PR states whether the testid-only locator policy extends to third-party redirect destinations. Resolved by scope-by-rationale (the policy's own stated purpose is coverage measurement via data-testid presence in OUR source, which is meaningless on a page we don't own) and declared explicitly in the AFS, code comments, and PR body so the reviewer's mech… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Four page.locator(HelpCenterPage.TOUR_LINK.format(...)) calls are constructed directly in the spec file, violating the auto-applied .claude/rules/ui-tests.md ('Use Page Objects - Never Direct Locators... All UI interactions must go through page objects') and .claude/rules/page-objects.md ('Locators live only as class-level fields on page objects - never constructed inside method bodies, never in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:129,133,201,205"
+        },
+        {
+          "kind": "clarification",
+          "note": "The new_page.get_by_role('navigation', name='Pages').get_by_role('link') call (ELITEA-2224, destination docs.elitea.ai) is a legitimate exception to the testid-only policy - a genuine third-party host, not EliteaUI/elitea_assistant source - and it is properly DECLARED per role-overrides.md Declared-improvisation protocol: a code comment at the call site, an AFS Automation Hints note, and a dedicat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_resource_links.py:316"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation against the TMS case snapshots and PR diff checks out for all five cases: every case-text step has a Coverage Map row with a real assertion at that step, the family-vs-separate split is justified by a genuine steps difference, and each family row's distinct expected value is actually asserted via the parametrize table. ELITEA-2221's known-defect row is a correctly-scoped expect.soft(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the new index line for testid_only_policy_scope_is_our_own_app_source.md is 170 characters, over the memory skill's roughly 120-character index-line budget. A future compaction pass will catch it.",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "note",
+          "note": "Bug #1492 says 'Found while working #ELITEA-2221' but no [Automate][ELITEA-2221] (or 2220/2222/2223/2224) tracking issue exists on board 9 - confirmed via gh issue list; only the prior sibling ELITEA-2227 (#734) has one, and #ELITEA-2221 is not a valid GitHub cross-reference. Likely a batch-intake gap (no board cards filed for these five cases), not something the implementer could fix alone and no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "GitHub issue #1492 body"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2220 AFS's Automation Hints section claimed the direct page.locator(HelpCenterPage.TOUR_LINK.format(slug)) usage in the spec file was 'per the same pattern the ELITEA-2227 implementer already established' — verified false: test_help_center_sidebar_tour.py (ELITEA-2227) never constructs a TOUR_LINK locator inline, it exclusively calls the page-object method open_resource_link_in_new_tab(). A… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fully fixed: HelpCenterPage.resource_link(slug) extracted as a class method wrapping the pre-existing TOUR_LINK UPPER_CASE dynamic-testid constant (automation/pages/help_center_page.py:41-51); all 4 former direct page.locator(HelpCenterPage.TOUR_LINK.format(...)) call sites in test_help_center_resource_links.py now go through it, and open_resource_link_in_new_tab() itself de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS itself was corrected in the same PR: the family AFS's Automation Hints previously claimed a false ELITEA-2227 precedent for inline TOUR_LINK construction in spec files; that claim is now struck through with an amendment paragraph documenting the actual fix and citing the real precedent shape (ai_providers_page.py's card_for_model() / agent_form_page.py's get_tag_chip()). Also caught and fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation across all 5 case snapshots, both AFS files, and the diff: every TMS-case step/data-value (card link slugs, click slug, expected href, expected title substring, expect_ok flag) matches 1:1 between the case text, the AFS Parameter Table / Coverage Map, and the test's RESOURCE_LINK_CASES parametrization. ELITEA-2221's sanctioned-RED row uses expect.soft() against the CORRECT ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the new MEMORY.md index line for testid_only_policy_scope_is_our_own_app_source.md is 168 characters (measured), over the memory skill's own ≤120-char index-line budget. Cosmetic — leave for a future compaction pass, not worth another round.",
+          "ref": "automation/../.agents/memory/test-automation-engineer/MEMORY.md:61"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: the PR #1493 description's 'Mechanical reviewer grep (self-run)' section pastes a stale grep output (5 hits at old line numbers 135/139/167/211/215, from before this fix round) that no longer matches the current diff (now 2 hits). Doesn't affect the actual code — just a stale PR-body artifact worth a one-line edit if anyone revisits the PR description, not a re-review bloc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No line-length violations (ruff 120-col limit) in either changed file; ruff/mypy not re-run here (static review, no execution) — that's the hardening gate's job."
+        }
+      ],
+      "afs": "test-specs/help-center/l3_resource-card-link-redirects-external-page_ELITEA-2220.md",
+      "branch": "tests/help-center-resource-links-ELITEA-2220",
+      "pr": 1493,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2225",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Case-text drift (not filed as a ticket): ELITEA-2225 says 'Click the i icon' to open the tooltip; live ResourceVersionInfo.jsx wires a bare MUI <Tooltip> which opens on HOVER — no click handler exists. A click still incidentally works (hover fires on/before pointer-down), so nothing is broken for a human user; test automates hover() as the code-confirmed intended trigger. Documented in the AFS Axi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_version-info-tooltip-copy_ELITEA-2225.md"
+        },
+        {
+          "kind": "note",
+          "note": "3rd confirmed instance of a recurring gotcha: adjacent MUI Typography elements laid out via flex `gap` concatenate with ZERO separator in Playwright text_content() (e.g. 'elitea_core:0.673', no space) even though CSS renders a visible gap. Fixed with a whitespace-tolerant regex assertion. Logged to role memory (help_center_version_tooltip_no_space_textcontent.md) alongside the two prior instances … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/help_center_version_tooltip_no_space_textcontent.md"
+        },
+        {
+          "kind": "note",
+          "note": "4 new testids added directly on ResourceVersionInfo.jsx JSX nodes (help-center-version-label, help-center-version-info-icon, help-center-version-info-tooltip, help-center-version-info-copy-button) — zero new DOM, zero hook changes, confirmed via the add-data-testid Step 5.5 greps (pasted in the EliteaUI commit body). Pushed to automation/testids at EliteaAI/EliteaUI@bc82bc32; NOT yet on main — hum… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/tests/ui/help_center/test_help_center_version_info.py:41,50,105-108 — Steps 4/5/9 assert exact hardcoded backend component-version literals (elitea_core:0.673, admin:0.77, notifications:0.21, configurations:0.160, sdk_plugin:0.9.13, indexer_worker:0.854) captured once during live analysis. These are live deployed-service semver strings, not stable entity data — the next DEV redeploy tha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_version_info.py:41"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS + PR body (test-specs/help-center/l2_version-info-tooltip-copy_ELITEA-2225.md, Axis 2 / Known Defects) explicitly document case-text drift (case says \"click the info icon\", live product opens on hover only) and explicitly decline to file the case-text CLARIFICATION ticket that `.agents/role-overrides.md`'s interaction-discovery ladder and the reverse-masking guard call for in exactly this scen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_version-info-tooltip-copy_ELITEA-2225.md:80-90"
+        },
+        {
+          "kind": "note",
+          "note": "automation/pages/help_center_page.py:55-58 — new `toast_alert` LocatorDescriptor field is declared but never referenced by the test (only `toast_message` is used). It's a pre-existing app-wide testid (not a new EliteaUI addition), so canon ruling #511 doesn't strictly forbid it, but it's dead code in this diff — low-value nit, not blocking."
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean: locator-policy mechanical grep on the full diff returned 0 hits (no raw handles added); zero-functional-impact greps on the EliteaUI commit (bc82bc32) confirm direct data-testid attrs on existing JSX nodes only, no new DOM/hooks; testid provenance verified fresh (git fetch origin done first) — all 4 new testids present on origin/automation/testids only (not yet o… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer blocker addressed: EXPECTED_COMPONENT_VERSIONS pinned-literal dict replaced with format assertion (VERSION_FORMAT regex) + run-time tooltip-vs-clipboard fidelity check (observed_versions). AFS amended with declared-improvisation note; commit edb2f71e.",
+          "ref": "automation/tests/ui/help_center/test_help_center_version_info.py"
+        },
+        {
+          "kind": "note",
+          "note": "Added static regression guard test_help_center_version_info_no_pinned_literals.py (4 unit tests, <2s, no browser) per the house fix-round pattern, so a future edit that reintroduces a name-to-pinned-version mapping fails fast. Commit 7844b247.",
+          "ref": "automation/tests/unit/test_help_center_version_info_no_pinned_literals.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing untracked stray file .agents/memory/test-automation-engineer/daily/{}.md (empty, literal placeholder filename, not from this session) left on disk untouched — worth a memory-hygiene cleanup pass, not blocking this PR."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED. Steps 4/5/9 no longer pin exact backend component-version literals. Step 5 now asserts FORMAT only (VERSION_FORMAT = r'\\d+(?:\\.\\d+)+') per component and captures each run's ACTUAL observed version into `observed_versions`; Step 9 asserts the clipboard reproduces those same run-time-observed values (tooltip-vs-clipboard fidelity) instead of re-asserting frozen digit… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_version_info.py:63-135"
+        },
+        {
+          "kind": "defect",
+          "note": "IMPORTANT, non-blocking. This new meta-test (not requested by the AFS/case, added unilaterally in the fix round) introspects the FIXED spec module's source/attributes (vars(), inspect.getsource()) rather than asserting product behaviour — the opposite of this project's own 'behaviour over implementation' test-writing principle (CLAUDE.md § Test Writing Principles). It is also a weaker regression g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/unit/test_help_center_version_info_no_pinned_literals.py"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: `toast_alert = LocatorDescriptor(testid=\"toast-alert\")` is added to HelpCenterPage but never referenced on the test's executed path — only `toast_message` is used (in `copy_version_info()` and the test's Step 7/8 assertion). Not a testid-coverage-inflation issue (toast-alert is pre-existing on `main`, not a new EliteaUI testid), just dead scaffolding in the page object. Low priority — remove … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/help_center_page.py:55-58"
+        },
+        {
+          "kind": "note",
+          "note": "Verified: mechanical locator-policy grep on the automation-repo diff (base tests/batch-help-center-remaining → branch) — 0 hits for get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator(. Testid provenance re-verified with a fresh `git fetch origin` in ../EliteaUI: all 4 new testids (help-center-version-label/-info-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_version-info-tooltip-copy_ELITEA-2225.md"
+        }
+      ],
+      "afs": "test-specs/help-center/l2_version-info-tooltip-copy_ELITEA-2225.md",
+      "branch": "tests/ELITEA-2225-version-info-tooltip-copy",
+      "pr": 1494,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2226",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No GitHub tracker card ([Automate][ELITEA-<id>]) exists for ELITEA-2226, ELITEA-2228, ELITEA-2229, or ELITEA-2230 -- verified via real-time `gh issue list --repo EliteaAI/elitea-testing-public --state all --limit 1000 --json number,title` (no --search, per profile.md dedup policy) and local keyword match. The only related card is #734, which is case-specific to the sibling ELITEA-2227 and is CLOSE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Priority-vs-pytest-marker preflight check (own memory entry, 9th recurrence with this session): a new sibling test appended into a file whose module-level pytestmark carries a lower priority than the new case's own AFS Priority needs a per-function @pytest.mark.pN override stacked on top of the inherited module marker -- do not omit it to avoid 'stacking two markers', that stacking is the esta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "All 4 AFS files' 'Insertion point' claims ('a new test_... method appended to TestHelpCenterSidebarTour in the same file (additive)') contradict the actual diff, which creates a brand-new TestHelpCenterSidebarTourExtras class (automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184) and puts all 4 new methods there instead. This is undeclared AFS/implementation drift across ELITEA-222… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md:27 (and the equivalent line in the other 3 AFS files) vs automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2226's test_sidebar_interactive_tour_starts_on_link_click asserts the step-1 tour description via strict Python `==` equality against a hardcoded literal string (test_help_center_sidebar_tour.py:224-231), directly contradicting the AFS's own explicit guidance stated TWICE in the same document: the 'Concrete Handles' section says 'assert via .to_contain_text() on stable substrings rather tha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:224-231"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/help-center/_surface.md's new 'Priority/marker mismatch note (ELITEA-2229 only)' paragraph misrepresents both the AFS and the shipped code: it says 'the AFS declares keeping the file's p2 for this test rather than producing a test that carries both p1 and p2' — but the AFS's own Automation Hints section says the opposite ('Both p1 and p2 DO end up attached to this one test item... that … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/_surface.md (final paragraph, 'Priority/marker mismatch note')"
+        },
+        {
+          "kind": "note",
+          "note": "Positive checks that passed: mechanical testid-only grep on the unit's own diff (git diff ba962ea3..cade7f5b -- automation/ | grep -nE locator-pattern) returned 0 hits — no raw selectors added, click_skip() reuses the pre-existing skip_button LocatorDescriptor field. Merged-target rule verified: the covering spec's cited commit 37dbd948 is confirmed (via git merge-base --is-ancestor) to be an ance… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Round 1 genuinely did not address either of these two findings despite being reported as a fix round — its commit (738b1baf) only touched the p1 marker and Linked Story AFS field. This matches the lead's tracked 'report-mislabel bug recurring (2x)' pattern; worth watching for a 3rd occurrence.",
+          "ref": "PR #1495"
+        },
+        {
+          "kind": "note",
+          "note": "Both findings are now fixed and verified green (5/5, single run) against localhost:5173, additive-only and locator-policy self-checks clean against the correct batch trunk (tests/batch-help-center-remaining).",
+          "ref": "PR #1495 commit d15e0056/cded44d2"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified fixed against the round-2 diff. (1) AFS 'Insertion point' sections in all 4 AFS files now accurately describe the new sibling class TestHelpCenterSidebarTourExtras (matches automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184 exactly) instead of the stale 'appended to TestHelpCenterSidebarTour' claim. (2) ELITEA-2226's step-1 description assert… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:71-79"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md Coverage Map row 7's 'Asserted where' cell still reads 'step 4: description exact-text match (confirmed live)' — a leftover from before the round-2 code fix. The AFS's own Concrete Handles/Automation Hints sections and the actual implementation now correctly use substring (.to_contain_text()) matching; only this one table cel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md Coverage Map rows for case elements 6 and 8 describe the assertion as '...successful navigation via a real sidebar click' / '...real click-through navigation to /chat succeeds', but the actual implementation is chat.sidebar_toggle.click(timeout=5000) — a drawer-toggle button click, not literal navigation to /chat. Th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md"
+        }
+      ],
+      "afs": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md",
+      "branch": "tests/ELITEA-2226-2228-2229-2230-sidebar-tour-extras",
+      "pr": 1495,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2228",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No GitHub tracker card ([Automate][ELITEA-<id>]) exists for ELITEA-2226, ELITEA-2228, ELITEA-2229, or ELITEA-2230 -- verified via real-time `gh issue list --repo EliteaAI/elitea-testing-public --state all --limit 1000 --json number,title` (no --search, per profile.md dedup policy) and local keyword match. The only related card is #734, which is case-specific to the sibling ELITEA-2227 and is CLOSE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Priority-vs-pytest-marker preflight check (own memory entry, 9th recurrence with this session): a new sibling test appended into a file whose module-level pytestmark carries a lower priority than the new case's own AFS Priority needs a per-function @pytest.mark.pN override stacked on top of the inherited module marker -- do not omit it to avoid 'stacking two markers', that stacking is the esta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "All 4 AFS files' 'Insertion point' claims ('a new test_... method appended to TestHelpCenterSidebarTour in the same file (additive)') contradict the actual diff, which creates a brand-new TestHelpCenterSidebarTourExtras class (automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184) and puts all 4 new methods there instead. This is undeclared AFS/implementation drift across ELITEA-222… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md:27 (and the equivalent line in the other 3 AFS files) vs automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2226's test_sidebar_interactive_tour_starts_on_link_click asserts the step-1 tour description via strict Python `==` equality against a hardcoded literal string (test_help_center_sidebar_tour.py:224-231), directly contradicting the AFS's own explicit guidance stated TWICE in the same document: the 'Concrete Handles' section says 'assert via .to_contain_text() on stable substrings rather tha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:224-231"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/help-center/_surface.md's new 'Priority/marker mismatch note (ELITEA-2229 only)' paragraph misrepresents both the AFS and the shipped code: it says 'the AFS declares keeping the file's p2 for this test rather than producing a test that carries both p1 and p2' — but the AFS's own Automation Hints section says the opposite ('Both p1 and p2 DO end up attached to this one test item... that … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/_surface.md (final paragraph, 'Priority/marker mismatch note')"
+        },
+        {
+          "kind": "note",
+          "note": "Positive checks that passed: mechanical testid-only grep on the unit's own diff (git diff ba962ea3..cade7f5b -- automation/ | grep -nE locator-pattern) returned 0 hits — no raw selectors added, click_skip() reuses the pre-existing skip_button LocatorDescriptor field. Merged-target rule verified: the covering spec's cited commit 37dbd948 is confirmed (via git merge-base --is-ancestor) to be an ance… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Round 1 genuinely did not address either of these two findings despite being reported as a fix round — its commit (738b1baf) only touched the p1 marker and Linked Story AFS field. This matches the lead's tracked 'report-mislabel bug recurring (2x)' pattern; worth watching for a 3rd occurrence.",
+          "ref": "PR #1495"
+        },
+        {
+          "kind": "note",
+          "note": "Both findings are now fixed and verified green (5/5, single run) against localhost:5173, additive-only and locator-policy self-checks clean against the correct batch trunk (tests/batch-help-center-remaining).",
+          "ref": "PR #1495 commit d15e0056/cded44d2"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified fixed against the round-2 diff. (1) AFS 'Insertion point' sections in all 4 AFS files now accurately describe the new sibling class TestHelpCenterSidebarTourExtras (matches automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184 exactly) instead of the stale 'appended to TestHelpCenterSidebarTour' claim. (2) ELITEA-2226's step-1 description assert… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:71-79"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md Coverage Map row 7's 'Asserted where' cell still reads 'step 4: description exact-text match (confirmed live)' — a leftover from before the round-2 code fix. The AFS's own Concrete Handles/Automation Hints sections and the actual implementation now correctly use substring (.to_contain_text()) matching; only this one table cel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md Coverage Map rows for case elements 6 and 8 describe the assertion as '...successful navigation via a real sidebar click' / '...real click-through navigation to /chat succeeds', but the actual implementation is chat.sidebar_toggle.click(timeout=5000) — a drawer-toggle button click, not literal navigation to /chat. Th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md"
+        }
+      ],
+      "afs": "test-specs/help-center/l2_sidebar-interactive-tour-restarts_ELITEA-2228.md",
+      "branch": "tests/ELITEA-2226-2228-2229-2230-sidebar-tour-extras",
+      "pr": 1495,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2229",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No GitHub tracker card ([Automate][ELITEA-<id>]) exists for ELITEA-2226, ELITEA-2228, ELITEA-2229, or ELITEA-2230 -- verified via real-time `gh issue list --repo EliteaAI/elitea-testing-public --state all --limit 1000 --json number,title` (no --search, per profile.md dedup policy) and local keyword match. The only related card is #734, which is case-specific to the sibling ELITEA-2227 and is CLOSE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Priority-vs-pytest-marker preflight check (own memory entry, 9th recurrence with this session): a new sibling test appended into a file whose module-level pytestmark carries a lower priority than the new case's own AFS Priority needs a per-function @pytest.mark.pN override stacked on top of the inherited module marker -- do not omit it to avoid 'stacking two markers', that stacking is the esta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "All 4 AFS files' 'Insertion point' claims ('a new test_... method appended to TestHelpCenterSidebarTour in the same file (additive)') contradict the actual diff, which creates a brand-new TestHelpCenterSidebarTourExtras class (automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184) and puts all 4 new methods there instead. This is undeclared AFS/implementation drift across ELITEA-222… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md:27 (and the equivalent line in the other 3 AFS files) vs automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2226's test_sidebar_interactive_tour_starts_on_link_click asserts the step-1 tour description via strict Python `==` equality against a hardcoded literal string (test_help_center_sidebar_tour.py:224-231), directly contradicting the AFS's own explicit guidance stated TWICE in the same document: the 'Concrete Handles' section says 'assert via .to_contain_text() on stable substrings rather tha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:224-231"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/help-center/_surface.md's new 'Priority/marker mismatch note (ELITEA-2229 only)' paragraph misrepresents both the AFS and the shipped code: it says 'the AFS declares keeping the file's p2 for this test rather than producing a test that carries both p1 and p2' — but the AFS's own Automation Hints section says the opposite ('Both p1 and p2 DO end up attached to this one test item... that … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/_surface.md (final paragraph, 'Priority/marker mismatch note')"
+        },
+        {
+          "kind": "note",
+          "note": "Positive checks that passed: mechanical testid-only grep on the unit's own diff (git diff ba962ea3..cade7f5b -- automation/ | grep -nE locator-pattern) returned 0 hits — no raw selectors added, click_skip() reuses the pre-existing skip_button LocatorDescriptor field. Merged-target rule verified: the covering spec's cited commit 37dbd948 is confirmed (via git merge-base --is-ancestor) to be an ance… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Round 1 genuinely did not address either of these two findings despite being reported as a fix round — its commit (738b1baf) only touched the p1 marker and Linked Story AFS field. This matches the lead's tracked 'report-mislabel bug recurring (2x)' pattern; worth watching for a 3rd occurrence.",
+          "ref": "PR #1495"
+        },
+        {
+          "kind": "note",
+          "note": "Both findings are now fixed and verified green (5/5, single run) against localhost:5173, additive-only and locator-policy self-checks clean against the correct batch trunk (tests/batch-help-center-remaining).",
+          "ref": "PR #1495 commit d15e0056/cded44d2"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified fixed against the round-2 diff. (1) AFS 'Insertion point' sections in all 4 AFS files now accurately describe the new sibling class TestHelpCenterSidebarTourExtras (matches automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184 exactly) instead of the stale 'appended to TestHelpCenterSidebarTour' claim. (2) ELITEA-2226's step-1 description assert… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:71-79"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md Coverage Map row 7's 'Asserted where' cell still reads 'step 4: description exact-text match (confirmed live)' — a leftover from before the round-2 code fix. The AFS's own Concrete Handles/Automation Hints sections and the actual implementation now correctly use substring (.to_contain_text()) matching; only this one table cel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md Coverage Map rows for case elements 6 and 8 describe the assertion as '...successful navigation via a real sidebar click' / '...real click-through navigation to /chat succeeds', but the actual implementation is chat.sidebar_toggle.click(timeout=5000) — a drawer-toggle button click, not literal navigation to /chat. Th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md"
+        }
+      ],
+      "afs": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md",
+      "branch": "tests/ELITEA-2226-2228-2229-2230-sidebar-tour-extras",
+      "pr": 1495,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2230",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No GitHub tracker card ([Automate][ELITEA-<id>]) exists for ELITEA-2226, ELITEA-2228, ELITEA-2229, or ELITEA-2230 -- verified via real-time `gh issue list --repo EliteaAI/elitea-testing-public --state all --limit 1000 --json number,title` (no --search, per profile.md dedup policy) and local keyword match. The only related card is #734, which is case-specific to the sibling ELITEA-2227 and is CLOSE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Priority-vs-pytest-marker preflight check (own memory entry, 9th recurrence with this session): a new sibling test appended into a file whose module-level pytestmark carries a lower priority than the new case's own AFS Priority needs a per-function @pytest.mark.pN override stacked on top of the inherited module marker -- do not omit it to avoid 'stacking two markers', that stacking is the esta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "All 4 AFS files' 'Insertion point' claims ('a new test_... method appended to TestHelpCenterSidebarTour in the same file (additive)') contradict the actual diff, which creates a brand-new TestHelpCenterSidebarTourExtras class (automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184) and puts all 4 new methods there instead. This is undeclared AFS/implementation drift across ELITEA-222… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md:27 (and the equivalent line in the other 3 AFS files) vs automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2226's test_sidebar_interactive_tour_starts_on_link_click asserts the step-1 tour description via strict Python `==` equality against a hardcoded literal string (test_help_center_sidebar_tour.py:224-231), directly contradicting the AFS's own explicit guidance stated TWICE in the same document: the 'Concrete Handles' section says 'assert via .to_contain_text() on stable substrings rather tha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:224-231"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/help-center/_surface.md's new 'Priority/marker mismatch note (ELITEA-2229 only)' paragraph misrepresents both the AFS and the shipped code: it says 'the AFS declares keeping the file's p2 for this test rather than producing a test that carries both p1 and p2' — but the AFS's own Automation Hints section says the opposite ('Both p1 and p2 DO end up attached to this one test item... that … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/_surface.md (final paragraph, 'Priority/marker mismatch note')"
+        },
+        {
+          "kind": "note",
+          "note": "Positive checks that passed: mechanical testid-only grep on the unit's own diff (git diff ba962ea3..cade7f5b -- automation/ | grep -nE locator-pattern) returned 0 hits — no raw selectors added, click_skip() reuses the pre-existing skip_button LocatorDescriptor field. Merged-target rule verified: the covering spec's cited commit 37dbd948 is confirmed (via git merge-base --is-ancestor) to be an ance… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Round 1 genuinely did not address either of these two findings despite being reported as a fix round — its commit (738b1baf) only touched the p1 marker and Linked Story AFS field. This matches the lead's tracked 'report-mislabel bug recurring (2x)' pattern; worth watching for a 3rd occurrence.",
+          "ref": "PR #1495"
+        },
+        {
+          "kind": "note",
+          "note": "Both findings are now fixed and verified green (5/5, single run) against localhost:5173, additive-only and locator-policy self-checks clean against the correct batch trunk (tests/batch-help-center-remaining).",
+          "ref": "PR #1495 commit d15e0056/cded44d2"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified fixed against the round-2 diff. (1) AFS 'Insertion point' sections in all 4 AFS files now accurately describe the new sibling class TestHelpCenterSidebarTourExtras (matches automation/tests/ui/help_center/test_help_center_sidebar_tour.py:184 exactly) instead of the stale 'appended to TestHelpCenterSidebarTour' claim. (2) ELITEA-2226's step-1 description assert… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/help_center/test_help_center_sidebar_tour.py:71-79"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md Coverage Map row 7's 'Asserted where' cell still reads 'step 4: description exact-text match (confirmed live)' — a leftover from before the round-2 code fix. The AFS's own Concrete Handles/Automation Hints sections and the actual implementation now correctly use substring (.to_contain_text()) matching; only this one table cel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md Coverage Map rows for case elements 6 and 8 describe the assertion as '...successful navigation via a real sidebar click' / '...real click-through navigation to /chat succeeds', but the actual implementation is chat.sidebar_toggle.click(timeout=5000) — a drawer-toggle button click, not literal navigation to /chat. Th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md"
+        }
+      ],
+      "afs": "test-specs/help-center/l2_sidebar-interactive-tour-back-to-step-one_ELITEA-2230.md",
+      "branch": "tests/ELITEA-2226-2228-2229-2230-sidebar-tour-extras",
+      "pr": 1495,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          122.775098334,
+          122.229437292,
+          125.763364875
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 9,
+    "merged-sanctioned-red": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/help_center/test_help_center_resource_links.py::TestHelpCenterResourceLinks::test_resource_card_link_redirects_to_external_page[ELITEA-2221-release-notes-latest]",
+      "ticket": "EliteaAI/elitea-testing-public#1492",
+      "why": "Help Center's Release Notes card 'Release 2.0.2 (latest)' link (href https://docs.elitea.ai/release-notes/rn-2-0-2) 404s on the docs site -- confirmed live, isolated to this one entry (2.0.1/2.0.0/2.0.0B2 all load fine), stale CMS 'latest' config (the docs site's actual latest is rn-2-0-5). expect.soft() against the correct expected title keeps this row honestly red while the other 4 rows/tests stay green.",
+      "case_ids": [
+        "ELITEA-2221"
+      ],
+      "unit": "ELITEA-2220+ELITEA-2221+ELITEA-2222+ELITEA-2223+ELITEA-2224"
+    }
+  ],
+  "parked": []
+}

@@ -1,0 +1,458 @@
+{
+  "batch": "mcp-w04",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1396",
+  "integration_branch": "tests/batch-mcp-w04",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      92.69,
+      92.54,
+      114.69
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1952",
+      "outcome": "not-started",
+      "note": "analysis agent died without a return — a harness death, nothing was learned about the case (it re-enters the next batch untouched); if several died in a row, suspect the account ceiling before the environment",
+      "findings": []
+    },
+    {
+      "id": "ELITEA-1953",
+      "outcome": "not-started",
+      "note": "analysis agent died without a return — a harness death, nothing was learned about the case (it re-enters the next batch untouched); if several died in a row, suspect the account ceiling before the environment",
+      "findings": []
+    },
+    {
+      "id": "ELITEA-1956",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed #1745 (label `question`): edited Timeout/Cache TTL persist as JSON STRINGS (\"60\", \"600\") while both case texts print bare numbers; an UNTOUCHED default stays a JSON number (300). Same in the create POST body, the update PUT body and the Raw Json view. Classified as case-text drift per the reverse-masking guard, not a defect — the case's real requirement (JSON reflects the new value) is satis… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1745"
+        },
+        {
+          "kind": "note",
+          "note": "TESTID GAP + work order (both cases' step 3). The info icon next to the Timeout / Cache TTL labels renders as <span data-info-tooltip=\"true\"><svg/></span> inside the field <label> with NO data-testid. The plumbing is already complete end to end (ToolBaseProperty.jsx -> StyledInputEnhancer -> InputBase -> InfoTooltip, which accepts testId/contentTestId); ToolBaseProperty.jsx:615-618 already supplie… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/features/toolkits/ui/form/ToolBase/ToolBaseProperty.jsx:615-618"
+        },
+        {
+          "kind": "note",
+          "note": "Framework trap that cost a probe: McpFormPage.is_save_button_disabled() binds the CREATE form's `toolkit-form-save-button`, which does not exist on /mcps/all/{id} — it times out after 30s with a misleading 'waiting for get_by_test_id(...)'. On the detail page use detail_save_button.is_disabled() (pristine: true; after one edit: false). Recorded in the surface digest and role memory. Worth a follow… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:1445"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance (verified after `git fetch origin` in ../EliteaUI, 2026-08-24): all 12 existing testids this family uses are on origin/main. Four of them (toolkit-type-card-mcp, toolkit-field-url-input, toolkit-field-timeout-input, toolkit-field-cache_ttl-input) return 'no' to the closure-record bare-substring grep because they are RUNTIME-COMPOSED — `data-testid={`toolkit-type-card-${itemKey}`}` at Ca… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero error-type console messages across both full flows (seed -> edit -> save -> reload -> Raw Json -> restore, twice), headless, fresh context — including the #291 React dev-mode warnings and the #549 MUI-Tabs warning that merged test_mcp_edit_toggle_enable_caching.py still filters/soft-fails. NOT evidence they are fixed (different render path, headless); the AFS tells the implementer to reuse EL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Leftover artefact: toolkit 3247 (`autotest_mcp_ttl_*`) was created by this analysis session and left in the project with both fields restored to 300. Harmless; the spec must seed its own MCP (the family's first assertion is 'default is 300', which a previously-edited toolkit would silently invalidate). Delete it if the project prefers a clean list."
+        },
+        {
+          "kind": "note",
+          "note": "Testids shipped per the AFS work order: toolkit-field-timeout-info-icon + toolkit-field-cache_ttl-info-icon, added as one additive per-key spread beside the pre-existing k === 'bucket' one in ToolBaseProperty.jsx. Commit EliteaAI/EliteaUI@25c47d7d, pushed to automation/testids. NOT yet on main — a human cherry-pick is the promotion gap for both cases' closure records. All three add-data-testid Ste… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@25c47d7d"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift already filed by the analyst as #1745 and confirmed again live: both case texts print the Raw-Json entry as a bare number ('timeout': 60 / 'cache_ttl': 600), while the product persists a UI-typed value as a JSON string ('60'/'600'); an untouched default stays numeric (300). Asserted via str(...) plus isinstance(..., str) — no soft-assert, no red. Nothing new to file.",
+          "ref": "#1745"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI commitlint (husky) rejects subjects that carry anything after the [EL-XXXX] tag or a multi-ticket tag: 'test: [EL-1956/1957] ...' and 'test: [EL-1956] ... (also EL-1957)' both failed with 'subject must contain ticket number - [EL-XXXX]'. A single bare [EL-NNNN] tag with the second case named only in the body passes. Worth knowing for any family unit that touches EliteaUI."
+        },
+        {
+          "kind": "note",
+          "note": "Implementation facts appended to test-specs/mcp/_surface.md (attributed section): the info-icon testid gap is closed and the one-line recipe generalises to any schema field; save_and_wait_for_updated()'s returned PUT body carries the full settings object so a persisted value is assertable straight off the save response; console stayed clean across both rows (not evidence #291/#549 are fixed)."
+        },
+        {
+          "kind": "note",
+          "note": "Phase 6 step 5 (work-log comment / PR link on the originating [Automate][ELITEA-1956|1957] board cards) was left to the lead's single tracker mirror sweep at batch close, per the pipeline's 'one TMS/tracker mirror sweep' contract — no dispatch named a tracking issue, and duplicating the sweep risks double writes."
+        },
+        {
+          "kind": "note",
+          "note": "CLOSURE-RECORD TRAP for the lead: the two new testids are RUNTIME-COMPOSED (`tooltipTestId: `toolkit-field-${k}-info-icon`` at ToolBaseProperty.jsx:620), so workflow.md's two-stage `git grep -- \"$t\" origin/<ref> -- src/` returns **no** for BOTH `toolkit-field-timeout-info-icon` and `toolkit-field-cache_ttl-info-icon` on main AND on automation/testids. I verified by diffing the file instead: line 6… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI src/[fsd]/features/toolkits/ui/form/ToolBase/ToolBaseProperty.jsx:619-621"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: 0 substitution hits. The nondeterminism-free observables all come from the product — create POST 201 body, two update PUT 200 bodies (the response predicate itself enforces status 200, so a non-200 times out rather than passing), rendered input values, and the product-rendered Raw Json document read via get_raw_json_full() (get_raw_json() would truncate under CodeMirror virtualization on… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:264-283"
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking guard applied correctly, not misused. Both case texts print the Raw-Json entry as a bare number (`\"timeout\": 60`), the product persists a UI-typed value as a JSON STRING. The spec asserts the case's real requirement via str(...) AND pins the observed shape with isinstance(..., str) — so a silent product type change fails rather than being absorbed by str(). Filed as clarification #… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:284-289"
+        },
+        {
+          "kind": "note",
+          "note": "Not masking: the `soft_failures` -> pytest.fail(...) aggregation at line 335 is the merged ELITEA-1929 split-filter shape reused verbatim (known #291 dev-mode warnings filtered at capture, known #549 MUI-Tabs warning collected as a soft failure so it stays RED-visible, anything else a hard fail at the step). Verified against tests/ui/toolkits/test_mcp_edit_toggle_enable_caching.py:82-121,206-210 —… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:130-166"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (message accuracy, not correctness): the console listener is registered BEFORE the Setup create-flow, and the first _check_no_new_console_errors call is at Step 5. A console error emitted during seeding would therefore be reported with the label \"Step 5 (Save)\". Detection is unaffected (nothing is dropped); only the attribution string would mislead a triager. Not worth a round.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:145-152"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (latent flake shape, precedent-consistent): Step 1's Form-view check is a non-waiting `form.form_view_toggle.get_attribute(\"aria-pressed\") == \"true\"`. It is guarded by navigate_to_detail()'s GET-response wait + _wait_for_detail_data_rendered() and by the preceding retrying expect(detail_title).to_have_text(...), and it matches three merged specs in the same suite (test_mcp_edit_url.py:103, tes… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:212-215"
+        },
+        {
+          "kind": "note",
+          "note": "Step 8 (ELITEA-1956's own case step, Axis-2 for ELITEA-1957) asserts restoration via the PUT 200 response body only, not by re-reading the form field. Judged sufficient: the case's expected is \"Timeout is restored to default\", the PUT body is the server-side truth, and Step 6 already proved the field↔server round-trip for the same mechanism on the same run. Flagging so the disposition is on record… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:291-311"
+        },
+        {
+          "kind": "note",
+          "note": "Read-only-by-default (Hard Rule 10) considered and correctly overridden: the family's FIRST assertion is \"the field shows the default 300\", which any previously-edited leftover toolkit would silently invalidate, and ToolkitAPI.list_all_toolkits() returns [] on this environment (documented quirk) so there is no reliable read-only discovery path. Seeding via the UI create flow + API teardown in a fi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:341-350"
+        },
+        {
+          "kind": "note",
+          "note": "Markers: pytestmark carries ui/toolkits/p2/regression/new plus @pytest.mark.mcp on the function — all registered in automation/pytest.ini (lines 34-54). `new` is an extra beyond the AFS's declared list; it is the project's standard \"not yet validated on deployed envs\" marker, so this is convention, not drift.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:52-58"
+        },
+        {
+          "kind": "note",
+          "note": "Review memory committed on the branch under review as an additive docs(memory) commit (f5520a1f1) touching nothing under automation/ — the reviewed code diff is unchanged. Records the composed-testid grep false-negative gotcha for the next closure record.",
+          "ref": ".agents/memory/qa-engineer/daily/2026-08-24.md"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_remote-mcp-timeout-and-cache-ttl-configuration_ELITEA-1956-1957.md",
+      "branch": "tests/1956-1957-mcp-timeout-cache-ttl",
+      "pr": 1746,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          92.69,
+          92.54,
+          114.69
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1957",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed #1745 (label `question`): edited Timeout/Cache TTL persist as JSON STRINGS (\"60\", \"600\") while both case texts print bare numbers; an UNTOUCHED default stays a JSON number (300). Same in the create POST body, the update PUT body and the Raw Json view. Classified as case-text drift per the reverse-masking guard, not a defect — the case's real requirement (JSON reflects the new value) is satis… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1745"
+        },
+        {
+          "kind": "note",
+          "note": "TESTID GAP + work order (both cases' step 3). The info icon next to the Timeout / Cache TTL labels renders as <span data-info-tooltip=\"true\"><svg/></span> inside the field <label> with NO data-testid. The plumbing is already complete end to end (ToolBaseProperty.jsx -> StyledInputEnhancer -> InputBase -> InfoTooltip, which accepts testId/contentTestId); ToolBaseProperty.jsx:615-618 already supplie… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/features/toolkits/ui/form/ToolBase/ToolBaseProperty.jsx:615-618"
+        },
+        {
+          "kind": "note",
+          "note": "Framework trap that cost a probe: McpFormPage.is_save_button_disabled() binds the CREATE form's `toolkit-form-save-button`, which does not exist on /mcps/all/{id} — it times out after 30s with a misleading 'waiting for get_by_test_id(...)'. On the detail page use detail_save_button.is_disabled() (pristine: true; after one edit: false). Recorded in the surface digest and role memory. Worth a follow… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:1445"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance (verified after `git fetch origin` in ../EliteaUI, 2026-08-24): all 12 existing testids this family uses are on origin/main. Four of them (toolkit-type-card-mcp, toolkit-field-url-input, toolkit-field-timeout-input, toolkit-field-cache_ttl-input) return 'no' to the closure-record bare-substring grep because they are RUNTIME-COMPOSED — `data-testid={`toolkit-type-card-${itemKey}`}` at Ca… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero error-type console messages across both full flows (seed -> edit -> save -> reload -> Raw Json -> restore, twice), headless, fresh context — including the #291 React dev-mode warnings and the #549 MUI-Tabs warning that merged test_mcp_edit_toggle_enable_caching.py still filters/soft-fails. NOT evidence they are fixed (different render path, headless); the AFS tells the implementer to reuse EL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Leftover artefact: toolkit 3247 (`autotest_mcp_ttl_*`) was created by this analysis session and left in the project with both fields restored to 300. Harmless; the spec must seed its own MCP (the family's first assertion is 'default is 300', which a previously-edited toolkit would silently invalidate). Delete it if the project prefers a clean list."
+        },
+        {
+          "kind": "note",
+          "note": "Testids shipped per the AFS work order: toolkit-field-timeout-info-icon + toolkit-field-cache_ttl-info-icon, added as one additive per-key spread beside the pre-existing k === 'bucket' one in ToolBaseProperty.jsx. Commit EliteaAI/EliteaUI@25c47d7d, pushed to automation/testids. NOT yet on main — a human cherry-pick is the promotion gap for both cases' closure records. All three add-data-testid Ste… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@25c47d7d"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift already filed by the analyst as #1745 and confirmed again live: both case texts print the Raw-Json entry as a bare number ('timeout': 60 / 'cache_ttl': 600), while the product persists a UI-typed value as a JSON string ('60'/'600'); an untouched default stays numeric (300). Asserted via str(...) plus isinstance(..., str) — no soft-assert, no red. Nothing new to file.",
+          "ref": "#1745"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI commitlint (husky) rejects subjects that carry anything after the [EL-XXXX] tag or a multi-ticket tag: 'test: [EL-1956/1957] ...' and 'test: [EL-1956] ... (also EL-1957)' both failed with 'subject must contain ticket number - [EL-XXXX]'. A single bare [EL-NNNN] tag with the second case named only in the body passes. Worth knowing for any family unit that touches EliteaUI."
+        },
+        {
+          "kind": "note",
+          "note": "Implementation facts appended to test-specs/mcp/_surface.md (attributed section): the info-icon testid gap is closed and the one-line recipe generalises to any schema field; save_and_wait_for_updated()'s returned PUT body carries the full settings object so a persisted value is assertable straight off the save response; console stayed clean across both rows (not evidence #291/#549 are fixed)."
+        },
+        {
+          "kind": "note",
+          "note": "Phase 6 step 5 (work-log comment / PR link on the originating [Automate][ELITEA-1956|1957] board cards) was left to the lead's single tracker mirror sweep at batch close, per the pipeline's 'one TMS/tracker mirror sweep' contract — no dispatch named a tracking issue, and duplicating the sweep risks double writes."
+        },
+        {
+          "kind": "note",
+          "note": "CLOSURE-RECORD TRAP for the lead: the two new testids are RUNTIME-COMPOSED (`tooltipTestId: `toolkit-field-${k}-info-icon`` at ToolBaseProperty.jsx:620), so workflow.md's two-stage `git grep -- \"$t\" origin/<ref> -- src/` returns **no** for BOTH `toolkit-field-timeout-info-icon` and `toolkit-field-cache_ttl-info-icon` on main AND on automation/testids. I verified by diffing the file instead: line 6… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI src/[fsd]/features/toolkits/ui/form/ToolBase/ToolBaseProperty.jsx:619-621"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: 0 substitution hits. The nondeterminism-free observables all come from the product — create POST 201 body, two update PUT 200 bodies (the response predicate itself enforces status 200, so a non-200 times out rather than passing), rendered input values, and the product-rendered Raw Json document read via get_raw_json_full() (get_raw_json() would truncate under CodeMirror virtualization on… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:264-283"
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking guard applied correctly, not misused. Both case texts print the Raw-Json entry as a bare number (`\"timeout\": 60`), the product persists a UI-typed value as a JSON STRING. The spec asserts the case's real requirement via str(...) AND pins the observed shape with isinstance(..., str) — so a silent product type change fails rather than being absorbed by str(). Filed as clarification #… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:284-289"
+        },
+        {
+          "kind": "note",
+          "note": "Not masking: the `soft_failures` -> pytest.fail(...) aggregation at line 335 is the merged ELITEA-1929 split-filter shape reused verbatim (known #291 dev-mode warnings filtered at capture, known #549 MUI-Tabs warning collected as a soft failure so it stays RED-visible, anything else a hard fail at the step). Verified against tests/ui/toolkits/test_mcp_edit_toggle_enable_caching.py:82-121,206-210 —… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:130-166"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (message accuracy, not correctness): the console listener is registered BEFORE the Setup create-flow, and the first _check_no_new_console_errors call is at Step 5. A console error emitted during seeding would therefore be reported with the label \"Step 5 (Save)\". Detection is unaffected (nothing is dropped); only the attribution string would mislead a triager. Not worth a round.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:145-152"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (latent flake shape, precedent-consistent): Step 1's Form-view check is a non-waiting `form.form_view_toggle.get_attribute(\"aria-pressed\") == \"true\"`. It is guarded by navigate_to_detail()'s GET-response wait + _wait_for_detail_data_rendered() and by the preceding retrying expect(detail_title).to_have_text(...), and it matches three merged specs in the same suite (test_mcp_edit_url.py:103, tes… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:212-215"
+        },
+        {
+          "kind": "note",
+          "note": "Step 8 (ELITEA-1956's own case step, Axis-2 for ELITEA-1957) asserts restoration via the PUT 200 response body only, not by re-reading the form field. Judged sufficient: the case's expected is \"Timeout is restored to default\", the PUT body is the server-side truth, and Step 6 already proved the field↔server round-trip for the same mechanism on the same run. Flagging so the disposition is on record… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:291-311"
+        },
+        {
+          "kind": "note",
+          "note": "Read-only-by-default (Hard Rule 10) considered and correctly overridden: the family's FIRST assertion is \"the field shows the default 300\", which any previously-edited leftover toolkit would silently invalidate, and ToolkitAPI.list_all_toolkits() returns [] on this environment (documented quirk) so there is no reliable read-only discovery path. Seeding via the UI create flow + API teardown in a fi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:341-350"
+        },
+        {
+          "kind": "note",
+          "note": "Markers: pytestmark carries ui/toolkits/p2/regression/new plus @pytest.mark.mcp on the function — all registered in automation/pytest.ini (lines 34-54). `new` is an extra beyond the AFS's declared list; it is the project's standard \"not yet validated on deployed envs\" marker, so this is convention, not drift.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py:52-58"
+        },
+        {
+          "kind": "note",
+          "note": "Review memory committed on the branch under review as an additive docs(memory) commit (f5520a1f1) touching nothing under automation/ — the reviewed code diff is unchanged. Records the composed-testid grep false-negative gotcha for the next closure record.",
+          "ref": ".agents/memory/qa-engineer/daily/2026-08-24.md"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_remote-mcp-timeout-and-cache-ttl-configuration_ELITEA-1956-1957.md",
+      "branch": "tests/1956-1957-mcp-timeout-cache-ttl",
+      "pr": 1746,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          92.69,
+          92.54,
+          114.69
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1960",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed CLARIFICATION EliteaAI/elitea-testing-public#1747 - ELITEA-1960 step 7 ('Verify navigation goes back to MCP create page') is view-level only: confirming the cancel unmounts the create form and re-renders the type picker, but the URL stays /mcps/create/mcp. No navigate() exists in the cancel path by construction, so this cannot be a transient. The case's own EXPECTED RESULT ('user is navigate… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1747"
+        },
+        {
+          "kind": "note",
+          "note": "IMPLEMENTER-CRITICAL console caveat: the MCP type picker emits React's 'Each child in a list should have a unique \"key\" prop' at ERROR level on EVERY mount (CategorySection.jsx:35 via ToolkitTypeSelector.jsx:36, tracked as #656). This case's flow mounts the picker TWICE (entry, and again as step 7's observable), so the 'register the console listener after setup' dodge used by test_mcp_back_navigat… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/656"
+        },
+        {
+          "kind": "note",
+          "note": "Do NOT call McpListPage.clear_search() at the end of this test. Clicking Clear while the zero-match empty state is showing navigates away to /mcps/create - open defect #1734 (regression of #585). The test has no reason to clear; the AFS says to just end there. Flagging because a tidy-up instinct would walk straight into it.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1734"
+        },
+        {
+          "kind": "note",
+          "note": "Handle gotcha that cost a probe: toolkit-field-url-input's testid sits on the <input> ITSELF (a '[data-testid=\"toolkit-field-url-input\"] input' selector matches nothing), while toolkit-form-name-input is the opposite (wrapper with the real input inside). Recorded in the digest. Also re-confirmed: toolkit-type-card-mcp mounts asynchronously after goto('/mcps/create') - a third independent observati… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing product-code naming, NOT filed and not our diff: CreateToolkitToolTabBar.jsx passes dataTestId / modalDataTestId / confirmButtonDataTestId - prop names the project's own convention writes as testId / <part>TestId (.agents/testing.md § Locator policy). The emitted data-testid values are correct and already on main, so nothing is broken; recorded only so a future add-data-testid pass at… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "question",
+          "note": "Memory-layer discrepancy worth a ruling: my dispatch preamble says role memory is 'LOCAL and gitignored - never git add it', but in this repo .agents/memory/qa-engineer/daily/*.md is TRACKED (git status showed the daily log as modified, and git check-ignore reports the new curated entry is NOT ignored). I committed both with the AFS - consistent with the repo's existing state and the memory skill'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/mcp/_surface.md is now ~1250 lines after my append (it was 444 when issue #1735 asked whether to split it into an index + per-subarea files). That canon question is still open and the file is well past a comfortable single read. I appended rather than split because the split is a declared open decision, not mine to settle mid-batch - but the next analyst on this surface will pay for it.… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1735"
+        },
+        {
+          "kind": "note",
+          "note": "No [Automate][ELITEA-1960] intake card exists in the newest 400 issues of EliteaAI/elitea-testing-public (checked while writing the clarification's origin line, which I then reworded to cite the batch instead of a card number). Either the card is older than the 400-issue window or mcp-w04's cases were dispatched without intake cards - worth a lead-side check before the closure/back-write sweep."
+        },
+        {
+          "kind": "note",
+          "note": "_surface.md's handle-gotcha section says toolkit-form-name-input is a WRAPPER with the real input inside (opposite of toolkit-field-url-input). In practice expect(form.name_input).to_have_value(...) works directly — Playwright would raise 'Not an input element' on a wrapper, so it resolves to a real input for assertions. Appended as an attributed implementation-time fact; the analyst's original wo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The pre-flight guard asserts no toolkit named 'autotest_cancelled' pre-exists and deliberately does NOT delete one it finds — a leftover is either the defect this case catches or evidence from an aborted run. If a gate run ever fails on this guard, investigate the leftover rather than clearing it.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py"
+        },
+        {
+          "kind": "note",
+          "note": "No clear_search() after step 8: clicking Clear while the zero-match empty state shows navigates away to /mcps/create (known defect #1734, regression of #585). The test simply ends on the filtered list. Any future spec on this surface must do the same.",
+          "ref": "automation/pages/mcp_list_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Critical-for-verification (blocking): pre-flight dirty-environment guard built on `toolkit_api.list_all_toolkits()`, which is a confirmed always-empty listing path on this env — the guard can never fire, so the fixed literal `autotest_cancelled` is unprotected despite the AFS claiming otherwise.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:113"
+        },
+        {
+          "kind": "defect",
+          "note": "Important (blocking): step 8c asserts `TOOLKIT_NAME not in names` against the same always-empty listing — a tautology sold as an independent server-side oracle. The genuine server-side proof in this spec is the passive `page.on('request')` observer (step 8b), which is correct and sufficient; 8c adds only the appearance of a second oracle.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:270"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: the request observer filters `req.method != \"GET\" and \"prompt_lib\" in req.url`, i.e. ANY non-GET request to any prompt_lib endpoint, not just the toolkit-create endpoint the AFS names (`/api/v2/elitea_core/tool(s)/prompt_lib/<project>`). Safe direction (fails loud, never silent) but a possible false red in the hardening gate if an unrelated prompt_lib POST fires; tightening to `/tool… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:145-152"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: `_is_dev_server_noise` filters on `\"/socket.io/\" or \"@vite/client\"` alone, wider than both (a) the AFS's declared two signatures (#656 key-prop + socket.io CORS/502/503) and (b) the cited support-assistant precedent, which requires `ERR_CONNECTION_REFUSED` AND a noise pattern (test_support_assistant_history_after_refresh.py:100-105). Real-world risk is negligible, but the widening is… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:84-92"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: `UI_ELEMENT_TIMEOUT = 10_000` is declared at module level and never referenced anywhere in the spec — dead code (ruff does not flag module constants, so it passed lint).",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:65"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: `pytest.mark.mcp` is applied twice — once in `pytestmark` (line 47) and again as a class decorator (`@pytest.mark.mcp`). Harmless, but drop one.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:107"
+        },
+        {
+          "kind": "note",
+          "note": "Positive, for the record: masking hunt is clean in BOTH directions. The #656 console filter is narrow (exact message match), carries a `# Known defect:` comment, is AFS-declared, and cannot hide a new error in this flow; the AFS's reverse-masking call on case step 7 (case title implies a route change, product legitimately keeps the URL at /mcps/create/mcp) is handled correctly — clarification #174… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:1-40"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot .agents/automation/mcp-w04/cases/ELITEA-1960.md ↔ AFS ↔ diff): faithful on all axes. Every one of the case's 8 steps, its precondition, its Expected Final State and its 'all steps complete without errors' pass criterion has a Coverage-Map row AND a real assertion AT that step in the code (step 1 URL+inputs, 2/3 to_have_value, 4b form-still-mounted, 5 dialog text via `i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-cancel-during-creation_ELITEA-1960.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks, both run on the full diff `git diff f977012f...tests/1960-remote-mcp-cancel-during-creation -- automation/`: locator grep `(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()` → 0 hits; provenance grep `(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()` → 0 hits. All three … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:274-295"
+        },
+        {
+          "kind": "question",
+          "note": "For the lead: once the guard is UI-based, decide whether a leftover `autotest_cancelled` should still fail fast (current, deliberate — 'a leftover IS the defect signal') or be deleted like test_mcp_delete_remote.py's `_delete_stale` does. Fail-fast is defensible and I would keep it, but the two neighbouring policies now differ and the difference should be a decision rather than an accident.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:117"
+        },
+        {
+          "kind": "defect",
+          "note": "Environment/product quirk re-verified live 2026-08-24: GET elitea_core/tools/prompt_lib/{project} answers {'rows': [], 'total': 0, 'indexes_total': 0} while /mcps/all renders 20 MCP cards for the same project — confirmed via Bearer this session, and previously via a real cookie session (memory entry mcp_pipeline_node_toolkit_tool_quirks.md). It is not a client bug. Consequence worth flagging beyon… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/api/client.py:1758"
+        },
+        {
+          "kind": "note",
+          "note": "Generalizable review lens this fix surfaced: an absence assertion is only evidence if the channel it reads is proven able to see the thing. Step 8 of this spec already carried that guard (assert count_unfiltered > 0 before asserting zero matches); the pre-flight did not, and that is precisely where the vacuous oracle survived. The shipped spec now applies the presence-then-absence pattern at both … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Cost of the fix: the pre-flight guard now costs one extra navigation to /mcps/all plus a search, taking the spec from ~30s to 37.6s headless. Deliberate — it buys a non-vacuous guard and a clear dirty-environment message instead of an obscure step-8 red. No reruns needed; the spec was green first try after the change.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 1 RESOLVED: both vacuous ToolkitAPI.list_all_toolkits() absence assertions are gone. Discovery now runs through McpListPage (navigate/search/get_card_names) in the pre-flight guard (test_mcp_cancel_during_creation.py:118-149) and in step 8 (:270-289), each preceded by a get_card_count() > 0 non-vacuity check so an absence result is only read off a channel proven able to see MCPs. T… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:118"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 2 RESOLVED: test-specs/mcp/_surface.md's ELITEA-1960 addendum now reads 'Pre-flight guard is worth keeping — via the LIST VIEW, not the API' (:1277) and carries an explicit ⚠️ retraction bullet (:1267-1276) naming list_all_toolkits() as a vacuous oracle. Grep of the full digest on the branch returns no surviving claim that the API-based guard was a verified fact.",
+          "ref": "test-specs/mcp/_surface.md:1267"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on the full diff (git diff tests/batch-mcp-w04...tests/1960-remote-mcp-cancel-during-creation -- automation/): locator grep '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' → 0 hits (no matches). Provenance grep '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:274"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case ↔ AFS ↔ diff: all 8 TMS steps, the preconditions, the Expected Final State and the Pass criterion have Coverage-Map rows, and every 'asserted' row maps to a real assertion AT that step — step 1 (:186-192), 2 (:195), 3 (:199), 3b (:207-209), 4b (:219-221), 5 (:224-238), 6 (:241-243), 7 (:250-259), 8 (:270-289), 8b (:291-296), 8e (:298-302). No bare-action step. Axis-2 additions (… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_remote-mcp-cancel-during-creation_ELITEA-1960.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking check on step 7: the case title says 'navigation goes back to MCP create page' but the product changes no URL. Correctly handled as case-text imprecision, not a product defect — the case's own expected result ('user is navigated away from the creation form') is asserted via 5× to_have_count(0) on create-form handles plus a positive type-picker-heading assertion. CLARIFICATION Elite… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:250"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt on the console filter: no skip/xfail/test.fail/weakened assertion anywhere. The two exclusions are (a) the #656 React 'unique \"key\" prop' warning — carries the '# Known defect: EliteaAI/elitea-testing-public#656' comment and matches merged precedent in 12 sibling toolkit specs — and (b) dev-server socket.io/@vite noise, matching the support-assistant _DEV_SERVER_NOISE pattern. The rem… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking divergence worth the lead's awareness: _is_dev_server_noise (:94-100) drops the 'ERR_CONNECTION_REFUSED' conjunct that the merged support-assistant _DEV_SERVER_NOISE filter uses, so ANY console error whose text contains '/socket.io/' or '@vite/client' is excluded. The widening is grounded (the AFS specced CORS/502/503 socket.io failures, which are not connection-refused, so the narrow… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:94"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — dead constant: UI_ELEMENT_TIMEOUT = 10_000 is declared at module level (:75) and never referenced in the spec (the page-object methods own their own waits). Harmless, ruff will not flag it; delete on the next touch of this file.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:75"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — the _surface.md retraction bullet says '(This corrects an earlier bullet here that recorded the API-based pre-flight guard as a verified implementation fact — it was not.)' but that bullet was fixed in place rather than left behind, so a fresh reader of the digest sees a correction with no visible antecedent. Accurate as history, mildly confusing as a cache entry.",
+          "ref": "test-specs/mcp/_surface.md:1273"
+        },
+        {
+          "kind": "question",
+          "note": "The passive request observer collects any non-GET whose URL contains 'prompt_lib' (:171-176). If a CORS preflight OPTIONS ever fires against that path on a deployed env, it would be collected and fail step 8b for a non-mutation reason. None fired locally (spec ran green), so this is a deployed-env watch item, not a defect on this branch.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py:171"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_remote-mcp-cancel-during-creation_ELITEA-1960.md",
+      "branch": "tests/1960-remote-mcp-cancel-during-creation",
+      "pr": 1748,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          92.69,
+          92.54,
+          114.69
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "not-started": 2,
+    "automated": 3
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

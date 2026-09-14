@@ -1,0 +1,102 @@
+{
+  "batch": "elitea-2280-personal-token-create",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2280-personal-token-create",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      15.36,
+      13.15,
+      13.49
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2280",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Confirmed live: the Settings → Personal Tokens '+' add-button navigates to a separate route (/settings/create-personal-token), it does not open an inline modal on the same page. This reconfirms (does not newly discover) the gotcha already recorded in test-specs/settings-personal-tokens/_surface.md from ELITEA-2277 analysis.",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The Personal Tokens create-token flow (CreatePersonalToken.jsx), its GeneratedTokenDialog, and the tokens table's per-cell content (name/value/expiration) carry zero data-testid attributes today. 12 new testids are requested in the AFS's Concrete Handles table, with source-verified call-site-only wiring instructions for most of them (several shared components — DrawerPageHeader, SingleSelect, Inpu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-personal-tokens/l3_personal-token-create-and-verify_ELITEA-2280.md"
+        },
+        {
+          "kind": "note",
+          "note": "The delete-confirmation modal (Modal.DeleteEntityModal, shared component used for cleanup in this case) already ships a complete testid set (delete-confirm-dialog/-title/-message/-name-input/-cancel-button/-button) — zero new testid work needed for any future case that needs a delete-and-confirm flow built on this component.",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "navigator.clipboard.readText() hangs indefinitely (no rejection, no timeout) when called against a browser context that was not created with the clipboard-read permission granted — hit this during exploration via a bare Playwright MCP browser_evaluate call (1800s idle-timeout abort). The pytest suite's own context fixture (automation/conftest.py) already grants clipboard-read/clipboard-write at co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/clipboard_read_hangs_without_permission_grant.md"
+        },
+        {
+          "kind": "note",
+          "note": "Shared grid-table component gotcha (now in role memory as grid_table_name_column_bypasses_rendercell.md, indexed in MEMORY.md): GridTableRow special-cases the column whose field matches nameField, rendering it via GridTableRowNameCell and NEVER through the table's own renderCell callback. Any future grid-table-based table needing a name-column testid must thread a nameCellTestId-style prop (now ad… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI src/[fsd]/entities/grid-table/ui/GridTableRow.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Conftest screenshot-on-failure hook captures its screenshot AFTER the test's finally block runs (cleanup already executed), so the failure screenshot for this case showed a post-cleanup 'token deleted' toast rather than the actual failure state. Not a defect worth filing, but worth knowing when debugging future failures via screenshot alone — the JUnit/traceback is the reliable source, not the scr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case (.agents/automation/elitea-2280-personal-token-create/cases/ELITEA-2280.md) ↔ AFS (test-specs/settings-personal-tokens/l3_personal-token-create-and-verify_ELITEA-2280.md) ↔ diff. All 14 case steps + Expected Final State mapped in Coverage Map, all disposed `asserted`, no dropped elements. AFS faithful to case (one documented case-text ambiguity — step 3 'form opens' is actually a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep on the full diff (pages/ + tests/) returned only 4 hits, all chaining off pre-declared UPPER_CASE class-level `[data-testid=...]` constants (TOKEN_NAME_CELL_SELECTOR, TOKEN_VALUE_CELL_SELECTOR, TOKEN_EXPIRATION_STATUS_SELECTOR, TOKEN_ACTION_ICON_SELECTOR) — zero non-testid handles added. Command + output pasted into the PR comment per reviewer contract.",
+          "ref": "automation/pages/personal_tokens_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer caught and correctly fixed a real gotcha: TokensTable.jsx's renderCell 'name' branch is dead code for grid-table-based tables (GridTableRow special-cases the name column via GridTableRowNameCell, bypassing renderCell). Fix threads an additive, optional `nameCellTestId` prop through the shared GridTableRow → GridTableRowNameCell → DefaultNameCellContent chain (default undefined, verifie… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@0061d72f"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS claims the delete-confirmation modal's 6 testids (delete-confirm-dialog/-title/-message/-name-input/-cancel-button/-button) 'already exist, zero new work.' Verified: true against `automation/testids` (which is what this project targets/serves locally), but delete-confirm-dialog/-button/-title/-cancel-button/-message are NOT yet on EliteaUI `main` (only delete-confirm-name-input is) — pending h… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/EliteaUI src/[fsd]/shared/ui/modal/DeleteEntityModal.jsx"
+        },
+        {
+          "kind": "question",
+          "note": "token-expiration-status carries the SAME testid across all 4 mutually-exclusive ExpiryInDays branches (active/warning/never/expired), differing only via data-expiration-state; this test only exercises 'active'. Read literally, role-overrides.md § 'touches' scoping (canon #511) could flag the 3 unexercised attribute values as scope creep, but I judged this as extending the project's existing 'testi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/EliteaUI src/[fsd]/features/settings/ui/personal-tokes/TokensTable.jsx (ExpiryInDays)"
+        },
+        {
+          "kind": "note",
+          "note": "Two non-blocking nits: (1) AFS Axis 2 doesn't list the 'no console errors' side-channel check (test Step 13) as an addition, though it's standard practice per test-case-analysis §3 and grounded — just an AFS documentation gap. (2) test Step 2 asserts page_title.text_content() without its own explicit wait (relies on the preceding wait_for_loaded(), which only waits on name_input) — low risk given … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py:74-76"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_personal-token-create-and-verify_ELITEA-2280.md",
+      "branch": "tests/ELITEA-2280-personal-token-create-and-verify",
+      "pr": 1173,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          15.36,
+          13.15,
+          13.49
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

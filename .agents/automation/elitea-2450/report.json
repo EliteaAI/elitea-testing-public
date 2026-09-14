@@ -1,0 +1,148 @@
+{
+  "batch": "elitea-2450",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2450",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      25.45,
+      23.09,
+      23.99
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/chat/test_generate_mermaid_diagram_and_edit_in_canvas.py",
+        "signature": "AssertionError: Unexpected console error(s) during the flow: [\"Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect...\"] — raw hard failure (not soft-asserted/known-defect-tagged in this test), executed and ran (not a collection/infra miss)",
+        "case_ids": []
+      },
+      {
+        "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py",
+        "signature": "Failed: Soft assertion(s) failed — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1039: bare LLM node errors instead of responding when used as a chat participant (AI response did not complete within 60000ms — Copy button never appeared). Steps 1-10 passed cleanly.",
+        "case_ids": []
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py",
+        "signature": "Failed: Soft assertion(s) failed — sanctioned RED, Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1103: Reject should end pipeline at END with no further processing, but backend re-emitted ['agent_start','start_task'] — pipeline restarted from entry point.",
+        "case_ids": []
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_router_node_configuration.py",
+        "signature": "Failed: Soft assertion(s) failed — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036: default-output edge Router1.default_output -> END did not render immediately after selecting Default output = END on a fresh Router node. Rest of flow (Condition/Routes/Input/routes-edges/Save/reload) passed cleanly.",
+        "case_ids": []
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2450",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "MINOR product bug filed: EliteaAI/elitea-testing-public#1267 — RunStateDialog.jsx's Timeline Stepper (ProcessConnector wrapping MUI StepConnector) leaks an unfiltered MUI-injected boolean prop (likely last/active/completed) onto a raw DOM <div>, producing a React console warning on every Run Details panel open. Cosmetic only, panel fully functional. Filed as a sibling of pre-existing #611 (same ro… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1267"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift filed as EliteaAI/elitea-testing-public#1268 (question label), bundling two points: (1) Step 2 says 'click on the run in chat history' but the click target is actually a RunStateNode element rendered above the Flow canvas, not inside the embedded chat's message list. (2) Step 7 lists an 'Expand/fullscreen button' in the panel header, but the header's second icon is a Close button (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1268"
+        },
+        {
+          "kind": "note",
+          "note": "The entire Run Details feature (RunStateNode.jsx, RunStateNodeGroup.jsx, RunStateDialog.jsx under src/[fsd]/features/pipelines/flow-editor/ui/{nodes,state}/) has ZERO existing data-testid attributes anywhere — confirmed via grep across all three files. AFS specifies 8 new testids needed for this case's scope alone (run-node label, panel root, header, status badge + data-status, delete button, clos… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Pipeline run/timeline/state data arrives entirely over Socket.IO — confirmed via browser_network_requests (only socket.io polling exchanges, no dedicated REST GET for run/timeline/state). Tests must wait on DOM state (existing wait_for_embedded_chat_response() helper), never poll an endpoint for 'run complete'."
+        },
+        {
+          "kind": "note",
+          "note": "Playwright MCP gotcha: browser_snapshot [ref=eN] targets go stale almost immediately on the pipeline Flow-view canvas (live re-renders from ReactFlow + Socket.IO). Workaround: pass a CSS/testid/text selector string directly as the target param instead of a snapshot ref. Recorded as new qa-engineer memory entry for future analysts on this surface."
+        },
+        {
+          "kind": "note",
+          "note": "Live-product gotcha for the pipelines surface: RunStateDialog's Timeline section renders the run node's id WITHOUT the space present in the pipeline YAML's own id field ('LLM 1' -> 'LLM1' in data.timeline[selectedStep]?.id). Documented in test-specs/pipelines/_surface.md so future cases touching this panel don't repeat the same wrong assumption."
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed the analyst-filed known defect EliteaAI/elitea-testing-public#1267 (Timeline Stepper prop-leak console warning) reproduces exactly once per panel open and is deterministically matched by \"non-boolean attribute\" in msg.text alone — no location/stack needed, same idiom as the existing _is_known_defect_611 filter."
+        },
+        {
+          "kind": "defect",
+          "note": "Important. AFS Step 8 (test-specs/pipelines/l3_run-details-open-panel-after-execution_ELITEA-2450.md:86-88, restated at :97 and Coverage Map :113) claims 'confirmed live, exact match' for text rendered `TIMELINE STEP: LLM1` and a `STATES` section header — but the SAME AFS's own Concrete Handles table (lines 135-136), quoting the JSX source directly, correctly documents the wrapped Typography text … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_run-details-open-panel-after-execution_ELITEA-2450.md:86-88,97,113,135-136"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean. Mechanical testid-only grep on the diff (automation/pages/, automation/tests/) returned 0 hits. EliteaUI testid commit EliteaAI/EliteaUI@fb66d978 (confirmed on origin/automation/testids after a fresh fetch) adds exactly the 8 testids the AFS's Concrete Handles table lists, each unique repo-wide, naming convention compliant, no state-value-switched testid, no shar… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer's blocking finding (Step 8 / Coverage Map / Concrete Handles text-casing contradiction: case's own paraphrase 'TIMELINE STEP'/'STATES' presented as an 'exact match' quote vs the live sentence-case 'Timeline step:'/'States') was addressed AFS-only — no test code changed, since automation/tests/ui/pipelines/test_pipeline_run_details_panel.py already asserted the correct sentence-case substr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_run-details-open-panel-after-execution_ELITEA-2450.md"
+        },
+        {
+          "kind": "note",
+          "note": "Re-ran automation/tests/ui/pipelines/test_pipeline_run_details_panel.py::test_run_details_panel_opens_after_execution against localhost:5173 after the AFS fix: PASSED, 25.13s. Fix-round comment with the Run Report posted on PR #1269."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking item RESOLVED: swept the whole AFS (test-specs/pipelines/l3_run-details-open-panel-after-execution_ELITEA-2450.md) for TIMELINE STEP/STATES; every remaining occurrence is either an explicit quote of the case's own stale wording (for comparison) or correctly restated in sentence case (Timeline step:/States). Step 8 narrative, Expected Final State, Coverage Map row 8, and the two Conc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_run-details-open-panel-after-execution_ELITEA-2450.md:86-118,140-141"
+        },
+        {
+          "kind": "defect",
+          "note": "The identical ALL-CAPS-as-fact drift the round-1 fix corrected in the AFS survives, unfixed, in test-specs/pipelines/_surface.md's \"Run Details panel... (confirmed live...)\" section, added in the SAME original commit (c9591ec0) as the AFS and never touched by the round-1 fix commit (5d6db31e only edited the AFS .md file). The \"Body composition\" bullet still reads: a \"TIMELINE STEP: {node id}\" line… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md:23-26"
+        },
+        {
+          "kind": "note",
+          "note": "Documentation-only fix (test-specs/pipelines/_surface.md); no code or test change and no regression test applies to this finding class, matching round 1's precedent for the same drift category (paraphrase of confirmed-live UI text presented as fact in a companion doc)."
+        },
+        {
+          "kind": "note",
+          "note": "Filed a generalized process lesson in test-automation-engineer memory: when an AFS's confirmed-live text claim gets corrected, grep the feature's _surface.md for the same stale quote in the SAME dispatch — this is the second confirmed occurrence of the same failure shape (first: ELITEA-2369/PR #1235), now recurring with a text-fact drift rather than a call-site drift."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: test-specs/pipelines/_surface.md's 'Body composition' bullet now reads 'a \"Timeline step:\" label immediately followed by the node id with no separator' / 'a \"States\" section header' — the confirmed sentence-case live text, with an explicit source citation (RunStateDialog.jsx:277/:452). Verified via `git diff a413c347^..a413c347 -- test-specs/pipelines/_surface.md`:… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation re-confirmed clean: mechanical raw-handle grep on the base...branch diff (automation/pages/, automation/tests/) returned 0 hits (`git diff origin/automation/base...origin/tests/2450-run-details-open-panel-after-execution -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Whitespace-ignoring diff of the EliteaUI testid commit (fb66d978) against origin/main confirms it is pure testid additions plus two new `display: contents` wrapper Boxes for the timeline/states sections — no logic changes. The delete/stop same-element conditional pair correctly tags only the used Delete branch (canon ruling #277 shape a: only the used branch named); the Stop branch remains untagge… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@fb66d978 (RunStateDialog.jsx, RunStateNode.jsx)"
+        },
+        {
+          "kind": "note",
+          "note": "Minor pre-existing (not introduced this round) doc inconsistency, non-blocking: AFS 'Automation Hints' says 'add exactly the 6 testids listed... (...— 8 total, see table)' — a stray '6' immediately contradicted by the correct '8 total' in the same sentence and the full 8-item list that follows. Implementation correctly added all 8; no functional impact. Not worth another round."
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_run-details-open-panel-after-execution_ELITEA-2450.md",
+      "branch": "tests/2450-run-details-open-panel-after-execution",
+      "pr": 1269,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          25.45,
+          23.09,
+          23.99
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

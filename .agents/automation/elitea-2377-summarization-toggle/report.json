@@ -1,0 +1,104 @@
+{
+  "batch": "elitea-2377-summarization-toggle",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2377-summarization-toggle",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      28.593668292,
+      26.380429416,
+      25.541203625
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2377",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "settings-user-profile surface digest (_surface.md) updated with a new finding: the Automatic Summarization toggle uses a DIFFERENT disable mechanism (disabled prop) than its parent Context Management toggle (conditional unmount, per ELITEA-2374). Don't assume the whole /settings/memory page uses one disable pattern -- it's per-toggle. Committed to the batch trunk alongside the AFS.",
+          "ref": "test-specs/settings-user-profile/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Case step 5's literal default (Target Summary Tokens = 4096) could not be verified as a platform/schema default -- the shared ${TEST_USER} account carries a persisted, mutable value that happens to currently equal 4096. Same test-data caution already established by the sibling ELITEA-2374 AFS for its own fields. Not filed as a new ticket -- test-design consideration, not a case-text-vs-product dis… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 1's route text (\"Personalization -> DEFAULT SUMMARIZATION\") is stale, same root cause already covered by the existing clarification EliteaAI/elitea-testing-public#1238 (route is Settings -> Memory, not Personalization). No new ticket filed -- reused the existing one, same as the ELITEA-2374 AFS did.",
+          "ref": "EliteaAI/elitea-testing-public#1238"
+        },
+        {
+          "kind": "defect",
+          "note": "Priority marker drift (blocking). automation/tests/ui/settings/test_context_management_toggle.py's module-level pytestmark carries pytest.mark.p3 (low). Both the covering test (ELITEA-2374) and the new sibling method this PR adds (ELITEA-2377) have TMS case priority 'medium' (AFS records l3), which the suite's established, unanimous convention maps to p2 (pytest.ini: p2 = 'Priority 2 (medium)'; co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py:38"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates clean. Case <-> AFS <-> diff verified end-to-end: (1) additive-only confirmed mechanically (`git diff ...batch...HEAD -- <files> | grep -E '^-[^-]'` -> empty on both the page object and test file — the existing ELITEA-2374 test method is byte-identical); (2) mechanical locator grep for non-testid handles -> 0 hits; (3) merged-target rule for extend-existing satisfied a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation: precondition-establishing steps 2 and 3 (turn Context Management / Automatic Summarization ON if currently OFF) only assert the autosave PUT returned 200 on the enable branch; when the toggle is already ON, there is no explicit assertion of that state beyond the implicit `if` branch taken. This exactly mirrors the already-approved covering test's own pattern (steps 2 in E… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py:218"
+        },
+        {
+          "kind": "note",
+          "note": "Priority-marker drift (p3->p2) fixed for the module-level pytestmark covering both ELITEA-2374 and ELITEA-2377 in test_context_management_toggle.py. This is the 4th recurrence of this finding class across the project (see afs_priority_vs_pytest_mark_preflight_check.md) — a per-implementation preflight grep of AFS Priority vs @pytest.mark.pN before Phase-6 handoff would prevent future recurrences o… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py"
+        },
+        {
+          "kind": "note",
+          "note": "No dedicated regression test exists or was added for priority-marker-drift findings — this suite has no established pattern for testing pytest marker/metadata correctness (checked automation/tests/unit/ and conftest.py). Verification for this class of finding is mechanical (pytest --collect-only -m <marker>), not a new test."
+        },
+        {
+          "kind": "note",
+          "note": "Priority marker drift (module-level pytestmark: p3 -> p2, aligning with TMS priority medium/l3 per pytest.ini's documented p2=medium scale) is fixed exactly as required. Verified via diff: `pytest.mark.p3` removed, `pytest.mark.p2` added, docstring comment updated to match ('p2: medium priority (per case metadata: l3 — this suite's l3 maps to p2, not p3)').",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py:37"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case <-> AFS <-> diff cleanly. Mechanical locator grep (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator() on added lines): `git --no-pager diff origin/automation/base...origin/tests/2377-summarization-toggle-enables-disables-fields | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_pla… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/user_profile_settings_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Merged-target rule satisfied at the strongest level: covering spec test_context_management_toggle.py (ELITEA-2374) is already on origin/automation/base (merged via PR #1241, commit f3fb1b30), not merely on the batch trunk. Confirmed `git merge-base --is-ancestor origin/automation/base origin/tests/2377-...` succeeds and the covering test method exists verbatim in origin/automation/base.",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py:76"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance claims verified against fresh `git fetch origin` on EliteaUI: both `summarization-instructions-textarea` and `target-summary-tokens-input` are absent from origin/main and present on origin/automation/testids, matching the AFS Concrete Handles table exactly. JSX source (MemorySummarization.jsx) confirms the disabled-prop mechanism (isSummarizationDisabled = !context_enabled || !en… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-user-profile/lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map ticked against all 8 original TMS case steps: every asserted-disposition row has a real per-step allure.step + expect()/assert in the diff (steps 1,2,3,4,6,7,8), step 5's literal-4096 assertion is correctly downgraded to a non-hardcoded positive-integer check per documented test-data pollution reasoning (shared account), and step 1's route/wording drift correctly reuses the existing c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/automation/elitea-2377-summarization-toggle/cases/ELITEA-2377.md"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md",
+      "branch": "tests/2377-summarization-toggle-enables-disables-fields",
+      "pr": 1242,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          28.593668292,
+          26.380429416,
+          25.541203625
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

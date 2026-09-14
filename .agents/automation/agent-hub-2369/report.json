@@ -1,0 +1,225 @@
+{
+  "batch": "agent-hub-2369",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-agent-hub-2369",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      80.91201875,
+      74.8338665,
+      75.625898583
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/agents/test_agent_hub_like_agent_list_view.py::TestAgentHubLikeAgentListView::test_agent_hub_like_agent_from_list_view",
+        "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_agent_hub_like_agent_from_list_view_FAIL_20260806_080300.png"
+      },
+      {
+        "spec": "tests/ui/agents/test_agent_hub_my_liked_reload_cross_tab_sync.py::TestAgentHubMyLikedReloadCrossTabSync::test_agent_hub_my_liked_reload_reflects_cross_tab_like",
+        "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_agent_hub_my_liked_reload_reflects_cross_tab_like_FAIL_20260806_080124.png"
+      },
+      {
+        "spec": "tests/ui/chat/test_attach_unsupported_file_format_error.py::TestAttachUnsupportedFileFormatError::test_attach_unsupported_file_shows_error_toast",
+        "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_attach_unsupported_file_shows_error_toast_FAIL_20260806_080917.png"
+      },
+      {
+        "spec": "tests/ui/chat/test_chat_interface.py::TestConversationUIElements::test_internal_tools_panel_shows_all_tools",
+        "signature": "FAILED (blast-radius run, single attempt) — no rerun triggered; ran between test_chat_interface's other passing sub-tests"
+      },
+      {
+        "spec": "tests/ui/chat/test_chat_search_and_modules_panel.py::TestChatSearchAndModulesPanel::test_search_filters_and_modules_panel_toggles",
+        "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_search_filters_and_modules_panel_toggles_FAIL_20260806_081500.png"
+      },
+      {
+        "spec": "tests/ui/chat/test_create_agent_via_chat_canvas.py::TestCreateAgentViaChatCanvas::test_create_new_conversation_and_add_agent_via_canvas",
+        "signature": "FAILED after 2 pytest-rerunfailures reruns (RERUN, RERUN, FAILED) — 3 distinct failure screenshots, e.g. automation/screenshots/test_create_new_conversation_and_add_agent_via_canvas_FAIL_20260806_082328.png"
+      },
+      {
+        "spec": "tests/ui/chat/test_direct_toolkit_call_complete_flow.py::TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow",
+        "signature": "FAILED (blast-radius run, single attempt)"
+      },
+      {
+        "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant",
+        "signature": "FAILED (blast-radius run, single attempt)"
+      },
+      {
+        "spec": "tests/ui/chat/test_team_users_mention_and_remove_participants.py::TestTeamUsersMentionAndRemoveParticipants::test_team_users_mention_and_remove_participants",
+        "signature": "FAILED after 1 pytest-rerunfailures rerun (RERUN, FAILED)"
+      },
+      {
+        "spec": "tests/ui/skills/test_ghost_skill_after_agent_removed.py::TestGhostSkillAfterAgentRemoved::test_ghost_skill_not_shown_after_agent_participant_removed",
+        "signature": "FAILED after 1 pytest-rerunfailures rerun (RERUN, FAILED)"
+      },
+      {
+        "spec": "tests/ui/skills/test_skill_conversation_interaction.py::TestInteractWithSkillsFromConversation::test_interact_with_skills_from_conversation",
+        "signature": "FAILED after 1 pytest-rerunfailures rerun (RERUN, FAILED)"
+      },
+      {
+        "spec": "tests/ui/toolkits/test_toolkit_parameterized.py::TestToolkitTestSettings::test_toolkit_test_settings[bitbucket]",
+        "signature": "FAILED (blast-radius run, single attempt) — see automation/screenshots/test_toolkit_test_settings[bitbucket]_FAIL_20260806_090200.png; sibling params [github]/[jira]/[confluence]/[bitbucket] all ran (creds present), only [gitlab] SKIPPED (no creds)"
+      },
+      {
+        "spec": "tests/ui/toolkits/test_toolkit_parameterized.py::TestToolkitTestSettings::test_toolkit_test_settings[confluence]",
+        "signature": "FAILED after 2 pytest-rerunfailures reruns (RERUN, RERUN, FAILED) — run in the remainder segment after the primary blast-radius process was killed mid-test; see automation/screenshots/test_toolkit_test_settings[confluence]_FAIL_20260806_090435.png"
+      },
+      {
+        "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionCardDisplay::test_sensitive_action_card_displays_for_direct_toolkit_call",
+        "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR) — pytest ERROR status, not a plain assertion FAILED; ran and produced a result, did not crash the worker"
+      },
+      {
+        "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionAuthorize::test_authorize_executes_toolkit_tool_directly",
+        "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR)"
+      },
+      {
+        "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionBlock::test_block_prevents_toolkit_tool_from_executing",
+        "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR)"
+      },
+      {
+        "spec": "tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionBlockWithComment::test_block_with_comment_records_reason_and_blocks_action",
+        "signature": "ERROR after 2 pytest-rerunfailures reruns (RERUN, RERUN, ERROR) — all 4 test items in this file show the identical RERUN/RERUN/ERROR pattern, suggesting one shared cause (fixture/setup) rather than 4 independent test bugs"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2369",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "New testid gap (not a behavioral defect, filed as implementer work in the AFS Concrete Handles table, not a tracker ticket): the modal's individual conversation-starter items (EliteaUI src/[fsd]/features/agent-hub/ui/AgentConversationStarterItem.jsx) carry zero data-testid/testId. Needed to assert 'multiple starter options displayed' (case step 4) and to select a specific starter by text.",
+          "ref": "test-specs/agent-hub/l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "New testid gap, shared component: the chat-area starter tiles render via the SHARED EllipsisTextWithTooltip (src/components/ConversationStarters.jsx, also consumed by NewConversationView.jsx's pre-chat composer) with zero testid. During live exploration a click had to fall back to a raw CSS-class locator (.MuiBox-root.css-vjd7yg) to prove the interaction works at all — that locator must NOT ship; … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md § Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Reused two already-tracked, already-ELITEA-2369-named defects instead of re-filing: #1042 (case text says 'CONVERSATION STARTERS'/'Start conversation'/'WELCOME MESSAGE' all-caps; live product reads 'CHAT STARTERS'/'Start Chat'/'Welcome Message' title-case) and #1043 (Start-Chat click race — modal content renders before the async agentDetails fetch commits; mitigated with a documented 1s wait befor… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1042, #1043"
+        },
+        {
+          "kind": "note",
+          "note": "Live behavior observation, not a defect: clicking a conversation-starter tile populates the message input (does not auto-send), and the starter-tile list itself does not disappear immediately after that click — it only hides once the message is actually sent and AI streaming begins, then reappears once the reply finishes. The case text doesn't require either transient visibility state at the popul… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md step 12"
+        },
+        {
+          "kind": "note",
+          "note": "Reused pre-existing chat-answer-tool-chip / chat-answer-model-chip handles (from ELITEA-2212/2215/canon ruling #277) for the case's 'tools used are visible' final-state assertion — confirmed live: 3 tool-call chips (pyodide_sandbox, get_artifacts_buckets, get_artifacts_artifacts x2) interleaved with 2 model chips ('GPT-5.4'). Flagged in the AFS that the implementer must not conflate the model chip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py answer_tool_chip / answer_model_chip"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #1043 (Catalog 'Start Chat' click race) also manifests on the modal's CHAT STARTERS/Welcome Message read, not just the Start-Chat click — AgentModal.jsx's CHAT STARTERS section reads agentDetails (async fetch state) only, no sync fallback, so a fast automated read right after modal-open can see a false empty state. Same tracked root cause, no new ticket filed; fix + note both landed a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1043"
+        },
+        {
+          "kind": "note",
+          "note": "AFS named the wrong call site (ChatConversationStarters.jsx) for the new chat-area starter-tile testid; this case's actual flow (fresh conversation right after Start Chat) renders through NewConversationView.jsx instead. Corrected during implementation (canon ruling #511 — wire only the executed code path) and the AFS was amended in place with the correction. No re-scoping of the case, only a tech… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.get_last_message_text() (.last) races a transient 'Waking the agent…' placeholder immediately after Send — can read the placeholder instead of the just-sent user message. Added ChatPage.get_message_text_at(index) as the safe indexed alternative; get_last_message_text() remains correct only for reading the AI reply after wait_for_ai_response() resolves."
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING. The AFS's 'implementer amendment' and the test file's module docstring both explicitly claim: '`ChatConversationStarters.jsx`'s call site remains unwired — out of scope, canon ruling #511'; only `NewConversationView.jsx`'s call site is wired.' That claim is false. Verified live against `EliteaAI/EliteaUI` `automation/testids` (`git fetch origin` then `git grep -n \"chat-conversation-start… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI@a0bc4305 (src/pages/NewChat/ChatConversationStarters.jsx:39), contradicted by test-specs/agent-hub/l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md § Known Defects amendment + automation/tests/ui/chat/test_agent_hub_start_conversation_with_starters.py module docstring"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, non-blocking: two blank lines between methods inside the class body (PEP8/ruff would normally want one within a class). Not flagged by this repo's configured ruff rule set (E,F,I,W,UP) when I ran `.venv/bin/ruff check` against the new file content, so not enforced — cosmetic only.",
+          "ref": "automation/pages/chat_page.py:1470-1472 (get_message_text_at, two blank lines before wait_for_ai_response)"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation, not introduced by this PR: the Coverage Map row for step 2 claims the agent-details GET 'resolves 200', but `open_agent_by_name()`'s `expect_response` predicate only matches URL+method, not status code — a non-200 response would still satisfy it. This is pre-existing shared page-object code (unchanged in this diff, same pattern already shipped/reviewed on sibling ELITEA-2… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md Coverage Map row 2 / automation/pages/agent_hub_page.py:299-304 (open_agent_by_name, pre-existing/unchanged)"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulated clean: all 16 case steps have real per-step assertions matching the Coverage Map; mechanical grep on automation/pages + automation/tests diff for non-testid handles = 3 hits, all class-constant-backed (MODAL_STARTER_ITEM / CHAT_STARTER_TILE), 0 violations (command: `git diff origin/tests/batch-agent-hub-2369...origin/tests/2369-agent-hub-starters-start-conversation -- … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        },
+        {
+          "kind": "note",
+          "note": "Root-cause pattern for future implementers: when Phase 2 exploration shows the AFS named the wrong component/call site for a NEW testid and you re-wire the correct one, always also check (git log / git grep on the wrong file) whether an earlier commit in the same dispatch already wired the testid at the wrong site — and remove it. 'Add the right one' alone does not close the loop if the wrong one … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI@ae2c30b1"
+        },
+        {
+          "kind": "note",
+          "note": "Step 16's tool-call-chip assertion (>=1 chip expected) is subject to genuine live-AI nondeterminism — one of the two re-runs this session returned 0 tool chips for the same starter prompt that produced 3 in the original analyst exploration and in the second re-run. Not a regression from this fix; flagging for visibility since it's a known-flake surface on this spec (case's own documented nondeterm… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKING FINDING VERIFIED FIXED. Fresh `cd ../EliteaUI && git fetch origin && git grep -n \"chat-conversation-starter-tile\" origin/automation/testids -- src/` now returns exactly ONE hit: `src/pages/NewChat/NewConversationView.jsx:1020`. `ChatConversationStarters.jsx` no longer carries the testId prop (removed in EliteaAI/EliteaUI@ae2c30b1, an exact revert of the one prop added in a0bc4305). … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_agent_hub_start_conversation_with_starters.py:28-33 ; EliteaUI@ae2c30b1"
+        },
+        {
+          "kind": "defect",
+          "note": "The exploration digest `_surface.md` still carries the PRE-CORRECTION, now-false call-site claim: it instructs 'wire only ChatConversationStarters.jsx's call site for now ... NewConversationView.jsx's own call site is a DIFFERENT case's job.' This is backwards — the shipped code (and the AFS's own corrected Known Defects amendment + Concrete Handles row + the test docstring) all correctly wire New… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/_surface.md (Conversation-starter tiles section, 'Chat-area starter tiles' bullet)"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed via fresh git fetch + git grep that the shipped testid wiring on origin/automation/testids is correct (only NewConversationView.jsx:1020) — the only defect this round was the stale surface-digest prose, not the code.",
+          "ref": "EliteaUI@ae2c30b1 / src/pages/NewChat/NewConversationView.jsx:1020"
+        },
+        {
+          "kind": "note",
+          "note": "Wrote a durable lesson (test-automation-engineer memory): when Phase 2 exploration corrects an AFS's call-site/component claim, proactively grep the feature's _surface.md for the same pre-correction claim in the SAME dispatch, rather than waiting for a reviewer to catch it as a separate round.",
+          "ref": ".agents/memory/test-automation-engineer/surface_digest_correction_is_a_separate_step_from_afs_correction.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (test-specs/agent-hub/_surface.md's backwards call-site guidance) is resolved. Fix round 2 (commit 0aafad00) appended an attributed '[CORRECTION, ELITEA-2369 implementer fix round 2 — the bullet above names the WRONG call site, do not follow it]' block, using the same idiom as the AFS's own IMPLEMENTER AMENDMENT notes. It correctly states NewConversationView.jsx is the wired… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Verified live ground truth against a freshly-fetched origin/automation/testids (EliteaUI): `git grep chat-conversation-starter-tile` returns exactly one hit, NewConversationView.jsx:1020 (testId prop correctly wired through to `data-testid={testId}` on the shared EllipsisTextWithTooltip). `ChatConversationStarters.jsx`'s call site (consumed only by ChatBox.jsx's embedded chat surface) carries no t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles added in automation/pages/ and automation/tests/ (git diff origin/automation/base...tests/2369-agent-hub-starters-start-conversation | grep -nE locator/get_by_*) returned 3 hits, all `self.page.locator(self.CHAT_STARTER_TILE)` / `self.page.locator(self.MODAL_STARTER_ITEM)` — class-level `[data-testid=]` string-constant references, compliant with the testid-on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map Axis 1 triangulated row-by-row against both the case snapshot (.agents/automation/agent-hub-2369/cases/ELITEA-2369.md) and the test diff: all 16 case steps have a matching allure.step block with a real assertion at that step (not a bare action) — step 4's item count, step 8's tile count, step 12's exact-populated-text check via the tile's own clicked text (apostrophe-drift-safe), step… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_agent_hub_start_conversation_with_starters.py"
+        },
+        {
+          "kind": "note",
+          "note": "Merged-target rule respected: AFS explicitly evaluates and rules out reusing the merged sibling ELITEA-2368 spec (verified merged to origin/automation/base at commit 83a4262d) as extend-existing/already-covered, correctly noting it asserts the opposite (no-starters) precondition and never exercises any of this case's starter-specific observables (steps 4, 8, 11-13).",
+          "ref": "test-specs/agent-hub/l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md"
+        },
+        {
+          "kind": "note",
+          "note": "Both new EliteaUI testids verified present and correctly wired on origin/automation/testids: `catalog-agent-modal-starter-item` (AgentConversationStarterItem.jsx, hardcoded, feature-scoped, correct per policy since not a shared component) and `chat-conversation-starter-tile` (caller-supplied testId prop on shared EllipsisTextWithTooltip, wired only at the one call site this test's code path execut… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/agent-hub/l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md",
+      "branch": "tests/2369-agent-hub-starters-start-conversation",
+      "pr": 1235,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          80.91201875,
+          74.8338665,
+          75.625898583
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -1,0 +1,96 @@
+{
+  "batch": "elitea-2350-agent-hub-private-project",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2350-agent-hub-private-project",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      12.203587209,
+      10.612557791,
+      11.644268959
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/chat/test_agent_hub_participant_readonly_canvas_llm_override.py::TestAgentHubParticipantReadonlyCanvasLlmOverride::test_agent_hub_participant_readonly_canvas_llm_override",
+        "signature": "playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 90000ms exceeded — waiting for get_by_test_id(\"chat-answer-model-chip\") to be visible (chat.answer_model_chip, spec line 310). Ran once as the blast-radius check but pytest.ini's global --reruns=2 auto-retried it, so it actually executed 3/3 times and failed identically each time (same locator, same timeout) over a combined 359.6s. T… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2075"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2350",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Case-text drift (not a product bug): ELITEA-2350 (and the whole 'Agent Hub' TMS family, #858-#878) says the header reads 'Welcome to Agent HUB'; live product consistently says 'Catalog' everywhere (nav label, <title>, heading = 'Welcome to ELITEA Catalog!'). Filed as EliteaAI/elitea-testing-public#1208. Recommend a TMS wording pass across the whole Agent Hub family, similar to issue #1073's umbrel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1208"
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap: CategoryRail.jsx (src/[fsd]/shared/ui/category/CategoryRail.jsx in EliteaUI) renders the category filter chips (Trending, My Liked, Business Analyst, ... Other) with zero data-testid anywhere, confirmed via full-file read + git grep on both origin/main and origin/automation/testids. It's a shared component (used by both the agent-hub AgentsTab and skill-hub SkillsTab), so per .agents/t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2351 ('Agent Hub — page loads successfully for Team project', GitHub tracking issue #859) is a same-family sibling to ELITEA-2350 that differs only in which project is active (a DATA difference, not a STEPS difference) — a candidate for a family AFS if a future batch dispatches both together. Not merged here since this dispatch was ELITEA-2350 alone; flagged in test-specs/agent-hub/_surface… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Step 1 originally specced an exact-match assertion on the sidebar project-selector text ('Project: Private'). Live DOM renders an avatar-initial <span> immediately adjacent to two whitespace-less <div>s, so text_content() is actually 'PProject:Private'. This is not a case-text drift (no new tracker issue filed) — it's an AFS authoring gap the implementer amended in-place per the Phase 2 amend-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agent-hub/l2_agent-hub-page-loads-private-project_ELITEA-2350.md"
+        },
+        {
+          "kind": "note",
+          "note": "No originating per-case GitHub tracking issue exists on board #9 for ELITEA-2350 (checked via the real-time issue list, not --search). Skipped the 'comment PR link on originating issue' handoff step rather than inventing a target — flagging in case the orchestrator expects one to exist for this batch shape.",
+          "ref": "EliteaAI/EliteaUI CategoryRail.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean across all three artifacts. TMS case snapshot (.agents/automation/elitea-2350-agent-hub-private-project/cases/ELITEA-2350.md) ↔ AFS (test-specs/agent-hub/l2_agent-hub-page-loads-private-project_ELITEA-2350.md) ↔ diff (PR #1209, automation/pages/agent_hub_page.py + automation/tests/ui/agents/test_agent_hub_page_loads_private_project.py). All 5 case steps map to Coverage Map rows… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep on the full diff: `git diff automation/base...tests/2350-agent-hub-page-loads-private-project | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits, both compliant: `automation/pages/agent_hub_page.py:126` (`self.page.locator(self.AGENT_CARD_PREFIX)`) and… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_hub_page.py:126"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI JSX diff (fetched fresh: `cd ../EliteaUI && git fetch origin`, testid commit 9040cacd on origin/automation/testids) verified against .agents/testing.md's shared-component discipline: `chipTestIdPrefix` prop threaded AgentsTab → CatalogBody → CategoryRail, rendering `data-testid={chipTestIdPrefix ? \\`${chipTestIdPrefix}-${slugifyCategory(category)}\\` : undefined}`. This is a per-mount-cons… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the ready-for-automation classification (not extend-existing/already-covered) by reading the only other spec on AgentHubPage, automation/tests/ui/chat/test_agent_hub_participant_readonly_canvas_llm_override.py (ELITEA-2075, merged). Its Step 1 only asserts page_heading.is_visible()/search_input.is_visible()/is_category_section_visible('trending') as an incidental precondition — no heading… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_agent_hub_participant_readonly_canvas_llm_override.py:121"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift handled correctly per the reverse-masking guard: AFS/test assert the live heading 'Welcome to ELITEA Catalog!' (not the case's stale 'Welcome to Agent HUB'), filed as CLARIFICATION #1208 rather than a bug. Same treatment for the project-selector text (asserts substring 'Private' in the raw DOM text rather than the case's literal 'Project: Private', since the live DOM has no whitesp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/agent-hub/l2_agent-hub-page-loads-private-project_ELITEA-2350.md",
+      "branch": "tests/2350-agent-hub-page-loads-private-project",
+      "pr": 1209,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          12.203587209,
+          10.612557791,
+          11.644268959
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

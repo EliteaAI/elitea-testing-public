@@ -1,0 +1,204 @@
+{
+  "batch": "elitea-2336-secrets-inline-create",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2336-secrets-inline-create",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py",
+        "signature": "Failed: Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React 'Maximum update depth exceeded' console error(s) on /settings/secrets mount (occurrence counts 1, 17, 16 across the 3 runs — same signature, same root cause, same ticket each time).",
+        "case_ids": [
+          "ELITEA-2336"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2336",
+      "outcome": "blocked",
+      "note": "red by design pending EliteaAI/elitea-testing-public#1203 — the gate ran it but could not count it; re-enter once the product ships",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 3 says the new inline row appears 'at the current pagination position' — live behaviour is different and deliberate: clicking '+' always resets pagination to page 1 (SecretsContent.jsx addSecretRow() calls resetPaginationRef.current?.() unconditionally) and inserts the new row there, regardless of which page the user was on. Confirmed live by navigating to page 2 first then clicking '+' … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1202"
+        },
+        {
+          "kind": "note",
+          "note": "SecretActionsMenu.jsx (the per-row dots-menu with Edit value/Hide/Delete) has ZERO data-testids anywhere — only role=menuitem + accessible name. Not in scope for ELITEA-2336 (case never drives delete via UI), so no add-data-testid work was done, but flagged in the surface digest for whichever future case needs to exercise delete/hide via UI rather than the API shortcut this AFS's cleanup uses."
+        },
+        {
+          "kind": "note",
+          "note": "The pending (unsaved) new row is counted in the client-side pagination total the instant '+' is clicked — table showed '1 - 10 of 103' before, '1 - 10 of 104' immediately after clicking '+', before Save/Cancel. Documented in the AFS/digest so the implementer doesn't assert an exact pre-save total that later drifts once the row is discarded/saved."
+        },
+        {
+          "kind": "defect",
+          "note": "EliteaAI/elitea-testing-public#1203 — React 'Maximum update depth exceeded' console warning fires on every /settings/secrets page mount, before any interaction, isolated to SecretsContent.jsx. Confirmed deterministic 3/3, not caused by this case's testid additions. Sibling of #538 (different trigger: mount vs typing), not a duplicate. Test soft-asserts this and stays sanctioned-RED until it ships.",
+          "ref": "EliteaAI/elitea-testing-public#1203"
+        },
+        {
+          "kind": "note",
+          "note": "AFS testid-provenance drift: the AFS marked all 9 core Secrets-page testids 'pre-existing, zero new work needed', but they were actually uncommitted edits sitting in the EliteaUI working tree (never landed on automation/testids git history) — a live-DOM check alone didn't catch this since Vite HMR serves uncommitted disk state. Committed as part of this implementation (EliteaUI@c2a5b4c7).… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New page object automation/pages/secrets_page.py created (no prior Secrets-surface coverage existed) — mirrors personal_tokens_page.py conventions per the AFS's Automation Hints; also added one new shared-component testid prop (pageInfoTestId on GridTablePagination) usable by any future case needing pagination-range text on any grid-table surface."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS amendment missing (Standing check violation). The AFS's Concrete Handles section still reads 'All handles below are pre-existing testids — zero new add-data-testid work required for this case's own 9 steps,' and the handles table lists only the original 9 with a bare 'pre-existing' provenance. But per the PR's own description, commit c2a5b4c7, and the implementer's new memory entry (afs_pre_ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md § Concrete Handles"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor resource-leak on the failure path: `create_requests.stop()` is called only on the line immediately after `assert len(create_requests) == 0` (success path), not inside the `finally` block (which only stops `console_errors`). If that assertion fails, the request/response listeners registered by `capture_requests_matching` are never removed for the rest of the test. Non-blocking because `page`/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:~step 8 (create_requests capture/stop)"
+        },
+        {
+          "kind": "note",
+          "note": "Step 3's pagination assertion (`pagination_after_add != pagination_before` + `.startswith('1 - ')`) proves the count increased and lands on page 1, but the test never navigates off page 1 before clicking '+', so it can't actually distinguish 'always resets to page 1' from 'was already on page 1'. This is not implementation drift — it faithfully follows the AFS's own scoped-down automation hint ver… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:Step 3"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed via EliteaUI commit c2a5b4c7's diff that ALL 10 testids used by this case (the original 9 plus secrets-pagination-info) originate from that single commit, currently present on automation/testids only and absent from main — the closure record's promotability row should carry this same fact once the case merges.",
+          "ref": "EliteaUI@c2a5b4c7"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS still says 'Known Defects Found During Exploration: None found' and Expected Results still claims 'No console errors ... (confirmed live: 0 errors, 0 warnings)' — but the merged implementation (test_secret_create_inline_checkmark_x_cancel.py Step 10) soft-asserts a real, filed, OPEN defect (EliteaAI/elitea-testing-public#1203, 'React Maximum update depth exceeded on every /settings/secrets mou… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md:115-119,146-156"
+        },
+        {
+          "kind": "note",
+          "note": "Verified: prior blocking finding (Concrete Handles table not amended, secrets-pagination-info omitted) is now fully resolved — commit b19512fb rewrote all 9 rows to 'added' provenance with EliteaUI@c2a5b4c7 and added the 10th secrets-pagination-info row; verification command + output are pasted in the AFS and match a fresh git log origin/main..origin/automation/testids check."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep on the full diff: git diff automation/base...tests/2336-secrets-inline-create | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(' → 3 hits (secrets_page.py:371,382,386), all `.locator(self.SECRET_NAME_CELL_SELECTOR / SECRET_VALUE_CELL_SELECTOR / SECRET_NAME_INPUT_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all 9 Coverage Map rows against test_secret_create_inline_checkmark_x_cancel.py: every 'asserted' row has a real per-step assertion (page title text, add-button disabled/enabled, row-in-table containment, pagination total+reset, input echo, POST 201, name/value cell text, alphabetical-not-pinned check, no-POST-on-cancel, DOM+server absence via reload, console errors). Both filed track… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Addressed reviewer's fix-round-2 finding: amended AFS test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md sections 'Known Defects Found During Exploration' and 'Expected Results' to reflect the filed #1203 console-error defect and the sanctioned-RED soft-assert design, instead of the stale analyst-time '0 errors, 0 warnings' / 'None found' claims. Commit 2271926b.",
+          "ref": "EliteaAI/elitea-testing-public#1204"
+        },
+        {
+          "kind": "defect",
+          "note": "_is_known_defect_1203() requires both 'Maximum update depth exceeded' AND 'SecretsContent.jsx' in the captured console-message text, but Playwright's ConsoleMessage.text for this warning is intermittently short-form (no component-stack suffix) -- observed 1 of 3 verification reruns this round. When that happens the test hard-fails at the earlier 'assert not unexpected_errors' line ('Unexpected con… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:53"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: AFS `## Expected Results` and `## Known Defects Found During Exploration` sections were amended (commit 2271926b) to name #1203 as the deterministic sanctioned-RED cause, matching the implementation's soft_failures/pytest.fail() idiom. Verified against test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md lines 118-135 and 262-280.",
+          "ref": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md:118"
+        },
+        {
+          "kind": "defect",
+          "note": "`_is_known_defect_1203()` requires BOTH \"Maximum update depth exceeded\" AND \"SecretsContent.jsx\" in the same console-message text. The implementer's own round-2 verification (3 reruns of the merged spec, documented in their daily log 17:30 entry and secrets_page_react_render_loop_on_mount.md) found 1/3 reruns produced a short-form ConsoleMessage.text (~250 chars, no component-stack suffix) that th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:36"
+        },
+        {
+          "kind": "note",
+          "note": "Step 3's pagination-reset assertion (`pagination_after_add != pagination_before` + `.startswith(\"1 - \")`) proves the reset-to-page-1 + count-changed contract but doesn't pin the exact '+1' relationship the AFS's live observation describes ('1 - 10 of 103' -> '1 - 10 of 104'). Not blocking — the Coverage Map's step-3 disposition only requires 'condition holds', which this satisfies — but a stricter… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:80"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical testid-only-locator grep on the full diff (git diff origin/tests/batch-elitea-2336-secrets-inline-create...origin/tests/2336-secrets-inline-create | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 3 hits, all compliant: automation/pages/secrets_page.py:359 (`self.sec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/secrets_page.py:359"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated the full TMS case body (fetched via `gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/...`, case had no intake snapshot at .agents/automation/elitea-2336-secrets-inline-create/cases/ — same gap the AFS itself flags under Automation Hints) against the AFS Coverage Map and the test: all 9 case steps map 1:1 to AFS Coverage Map rows and to allure.step Steps 1-9 in the test, each with … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md:139"
+        },
+        {
+          "kind": "note",
+          "note": "Defect-masking hunt: none found. The soft-fail path is a real `soft_failures` list + `pytest.fail()` (not a demoted expect or skip), unexpected console errors still hard-fail immediately, and #1202 (clarification)/#1203 (bug) are both verified OPEN with correct labels via `gh issue view`. Cleanup runs in a `finally` block regardless of outcome and only deletes the secret actually persisted (`saved… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py:250"
+        },
+        {
+          "kind": "note",
+          "note": "Lesson for future rounds: I had flagged this exact matcher fragility (short-form console message missing the SecretsContent.jsx stack suffix) at the end of round 2 but left it unfixed as 'out of round scope' — it came back as round 3's blocking finding. Flagging without fixing a determinism-affecting issue only postpones the fix by one review round-trip; logged as a durable lesson in .agents/memor… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1204"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS Expected Results still says the #1203 known-defect filter is \"filtered by exact signature (\\\"Maximum update depth exceeded\\\" + \\\"SecretsContent.jsx\\\")\" — round 3's commit 86fb3cc6 correctly dropped the SecretsContent.jsx AND-clause from `_is_known_defect_1203()` in the test code (now `\"Maximum update depth exceeded\" in text` alone, per the reviewer's prior finding) and added a regression unit … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md:132"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (matcher required both \"Maximum update depth exceeded\" AND \"SecretsContent.jsx\", causing a non-deterministic hard-fail on the short-form occurrence) is RESOLVED in commit 86fb3cc6: matcher now anchors on the stable text prefix alone, same fix shape as the precedented #518 matcher in test_credential_create.py. New regression coverage added at automation/tests/unit/test_secret… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/pages/ + automation/tests/) for added get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator( : command `git --no-pager diff origin/tests/batch-elitea-2336-secrets-inline-create...origin/tests/2336-secrets-inline-create -- automation/pages/ automation/tests/ | grep… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation performed: fetched ELITEA-2336 live via mcp__onetest-tms__get_test_case (intake snapshot was missing, matching the AFS's own flagged gap) — the 9-step case body matches the AFS's Coverage Map 1:1, including the reverse-masking-guard treatment of the pagination-position wording (filed as clarification #1202, not a defect). Every AFS step has a real allure.step-wrapped assertion i… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of the round-4 finding: round 3's code fix (commit 86fb3cc6, hardening the #1203 matcher to a stable-text-prefix-only condition) did not update the AFS at all. The AFS had TWO separate amendment blocks in the same Expected Results section — round 2's (describing the old dual-substring condition) and none yet for round 3 — so the reviewer's mechanical read hit the older, now-stale paragr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md:110-149"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (AFS Expected Results still describing the retired dual-substring #1203 matcher condition) confirmed fixed in commit bd0105ba — the AFS now accurately narrates the round-3-hardened stable-text-prefix-only _is_known_defect_1203() matcher, including the rationale (short-form occurrences without a component-stack suffix broke the sanctioned-RED gate's deterministic-3/3 requirem… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md:129-146"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (TMS case fetched fresh from onetest-ai-tm-Elitea, since no intake snapshot exists ↔ AFS ↔ diff) is clean: all 9 case steps map to Coverage Map rows with real per-step assertions in the implementation.",
+          "ref": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep on the full diff returned 3 hits, all compliant — chains off the testid-scoped secret_row locator via UPPER_CASE class constants whose values are [data-testid=] strings (SECRET_NAME_CELL_SELECTOR, SECRET_VALUE_CELL_SELECTOR, SECRET_NAME_INPUT_SELECTOR). Command: git diff automation/base...tests/2336-secrets-inline-create -- automation/ | grep -nE '^[+].*(get_by_role|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/secrets_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance re-verified with a fresh git fetch in EliteaUI (not a stale clone): all 10 secrets testids present on automation/testids, 0 on main — matches the AFS's claim exactly, no drift for the orchestrator's closure record to catch.",
+          "ref": "automation/pages/secrets_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "New unit test file pins the #1203 matcher's regression behavior (long-form occurrence with full component stack, short-form occurrence with none, and an unrelated error that must NOT match) — good coverage of the fix-round-3 hardening itself.",
+          "ref": "automation/tests/unit/test_secret_create_inline_known_defect_1203_matcher.py"
+        }
+      ],
+      "afs": "test-specs/settings-secrets/l3_create-secret-inline-checkmark-x-cancel_ELITEA-2336.md",
+      "branch": "tests/2336-secrets-inline-create",
+      "pr": 1204
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py",
+      "ticket": "EliteaAI/elitea-testing-public#1203",
+      "why": "Sanctioned-RED per .agents/testing.md § Merge gate: SecretsContent.jsx fires a deterministic (3/3) React \"Maximum update depth exceeded\" console warning on every /settings/secrets mount, before any interaction, unrelated to this test's own changes. All 9 functional AFS steps pass every run; only the soft-asserted known-defect console check fires pytest.fail(). Confirmed unchanged by this round's doc-only AFS fix (single foreground re-run, correct known-defect signature, 28 occurrences).",
+      "test_id": "tests.ui.admin.test_secret_create_inline_checkmark_x_cancel.TestSecretCreateInlineCheckmarkXCancel.test_create_secret_inline_checkmark_saves_x_cancels",
+      "case_ids": [
+        "ELITEA-2336"
+      ],
+      "unit": "ELITEA-2336"
+    }
+  ],
+  "parked": []
+}

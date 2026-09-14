@@ -1,0 +1,93 @@
+{
+  "batch": "elitea-2259-notifications-read-unread",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2259-notifications-read-unread",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      25.368706875,
+      23.066805333,
+      23.591922125
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2259",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case steps 3 and 8 describe 'the Mark as read button' and 'the Mark as unread button' as two separate, statically-labelled controls. Live product (NotificationTableToolbar.jsx) has ONE toggle button whose accessible name flips between 'Mark selected as read' and 'Mark selected as unread' based on shouldMarkAsRead = rows.some(row => selectedRowIds.has(row.id) && !row.is_seen) -- i.e. whether any cu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1166"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer testid work required (documented in AFS Concrete Handles + qa-engineer memory): (1) per-row checkbox -- GridTableRow.jsx ALREADY accepts and renders a checkboxTestId prop; NotificationTable.jsx's <GridTableRow> call site just needs `checkboxTestId={`notification-checkbox-${row.id}`}` wired -- exact precedent exists in ArtifactTable.jsx:527 (`artifacts-file-checkbox-${row.id}`), so this… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No new toast testid needed -- reused the existing app-wide generic `toast-message` testid (already used by automation/pages/artifacts_page.py's success_toast_message, established by ELITEA-1832) for the 'Notifications marked as read'/'Notifications marked as unread' success-toast assertions."
+        },
+        {
+          "kind": "note",
+          "note": "There is no visible DOM indicator distinguishing read vs unread notification rows today (no dot/bold badge, only a subtle text-color difference on the date cell that isn't a reliable test signal). AFS specs verifying is_seen state via the list-fetch API response body rather than a DOM attribute -- this is a network-response assertion, not a UI locator, so it doesn't conflict with the testid-only l… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Page object edit to notification_center_page.py (ELITEA-2257's file, 1 pre-existing caller) was verified additive-only and the sibling test was re-run green to confirm no regression, per the shared-caller-file discipline -- safe below the 3-caller threshold but worth the orchestrator knowing this file now has 2 test callers.",
+          "ref": "automation/pages/notification_center_page.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 3/8 describe two separate 'Mark as read'/'Mark as unread' buttons; the live product has one toolbar toggle button whose accessible name flips by selection state. Already filed by the analyst as EliteaAI/elitea-testing-public#1166 — not a new finding, just confirmed still accurate at implementation time.",
+          "ref": "EliteaAI/elitea-testing-public#1166"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added raw locators (git diff origin/tests/batch-elitea-2259-notifications-read-unread...origin/tests/ELITEA-2259-mark-notifications-read-unread -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'): 2 hits, both `self.page.locator(self.NOTIFICATION_ROW_CHE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/notification_center_page.py:100,113"
+        },
+        {
+          "kind": "note",
+          "note": "Full 3-artifact triangulation performed: TMS snapshot (.agents/automation/elitea-2259-notifications-read-unread/cases/ELITEA-2259.md) → AFS (test-specs/settings-notifications/l2_mark-selected-notifications-read-unread_ELITEA-2259.md) → PR diff. All 11 case rows + Expected Final State map cleanly onto AFS steps 1-10 (Coverage Map decomposes case step 2 into AFS steps 2-3), and every AFS step's clai… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_notification_mark_read_unread.py"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-checked the AFS's handle-provenance and behavioral claims directly against EliteaUI source (NotificationTable.jsx, NotificationTableToolbar.jsx, GridTableRow.jsx, BaseCheckbox.jsx) on origin/automation/testids: toast strings ('Notifications marked as read'/'unread'), shouldMarkAsRead selection logic, checkboxTestId prop wiring, and the new static notification-mark-toggle-button testid (commi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI@76a81713"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text clarification (case steps 3/8 imply two separate buttons; product has one toggle) is filed as EliteaAI/elitea-testing-public#1166, labelled `question`, OPEN — correct reverse-masking-guard disposition, not treated as a defect or silently reverse-masked in the test.",
+          "ref": "EliteaAI/elitea-testing-public#1166"
+        },
+        {
+          "kind": "note",
+          "note": "No masking found: no test.fail/skip/xfail/weakened assertions; no Known Defects in AFS (none found during analysis); toast/status/is_seen assertions are all real (not soft/demoted)."
+        }
+      ],
+      "afs": "test-specs/settings-notifications/l2_mark-selected-notifications-read-unread_ELITEA-2259.md",
+      "branch": "tests/ELITEA-2259-mark-notifications-read-unread",
+      "pr": 1167,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          25.368706875,
+          23.066805333,
+          23.591922125
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

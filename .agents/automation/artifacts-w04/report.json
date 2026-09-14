@@ -1,0 +1,441 @@
+{
+  "batch": "artifacts-w04",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1392",
+  "integration_branch": "tests/batch-artifacts-w04",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      361.82,
+      381.27,
+      316.12
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py",
+        "signature": "RED-BY-DESIGN (#1677), but NOT the same signature 3/3. Runs 1 and 2 — byte-identical, the declared #1677 pair: `ExceptionGroup: Soft assertion failures (2 sub-exceptions)` -> [1] `AssertionError: Locator expected to have text 'Months' / Actual value: Days` on get_by_test_id(\"artifacts-bucket-retention-measure-select-combobox\"); [2] `AssertionError: Locator expected to have Value '10' / Actual valu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+        "case_ids": [
+          "ELITEA-1810",
+          "ELITEA-1808"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/artifacts/test_artifacts_create_bucket_56char_limit_warning_delete_cancel.py",
+        "signature": "RED-BY-DESIGN (#1080), byte-identical 3/3: `E   Failed: Known product defect(s) reproduced (everything else in this case passed cleanly):` / `E   Known defect: #1080 — a single click on Save with a 56-character name in the focused Name field fired NO bucket-creation POST within 5000ms; the form stayed open. Expected: the bucket is saved on the first click (case step 7).`",
+        "case_ids": [
+          "ELITEA-1818",
+          "ELITEA-1817",
+          "ELITEA-1809",
+          "ELITEA-1845"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1810",
+      "outcome": "merged-sanctioned-red",
+      "note": "red by design pending #1677, #1677, #1677 — the gate ran it but could not count it; merged with the batch, re-enter once the product ships",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed BUG #1677 — a bucket retention policy saved in Months reopens in the Edit form as Days (10 Months -> 304 Days; 3 Months -> 92 Days). Root cause traced: the backend stores retention as a calendar-accurate day count, and the UI rebuilds the unit with convertDaysToMeasure() in ../EliteaUI/src/utils/retentionPolicy.js, whose months branch requires days % 30 === 0 — unreachable for a real month p… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1677"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text drift, already tracked: ELITEA-1810 steps 12/19/26 say 'Select Edit from the dropdown menu'; the live bucket dot-menu item is 'Rename' (bucket-menu-rename-menuitem). Same object/trigger/expected-vs-actual as open issues #666 and #650, so per profile.md § Bug filing dedup this was NOT re-filed — the new occurrence was commented onto #666. The AFS asserts the live label.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/666"
+        },
+        {
+          "kind": "question",
+          "note": "The case's whole premise of a 'second path' to bucket creation does not exist in the product. grep -rn 'create-bucket' ../EliteaUI/src returns exactly one call site: BucketHeader.jsx:59, a NewFolder-icon button with testid artifacts-create-bucket-button — the same control ELITEA-1808 already drives as its 'Path 1 (+ Artifact Bucket button)'. The zero-buckets empty-state 'Create' button calls the s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1808 / ELITEA-1810"
+        },
+        {
+          "kind": "note",
+          "note": "Analyst-side gotcha now in the digest and role memory: never busy-poll with a while-loop inside browser_evaluate/page.evaluate. The spin-loop blocks the main thread so React never renders the ~967-row bucket list, and the poll reads '0 rows' plus the transient 'No buckets created yet' empty state until it times out — I nearly reported that as a product defect (~65s wasted, two occurrences). A sing… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #636 ('artifact bucket delete returns 404, buckets never removed') did NOT reproduce through the UI delete path today: row hover -> bucket-menu-delete-menuitem -> delete-confirm-button removed autotest-1810-a1 from GET /artifacts/s3/?project_id=399&format=json immediately. Recorded as a working teardown fallback, not as a claim that #636 is fixed (the API path was not retested). Separately, … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/636"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer trap worth flagging up front: an edit-save is a PUT /artifacts/buckets/default/{project_id} (src/api/artifacts.js:55), but the existing ArtifactsPage.click_bucket_save_button() hardcodes r.request.method == 'POST' in its expect_response predicate and will hang on the edit path. The AFS specifies a PUT-accepting variant. Also, no toast fires on bucket save at all, so the response status… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1428"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS provenance drift, corrected in-PR: the AFS claimed 'zero new testids needed — every handle already exists on automation/testids', but 2 of 3 (key: 'bucket-menu-rename' on BucketItem.jsx and data-testid=\"artifacts-bucket-cancel-button\" on CreateBucket.jsx) existed ONLY as UNCOMMITTED edits in the ../EliteaUI working tree at analysis time — they were on no branch and would have vanished on any t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@c91c2aac"
+        },
+        {
+          "kind": "note",
+          "note": "New testid added beyond the AFS: artifacts-bucket-form-heading on CreateBucket.jsx's heading Typography. /artifacts/create-bucket is ONE route serving both the create and edit flow (`currentBucket ? 'Edit bucket' : 'New Bucket'`), so that heading's TEXT is the only observable distinguishing them — needed by case steps 12/19/26, which the AFS specified but gave no handle for. One stable testid, sta… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Suite-health risk, likely already biting: the artifacts specs share NAVIGATION_TIMEOUT = 15_000 for bucket-list waits, and project 399 now holds ~970 buckets. The post-save list refetch exceeded 15s repeatedly (a fresh navigate_to_artifacts() then showed the bucket instantly), producing a false 'bucket never created'. ELITEA-1810 uses a dedicated BUCKET_LIST_TIMEOUT = 45_000. Note that ELITEA-1817… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_create_bucket_55char_name_and_delete.py"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha now in _surface.md and role memory: an OPEN MUI Select mounts an invisible MuiBackdrop that covers its own combobox, so 'open the dropdown' + 'select an option' as two separate page-object calls times out on Locator.click. ArtifactsPage.select_retention_measure() now only issues the open-click when aria-expanded != 'true', and waits for the option to reach hidden so the closing ba… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "question",
+          "note": "Case-text premise the analyst flagged and deliberately did NOT file (to avoid a third near-identical clarification in this batch): ELITEA-1810 is written as 'Path 2 / the second bucket-creation path (folder icon)' vs ELITEA-1808's 'Path 1 (+ Artifact Bucket button)'. Live there is exactly ONE entry point — BucketHeader.jsx:59's single NewFolder-icon button (artifacts-create-bucket-button) — which … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1810"
+        },
+        {
+          "kind": "note",
+          "note": "#636 re-confirmed both ways this run: ArtifactAPI.delete_bucket() 404s every time (.../artifacts/buckets/default/399/p--399.<name>), while the UI delete path (row hover -> dot-menu Delete -> confirm) removes the bucket cleanly — but ONLY once the removal wait is given the 45s budget too. The spec's teardown does UI-first with the API as fallback and left no bucket behind on the final run. However,… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#636"
+        },
+        {
+          "kind": "question",
+          "note": "No tracker work-log comment was posted: .agents/profile.md § Status reporting says to comment the PR link on the originating card, but the dispatch named no board #9 issue number for ELITEA-1810 and I do not guess tracker identifiers. The lead owns the tracker write for this batch — PR #1678 is the link to post.",
+          "ref": "1678"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation TMS case ↔ AFS ↔ diff is otherwise clean. All 27 case steps have an Axis-1 Coverage-Map row AND a real assertion at that step in the code (Step 1 heading visible; 2 URL; 3 five element/default assertions incl. Cancel presence; 4 input_value; 5 all four options present + labelled; 6/14/21 combobox text; 7/15/22 input_value; 8 POST 200; 9 row present + count==1; 10 index recorded; 11/1… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep (`git diff 46bc90e8f...HEAD -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`) — 4 hits, all COMPLIANT: lines using `self.page.locator(self.SELECT_OPTION.format(...))` in `select_retention_measure`, `is_retention_measure_option_visible`, `get_reten… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity grep (`grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'`) — 0 hits. Every asserted value is produced by the running system: the bucket is created and edited through the real form, saves are read off the real POST/PUT responses, and the `artifact_bucket` API fixture is deliberately NOT used because creation IS case Steps 2-8. Docstring carries the explicit… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:13"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt clean, both directions. No skip/xfail/`pytest.mark.blocked`, no weakened assertion. Step 13 asserts the case's CORRECT expectation ('Months' / '10') soft with `# Known defect: #1677` — verified #1677 is a real, OPEN, `bug`-labelled issue in EliteaAI/elitea-testing-public ('[BUG][ELITEA-1810] Bucket retention saved in Months reopens as Days'), not a PR number. Reverse-masking also hand… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified with a fresh `git fetch origin` in ../EliteaUI. `for t in artifacts-bucket-cancel-button artifacts-bucket-form-heading bucket-menu-rename` → cancel-button main:no testids:YES · form-heading main:no testids:YES · bucket-menu-rename main:no testids:no*. Commit EliteaAI/EliteaUI@c91c2aac is on `origin/automation/testids` (3 added lines, 0 removals, no hooks, no new DOM node… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md"
+        },
+        {
+          "kind": "defect",
+          "note": "CLOSURE-RECORD TRAP for the lead: the canonical two-stage promotability grep produces a FALSE NEGATIVE for `bucket-menu-rename`. The testid is derived by `DotMenu.jsx:58` (`data-testid={testId ? `${testId}-menuitem` : undefined}`) from a `key: 'bucket-menu-rename',` field in `BucketItem.jsx:165` — that line contains neither `data-testid` nor `testid[:=]`, so stage-2's FILTER drops it and the row w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/workflow.md § Closure record"
+        },
+        {
+          "kind": "note",
+          "note": "Flake risk worth watching at the hardening gate (NOT blocking — the case itself demands it): Steps 10/17 assert the bucket's 0-based list INDEX among ~970 rendered bucket rows is unchanged across the edit. The index is stable only if no other actor creates/deletes/pins a bucket sorting before `autotest-1810-<ts>` between the two reads — a real possibility in this shared DEV project (the AFS itself… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:474"
+        },
+        {
+          "kind": "note",
+          "note": "Markers: `pytestmark = [ui, regression, new]` + `@pytest.mark.p1`. The AFS's Automation Hints ask for an `artifacts` feature marker — that marker is NOT registered in `automation/pytest.ini` (no `artifacts:` line) and no sibling artifacts spec uses one (`test_artifacts_create_bucket_upload_file.py:62` is `[ui, regression, new_verified]`). The implementation matches the suite's real convention; the… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:88"
+        },
+        {
+          "kind": "note",
+          "note": "`ruff check` (run from `automation/`, per conventions) reports I001 'Import block is un-sorted' on the new spec — it wants `from pages.artifacts_page import ArtifactsPage` grouped with third-party. The merged sibling `tests/ui/artifacts/test_artifacts_create_bucket_upload_file.py:50` produces the byte-identical error, and `pages/artifacts_page.py` passes clean. This is a pre-existing repo-wide ruf… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:71"
+        },
+        {
+          "kind": "question",
+          "note": "Open item the analyst deliberately left to the lead and the implementer carried into the docstring: the case's 'Path 2 / second path' premise is false live — `BucketHeader.jsx:59` renders exactly ONE bucket-creation entry point (`artifacts-create-bucket-button`), the same control ELITEA-1808's step 2 drives. The cases stay legitimately distinct (everything from step 11 on is unique here), but the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer memory written and committed on the branch under review as `docs(memory): (ELITEA-1810) …` (2ac877a0e) — additive, touches nothing under `automation/`, so the code diff judged above is unchanged. New durable entry (no index line, per the memory skill's preventive test) plus a daily-log line.",
+          "ref": ".agents/memory/qa-engineer/sanctioned_red_gate_signature_stated_twice_amendment_fixes_one.md"
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round-1 blocking finding was CORRECT and is fixed in 53e644d. Verified against code first: the spec makes exactly 2 expect.soft() calls (lines 409, 414), so the gate signature is an ExceptionGroup of 2 sub-exceptions. Stale 'exactly one soft failure' claim corrected in BOTH flagged places -- AFS § Known Defects bullet 1 (l2_..._ELITEA-1810.md:282) and the spec module docstring (:53). Both now … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1678"
+        },
+        {
+          "kind": "note",
+          "note": "The PR body was ALREADY correct -- it stated 'ExceptionGroup of exactly 2 sub-exceptions from ONE cause' and even flagged the AFS drift. So the reviewer's scope (AFS:282 + docstring:53) was exactly right, not broad. Body updated this round only to add the fix-round-1 record and widen the duration baseline (110s original run, 125.75s this run, same signature, no code change -- treat ~110-126s as th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1678"
+        },
+        {
+          "kind": "note",
+          "note": "Regression guard added (5 tests), in the shape this project already uses for docstring-claim drift (tests/unit/test_artifacts_tree_expand_collapse_docstring_mechanism.py). It AST-counts expect.soft() in the spec as ground truth, then asserts the spec docstring states that count, the AFS states that count, neither artifact carries 'exactly one soft failure' un-negated, and the count is still 2. RED… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_bucket_retention_gate_signature_consistency.py"
+        },
+        {
+          "kind": "defect",
+          "note": "PRE-EXISTING, NOT INTRODUCED, left untouched -- but the lead should know because it is a trap for every future implementer. 'ruff check' reports I001 on this spec; I confirmed it is present on HEAD too (restored HEAD's bytes at the real path and re-checked). Its autofix is WRONG for this repo: pyproject.toml [tool.ruff] sets no 'src' and no 'known-first-party', so ruff cannot see pages/components/… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ruff I001 / pyproject.toml"
+        },
+        {
+          "kind": "clarification",
+          "note": "Second-order gotcha that nearly made me mis-attribute the I001 above as my own: 'ruff check --stdin-filename <path> - < old.py' reports 'All checks passed' on bytes that report I001 at the real path, because first-party inference depends on the file's actual on-disk location. To decide 'did I introduce this lint error?', restore the old bytes at the REAL path (git checkout HEAD -- <path>, check, r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ruff --stdin-filename"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory self-check greps re-run on the FULL updated diff (automation/base...HEAD -- automation/) after the fix round. Fidelity grep (.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(): 0 hits (no matches). Locator grep: same 4 hits as round 0, all compliant one-hop via BasePage's class-level SELECT_OPTION = '[data-testid=\"select-option-{}\"]' constant. The fix round added no new hits of ei… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "self-check greps"
+        },
+        {
+          "kind": "note",
+          "note": "ROUND-1 BLOCKER RESOLVED. Both artifacts now state the real gate signature — AFS § Known Defects (:282-286) and the spec module docstring (:53-61) each say \"ExceptionGroup of exactly 2 sub-exceptions\" from ONE cause and spell out that a 1- or 3+-sub-exception result is a different signature to investigate. Swept the whole branch for the retracted claim: every surviving occurrence of \"exactly one s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md:285"
+        },
+        {
+          "kind": "note",
+          "note": "MECHANICAL GREPS (run on the full base...branch diff, output pasted).\n\nLocator grep — `git diff automation/base...tests/ELITEA-1810-bucket-retention-edit-persistence -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 4 hits, ALL COMPLIANT (one-hop verified: `BasePage.SEL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "TRIANGULATION (case snapshot ↔ AFS ↔ diff) CLEAN. All 27 case steps + the precondition + the Pass criterion have Axis-1 rows, and every `covered` row's expected result maps to a real assertion AT that step in the code: step 2 URL assert; step 3 five element/default asserts incl. Cancel presence; step 5 asserts all four measure options by testid AND label; steps 6/14/21 combobox text; 7/15/22 input… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md"
+        },
+        {
+          "kind": "note",
+          "note": "TESTID PROVENANCE — verified fresh (`cd ../EliteaUI && git fetch origin` in the same block), NOT copied from the AFS:\n  artifacts-bucket-cancel-button                 main:no   testids:YES\n  artifacts-bucket-form-heading                  main:no   testids:YES\n  bucket-menu-rename (key → -menuitem)           main:no   testids:YES (origin/automation/testids:src/pages/Artifacts/Components/BucketItem.… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md"
+        },
+        {
+          "kind": "note",
+          "note": "POM discipline OK: all new page-object work is additive (`click_bucket_save_button` untouched; the PUT variant is a new sibling `click_bucket_save_button_expect_put`), locators are class-level `LocatorDescriptor(testid=…)` with no `fallback=`/`locator=`, no raw handles in the spec file, every step wrapped in `allure.step(\"Step N — …\")`. No dead code: all six new page-object readers/actions and all… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1503"
+        },
+        {
+          "kind": "question",
+          "note": "For the lead: this branch adds a 4th per-spec prose-guard unit test (185 lines) while shipping the very defect an existing family of 3 per-spec allure-link guards was written for. The guards can't generalise because each pins one named file. A single repo-wide guard — walk `tests/ui/**`, AST-read every `@allure.issue` URL, resolve it against `../onetest-ai-tm-Elitea` — would retire the class and l… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_bucket_retention_gate_signature_consistency.py"
+        },
+        {
+          "kind": "note",
+          "note": "Ruff `I001` (un-sorted imports) fires on the new spec. NOT raised as blocking: `pyproject.toml` sets no ruff `src`/`known-first-party`, so `pages.*` reads as third-party and ruff's own fix would violate `.agents/conventions.md` (stdlib → third-party → local). The file follows the convention; `ruff check tests/ui/artifacts/` reports 16 errors branch-wide, i.e. pre-existing house state. The real fix… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:80"
+        },
+        {
+          "kind": "note",
+          "note": "Two low-severity robustness observations for the hardening gate, neither blocking. (1) `bucket_created = True` is set only AFTER `click_bucket_save_button` returns, so a POST that succeeds server-side but whose response wait times out leaves the bucket un-torn-down (the class of leak the AFS itself reports finding: `autotest-1810-b2-2251`). (2) `get_bucket_row_index` reads `get_rendered_bucket_nam… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:311"
+        },
+        {
+          "kind": "defect",
+          "note": "Suite-wide traceability debt: 116 of 588 @allure.issue TMS links across the merged suite do not resolve against freshly fetched origin/main of ../onetest-ai-tm-Elitea (~20%; was 115/420 on 2026-08-21, so new units are mostly clean and the debt is historic). Two causes: (1) TMS folder restructuring — e.g. settings-analytics/ became settings/analytics/, chat-interface/ and toolkits-credentials/ no l… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/**/*.py"
+        },
+        {
+          "kind": "note",
+          "note": "`../.venv/bin/ruff check <spec>` reports I001 (unsorted import block) on this spec AND on already-merged neighbours (test_artifacts_create_bucket_upload_file.py, test_artifacts_duplicate_bucket_name.py) — same result whether run from automation/ or the repo root. Pre-existing, not introduced by this branch; ruff is not resolving `pages` as first-party in this invocation. Left untouched (auto-fixin… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/conventions.md § Lint"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1810 stays sanctioned-RED on defect #1677 (Months retention reopens as Days — 10 Months -> 304 Days; convertDaysToMeasure() in src/utils/retentionPolicy.js only rebuilds 'months' when days % 30 == 0). Signature reconfirmed this round: ExceptionGroup of exactly 2 sub-exceptions. Per .agents/testing.md § Merge gate, a spec carrying expect.soft() failures is FAILED at the pytest level — the ca… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1677"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKER RESOLVED. The @allure.issue URL now names ELITEA-1810_create-artifact-bucket-path-2-verify-retention-policy.md, which I verified exists in ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/artifacts/. The implementer additionally added a static guard (automation/tests/unit/test_artifacts_bucket_retention_spec_allure_issue_link.py) that AST-extracts the link and resolves it a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:191"
+        },
+        {
+          "kind": "note",
+          "note": "CLOSE-TIME ROUTING for the lead. This spec is sanctioned-RED: Step 13 carries two expect.soft() + '# Known defect: #1677'. Per .agents/testing.md § Merge gate, expect.soft failures ARE reds — the pytest outcome is FAILED. The gate signature is an ExceptionGroup of exactly 2 sub-exceptions from the one cause ('Months' != 'Days' and '10' != '304'); a 1- or 3+-sub-exception result is a DIFFERENT sign… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/testing.md § Merge gate"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS over-claims, non-blocking. The Axis-1 row for case Step 11 says 'Asserted where: menu container + 4 item texts', and AFS Test Step 11 says 'its items are Upload files / Rename / Pin to top / Delete'. The implementation (spec Step 11) asserts only bucket_menu_container(name) visible and bucket_menu_rename_menuitem visible — no assertion on the four item labels. The CASE's own expected result ('… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md (Coverage Map, Step 11 row)"
+        },
+        {
+          "kind": "question",
+          "note": "CANON GAP worth a `question` card. This 185-line static-analysis file asserts PROSE consistency between the spec docstring, the AFS markdown, and the AST soft-assert count. Its rationale is declared in the module docstring (per role-overrides § Declared-improvisation protocol, so it cannot solo-block), and it does not change what the case verifies. Two concerns for the lead: (1) it has no preceden… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_artifacts_bucket_retention_gate_signature_consistency.py:145"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the test is named test_spec_makes_more_than_one_soft_assertion but asserts `== 2` exactly. Name and assertion disagree; the name reads as `>= 2`.",
+          "ref": "automation/tests/unit/test_artifacts_bucket_retention_gate_signature_consistency.py:145"
+        },
+        {
+          "kind": "note",
+          "note": "CLOSURE-RECORD TRAP for the lead. The `bucket-menu-rename-menuitem` testid is DERIVED by DotMenu from a `key: 'bucket-menu-rename'` field, so its only source line contains neither `data-testid` nor `testid` in any case form. The .agents/workflow.md § Closure record stage-2 filter therefore reports it `main:no testids:no` — a FALSE NEGATIVE; it IS on origin/automation/testids (EliteaAI/EliteaUI@c91… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "../EliteaUI src/pages/Artifacts/Components/BucketItem.jsx:165"
+        },
+        {
+          "kind": "note",
+          "note": "Not a finding — recorded so nobody 'fixes' it. `ruff check` reports one I001 on this file's import block. pyproject sets no ruff `src`/`known-first-party`, so `pages.*` reads as third-party and ruff's autofix would move `from pages.artifacts_page import ArtifactsPage` above `from playwright.sync_api import expect`, violating .agents/conventions.md (stdlib -> third-party -> local). The block as wri… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py:80"
+        },
+        {
+          "kind": "note",
+          "note": "Positive note on POM discipline: click_bucket_save_button_expect_put() was added as a SIBLING rather than parameterizing the existing click_bucket_save_button(), whose expect_response predicate hardcodes POST and has merged callers. Additive-only on a shared-caller file — Hard Rule 3 satisfied. Likewise select_retention_measure() is idempotent about the dropdown's open state because MUI's invisibl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1636"
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persistence_ELITEA-1810.md",
+      "branch": "tests/ELITEA-1810-bucket-retention-edit-persistence",
+      "pr": 1678
+    },
+    {
+      "id": "ELITEA-1812",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_bucket-name-stored-lowercase-uppercase-input_ELITEA-1812.md",
+      "branch": "tests/1812-1816-bucket-name-lowercase-readonly",
+      "pr": 1679,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          361.82,
+          381.27,
+          316.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1813",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_bucket-empty-name-save-disabled-cancel_ELITEA-1813.md",
+      "branch": "tests/artifacts-w04-1813-1815",
+      "pr": 1681,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          361.82,
+          381.27,
+          316.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1815",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_bucket-form-valid-values-cancel-no-bucket_ELITEA-1815.md",
+      "branch": "tests/artifacts-w04-1813-1815",
+      "pr": 1681,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          361.82,
+          381.27,
+          316.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1816",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_bucket-name-readonly-in-edit-mode-and-lowercase_ELITEA-1816.md",
+      "branch": "tests/1812-1816-bucket-name-lowercase-readonly",
+      "pr": 1679,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          361.82,
+          381.27,
+          316.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1818",
+      "outcome": "merged-sanctioned-red",
+      "note": "red by design pending EliteaAI/elitea-testing-public#1080 — the gate ran it but could not count it; merged with the batch, re-enter once the product ships",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_create-bucket-56-char-name-limit-warning-and-delete-cancel_ELITEA-1818.md",
+      "branch": "tests/ELITEA-1818-1819-bucket-name-56-char-boundary",
+      "pr": 1684
+    },
+    {
+      "id": "ELITEA-1819",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_bucket-name-field-rejects-more-than-56-characters_ELITEA-1819.md",
+      "branch": "tests/ELITEA-1818-1819-bucket-name-56-char-boundary",
+      "pr": 1684,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          361.82,
+          381.27,
+          316.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1867",
+      "outcome": "blocked",
+      "note": "Executed end-to-end live TWICE (two different pre-existing buckets: dup-bucket-1867new-bucket and autotest-scratch-empty-191178), deterministic both times. The case's namesake expectation is INVERTED vs the live product: creating an Artifact toolkit whose Bucket field names an already-existing bucket SUCCEEDS — POST /api/v2/elitea_core/toolkits/prompt_lib/399 returns 200, the wizard navigates to /… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [],
+      "afs": "test-specs/artifacts/l3_toolkit-creation-existing-bucket-name_ELITEA-1867.md"
+    }
+  ],
+  "totals": {
+    "merged-sanctioned-red": 2,
+    "automated": 5,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py",
+      "test_id": "tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py::TestArtifactBucketRetentionEditPersistence::test_bucket_retention_edit_and_persistence",
+      "ticket": "#1677",
+      "why": "Case step 13 soft-asserts the correct expectation (Months / 10); the product reopens a Months retention policy as Days / 304 because convertDaysToMeasure() only rebuilds 'months' when days % 30 === 0. Deterministic, single-cause, isolated (steps 14-27 all pass). Gate signature: ExceptionGroup of exactly 2 sub-exceptions from ONE cause ('Months' != 'Days' and '10' != '304'). Test flips green when the product is fixed.",
+      "case_ids": [
+        "ELITEA-1810"
+      ],
+      "unit": "ELITEA-1810"
+    },
+    {
+      "spec": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py",
+      "test_id": "tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py::TestArtifactBucketRetentionEditPersistence::test_bucket_retention_edit_and_persistence",
+      "ticket": "#1677",
+      "case_ids": [
+        "ELITEA-1810"
+      ],
+      "why": "Sanctioned-RED per .agents/testing.md § Merge gate. Test Step 13 soft-asserts the case's CORRECT expectation (Months / 10); the product reopens a Months retention policy as Days / 304 (backend stores calendar-accurate days; convertDaysToMeasure() only rebuilds 'months' when days % 30 === 0, unreachable for a real month policy). Deterministic, single-cause, isolated, linked to OPEN #1677 with '# Known defect: #1677' in the test. GATE SIGNATURE (corrected this round, and now guarded by a unit test): a pytest ExceptionGroup of exactly 2 sub-exceptions from that ONE cause -- \"Months\" != \"Days\" AND \"10\" != \"304\". NOT 'exactly one soft failure'. A 1- or 3+-sub-exception result is a DIFFERENT signature and must be investigated, never classified as #1677. Re-run this round reproduced exactly that signature in 125.75s; all other 26 steps (1-12, 14-27) passed, including both hard persistence assertions and the no-PUT-on-Cancel check.",
+      "unit": "ELITEA-1810"
+    },
+    {
+      "spec": "automation/tests/ui/artifacts/test_artifacts_bucket_retention_edit_persistence.py",
+      "test_id": "tests.ui.artifacts.test_artifacts_bucket_retention_edit_persistence.TestArtifactBucketRetentionEditPersistence.test_bucket_retention_edit_and_persistence",
+      "ticket": "#1677",
+      "case_ids": [
+        "ELITEA-1810"
+      ],
+      "why": "Sanctioned-RED per .agents/testing.md § Merge gate: deterministic, single-cause, linked to OPEN defect #1677 and soft-asserted with a `# Known defect: #1677` marker. A Months retention policy reopens as Days (10 Months -> 304 Days) because convertDaysToMeasure() only rebuilds 'months' when days % 30 == 0. Gate signature to expect on every run: ExceptionGroup of EXACTLY 2 sub-exceptions from Step 13 — text 'Months' != 'Days' and value '10' != '304'. A 1- or 3+-sub-exception result is a DIFFERENT signature and must be investigated, never waved through. All other 26 steps pass.",
+      "unit": "ELITEA-1810"
+    },
+    {
+      "spec": "automation/tests/ui/artifacts/test_artifacts_create_bucket_56char_limit_warning_delete_cancel.py",
+      "test_id": "TestArtifactCreateBucket56CharLimitWarningAndDeleteCancel::test_create_bucket_56char_name_limit_warning_and_delete_cancel",
+      "ticket": "EliteaAI/elitea-testing-public#1080",
+      "why": "Step 7a soft-asserts the CORRECT behaviour (a single Save click at exactly 56 characters must fire the bucket-creation POST). Live it fires nothing: mousedown blurs the Name field, the focus-gated character counter unmounts, Save shifts up 16px, mouseup lands off-target, no click event. Deterministic, single-cause, linked to OPEN #1080; every other step passes cleanly and the test flips green by itself when the fix ships.",
+      "case_ids": [
+        "ELITEA-1818"
+      ],
+      "unit": "ELITEA-1818+ELITEA-1819"
+    }
+  ],
+  "parked": []
+}

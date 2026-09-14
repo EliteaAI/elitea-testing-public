@@ -1,0 +1,99 @@
+{
+  "batch": "elitea-2365-my-liked-reload",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2365-my-liked-reload",
+  "gate": {
+    "verdict": "green",
+    "runs": 1,
+    "seconds": [
+      31.44,
+      104.5
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/agents/test_agent_hub_my_liked_reload_cross_tab_sync.py",
+        "signature": "RED-BY-DESIGN (declared, excluded from the N-consecutive-green contract per dispatch). tests.ui.agents.test_agent_hub_my_liked_reload_cross_tab_sync.TestAgentHubMyLikedReloadCrossTabSync.test_agent_hub_my_liked_reload_reflects_cross_tab_like — ran once (gate n=3, stopped at first red as designed): 'Failed: Test flow completed and all functional assertions passed, but known-defect soft failures wer… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2365"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/agents/test_agent_hub_like_agent_list_view.py",
+        "signature": "Pre-existing sanctioned-RED (NOT this batch's code — not in the batch diff at all; page-object change was purely additive, 2 new methods, 0 lines removed). Found during the once-only blast-radius run: 'Failed: Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1215: non-serial… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": []
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2365",
+      "outcome": "blocked",
+      "note": "red by design pending EliteaAI/elitea-testing-public#1215 — the gate ran it but could not count it; re-enter once the product ships",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2365 step 8 claims a reload/refresh icon exists next to the 'My Liked' section header. Confirmed absent (source + live) — same root cause as already-filed EliteaAI/elitea-testing-public#1212 (AgentCategorySection.jsx's headerContainer renders only a Typography for every category, no icon anywhere). Per the surface digest's explicit standing instruction for this family, cited #1212 rather th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1212"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #1215 (Redux 'non-serializable value' console.error on every Agent Hub like/unlike click) reproduced again on this case's like click. Cited, not re-filed, per the surface digest's standing instruction for like/unlike-adjacent cases in this family.",
+          "ref": "EliteaAI/elitea-testing-public#1215"
+        },
+        {
+          "kind": "note",
+          "note": "New gotcha for future Agent Hub cases: the Catalog's category filter-rail chip selected state (e.g. 'My Liked') is client-only UI state and does NOT survive a full page reload/re-navigation — any test that reloads mid-flow while relying on a category filter must re-click the chip afterward or it will silently read the unfiltered default view."
+        },
+        {
+          "kind": "note",
+          "note": "Zero new testids needed for this case — every handle it touches (catalog-agent-category-filter-chip-my-liked, catalog-category-heading-my-liked, catalog-agent-like-button-{id}) was already added by ELITEA-2350/2352/2354's implementers. Fresh git fetch + git grep this session confirms all three are present on automation/testids and still absent from origin/main."
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracking issue for ELITEA-2365 was found on board #9 (env -u GITHUB_TOKEN gh issue list --state all returned zero hits for '2365'). Skipped Phase-6 step 4 (comment PR link on the originating issue) — there is nothing to comment on. If intake is expected to have filed one, it hasn't happened yet for this case; the orchestrator may want to check/create it as part of Close.",
+          "ref": "ELITEA-2365"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: AFS steps 8 and 9 merged into a single allure.step block in the test (one-per-AFS-step convention deviation), but both steps' own assertions are present — no coverage lost. Causally linked (reload → verify-refresh).",
+          "ref": "automation/tests/ui/agents/test_agent_hub_my_liked_reload_cross_tab_sync.py"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: AFS Coverage-Map row for case step 6 claims an assertion ('Tab A state unchanged') that isn't literally present at that point in code (page.bring_to_front() only) — the same observable is actually proven by step 7's absence-assertion one step later. Documentation precision drift, not a functional gap.",
+          "ref": "test-specs/agent-hub/l3_agent-hub-my-liked-reload-cross-tab-sync_ELITEA-2365.md"
+        },
+        {
+          "kind": "note",
+          "note": "console_errors.stop() would be skipped if the preceding hard assert fails, leaving a listener attached until the (function-scoped) page closes. Inherited precedent from the already-merged test_agent_hub_like_agent_list_view.py, identical shape — not a new issue from this PR, and not a cross-test risk given fixture scoping.",
+          "ref": "automation/tests/ui/agents/test_agent_hub_my_liked_reload_cross_tab_sync.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/pages/ + automation/tests/) returned 0 hits — no new non-testid handles added; the case needed zero new testids, matching the AFS claim."
+        }
+      ],
+      "afs": "test-specs/agent-hub/l3_agent-hub-my-liked-reload-cross-tab-sync_ELITEA-2365.md",
+      "branch": "tests/2365-agent-hub-my-liked-reload-cross-tab-sync",
+      "pr": 1231
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/agents/test_agent_hub_my_liked_reload_cross_tab_sync.py",
+      "test_id": "tests.ui.agents.test_agent_hub_my_liked_reload_cross_tab_sync.TestAgentHubMyLikedReloadCrossTabSync.test_agent_hub_my_liked_reload_reflects_cross_tab_like",
+      "ticket": "EliteaAI/elitea-testing-public#1215",
+      "why": "Every like/unlike click on an Agent Hub agent card fires a known, filed, non-blocking Redux 'non-serializable value' console error (same defect ELITEA-2354's test already tracks); soft-asserted via pytest.fail() aggregation, functionally harmless — all 11 functional AFS assertions pass, only this soft-failure is red.",
+      "case_ids": [
+        "ELITEA-2365"
+      ],
+      "unit": "ELITEA-2365"
+    }
+  ],
+  "parked": []
+}

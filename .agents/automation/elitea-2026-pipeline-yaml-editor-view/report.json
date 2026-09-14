@@ -1,0 +1,88 @@
+{
+  "batch": "elitea-2026-pipeline-yaml-editor-view",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2026-pipeline-yaml-editor-view",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      15.998228875,
+      14.612764792,
+      14.078264375
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2026",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1299: ELITEA-2026's Test Data implies 'any pipeline with nodes' guarantees a YAML `state:` key alongside entry_point/nodes. Live-disproved for the default case — a plain single-LLM-node pipeline (the standard 'pipeline with nodes' fixture used by sibling YAML-editor cases) has NO `state:` key at all; it only appears once >=1 custom state variable is added via t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1299"
+        },
+        {
+          "kind": "note",
+          "note": "Two testid gaps for the implementer: (1) CodeMirror line-number gutter — sanctioned #579 exception (library-internal DOM), scoped raw handle `.cm-gutters .cm-lineNumbers .cm-gutterElement` chained off the existing `yaml_editor` LocatorDescriptor, same shape as the pre-existing `YAML_LINE_SELECTOR = \".cm-line\"` constant; (2) the 'Copy yaml code to clipboard' button has zero data-testid (aria-label … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed (and reused) existing qa-engineer role memory clipboard_read_hangs_without_permission_grant.md: an ad-hoc/scratch Playwright MCP session's unprivileged navigator.clipboard.readText() call hangs indefinitely (no error, no timeout — stalled the full 1800s MCP idle timeout; the browser page itself stayed fully responsive). But automation/conftest.py's real pytest `context` fixture (line ~28… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Live-product quirk (not a bug): CodeMirror's line-number gutter renders a hidden, zero-height width-measurement spacer element FIRST in DOM order (observed text '99' on a 22-line doc), which is NOT line 1. Any future locator on `.cm-gutterElement` must append `:visible` or it will silently read the spacer instead of the first real line. Fixed in this PR; durable-logged to .agents/memory/test-autom… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:YAML_GUTTER_LINE_SELECTOR"
+        },
+        {
+          "kind": "note",
+          "note": "One console-404-pair failure observed on an intermediate development run of the full spec, non-reproducible across 10 subsequent runs (4 full-spec + 6 isolated debug probes) covering the identical flow. No code change coincided with its disappearance. Flagging as a possible flake source for the batch hardening gate to watch, not a confirmed recurring pattern (per .agents/testing.md § Unconfirmed d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Did not comment the PR link on tracking issue EliteaAI/elitea-testing-public#463 — the batch dispatch prompt didn't ask for it and this pipeline's Close phase (orchestrator) typically centralizes tracker comments across the batch. Flagging in case the orchestrator expects it done per-unit instead of at Close."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-locator grep on the full diff (automation/pages + automation/tests) found exactly 1 hit: pipeline_detail_page.py:186 `self.yaml_editor.locator(self.YAML_GUTTER_LINE_SELECTOR)`. Compliant — YAML_GUTTER_LINE_SELECTOR is a class-level, docstring-declared #579 sanctioned exception (CodeMirror gutter, library-internal DOM, not app JSX), scoped under the testid-anchored yaml_editor parent… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:186"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the new EliteaUI testid independently (fresh `git fetch origin` in ../EliteaUI first): `pipeline-yaml-copy-button` exists on origin/automation/testids (EditorPanel.jsx:215, single-line scoped addition, commit EliteaAI/EliteaUI@dcbd33ef) and is correctly absent from origin/main (0 hits) — matches the AFS's promotability claim exactly.",
+          "ref": "EliteaAI/EliteaUI@dcbd33ef"
+        },
+        {
+          "kind": "note",
+          "note": "Verified filed clarification EliteaAI/elitea-testing-public#1299 via gh issue view: OPEN, question-labelled, correctly documents case-text drift (case implies any 'pipeline with nodes' YAML has a state: key; live product only emits it once a custom state variable exists) instead of masking it as a product defect. The AFS's precondition genuinely seeds a custom state var (pipeline_with_custom_state… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1299"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking nit: AFS Axis-2 claims the zero-console-error check happens 'at step 3 AND step 6', but the implementation only asserts `not console_errors` at steps 6 and 8 in test_pipeline_yaml_editor_view.py. Harmless in practice (the console_errors list is registered once before step 1 and accumulates, so a step-3 error would still fail the step-6 assert) but is an AFS/implementation phrasing dri… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-yaml-editor-view_ELITEA-2026.md"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-yaml-editor-view_ELITEA-2026.md",
+      "branch": "tests/ELITEA-2026-pipeline-yaml-editor-view",
+      "pr": 1300,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          15.998228875,
+          14.612764792,
+          14.078264375
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

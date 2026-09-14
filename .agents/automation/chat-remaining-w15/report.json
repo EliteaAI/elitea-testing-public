@@ -1,0 +1,509 @@
+{
+  "batch": "chat-remaining-w15",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w15",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      331.47
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/chat/test_context_auto_summarization_disabled.py::TestContextAutoSummarizationDisabled::test_no_summarization_when_auto_summarization_disabled",
+        "signature": "AssertionError: Expected the high-utilization warning icon to appear within 15 messages (used 4843/5000 tokens at the last check) — either token accounting or the warning icon is not behaving as the source (ContextBudgetProgress.jsx, isHighUtilization) implies",
+        "case_ids": [
+          "ELITEA-2217"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py::TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip",
+        "signature": "Failed: Non-deterministic known defect observed this run — https://github.com/EliteaAI/elitea-testing-public/issues/1127: direct toolkit-call flow leaked tool-call intent instead of executing — no 'delete_file' chip rendered AND ArtifactAPI confirms the seeded file was NOT deleted from the bucket. Response text: 'Thought for less than a second\\nError debugging info'",
+        "case_ids": [
+          "ELITEA-2210"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py::TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow",
+        "signature": "Failed: Non-deterministic known defect observed this run — https://github.com/EliteaAI/elitea-testing-public/issues/1127: direct toolkit-call flow leaked tool-call intent instead of executing — no 'create_file' chip rendered AND ArtifactAPI confirms the file was NOT created in the bucket (bucket contents: []). Response text: 'Thought for less than a second\\nError debugging info'",
+        "case_ids": [
+          "ELITEA-2215",
+          "ELITEA-2209"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2209",
+      "outcome": "blocked",
+      "note": "gate red: Failed: Non-deterministic known defect observed this run — https://github.com/EliteaAI/elitea-testing-public/issues/1127: direct toolkit-call flow leaked tool-call intent instead of executing — no 'cr",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Seeded toolkit 'AutoTest Confluence Toolkit 1787' (project 399) is misconfigured — selecting it as a chat participant fires a 400 on GET .../toolkit_validator/prompt_lib/399/2945 and its participants badge renders in an error/attention variant instead of the plain one. Unrelated to ELITEA-2209/2215's subject (stale test-data credentials, not a product defect in the participants-panel mechanism) — … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2215's target test (test_direct_toolkit_call_complete_flow.py) is currently excluded from the N-consecutive-green hardening gate due to a confirmed non-deterministic known defect, elitea-testing-public#1127 (OPEN). Since ELITEA-2209 extends onto that same test, the extension's own new assertion (participants panel) is mechanically independent of #1127 and must be placed before the message-s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1127"
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracking issue found for ELITEA-2209 (title-substring search, all states, 0 hits) — skipped the 'comment PR link on originating issue' handoff step rather than invent a target. This may be normal for workflow-driven campaign batches (state tracked via .agents/automation/<slug>/ + campaign commits instead of per-case GH issues) but worth the lead confirming.",
+          "ref": "PR #1602"
+        },
+        {
+          "kind": "note",
+          "note": "AFS required zero amendment — every handle (ChatPage.is_participants_badge_visible, section='toolkits'/'agents') matched the live product exactly on first run, no drift found during implementation.",
+          "ref": "test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md"
+        },
+        {
+          "kind": "note",
+          "note": "New Setup-step asserts placed exactly where the AFS Automation Hints specified: inside the existing `allure.step(\"Setup — add the artifact toolkit as the only participant\")` block, immediately after `chat.add_toolkit_participant(toolkit_name)`, before the message send and before the #1127 known-defect classification logic. Plain unconditional `assert`s, deliberately not routed through the covering… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py:245-250"
+        },
+        {
+          "kind": "note",
+          "note": "Reused handle `is_participants_badge_visible(section=...)` is pre-existing, testid-only (`PARTICIPANTS_BADGE` template constant, `chat-participants-badge-{section}`), and its docstring explicitly documents that the badge container is absent from the DOM entirely at count 0 (not rendered as \"0\") — exactly the mechanism the new negative assertion (`assert not ...(section=\"agents\")`) relies on. Zero … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6860"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's precedent claim (\"already used by 3 other merged specs\") verified: test_slash_mention_toolkit_tool_selection.py and test_slash_mention_toolkit_and_mcp_participants.py both assert `section=\"toolkits\"` positively, test_slash_mention_empty_state.py asserts `section=\"toolkits\"` negatively (`assert not ...`) — same method/pattern, not a fabricated citation."
+        },
+        {
+          "kind": "note",
+          "note": "Docstring-only diff outside the two new asserts (module docstring, class docstring, method docstring, two new @allure.issue lines) — every removed (`-`) line in the diff is prose replaced in place by an expanded paragraph; no test-body code was removed. Additive-only discipline holds."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md",
+      "branch": "tests/2209-participants-panel-verification",
+      "pr": 1602
+    },
+    {
+      "id": "ELITEA-2210",
+      "outcome": "blocked",
+      "note": "gate red: Failed: Non-deterministic known defect observed this run — https://github.com/EliteaAI/elitea-testing-public/issues/1127: direct toolkit-call flow leaked tool-call intent instead of executing — no 'de",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2210's Test Data message ('use delete_file toolkit to remove from the bucket all files') is the exact string ELITEA-2211's AFS already live-tested and found ambiguous — the LLM asks which of ~588 buckets instead of invoking the tool, because 'the bucket' has no unique referent. This is a reverse-masking-guard CLARIFICATION (case text is imprecise, product is correct), already documented via… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_hitl-sensitive-action-card-display_ELITEA-2211.md"
+        },
+        {
+          "kind": "note",
+          "note": "This is the third case in chat-remaining-w15 to land as an extend-existing (zero-diff, in this case) onto the same covering spec, test_direct_toolkit_call_complete_flow.py (ELITEA-2215 core + ELITEA-2209 participants-panel extension). That covering test remains excluded from this batch's N-consecutive-green hardening gate for a pre-existing, non-deterministic known defect (#1127, 2/5 run rate) — E… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No originating GitHub tracking issue found for ELITEA-2210 (same as ELITEA-2209 earlier this batch) — Phase 6 step 4 (comment PR link on originating issue) skipped, not fabricated. Confirms this is a batch-wide pattern for chat-remaining-w15 worth the lead noting, not a one-off gap.",
+          "ref": "ELITEA-2210"
+        },
+        {
+          "kind": "note",
+          "note": "Reused/confirmed existing memory entry nested_allure_step_for_additive_only_traceability.md — caught and fixed a docstring-line-edit additive-only violation before opening the PR (ELITEA-2209's own PR in this batch shipped the equivalent violation explained-in-prose instead of eliminated). No new memory entry needed; only a daily-log note added."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS drift from the TMS case, caught by triangulation. ELITEA-2210's case text (Preconditions + Test Data, not marked 'e.g.') names the tool under test as `delete_file` and directs sending 'use delete_file toolkit to remove from the bucket all files', then verifying the chip renders 'aaa: delete_file'. The covering spec this AFS claims 'zero gap' against hardcodes `TOOL_NAME = \"create_file\"` / `MES… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md (Coverage Map rows 4–5); automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py:154-156,342-347"
+        },
+        {
+          "kind": "note",
+          "note": "Related, lower-severity, and pre-existing (not introduced by this PR — same disposition wording already used by ELITEA-2209's own AFS): row 5's 'icon has appropriate icon and label' claim has no icon-specific assertion in the code at all, only `to_be_visible()` + `to_contain_text()` on the chip root. The AFS's justification ('icon and label are one DOM subtree under the same testid, no code path r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test_direct_toolkit_call_complete_flow.py:326-347"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checks out: diff is byte-for-byte additive (verified `grep -E '^-[^-]'` against the full file diff — 0 removed lines, confirming the PR's own claim), the locator-policy grep (0 hits) and fidelity/substitution grep (0 hits) both verified independently and clean, no masking (`test.fail`/`skip`/weakened asserts) anywhere in the diff, the new `@allure.issue` decorator and docstring par… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Known defect #1127 (direct-toolkit-call flow narrates success without invoking the real tool) confirmed to also fire for delete_file, at a notably higher local rate (3/3) than the previously-recorded create_file rate (2/5). Not filed as a new ticket — same tool-agnostic mechanism the issue already describes — but added as a comment with the new evidence for whoever triages #1127.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1127#issuecomment-5342934194"
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round finding: an already-merged, reviewed test (ELITEA-2212's test_authorize_executes_toolkit_tool_directly) DOES assert the exact delete_file chip text against a real backend deletion, and looked like a zero-code fix by citation alone. Rejected as coverage proof because its own AFS states its Network Behavior 'was not captured live this pass' — it's pytest.mark.guardrails/CI-only (Admin Guar… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "This PR now ships RED (sanctioned), not GREEN — deliberately, per .agents/testing.md § Merge gate's 3/3-deterministic/single-cause/open-linked-defect exception. Flagged explicitly in the PR body's Run Report and in expected_red[] above so the batch gate composition excludes/treats this spec correctly (same GATE_EXCLUDED_REASON class as the covering spec)."
+        },
+        {
+          "kind": "note",
+          "note": "TMS back-write for ELITEA-2210 should list BOTH automation_test_id refs once the batch closes: the pre-existing test_direct_toolkit_call_complete_flow (Coverage Map rows 1-3) and the new test_direct_toolkit_call_delete_file_chip (rows 4-5) — per .agents/test-automation.yaml § backwrite_on_done's 'a case may list several tests' shape. Neither this AFS nor its case has an originating GitHub tracking… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "New in this diff: TestDirectToolkitCallDeleteFileChip.test_direct_toolkit_call_delete_file_chip's classify step raises immediately on BOTH its fail paths — pytest.fail() at line 520 (confirmed #1127 signature) and raise AssertionError at line 532 (disagreement/new-defect signature) — so the test's own 'Side-channel check — no console/JS errors across the whole flow' step at line 554 is structurall… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py:504-537,554"
+        },
+        {
+          "kind": "note",
+          "note": "GATE_EXCLUDED_REASON is a single module-level constant, reused by both classes, but its string only describes TestDirectToolkitCallCompleteFlow/ELITEA-2215's situation ('2/5 run rate, does not meet the sanctioned-RED deterministic-3/3 bar' — i.e. NOT sanctioned, just excluded/blocked). The new TestDirectToolkitCallDeleteFileChip class points to the same constant ('for the same reason GATE_EXCLUDED… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py:154-158,444"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run on git diff tests/batch-chat-remaining-w15...HEAD -- automation/: locator-policy grep (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\() = 0 hits; fidelity/substitution grep (\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\() = 0 hits. Both clean."
+        },
+        {
+          "kind": "note",
+          "note": "Verified the new test's dependencies actually exist and match usage: artifact_seeded_file (data_fixtures.py:1834, yields a str file key — matches DELETE_MESSAGE_TEMPLATE.format(file_key=...) and the `artifact_seeded_file not in bucket_files` check), artifact_toolkit (data_fixtures.py:1719, dict with name/bucket_name), artifact_api fixture (api_fixtures.py:232), ArtifactAPI.list_bucket_files (api/c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Prior round's blocking finding (rows 4-5 disposed 'asserted (reused)' on a source-code-reading inference alone, never live-executed against delete_file) is resolved: the new additive TestDirectToolkitCallDeleteFileChip class genuinely drives the live system (real chat message, real ArtifactAPI backend read) and the AFS/Coverage Map/PR body were amended consistently and accurately to reflect it. Tr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md"
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round evidence: the delete_file-specific test now has 5/5 consecutive local occurrences of the same known-defect #1127 signature (up from 3/3 in fix round 1) — still deterministic, no change to the sanctioned-RED classification. Recorded in the AFS and module docstring; not re-posted as a new #1127 comment since it's the same signature, no new information for the ticket beyond what's already t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New durable memory entry (rule 5 in sanctioned_red_soft_assert_traps.md): an immediate pytest.fail()/raise inside a known-defect classify block silently skips every step written after it, including unrelated side-channel checks an AFS may claim as covered. Verify sanctioned-RED tests' later steps via the Allure step-level `passed` status after a re-run, not just the overall test outcome."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (classify step raising/pytest.fail()'ing immediately on both branches of TestDirectToolkitCallDeleteFileChip, making the 'Side-channel check — no console/JS errors' step structurally unreachable on the 3/3-observed #1127 branch) is resolved. The confirmed-#1127 branch now appends to a deferred `soft_failures` list (test_direct_toolkit_call_complete_flow.py:504-514) instead o… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py:479-546"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer's own verification is credible, not just claimed: PR body + memory log state two live re-runs after the fix, both hitting the identical #1127 signature (5/5 total across both fix rounds) with the Allure step-level status for 'Side-channel check' recorded `passed` before the deferred pytest.fail() — the exact evidence needed to prove the gap is closed, not merely reasoned about."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps re-run independently against the full case branch diff (3de4dcb7d...HEAD, all of automation/): fidelity-substitution grep (`.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(`) — 0 hits. Non-testid-handle grep (`get_by_role|get_by_label|get_by_text|...|page.locator|.locator(`) — 0 hits. No new page-object or locator code was touched at all (diff is confined to the test file,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map triangulation against the case snapshot (.agents/automation/chat-remaining-w15/cases/ELITEA-2210.md) confirms rows 1-3 are genuinely zero-diff (covered by the merged/trunk-merged covering spec) and rows 4-5 (the case's own worked example 'aaa: delete_file' chip) are now backed by a live, additive test (`TestDirectToolkitCallDeleteFileChip`) that actually executes `delete_file` and ass… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only discipline verified independently: `git diff 3de4dcb7d...HEAD -- automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py | grep -E '^-[^-]'` returns zero lines — the existing `TestDirectToolkitCallCompleteFlow` test body is untouched; all changes to it are additive decorator/docstring lines plus the wholly new `TestDirectToolkitCallDeleteFileChip` class."
+        },
+        {
+          "kind": "note",
+          "note": "Fixtures (`artifact_toolkit`, `artifact_seeded_file`, `artifact_api`, `conversation_id`) and constants/imports the new test relies on (`UI_ELEMENT_TIMEOUT`, `CHAT_RESPONSE_TIMEOUT`, `_is_known_secrets_403`, `ArtifactAPI`, `ChatPage`) all pre-exist and are used correctly (confirmed by grep + reading the fixture definition) — no invented handles."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md",
+      "branch": "tests/ELITEA-2210-toolkit-call-chip-traceability",
+      "pr": 1603
+    },
+    {
+      "id": "ELITEA-2216",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Confirmed live: when Context Management is globally DISABLED, no context-management-specific network call fires at all during a message exchange — the backend appears not to compute/track budget usage when the setting is off, not merely hide a computed value. Consistent with the widget's zero display across all three surfaces (collapsed indicator, panel, edit modal).",
+          "ref": "test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md"
+        },
+        {
+          "kind": "note",
+          "note": "Left one throwaway conversation (/chat/9328, 'Hello, tell long story about') undeleted in the shared ${TEST_USER} account after exploration — a DELETE via the VITE_DEV_TOKEN bearer against /elitea_core/conversations/prompt_lib/399/9328 returned 404 (likely wrong auth shape for that endpoint; the dev token may not double as a valid bearer there). Low-impact — the account already carries dozens of u… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case's literal Test Data / Step 4/6 text says the widget shows '0/64000 tokens' — the live account's actual configured Max Context Tokens is 6400, not 64000. Not filed as a new tracker item (same pattern already documented for ELITEA-2374/2218's numeric fields — account-state, not a fixed product default); AFS instructs asserting the token ceiling dynamically rather than hardcoding either value."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case's Step 3/4 implies the Context Budget widget is already visible on a freshly-opened conversation before any message. Live behavior: the panel isn't mounted at all pre-message, and sits collapsed-by-default (behind a Participants-panel toggle) even after the first message — a general chat-composer mechanism already documented for the ENABLED state by the ELITEA-2218 AFS/digest, unrelated to th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's Concrete Handles table incorrectly claimed the 'Edit context settings' modal's Tokens/Messages stat display was pre-existing/no-testid-needed — true only for Summaries (shared SummaryDetailsButton). Fixed by adding 3 testids (context-modal-management-toggle, context-modal-stat-tokens, context-modal-stat-messages) via add-data-testid, EliteaAI/EliteaUI@69b103b2 on automation/testids, not yet … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1604"
+        },
+        {
+          "kind": "note",
+          "note": "Project default AI_RESPONSE_TIMEOUT=45s is insufficient for detailed/long-story chat prompts — the case's own AFS already documented ~90s+ real generation for this exact prompt shape. Raised to 120s in this test after confirming 3/3 identical timeouts at 45s."
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub board issue number found for ELITEA-2216 (searched by title substring, 0 hits) — same batch-tracking pattern already logged for ELITEA-2209/2210 in this batch. Skipped the 'comment PR link on originating issue' step rather than fabricate a target."
+        },
+        {
+          "kind": "defect",
+          "note": "Percentage/utilization ('0%') is an explicit case-expected value at Steps 4, 6, 7 and the AFS Coverage Map marks Steps 6 and 7 as 'asserted — confirmed live exactly as written', but the implementation never asserts a percentage anywhere. Verified against EliteaUI source: the percentage is rendered in a separate sibling <Typography> with NO data-testid in both the sidebar panel (ContextBudgetProgre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_context_management_disabled.py Step 6/Step 7 blocks; EliteaUI/src/[fsd]/widgets/context-budget/ui/ContextBudgetProgress.jsx:29; EliteaUI/src/[fsd]/widgets/context-budget/ui/ContextBudgetStats.jsx:33"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS not amended in this PR despite the PR's own body/docstring stating the AFS's blanket testid claim ('pre-existing, no new testid work needed') did not hold for the modal — three new testids (context-modal-management-toggle, context-modal-stat-tokens, context-modal-stat-messages) were added at implementation time and never fed back into the AFS's Concrete Handles table. Reviewer contract require… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md § Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity grep (mock_/route.fulfill/monkeypatch/.evaluate) and locator-ladder grep (get_by_role/get_by_text/.../page.locator) both independently re-run against the full diff, 0 hits each. New page-object surface is testid-only LocatorDescriptor fields, additive-only. The three new EliteaUI testids were verified real and pushed (EliteaAI/EliteaUI@69b103b2, after git fetch), commit diff is a clean 4-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "is_context_budget_panel_visible() used at Step 4 is a raw get_by_text locator, but it is pre-existing (not touched by this diff) — tracked tech debt, not a new violation, not blocking.",
+          "ref": "automation/pages/chat_page.py:5580 (pre-existing)"
+        },
+        {
+          "kind": "note",
+          "note": "Cleanup correctly implements what the AFS itself flagged as a gap in the analyst's own exploration session (delete the created conversation via conversation_api.delete_conversation() in a finally block, restore Context Management to ON).",
+          "ref": "automation/tests/ui/chat/test_context_management_disabled.py finally block"
+        },
+        {
+          "kind": "note",
+          "note": "Step 1 ('Personalization page opens') and Step 3 ('Conversation opens') expected results are only asserted indirectly/deferred rather than at their own step — acceptable given the implicit-wait convention already used in this suite, flagged for awareness only, non-blocking."
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed via EliteaUI source (ContextBudgetProgress.jsx line ~29, ContextBudgetStats.jsx line ~76) that the utilization-percentage is rendered as a separate sibling <Typography> from the tokens-value node in BOTH the sidebar panel and the modal — not covered by the existing context-budget-tokens/context-modal-stat-tokens testids despite AFS phrasing implying one shared read. Added context-budget-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@3ce289af"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended in-place (test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md) with a full accounting of all 5 testids this implementation introduced across both rounds, per the reviewer contract for selector-drift amendments landing in the same PR."
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blockers verified resolved. (1) Case's literal '0%' (Steps 4/6/7) is now asserted at Step 6 (`percentage_text == \"0%\"`, sidebar `context-budget-percentage` testid) and Step 7 (`modal_percentage_text == \"0%\"`, modal `context-modal-stat-percentage` testid) — Step 4 remains disposed via the panel-not-mounted assertion, unchanged and previously accepted. (2) AFS amended in this same PR: '§ … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance independently verified against fresh `git fetch origin` on EliteaUI: both cited commits (69b103b2, 3ce289af) exist on origin/automation/testids and are NOT yet on origin/main, matching the PR body's claim exactly. `git show` on each commit confirms only `data-testid=` attributes added to pre-existing Typography/Switch.BaseSwitch elements — no new hooks, no new Box/div/Fragment no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps re-run independently on the full round-1 diff (e92f0bf6a...98100b0b8): fidelity/substitution grep (`.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(`) = 0 hits; non-testid-locator grep (`get_by_role|get_by_label|...|page.locator(|.locator(`) = 0 hits, both over automation/pages and automation/tests."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md",
+      "branch": "tests/ELITEA-2216-context-management-disabled-widget-stays-zero",
+      "pr": 1604
+    },
+    {
+      "id": "ELITEA-2217",
+      "outcome": "blocked",
+      "note": "gate red: AssertionError: Expected the high-utilization warning icon to appear within 15 messages (used 4843/5000 tokens at the last check) — either token accounting or the warning icon is not behaving as the s",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Issue #1605 (OPEN, bug label, EliteaAI/elitea-testing-public): the per-conversation 'Edit context settings' dialog's Save button is blocked by cross-field validation against the disabled-but-stale Target Summary Tokens field whenever Automatic Summarization is globally OFF — a new Max Context Tokens value below the frozen Target Summary Tokens value permanently disables Save. Non-blocking (documen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1605"
+        },
+        {
+          "kind": "note",
+          "note": "testid needed: context-modal-summarization-toggle on ContextStrategySummarization.jsx's own 'Enable automatic summarization' switch — confirmed via source read + a live querySelectorAll('[data-testid]') sweep of the open dialog that it carries no testid at all, unlike its sibling context-modal-management-toggle in the same dialog. Needed for the implementer to assert Step 7 directly rather than on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer must NOT reuse set_context_strategy_thresholds() unmodified for this case — it also fills context_modal_target_summary_tokens_input, which is disabled when Automatic Summarization is OFF, and Playwright errors on a press_sequentially() against a disabled input. Needs a narrower helper or inline field interactions."
+        },
+        {
+          "kind": "note",
+          "note": "Found and committed a homeless qa-engineer memory entry (afs_single_handle_claim_may_hide_a_sibling_untested_value.md) that documented a real reviewer-slot finding from ELITEA-2216/PR#1604's fix-round-1 review but had never been committed and had no matching daily-log line. Preserved it rather than leaving it to be swept."
+        },
+        {
+          "kind": "note",
+          "note": "New live finding, not a product defect: the Context Budget sidebar panel (context-budget-*) and the 'Edit context settings' modal's own stats (context-modal-stat-*) are populated via two separate subscriptions and can transiently disagree even off the identical conversation with no message sent in between (observed 114% vs 136% in one capture). Both components render straight off the same stats/ut… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Real LLM response-length variance: the analyst's own live AFS session crossed a 5000-token threshold in 4 exchanges (127->5301); this implementation's live run needed closer to 8-15 exchanges to reach the same >100% state. A message-count cap mirrored from a sibling test's own session-specific tuning (ELITEA-2218's cap=8) is not a safe constant to copy across sessions for this family of tests — si… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Step 7 (case Step 6 / AFS Step 7 — 'Open Context Management modal; verify Summaries shows 0') asserts `chat.get_context_budget_summaries_count() == \"0\"` while the 'Edit context settings' dialog is open. That getter resolves `context_budget_summaries_count.first` — but `context-budget-summaries-count` is rendered by TWO separate, simultaneously-mounted DOM nodes when the dialog is open: the sidebar… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_context_auto_summarization_disabled.py:359"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical reviewer greps on the full diff (eb6bb8648...tests/ELITEA-2217-auto-summarization-disabled-no-trigger), both 0 hits: `git diff eb6bb8648...tests/ELITEA-2217-auto-summarization-disabled-no-trigger -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` -> (no matches). `git diff eb6bb8648...tests/ELITEA-2217-auto-summarization-disabled-no-trig… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case<->AFS<->diff: case's 6 steps (+ preconditions) all map 1:1 to AFS Coverage Map rows and, in turn, to real assertions in the test (Step1: is_automatic_summarization_enabled()==False; Step2-3: Messages==2, Summaries==0, conv_id present; Steps4-6 (AFS numbering): after EVERY send — not just at the end — asserts summaries_count==0 and zero 'Summariz*' answer_model_chip matches, then… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Cosmetic only, not blocking: the allure.step labeled 'Steps 4-6' covers case's own steps 3-5 (token increase/warning-icon, Summaries-stays-0, no-Summarizing-indicator) — the label follows the AFS's internal step numbering (which is +1 shifted vs the raw case, since AFS step 2 decomposes case step 2 into AFS steps 2-3) rather than the original case's numbers. Doesn't affect coverage or correctness,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_context_auto_summarization_disabled.py:305"
+        },
+        {
+          "kind": "question",
+          "note": "The same shared-testid-in-two-simultaneously-mounted-locations pattern for the Summaries stat (unscoped `context-budget-summaries-count` read while a dialog is open) already exists verbatim, with byte-identical comment wording, in the already-merged ELITEA-2216 test (test_context_management_disabled.py) and appears again in ELITEA-2218's test_context_auto_summarization.py. Worth a single canon dec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Could not commit a durable-memory entry for this finding in this session: the dispatch explicitly instructs not to check out tests/ELITEA-2217-auto-summarization-disabled-no-trigger (shared tree, a build may follow), and this session's actual checked-out branch is the unrelated tests/batch-chat-remaining-w12 trunk, so writing/committing memory here would land on the wrong branch. Passing the lesso… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed via EliteaUI source read that the reviewer's finding was correct and root-caused precisely: SummaryDetailsButton.jsx hardcoded data-testid=\"context-budget-summaries-count\" and is called identically from both ContextBudgetStatsDisplay.jsx (sidebar, always-mounted) and ContextBudgetStats.jsx (the 'Edit context settings' modal, a Portal-rendered MUI Dialog). Fixed with a backward-compatible… [clipped; full text in the unit's receipt under .attrs/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_context_auto_summarization_disabled.py:359"
+        },
+        {
+          "kind": "note",
+          "note": "The same shared-testid-in-two-simultaneously-mounted-locations pattern (unscoped context-budget-summaries-count read while a dialog is open) still exists, unflagged, in the already-merged ELITEA-2216 test (test_context_management_disabled.py) and in ELITEA-2218's test_context_auto_summarization.py — the reviewer raised this as a follow-up question for the lead to route rather than something this P… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI's automation/testids branch enforces a commitlint hook requiring the ticket-reference form `[EL-XXXX]` in the commit subject, not `[ELITEA-XXXX]` (confirmed via husky commit-msg failure on first attempt, then matched against recent git log on that branch). Worth keeping in mind for any future testid commit there."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS not amended to reflect fix-round-1's testid change. Coverage Map row 6 (test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md:60) and the Concrete Handles table (lines 87, 92) plus the Step 7 narrative (line 42) still describe the PRE-fix premise — that the modal's Summaries stat is read via the shared `context-budget-summaries-count` testid. Fix-roun… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md:60"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (Step 7 'Modal Summaries stat should read 0' assertion resolving to the wrong node via a shared, .first-read testid) is genuinely fixed, not just narrated. Verified independently: cd ../EliteaUI && git fetch origin, then `git show d1b3e8f0d2813298604f1c3cd41d8f5ecf42fff2` shows the real 2-file diff (SummaryDetailsButton.jsx gains an optional `testId` prop defaulting to the o… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory reviewer mechanical greps, run on the full diff (base=tests/batch-chat-remaining-w15, head=tests/ELITEA-2217-auto-summarization-disabled-no-trigger), both 0 hits: (1) provenance/substitution — `git diff $BASE...$HEAD -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → no matches. (2) non-testid locator — `git diff $BASE...$HEAD -- automa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round-2 re-verification pytest run (tests/ui/chat/test_context_auto_summarization_disabled.py) was launched but did not finish before this dispatch was force-closed by a StructuredOutput enforcement gate (~4 min into an expected ~237s run). No test/page-object code changed this round (docs-only AFS amendment), and round-1's own commit already recorded GREEN 1/1 (237s) on the byte-identical cod… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1606"
+        },
+        {
+          "kind": "note",
+          "note": "Unrelated unstaged change present in the working tree at dispatch start (.agents/automation/campaigns/chat-remaining.md — workflow-run bookkeeping about a resumed task ID) was left untouched and unstaged, as it is not part of this fix round's scope."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fully resolved: docs-only fix-round-2 commit 5db392efa amends all three stale AFS locations named in round-1's finding — Coverage Map row 6 now cites context-modal-stat-summaries (with the Portal/.first root cause spelled out) instead of the pre-fix shared testid, Step 7's narrative carries an explicit '[Amended fix-round-1, ELITEA-2217/PR #1606]' marker, and a new Concrete … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md:60,42,91"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation of case ↔ AFS ↔ diff (not just the amended lines) holds: all 7 case steps have a Coverage Map row with a real disposition, and every asserted row maps to a real assertion in test_context_auto_summarization_disabled.py — including per-step (not just end-state) coverage of the two negative claims (Summaries==0, no 'Summarizing' chip) via _assert_no_summarization_signal called i… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_context_auto_summarization_disabled.py:143"
+        },
+        {
+          "kind": "note",
+          "note": "Both mechanical greps (fidelity-substitution and non-testid-handle) re-run on the FULL trunk..head diff (not scoped to this docs-only round) to confirm nothing regressed since round-1's own clean result: 0 hits each."
+        },
+        {
+          "kind": "note",
+          "note": "Regression guards from round 1 verified intact: context_budget_summaries_count.count()==1 and context_modal_stat_summaries.count()==1 both assert exactly one node resolves per testid while the Portal dialog is open, catching a relapse to the old shared/hardcoded shape.",
+          "ref": "automation/tests/ui/chat/test_context_auto_summarization_disabled.py:357"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: test-specs/chat-interface/_surface.md's ELITEA-2217 section (added in the initial build) was not updated with fix-round-1's context-modal-stat-summaries testid — it still only documents the original context-modal-summarization-toggle addition. The digest is a cache, not authority, so this doesn't block, but the next analyst reading it for this surface won't see the newer handl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/_surface.md:3894"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer's own daily log (fix-round-2 entry) flags that a fresh re-verification pytest run was launched for due diligence but got force-closed before completing, so no fresh green was pasted for this docs-only round — not a reviewer blocker under the static-review contract (execution belongs to the orchestrator's hardening gate), but worth the orchestrator's attention on this spec's first harde… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md",
+      "branch": "tests/ELITEA-2217-auto-summarization-disabled-no-trigger",
+      "pr": 1606
+    },
+    {
+      "id": "ELITEA-2471",
+      "outcome": "already-covered",
+      "note": "Near-verbatim duplicate manual TMS case of ELITEA-2212 (Authorize). Fully covered by merged automation/tests/ui/chat/test_hitl_sensitive_action_authorization.py::TestSensitiveActionAuthorize::test_authorize_executes_toolkit_tool_directly (lines 206-279, commit ddaf8b31b on origin/automation/base). Same trigger precondition, same button, same execution/chip/continuation checks. No live re-execution… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2471/2472/2473 are duplicate manual TMS cases of ELITEA-2212/2213/2214 (same feature, same steps, different case IDs/wording). Flagging for the lead in case the TMS wants the duplicate manual entries archived or cross-linked upstream — no tracker action taken here per this skill's scope (dedup handling for TMS test-case duplicates isn't in the profile.md § Bug filing routing, which covers p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All three cases' underlying trigger precondition (marking delete_file sensitive via Admin UI Guardrails) is not reachable on localhost:5173 — a pre-existing, already-documented environment limitation shared with the covering ELITEA-2211..2215 cluster (test_guardrails_live_reload.py's own comment). This blocked any live re-execution attempt for the dedup call regardless of these cases' own IDs; the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_hitl-authorize-duplicate-manual-case_ELITEA-2471.md"
+    },
+    {
+      "id": "ELITEA-2472",
+      "outcome": "already-covered",
+      "note": "Near-verbatim duplicate of ELITEA-2213 (Block). Fully covered by TestSensitiveActionBlock::test_block_prevents_toolkit_tool_from_executing (lines 283-360, same merged commit). Same trigger, same button, same non-execution/chip-absence/response checks.",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2471/2472/2473 are duplicate manual TMS cases of ELITEA-2212/2213/2214 (same feature, same steps, different case IDs/wording). Flagging for the lead in case the TMS wants the duplicate manual entries archived or cross-linked upstream — no tracker action taken here per this skill's scope (dedup handling for TMS test-case duplicates isn't in the profile.md § Bug filing routing, which covers p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All three cases' underlying trigger precondition (marking delete_file sensitive via Admin UI Guardrails) is not reachable on localhost:5173 — a pre-existing, already-documented environment limitation shared with the covering ELITEA-2211..2215 cluster (test_guardrails_live_reload.py's own comment). This blocked any live re-execution attempt for the dedup call regardless of these cases' own IDs; the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_hitl-block-duplicate-manual-case_ELITEA-2472.md"
+    },
+    {
+      "id": "ELITEA-2473",
+      "outcome": "already-covered",
+      "note": "Near-verbatim duplicate of ELITEA-2214 (Block with Comment), down to identical example comment text. Fully covered by TestSensitiveActionBlockWithComment::test_block_with_comment_records_reason_and_blocks_action (lines 365-435, same merged commit). Case's 'modal' wording matches the already-recorded case-text-imprecision clarification (it's an inline expansion, not an MUI Dialog) — not a new findi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2471/2472/2473 are duplicate manual TMS cases of ELITEA-2212/2213/2214 (same feature, same steps, different case IDs/wording). Flagging for the lead in case the TMS wants the duplicate manual entries archived or cross-linked upstream — no tracker action taken here per this skill's scope (dedup handling for TMS test-case duplicates isn't in the profile.md § Bug filing routing, which covers p… [clipped; full text in the unit's receipt under .attrs/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All three cases' underlying trigger precondition (marking delete_file sensitive via Admin UI Guardrails) is not reachable on localhost:5173 — a pre-existing, already-documented environment limitation shared with the covering ELITEA-2211..2215 cluster (test_guardrails_live_reload.py's own comment). This blocked any live re-execution attempt for the dedup call regardless of these cases' own IDs; the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_hitl-block-with-comment-duplicate-manual-case_ELITEA-2473.md"
+    },
+    {
+      "id": "ELITEA-2474",
+      "outcome": "already-covered",
+      "note": "Exact duplicate manual TMS case of ELITEA-2215 (\"Chat – Tool Action and Output – Complete Flow from Direct Toolkit Call to Output Display\"), already merged to origin/automation/base as automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py::TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow (lines 177-319). Same trigger message ('create a file named test.txt'), s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2474 is the 4th confirmed exact/near-exact duplicate manual TMS case found in this batch alone (after ELITEA-2471/2472/2473 vs ELITEA-2212/2213/2214). This one (vs ELITEA-2215) is the strongest case yet — zero data or step variation, even verbatim-matching case-text phrasing for the chip description. Worth a TMS-side cleanup pass to dedupe/archive these duplicate manual cases so future inta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lcovered_direct-toolkit-call-complete-flow-duplicate_ELITEA-2474.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reused the analyst-slot pattern from ELITEA-2471/2472/2473 (same batch, earlier this session) for classifying an exact-duplicate case as already-covered via source+file:line comparison without fresh live execution — consistent with the skill's Rule-6 dedup bar. Distinguished this from ELITEA-2209/2210's extend-existing verdicts on the SAME covering spec family (those had a genuine gap or a data va… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_direct-toolkit-call-complete-flow-duplicate_ELITEA-2474.md"
+    }
+  ],
+  "totals": {
+    "blocked": 4,
+    "already-covered": 4
+  },
+  "quality_flags": [
+    "extend-rate 6/8 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py::TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip",
+      "ticket": "https://github.com/EliteaAI/elitea-testing-public/issues/1127",
+      "why": "3/3 consecutive local runs: model's chat response narrates delete_file success in text without invoking the real tool — no chat-answer-tool-chip renders and ArtifactAPI confirms the seeded file was never actually deleted. Deterministic 3/3 + single-cause + open, already-linked defect meets .agents/testing.md's sanctioned-RED merge-gate bar (this test's own local sample is MORE deterministic than the covering spec's historical 2/5 create_file rate). Recorded as a comment on #1127, not a new ticket.",
+      "test_id": "test_direct_toolkit_call_delete_file_chip",
+      "case_ids": [
+        "ELITEA-2210"
+      ],
+      "unit": "ELITEA-2210"
+    },
+    {
+      "spec": "automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py::TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip",
+      "ticket": "https://github.com/EliteaAI/elitea-testing-public/issues/1127",
+      "why": "Sanctioned-RED per .agents/testing.md § Merge gate: 5/5 deterministic, single-cause, open+linked known defect (direct-toolkit-call flow narrates delete_file success without invoking the real tool). Unchanged by this fix round — this round only restored the console-error side-channel check's reachability, not the classification. Excluded from the batch's N-consecutive-green hardening gate via the module's GATE_EXCLUDED_REASON-adjacent handling (this class's own docstring documents its sanctioned-RED status).",
+      "test_id": "tests.ui.chat.test_direct_toolkit_call_complete_flow.TestDirectToolkitCallDeleteFileChip.test_direct_toolkit_call_delete_file_chip",
+      "case_ids": [
+        "ELITEA-2210"
+      ],
+      "unit": "ELITEA-2210"
+    }
+  ],
+  "parked": []
+}

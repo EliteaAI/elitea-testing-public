@@ -1,0 +1,169 @@
+{
+ "v": 1,
+ "batch": "elitea-2344-hide-secret",
+ "generatedAt": "2026-09-14T12:03:20.190Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-22T00:13:09.111Z",
+   "end": "2026-08-07T00:13:09.111Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "merged-ungated": 1
+ },
+ "delivered": 0,
+ "gate": {
+  "verdict": "not-run",
+  "runs": 1,
+  "seconds": [
+   28.81
+  ],
+  "failures": [
+   {
+    "spec": "automation/tests/ui/admin/test_secret_hide_via_three_dot_menu.py::TestSecretHideViaThreeDotMenu::test_hide_secret_via_three_dot_menu",
+    "signature": "pytest.fail — 'Test flow completed and all functional assertions passed, but known-defect soft failures were recorded: Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React \"Maximum update depth exceeded\" console error(s) on /settings/secrets mount: 15 occurrence(s)'. This IS the pre-declared RED-BY-DESIGN spec — ticket #1203 confirmed OPEN via `gh issue view 1203` befo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "ELITEA-2344"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py::TestSecretCreateInlineCheckmarkXCancel::test_create_secret_inline_checkmark_saves_x_cancels",
+    "signature": "pytest.fail — same #1203 known-defect soft-assert signature: 'Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: React \"Maximum update depth exceeded\" console error(s) on /settings/secrets mount: 22 occurrence(s)'. Pre-existing (BLAST-RADIUS scope, not the batch's own spec).",
+    "case_ids": [
+     "ELITEA-2336"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/admin/test_secret_create_inline_checkmark_x_cancel.py::TestSecretCreateInlineCheckmarkXCancel::test_secret_name_rejects_hyphen_and_special_chars_valid_name_clears_error",
+    "signature": "pytest.fail — same #1203 known-defect soft-assert signature: '... 20 occurrence(s)'. Pre-existing (BLAST-RADIUS scope).",
+    "case_ids": [
+     "ELITEA-2336"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/admin/test_secret_delete_via_three_dot_menu.py::TestSecretDeleteViaThreeDotMenu::test_delete_secret_via_three_dot_menu",
+    "signature": "pytest.fail — same #1203 known-defect soft-assert signature: '... 20 occurrence(s)'. Pre-existing (BLAST-RADIUS scope).",
+    "case_ids": [
+     "ELITEA-2338"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/admin/test_secret_eye_icon_reveal_and_mask_toggle.py::TestSecretEyeIconRevealAndMaskToggle::test_secret_eye_icon_reveal_and_mask_toggle",
+    "signature": "pytest.fail — same #1203 known-defect soft-assert signature: '... 23 occurrence(s)'. Pre-existing (BLAST-RADIUS scope).",
+    "case_ids": [
+     "ELITEA-2343"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2344",
+   "outcome": "merged-ungated",
+   "findings": 12,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2344"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

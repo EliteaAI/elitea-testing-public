@@ -1,0 +1,418 @@
+{
+  "batch": "credentials-w02",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1394",
+  "integration_branch": "tests/batch-credentials-w02",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      28.15,
+      27.03,
+      54.08
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/toolkits/test_credential_duplicate_mismatch_validation.py::TestCredentialDuplicateMismatchValidation::test_credential_duplicate_and_empty_required_field_validation",
+        "signature": "AssertionError: Locator expected to be disabled / Actual value: enabled / Call log: - Expect \"to_be_disabled\" with timeout 5000ms - waiting for get_by_test_id(\"credential-form-save-button\") - 14 x locator resolved to <button ... data-testid=\"credential-form-save-button\">Save</button> - unexpected value \"enabled\"",
+        "case_ids": [
+          "ELITEA-1978"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1981",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "SELF-CORRECTION, needs a human to close two issues. I filed #1709 ('auth radio group does not change selection on click') and #1710 ('SharePoint Delegated Login/Test connection silently no-op') during this analysis and RETRACTED both within the hour - they were artifacts of a wedged Playwright-MCP browser context, not product defects. Disproved two ways: (1) the merged tests/ui/toolkits/test_crede… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1709, #1710"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1981 case text diverges from the live product in two places, both filed as #1711 (CLARIFICATION, not bug - the product is correct). (a) Step 5 places the Login-button check right after selecting Delegated, but the button appears only once Oauth Discovery Endpoint holds a non-empty value (CredentialForm.jsx:342 gates on oauthTokenKey, derived from settings.oauth_discovery_endpoint at :168-17… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1711"
+        },
+        {
+          "kind": "note",
+          "note": "Highest-value trap on this surface, now in the digest: McpAuthModal renders <Dialog open={open} keepMounted> (McpAuthModal.jsx:370), so [role=\"dialog\"] is ALWAYS in the DOM. A closed instance holds pre-open state - the Server: link reads href=\"\" with empty text, and the Scope input shows the raw credential scopes WITHOUT the offline_access prefix. That is precisely the failure mode ELITEA-1982 ste… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1982's step-6 expectation ('scopes prefixed by offline_access') is BACKEND-sourced, not a UI concatenation, and is independent of the Auto Refresh Token checkbox. POST /configurations/check_connection/{project}/sharepoint returns resource_metadata.scopes_supported = ['offline_access','Sites.Read.All'] and provided_settings.scopes = the same, for a credential whose own scopes is just ['Sites… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1982"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work for the implementer, sized: ONE attribute for both cases' Login button (credential-form-oauth-login-button, CredentialForm.jsx:342-350 - Button.BaseBtn already spreads restProps, exactly like its sibling credential-form-test-connection-button), plus the OAuth modal tree which has ZERO testids today (oauth-auth-dialog, -title, -description, -server-link, -cancel-button, -authorize-butto… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1981 + ELITEA-1982"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha worth a wider audience: credential-form-save-button is disabled={hasErrors || shouldDisableSave} where shouldDisableSave = !useFormDirtyExcluding() (CredentialsTabBar.jsx:115). Filling every field with Playwright fill() - including Display Name, whose value the ID field correctly mirrors - leaves formik NON-dirty, so Save and Discard both stay disabled; one press_sequentially char… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/credential_create_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Efficiency/self-audit: this unit ran far over the ~15-turn-per-case guide, and essentially all of the overrun was the false-defect chase (build the theory, exhaust the interaction-discovery ladder, read the source, file two issues, then disprove and retract). The cheap gate I should have run BEFORE filing - run the nearest merged spec that touches the same control (15s) and re-run in a fresh brows… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/mcp_browser_can_wedge_into_dead_clicks.md"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha, cost rerun #1 and now in the AFS + _surface digest + role memory: on the credential form, typing with real keystrokes is necessary but NOT sufficient — schema-typed fields commit on BLUR. SharePoint's array-typed `scopes` leaves credential-form-save-button DISABLED while focus stays in the field (measured: App-only fields alone → Save enabled; selecting Delegated → disabled; typi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/_surface.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS drift found and amended on my branch (ELITEA-1982): the AFS claimed 'No console errors over the whole flow', but Chromium logs every non-2xx fetch, so the case's OWN expected check_connection 401 prints 'Failed to load resource: … 401 (Unauthorized)'. The spec filters exactly that one, matched on the failing resource's location.url (/configurations/check_connection/) plus the 401 status — neve… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-authorization-modal-invocation_ELITEA-1982.md"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found in either flow — both cases behave exactly as the AFS recorded (including the #1711 case-text clarifications for ELITEA-1981, which are asserted as invariants: Login absent before the endpoint field is filled, visible after; saving lands on /credentials/all so step 8 opens the detail route explicitly). Nothing new filed."
+        },
+        {
+          "kind": "note",
+          "note": "Verified live: putting data-testid on the MUI <Dialog> of a keepMounted modal lands it on the Modal root, which MUI hides with visibility:hidden while closed — to_be_visible()/not_to_be_visible() are decisive and no .filter(has_text=…) scoping is needed against the sibling McpLogoutModal, contrary to the AFS's precautionary suggestion.",
+          "ref": "automation/pages/oauth_auth_modal_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Known-noise observation for the gate: running test_credential_type_specific_form_fields.py in the SAME pytest invocation as another heavy credential spec failed its console side channel on a React dev warning ('ReactDOMClient.createRoot() on a container that has already been passed to createRoot()'). It passed standalone (63.7s) and is not caused by this branch's page-object promotion — same class… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/testing.md"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability: the 8 new testids are on EliteaAI/EliteaUI automation/testids (EliteaAI/EliteaUI@7d7b21d4) and NOT yet on main — both cases are green on localhost and would be red on any deployed env until a human cherry-picks. Owner: human.",
+          "ref": "EliteaAI/EliteaUI@7d7b21d4"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-1982 step 9 assertion-strength gap: `check_connection` request-absence cannot detect the real authorization path (a `window.open` popup). The dialog-closes assertion only catches a Cancel-replaced-by-Authorize regression, not a Cancel-that-also-authorizes one. Fix is one line (`page.context.pages` count) plus the AFS row.",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:280"
+        },
+        {
+          "kind": "defect",
+          "note": "Stale AFS provenance rows understate promotability (the mirrored #19 failure class). Root cause worth knowing: the auth-radio testid is RUNTIME-COMPOSED (`ToolSection.jsx:290` `toolkit-field-${sectionKey}-radio` + `RadioButtonGroup.jsx:37` `${testId}-${value.toLowerCase()}`), so `git grep 'toolkit-field-auth-radio-'` returns 'no' on BOTH refs and the workflow.md two-stage closure grep is blind to … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-required-credential-flow-sharepoint-delegated_ELITEA-1981.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1981 Coverage-Map row 'Step 1 Navigate to Credentials → list loads' is dispositioned `covered`, but no assertion covers the list page — the test enters directly at /credentials/create-credential/sharepoint (justified: the type-card grid only renders on a zero-credential project) and asserts only that route. The justification is sound; the disposition label is not. Suggest re-labelling that … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-required-credential-flow-sharepoint-delegated_ELITEA-1981.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1982 asserts `authorize_button` ENABLED at step 8, i.e. AFTER step 7 cleared the Scope field; the AFS observed 'Authorize ENABLED at open' with scopes populated. Same product state per `isAuthorizeDisabled` (no scope dependency observed), and the case's own step order forces this, so no change requested — flagging only so a future scope-dependent enable rule is not mistaken for flake.",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:262"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: CLEAN. Provenance grep 0 hits; no route.fulfill / evaluate / monkeypatch anywhere. ELITEA-1982's API-seeded precondition is declared transit in both the docstring and the AFS, and the case's own observables come off the real 401 `check_connection` response (scope value asserted against `auth_metadata.resource_metadata.scopes_supported`, not a hand-written string) — a textbook application… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: CLEAN. No skip/xfail/test.fail, no weakened asserts. All four console filters are narrow and justified — #291/#518/#554 match the merged `test_credential_create.py` precedent, and `_is_expected_oauth_401` keys on the failing resource's own `location.url` (`/configurations/check_connection/`) plus 401, so any other 401 still fails. Reverse-masking clean too: step 5 asserts the LIVE co… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_delegated_flow.py:70"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid commit EliteaAI/EliteaUI@7d7b21d4 verified: 10 insertions / 0 deletions, attributes only — no new DOM node, no hook, no MUI built-in replaced, nothing removed. Zero-functional-impact greps come back empty. Shared-component rule honoured: `OAuthFormFields` takes a caller-supplied `scopeTestId` prop wired at `McpAuthModal`'s call site (not `dataScopeTestId`), dialog testids are gener… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/oauth_auth_modal_page.py:1"
+        },
+        {
+          "kind": "question",
+          "note": "Housekeeping for the lead: #1709 and #1710 are still OPEN with '[RETRACTED — not reproducible]' titles (both AFS files record the retraction). Agents don't close issues; a human sweep should close them so they stop appearing in bug dedup passes."
+        },
+        {
+          "kind": "note",
+          "note": "Durable, cross-role surface fact now in test-specs/toolkits-credentials/_surface.md: an OAuth 'authorization attempt' in this app is a POPUP, not a request the page makes. McpAuthModal.onAuthorize opens window.open('about:blank','_blank') first and runs the whole authorize/token/DCR handshake inside that window, so the parent page's request AND console listeners see none of it. Any future 'did thi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1982"
+        },
+        {
+          "kind": "note",
+          "note": "Durable provenance gotcha, now in _surface.md and both AFS files: the toolkit-form testids are runtime-composed (toolkit-field-{key}-input/-checkbox/-select, toolkit-field-auth-radio-{slug}). git grep of the composed name is EMPTY on origin/main AND origin/automation/testids, which silently reads as 'not on main'. The closure-record verification block in workflow.md is a two-stage grep and does NO… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1981"
+        },
+        {
+          "kind": "note",
+          "note": "Promotion-tracking gotcha worth the lead knowing: ELITEA-1962's testid commit c8d5c6af is NOT an ancestor of origin/main, yet its testids ARE on main — the 2026-08-12 batch (bf4a13ad, 'promote 400 accumulated data-testids') carried the content across, not the commit. So 'is <case's testid SHA> an ancestor of main?' is not a valid promotability test; only the content check is. Closure records citin… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@bf4a13ad"
+        },
+        {
+          "kind": "note",
+          "note": "The reviewer's findings arrived only via the dispatch prompt and were truncated mid-sentence in two places (finding 1's suggested guard, finding 2's diff command/output). There were no PR review bodies or comments on #1712 to recover them from. I reconstructed both findings by verifying against source and fixed what I found; if the reviewer intended anything beyond the two issues addressed here, i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1712"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (ELITEA-1982 step 9) is RESOLVED. Commit ed74a1695 replaces the check_connection-count guard with a direct one: page.on(\"popup\") + a context page-count baseline taken before Cancel and re-read after expect(dialog).not_to_be_visible(). That is the real mechanism — McpAuthModal.onAuthorize's first act after its storageKey check is window.open('about:blank','_blank') — and storageKey … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:280"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (false provenance rows) is RESOLVED and I verified it independently, not by trusting the AFS. After `cd ../EliteaUI && git fetch origin`: `git diff origin/main origin/automation/testids -- 'src/[fsd]/features/toolkits/ui/form/ToolBase/ToolSection.jsx' 'src/[fsd]/shared/ui/checkbox/RadioButtonGroup.jsx'` is EMPTY, and the composing lines are on origin/main (ToolSection.jsx:290 `test… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-required-credential-flow-sharepoint-delegated_ELITEA-1981.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on the full diff (`git diff automation/base...tests/1981-1982-oauth-credential-flow -- automation/`). Locator grep `^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()` → 3 hits, ALL compliant (one-hop verified): `return self.page.locator(self.AUTH_METHOD_RADIO.format(method_slug))`, `… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "Suite-health smell, NOT blocking and not introduced here: both new specs copy `_is_known_518_warning` / `_is_known_554_warning` forward from the merged test_credential_create.py, with docstrings still asserting \"already-filed, OPEN\". Checked live — elitea-testing-public#518 and #554 are both CLOSED (#291, the third filter, is genuinely OPEN). A console filter for a closed defect either never fires… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_delegated_flow.py:82"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion-shape nit (non-blocking): step 6 of ELITEA-1981 ends with `assert create_page.is_save_enabled()`, a one-shot non-retrying read (`save_button.is_enabled()`), where `expect(create_page.save_button).to_be_enabled()` would auto-wait. The preceding `expect(...).to_have_value(...)` chain and the blur inside `type_into_field()` make a race unlikely, and `is_save_enabled()` is a pre-existing mix… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_delegated_flow.py:236"
+        },
+        {
+          "kind": "note",
+          "note": "AFS bookkeeping nit: ELITEA-1982's transit substitution (API-seeded credential precondition) is declared in full prose under § Preconditions and in the spec's module docstring, but not under a heading literally named \"§ Fidelity Declaration\" as role-overrides.md § Analyst slot words it. Substance is complete — what is substituted, transit-vs-terminal, and the real observable are all named — so thi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-authorization-modal-invocation_ELITEA-1982.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift on ELITEA-1981 is handled correctly per the reverse-masking guard, not masked: steps 5 (Login appears only once oauth_discovery_endpoint is non-empty — CredentialForm.jsx:342, oauthTokenKey at :168-176, confirmed in the JSX on automation/testids) and 7→8 (Save navigates to /credentials/all, not the detail page) are filed as clarification #1711 (OPEN), linked via @allure.issue, and … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1711"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map verification: neither AFS carries an `already-covered` / `extend-existing` row, so the merged-target rule is not engaged — every Axis-1 row is `covered` by an assertion in this diff, and I ticked each row against the case snapshot and the code (all 8 ELITEA-1981 steps, all 9 ELITEA-1982 steps, both preconditions each, both Expected Final States, both pass criteria). No case element is… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/toolkits-credentials/l1_oauth-required-credential-flow-sharepoint-delegated_ELITEA-1981.md",
+      "branch": "tests/1981-1982-oauth-credential-flow",
+      "pr": 1712,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          28.15,
+          27.03,
+          54.08
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1982",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "SELF-CORRECTION, needs a human to close two issues. I filed #1709 ('auth radio group does not change selection on click') and #1710 ('SharePoint Delegated Login/Test connection silently no-op') during this analysis and RETRACTED both within the hour - they were artifacts of a wedged Playwright-MCP browser context, not product defects. Disproved two ways: (1) the merged tests/ui/toolkits/test_crede… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1709, #1710"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1981 case text diverges from the live product in two places, both filed as #1711 (CLARIFICATION, not bug - the product is correct). (a) Step 5 places the Login-button check right after selecting Delegated, but the button appears only once Oauth Discovery Endpoint holds a non-empty value (CredentialForm.jsx:342 gates on oauthTokenKey, derived from settings.oauth_discovery_endpoint at :168-17… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1711"
+        },
+        {
+          "kind": "note",
+          "note": "Highest-value trap on this surface, now in the digest: McpAuthModal renders <Dialog open={open} keepMounted> (McpAuthModal.jsx:370), so [role=\"dialog\"] is ALWAYS in the DOM. A closed instance holds pre-open state - the Server: link reads href=\"\" with empty text, and the Scope input shows the raw credential scopes WITHOUT the offline_access prefix. That is precisely the failure mode ELITEA-1982 ste… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1982's step-6 expectation ('scopes prefixed by offline_access') is BACKEND-sourced, not a UI concatenation, and is independent of the Auto Refresh Token checkbox. POST /configurations/check_connection/{project}/sharepoint returns resource_metadata.scopes_supported = ['offline_access','Sites.Read.All'] and provided_settings.scopes = the same, for a credential whose own scopes is just ['Sites… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1982"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work for the implementer, sized: ONE attribute for both cases' Login button (credential-form-oauth-login-button, CredentialForm.jsx:342-350 - Button.BaseBtn already spreads restProps, exactly like its sibling credential-form-test-connection-button), plus the OAuth modal tree which has ZERO testids today (oauth-auth-dialog, -title, -description, -server-link, -cancel-button, -authorize-butto… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1981 + ELITEA-1982"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha worth a wider audience: credential-form-save-button is disabled={hasErrors || shouldDisableSave} where shouldDisableSave = !useFormDirtyExcluding() (CredentialsTabBar.jsx:115). Filling every field with Playwright fill() - including Display Name, whose value the ID field correctly mirrors - leaves formik NON-dirty, so Save and Discard both stay disabled; one press_sequentially char… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/credential_create_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Efficiency/self-audit: this unit ran far over the ~15-turn-per-case guide, and essentially all of the overrun was the false-defect chase (build the theory, exhaust the interaction-discovery ladder, read the source, file two issues, then disprove and retract). The cheap gate I should have run BEFORE filing - run the nearest merged spec that touches the same control (15s) and re-run in a fresh brows… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/mcp_browser_can_wedge_into_dead_clicks.md"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha, cost rerun #1 and now in the AFS + _surface digest + role memory: on the credential form, typing with real keystrokes is necessary but NOT sufficient — schema-typed fields commit on BLUR. SharePoint's array-typed `scopes` leaves credential-form-save-button DISABLED while focus stays in the field (measured: App-only fields alone → Save enabled; selecting Delegated → disabled; typi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/_surface.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS drift found and amended on my branch (ELITEA-1982): the AFS claimed 'No console errors over the whole flow', but Chromium logs every non-2xx fetch, so the case's OWN expected check_connection 401 prints 'Failed to load resource: … 401 (Unauthorized)'. The spec filters exactly that one, matched on the failing resource's location.url (/configurations/check_connection/) plus the 401 status — neve… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-authorization-modal-invocation_ELITEA-1982.md"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found in either flow — both cases behave exactly as the AFS recorded (including the #1711 case-text clarifications for ELITEA-1981, which are asserted as invariants: Login absent before the endpoint field is filled, visible after; saving lands on /credentials/all so step 8 opens the detail route explicitly). Nothing new filed."
+        },
+        {
+          "kind": "note",
+          "note": "Verified live: putting data-testid on the MUI <Dialog> of a keepMounted modal lands it on the Modal root, which MUI hides with visibility:hidden while closed — to_be_visible()/not_to_be_visible() are decisive and no .filter(has_text=…) scoping is needed against the sibling McpLogoutModal, contrary to the AFS's precautionary suggestion.",
+          "ref": "automation/pages/oauth_auth_modal_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Known-noise observation for the gate: running test_credential_type_specific_form_fields.py in the SAME pytest invocation as another heavy credential spec failed its console side channel on a React dev warning ('ReactDOMClient.createRoot() on a container that has already been passed to createRoot()'). It passed standalone (63.7s) and is not caused by this branch's page-object promotion — same class… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/testing.md"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability: the 8 new testids are on EliteaAI/EliteaUI automation/testids (EliteaAI/EliteaUI@7d7b21d4) and NOT yet on main — both cases are green on localhost and would be red on any deployed env until a human cherry-picks. Owner: human.",
+          "ref": "EliteaAI/EliteaUI@7d7b21d4"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-1982 step 9 assertion-strength gap: `check_connection` request-absence cannot detect the real authorization path (a `window.open` popup). The dialog-closes assertion only catches a Cancel-replaced-by-Authorize regression, not a Cancel-that-also-authorizes one. Fix is one line (`page.context.pages` count) plus the AFS row.",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:280"
+        },
+        {
+          "kind": "defect",
+          "note": "Stale AFS provenance rows understate promotability (the mirrored #19 failure class). Root cause worth knowing: the auth-radio testid is RUNTIME-COMPOSED (`ToolSection.jsx:290` `toolkit-field-${sectionKey}-radio` + `RadioButtonGroup.jsx:37` `${testId}-${value.toLowerCase()}`), so `git grep 'toolkit-field-auth-radio-'` returns 'no' on BOTH refs and the workflow.md two-stage closure grep is blind to … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-required-credential-flow-sharepoint-delegated_ELITEA-1981.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1981 Coverage-Map row 'Step 1 Navigate to Credentials → list loads' is dispositioned `covered`, but no assertion covers the list page — the test enters directly at /credentials/create-credential/sharepoint (justified: the type-card grid only renders on a zero-credential project) and asserts only that route. The justification is sound; the disposition label is not. Suggest re-labelling that … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-required-credential-flow-sharepoint-delegated_ELITEA-1981.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1982 asserts `authorize_button` ENABLED at step 8, i.e. AFTER step 7 cleared the Scope field; the AFS observed 'Authorize ENABLED at open' with scopes populated. Same product state per `isAuthorizeDisabled` (no scope dependency observed), and the case's own step order forces this, so no change requested — flagging only so a future scope-dependent enable rule is not mistaken for flake.",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:262"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity: CLEAN. Provenance grep 0 hits; no route.fulfill / evaluate / monkeypatch anywhere. ELITEA-1982's API-seeded precondition is declared transit in both the docstring and the AFS, and the case's own observables come off the real 401 `check_connection` response (scope value asserted against `auth_metadata.resource_metadata.scopes_supported`, not a hand-written string) — a textbook application… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: CLEAN. No skip/xfail/test.fail, no weakened asserts. All four console filters are narrow and justified — #291/#518/#554 match the merged `test_credential_create.py` precedent, and `_is_expected_oauth_401` keys on the failing resource's own `location.url` (`/configurations/check_connection/`) plus 401, so any other 401 still fails. Reverse-masking clean too: step 5 asserts the LIVE co… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_delegated_flow.py:70"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid commit EliteaAI/EliteaUI@7d7b21d4 verified: 10 insertions / 0 deletions, attributes only — no new DOM node, no hook, no MUI built-in replaced, nothing removed. Zero-functional-impact greps come back empty. Shared-component rule honoured: `OAuthFormFields` takes a caller-supplied `scopeTestId` prop wired at `McpAuthModal`'s call site (not `dataScopeTestId`), dialog testids are gener… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/oauth_auth_modal_page.py:1"
+        },
+        {
+          "kind": "question",
+          "note": "Housekeeping for the lead: #1709 and #1710 are still OPEN with '[RETRACTED — not reproducible]' titles (both AFS files record the retraction). Agents don't close issues; a human sweep should close them so they stop appearing in bug dedup passes."
+        },
+        {
+          "kind": "note",
+          "note": "Durable, cross-role surface fact now in test-specs/toolkits-credentials/_surface.md: an OAuth 'authorization attempt' in this app is a POPUP, not a request the page makes. McpAuthModal.onAuthorize opens window.open('about:blank','_blank') first and runs the whole authorize/token/DCR handshake inside that window, so the parent page's request AND console listeners see none of it. Any future 'did thi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1982"
+        },
+        {
+          "kind": "note",
+          "note": "Durable provenance gotcha, now in _surface.md and both AFS files: the toolkit-form testids are runtime-composed (toolkit-field-{key}-input/-checkbox/-select, toolkit-field-auth-radio-{slug}). git grep of the composed name is EMPTY on origin/main AND origin/automation/testids, which silently reads as 'not on main'. The closure-record verification block in workflow.md is a two-stage grep and does NO… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1981"
+        },
+        {
+          "kind": "note",
+          "note": "Promotion-tracking gotcha worth the lead knowing: ELITEA-1962's testid commit c8d5c6af is NOT an ancestor of origin/main, yet its testids ARE on main — the 2026-08-12 batch (bf4a13ad, 'promote 400 accumulated data-testids') carried the content across, not the commit. So 'is <case's testid SHA> an ancestor of main?' is not a valid promotability test; only the content check is. Closure records citin… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@bf4a13ad"
+        },
+        {
+          "kind": "note",
+          "note": "The reviewer's findings arrived only via the dispatch prompt and were truncated mid-sentence in two places (finding 1's suggested guard, finding 2's diff command/output). There were no PR review bodies or comments on #1712 to recover them from. I reconstructed both findings by verifying against source and fixed what I found; if the reviewer intended anything beyond the two issues addressed here, i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1712"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (ELITEA-1982 step 9) is RESOLVED. Commit ed74a1695 replaces the check_connection-count guard with a direct one: page.on(\"popup\") + a context page-count baseline taken before Cancel and re-read after expect(dialog).not_to_be_visible(). That is the real mechanism — McpAuthModal.onAuthorize's first act after its storageKey check is window.open('about:blank','_blank') — and storageKey … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_authorization_modal.py:280"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (false provenance rows) is RESOLVED and I verified it independently, not by trusting the AFS. After `cd ../EliteaUI && git fetch origin`: `git diff origin/main origin/automation/testids -- 'src/[fsd]/features/toolkits/ui/form/ToolBase/ToolSection.jsx' 'src/[fsd]/shared/ui/checkbox/RadioButtonGroup.jsx'` is EMPTY, and the composing lines are on origin/main (ToolSection.jsx:290 `test… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-required-credential-flow-sharepoint-delegated_ELITEA-1981.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on the full diff (`git diff automation/base...tests/1981-1982-oauth-credential-flow -- automation/`). Locator grep `^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()` → 3 hits, ALL compliant (one-hop verified): `return self.page.locator(self.AUTH_METHOD_RADIO.format(method_slug))`, `… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "Suite-health smell, NOT blocking and not introduced here: both new specs copy `_is_known_518_warning` / `_is_known_554_warning` forward from the merged test_credential_create.py, with docstrings still asserting \"already-filed, OPEN\". Checked live — elitea-testing-public#518 and #554 are both CLOSED (#291, the third filter, is genuinely OPEN). A console filter for a closed defect either never fires… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_delegated_flow.py:82"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion-shape nit (non-blocking): step 6 of ELITEA-1981 ends with `assert create_page.is_save_enabled()`, a one-shot non-retrying read (`save_button.is_enabled()`), where `expect(create_page.save_button).to_be_enabled()` would auto-wait. The preceding `expect(...).to_have_value(...)` chain and the blur inside `type_into_field()` make a race unlikely, and `is_save_enabled()` is a pre-existing mix… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_credential_oauth_delegated_flow.py:236"
+        },
+        {
+          "kind": "note",
+          "note": "AFS bookkeeping nit: ELITEA-1982's transit substitution (API-seeded credential precondition) is declared in full prose under § Preconditions and in the spec's module docstring, but not under a heading literally named \"§ Fidelity Declaration\" as role-overrides.md § Analyst slot words it. Substance is complete — what is substituted, transit-vs-terminal, and the real observable are all named — so thi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_oauth-authorization-modal-invocation_ELITEA-1982.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift on ELITEA-1981 is handled correctly per the reverse-masking guard, not masked: steps 5 (Login appears only once oauth_discovery_endpoint is non-empty — CredentialForm.jsx:342, oauthTokenKey at :168-176, confirmed in the JSX on automation/testids) and 7→8 (Save navigates to /credentials/all, not the detail page) are filed as clarification #1711 (OPEN), linked via @allure.issue, and … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1711"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map verification: neither AFS carries an `already-covered` / `extend-existing` row, so the merged-target rule is not engaged — every Axis-1 row is `covered` by an assertion in this diff, and I ticked each row against the case snapshot and the code (all 8 ELITEA-1981 steps, all 9 ELITEA-1982 steps, both preconditions each, both Expected Final States, both pass criteria). No case element is… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/toolkits-credentials/l1_oauth-authorization-modal-invocation_ELITEA-1982.md",
+      "branch": "tests/1981-1982-oauth-credential-flow",
+      "pr": 1712,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          28.15,
+          27.03,
+          54.08
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1984",
+      "outcome": "blocked",
+      "note": "Executed live end-to-end against localhost:5173 (EliteaUI automation/testids -> DEV backend, project 399), credential seeded via API as declared TRANSIT exactly as ELITEA-1982 does. Steps 1-4 and 7 reproduce cleanly: Login opens the Configuration OAuth dialog off a real check_connection 401; the Scope field accepts 'Invalid.Scope.xyz'; Authorize stays ENABLED (never gated on scope validity) and op… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed #1713 (bug, elitea-testing-public): closing the OAuth authorization popup produces NO feedback for 5 minutes -- the Configuration OAuth dialog stays on 'Authorizing...' (measured silent at +15/+73/+131/+189/+247 s) and only at t+305 s shows the generic 'Authorization timed out. Please try again.', never a cancellation/incomplete message. Root cause: mcpAuthWindow.helpers.js createAuthorizati… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1713"
+        },
+        {
+          "kind": "clarification",
+          "note": "BLOCKER for the lead to route to a human (question card): ELITEA-1984's steps 5-6 are unautomatable without an OAuth provider test identity -- a real Entra/Microsoft tenant + a registered OAuth application whose redirect URI includes http://localhost:5173/mcp-auth-callback (and the deployed-env equivalent) + a consenting account. Two possible resolutions: (a) provision that identity as test data a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1984"
+        },
+        {
+          "kind": "note",
+          "note": "Cost warning for anyone touching this surface: the only feedback after a killed/failed OAuth popup arrives at the monitor's 5-minute fallback, so a spec that asserts it costs >5 min per run and >15 min across the 3x merge gate. The analysis probe itself ran 321 s, almost entirely that wait. Recorded in test-specs/toolkits-credentials/_surface.md and in role memory (oauth_popup_flow_no_close_detect… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Reusable live facts added to the digest: (1) Authorize is NOT gated on scope validity -- it stays enabled with an invalid scope; (2) the Authorize button's LABEL flips to 'Authorizing...' in flight, so assert state with to_be_disabled(), never a text-keyed locator; (3) the parent page makes ZERO API requests on Authorize, so any request-based wait hangs forever -- use page.expect_popup(); (4) the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/toolkits-credentials/l1_failed-oauth-completion_ELITEA-1984.md"
+    }
+  ],
+  "totals": {
+    "automated": 2,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

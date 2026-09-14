@@ -1,0 +1,538 @@
+{
+  "batch": "onboarding-w2",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1397",
+  "integration_branch": "tests/batch-onboarding-w2",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      53.05,
+      53,
+      51.15
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2235",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "FILED (bug, MINOR) — the interactive-tour first-visit prompt logs `MUI: The modal content node does not accept focus.` at error level every time it opens. Deterministic 4/4 on the ELITEA-2241 path (/onboarding -> Jump in now! -> /chat); control run navigating straight to /chat (no prompt) produced 0 console errors, localising it to FirstVisitPrompt.jsx (TrapFocus around a TourCard with no focusabl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1753"
+        },
+        {
+          "kind": "clarification",
+          "note": "FILED (question/CLARIFICATION) — ELITEA-2241 step 7 says the full sidebar is 'displayed and functional' right after 'Jump in now!', but the product opens a modal first-visit tour prompt whose backdrop intercepts pointer events; Playwright: `<li data-testid=\"sidebar-menu-item-agents\"> ... <div class=\"MuiBox-root css-1u2wpa0\"> intercepts pointer events`. Product behaviour is correct (it is a modal) … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1754"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing testid-convention issue, NOT filed (not this batch's to fix, and it is existing code): the shared TourCardHeader hardcodes feature-scoped testids `interactive-tour-complete-title` / `interactive-tour-complete-icon`, which therefore also render inside the FirstVisitPrompt ('New here?' card) where the name is simply wrong. This is the `.agents/testing.md` shared-component-hardcodes-a-fe… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/features/interactive-tours/ui/TourCardHeader.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "New exploration digest created for the onboarding surface (none existed). It carries the three-state map of Onboarding.jsx (Welcome / tour+provisioning / tour+ready and their exact gates), the confirmed testid inventory with provenance, and four quirks the next agent would otherwise burn a session rediscovering: the duplicate-testid trap behind the fullscreen dialog, the localStorage `interactive-… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Intake wrote a 4th case snapshot into .agents/automation/onboarding-w2/cases/ (ELITEA-2232) that was not part of this dispatch. Not analysed here. Worth knowing: 2232 is presumably the 'Sure, let's go!' transition, which is the ONE case in this family that genuinely needs the first-login precondition (personal_project_id null) and therefore ELITEA-2231's route mock — unlike 2235/2236/2241, which m… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2232"
+        },
+        {
+          "kind": "note",
+          "note": "Judgement call flagged for the reviewer rather than settled silently: ELITEA-2241 step 3 asks for a 'teal/green' colour. I specced `to_have_css(\"background-color\", \"rgb(106, 232, 250)\")` (measured live on the default dark theme) because dropping the step entirely would lose case coverage, but the constant is theme-dependent — the AFS names the theme in a comment and offers the fallback (visible + … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_jump_in_now_ELITEA-2241.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS § Testids to add row #2 specified onboarding-tour-fullscreen-dialog on the <Dialog> root. Shipped on slotProps.paper instead: MUI spreads a data-testid passed to <Dialog> onto the Modal ROOT, which is position:fixed/inset:0 for every dialog — so the AFS's step-4 bounding-box 'is it fullscreen' assertion against it would have passed even with fullScreen removed (a tautology). The paper is the e… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2236"
+        },
+        {
+          "kind": "note",
+          "note": "Framework-wide gotcha worth knowing beyond this case: automation/conftest.py uses no_viewport=True when HEADLESS=false (the suite default), so page.viewport_size is None in headed mode. Any AFS row saying 'assert bounding_box() == page.viewport_size' is unevaluatable locally. Shipped assertion keeps an unconditional core (origin-anchored + covers onboarding-page-container's box + strictly larger t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2236"
+        },
+        {
+          "kind": "note",
+          "note": "Both known defects from analysis were confirmed live during implementation and are handled without masking: #1753 (deterministic 'MUI: The modal content node does not accept focus.' when the first-visit prompt opens) is filtered as ONE message with a '# Known defect: #1753' comment — every other console error still fails the test and the red returns automatically when #1753 ships; #1754 (case text… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2241"
+        },
+        {
+          "kind": "note",
+          "note": "Feature-scoped testids for the first-visit prompt are hardcoded at the FEATURE call site (FirstVisitPrompt.jsx) and ride the shared TourCard / BaseBtn '...rest' spread onto their MUI root — no testId-prop plumbing was needed and no feature-scoped testid was hardcoded inside a shared component. Useful precedent for other shared TourCard/BaseBtn consumers."
+        },
+        {
+          "kind": "note",
+          "note": "Phase 6 step 5 (comment the PR link on the originating tracking card) was NOT performed: the dispatch named no board issue number for these three cases, and board #9 discipline is the lead's per .agents/team-comms.md. Nothing was invented — flagging so the lead can post it. Phase 6 step 6: TMS back-write wiring exists (.agents/test-automation.yaml § backwrite_on_done) and is the orchestrator's pos… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability: all 7 new testids plus every pre-existing onboarding-* / sidebar-menu-item-* testid these specs use are on EliteaAI/EliteaUI automation/testids ONLY, not on main. The three specs are green on localhost and would be red on any deployed env until a human cherry-picks EliteaAI/EliteaUI@3ba7967d (and the earlier onboarding testid commits) to main. Closure records should say 'merged, NOT… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "clarification",
+          "note": "OPEN LOOP FOR THE LEAD — declared improvisation with no question card yet. All three case snapshots open with \"Log in to the application for the first time\"; all three specs instead navigate to /onboarding as an existing authenticated user (personal_project_id truthy). I verified the AFS's reasoning and it holds: Onboarding.jsx gates the WorkspaceIsReady banner on thePrivateProjectIsReady (set fro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md § Entry path"
+        },
+        {
+          "kind": "clarification",
+          "note": "Second, smaller case-text drift the AFS records but deliberately does not file: ELITEA-2235 step 3 says the ELITEA logo is \"at the top center of the card\", but Onboarding.jsx renders the wordmark ABOVE the card (styles.logo / onboarding-page-logo), outside onboarding-tour-container. The AFS calls it cosmetic and files no ticket. Reasonable on its own, but it is the same document that is stale in f… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md Coverage Map row 3"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS/impl mismatch, non-blocking. ELITEA-2236's AFS Axis-2 row claims the slide position is asserted \"1 / 48 before, in dialog, and after\" — the BEFORE assertion is not in the code. Step 1 asserts only tour_container visibility and captures bounding boxes; the counter is first asserted inside the dialog (step 6) and again after collapse (Axis 2 block). Coverage loss is small because the tour … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py:~105 (Step 1)"
+        },
+        {
+          "kind": "note",
+          "note": "Fragility to watch at the hardening gate. The step-4 \"fullscreen\" geometry check has four legs: (a) dialog anchored at viewport origin, (b) dialog covers at least onboarding-page-container's box measured BEFORE the click, (c) dialog strictly larger than the embedded card, (d) exact viewport match when page.viewport_size is not None. Leg (b) is the weak one: if the onboarding page shell ever become… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py:~130 (Step 4, leg b)"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt result: CLEAN, and the #1753 console filter is not masking. It excludes one narrow substring (\"does not accept focus\"), the issue is filed, OPEN and labelled `bug` (verified via gh), the exclusion is commented `# Known defect: #1753`, every other console error still fails the test, and the red returns automatically when the product fix lands. Established suite precedent for exactly th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_jump_in.py:150-162"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks, command + output. LOCATOR GREP `git diff tests/batch-onboarding-w2...tests/2235-2236-2241-onboarding-tips-card -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 3 hits, all COMPLIANT: `self.page.locator(self.DIALOG_TIP_CONTENT)` / `DIALOG_TIP_IMAGE` /… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1755 diff"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified with a FRESH `cd ../EliteaUI && git fetch origin` + the two-stage grep. All 17 testids these three specs use are YES on origin/automation/testids and **no on origin/main** — so none of the three cases is deployed-env promotable; the closure record must carry the \"NOT yet on main, human cherry-pick owed\" row. Zero-functional-impact check on the testid commit: `git show 3b… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@3ba7967d"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, do not act on it now. The jump-in spec asserts sidebar presence on /chat through OnboardingPage.sidebar_toggle — a field declared in onboarding_page.py for the Welcome state's ABSENCE assertions. It works and keeps the one-testid-one-file convention intact, but the field's semantic home is BasePage (where sidebar_menu_item already lives). Worth a sweep the next time someone touches BasePage's… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_jump_in.py:127"
+        }
+      ],
+      "afs": "test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md",
+      "branch": "tests/2235-2236-2241-onboarding-tips-card",
+      "pr": 1755,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          53.05,
+          53,
+          51.15
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2236",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "FILED (bug, MINOR) — the interactive-tour first-visit prompt logs `MUI: The modal content node does not accept focus.` at error level every time it opens. Deterministic 4/4 on the ELITEA-2241 path (/onboarding -> Jump in now! -> /chat); control run navigating straight to /chat (no prompt) produced 0 console errors, localising it to FirstVisitPrompt.jsx (TrapFocus around a TourCard with no focusabl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1753"
+        },
+        {
+          "kind": "clarification",
+          "note": "FILED (question/CLARIFICATION) — ELITEA-2241 step 7 says the full sidebar is 'displayed and functional' right after 'Jump in now!', but the product opens a modal first-visit tour prompt whose backdrop intercepts pointer events; Playwright: `<li data-testid=\"sidebar-menu-item-agents\"> ... <div class=\"MuiBox-root css-1u2wpa0\"> intercepts pointer events`. Product behaviour is correct (it is a modal) … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1754"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing testid-convention issue, NOT filed (not this batch's to fix, and it is existing code): the shared TourCardHeader hardcodes feature-scoped testids `interactive-tour-complete-title` / `interactive-tour-complete-icon`, which therefore also render inside the FirstVisitPrompt ('New here?' card) where the name is simply wrong. This is the `.agents/testing.md` shared-component-hardcodes-a-fe… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/features/interactive-tours/ui/TourCardHeader.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "New exploration digest created for the onboarding surface (none existed). It carries the three-state map of Onboarding.jsx (Welcome / tour+provisioning / tour+ready and their exact gates), the confirmed testid inventory with provenance, and four quirks the next agent would otherwise burn a session rediscovering: the duplicate-testid trap behind the fullscreen dialog, the localStorage `interactive-… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Intake wrote a 4th case snapshot into .agents/automation/onboarding-w2/cases/ (ELITEA-2232) that was not part of this dispatch. Not analysed here. Worth knowing: 2232 is presumably the 'Sure, let's go!' transition, which is the ONE case in this family that genuinely needs the first-login precondition (personal_project_id null) and therefore ELITEA-2231's route mock — unlike 2235/2236/2241, which m… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2232"
+        },
+        {
+          "kind": "note",
+          "note": "Judgement call flagged for the reviewer rather than settled silently: ELITEA-2241 step 3 asks for a 'teal/green' colour. I specced `to_have_css(\"background-color\", \"rgb(106, 232, 250)\")` (measured live on the default dark theme) because dropping the step entirely would lose case coverage, but the constant is theme-dependent — the AFS names the theme in a comment and offers the fallback (visible + … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_jump_in_now_ELITEA-2241.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS § Testids to add row #2 specified onboarding-tour-fullscreen-dialog on the <Dialog> root. Shipped on slotProps.paper instead: MUI spreads a data-testid passed to <Dialog> onto the Modal ROOT, which is position:fixed/inset:0 for every dialog — so the AFS's step-4 bounding-box 'is it fullscreen' assertion against it would have passed even with fullScreen removed (a tautology). The paper is the e… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2236"
+        },
+        {
+          "kind": "note",
+          "note": "Framework-wide gotcha worth knowing beyond this case: automation/conftest.py uses no_viewport=True when HEADLESS=false (the suite default), so page.viewport_size is None in headed mode. Any AFS row saying 'assert bounding_box() == page.viewport_size' is unevaluatable locally. Shipped assertion keeps an unconditional core (origin-anchored + covers onboarding-page-container's box + strictly larger t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2236"
+        },
+        {
+          "kind": "note",
+          "note": "Both known defects from analysis were confirmed live during implementation and are handled without masking: #1753 (deterministic 'MUI: The modal content node does not accept focus.' when the first-visit prompt opens) is filtered as ONE message with a '# Known defect: #1753' comment — every other console error still fails the test and the red returns automatically when #1753 ships; #1754 (case text… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2241"
+        },
+        {
+          "kind": "note",
+          "note": "Feature-scoped testids for the first-visit prompt are hardcoded at the FEATURE call site (FirstVisitPrompt.jsx) and ride the shared TourCard / BaseBtn '...rest' spread onto their MUI root — no testId-prop plumbing was needed and no feature-scoped testid was hardcoded inside a shared component. Useful precedent for other shared TourCard/BaseBtn consumers."
+        },
+        {
+          "kind": "note",
+          "note": "Phase 6 step 5 (comment the PR link on the originating tracking card) was NOT performed: the dispatch named no board issue number for these three cases, and board #9 discipline is the lead's per .agents/team-comms.md. Nothing was invented — flagging so the lead can post it. Phase 6 step 6: TMS back-write wiring exists (.agents/test-automation.yaml § backwrite_on_done) and is the orchestrator's pos… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability: all 7 new testids plus every pre-existing onboarding-* / sidebar-menu-item-* testid these specs use are on EliteaAI/EliteaUI automation/testids ONLY, not on main. The three specs are green on localhost and would be red on any deployed env until a human cherry-picks EliteaAI/EliteaUI@3ba7967d (and the earlier onboarding testid commits) to main. Closure records should say 'merged, NOT… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "clarification",
+          "note": "OPEN LOOP FOR THE LEAD — declared improvisation with no question card yet. All three case snapshots open with \"Log in to the application for the first time\"; all three specs instead navigate to /onboarding as an existing authenticated user (personal_project_id truthy). I verified the AFS's reasoning and it holds: Onboarding.jsx gates the WorkspaceIsReady banner on thePrivateProjectIsReady (set fro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md § Entry path"
+        },
+        {
+          "kind": "clarification",
+          "note": "Second, smaller case-text drift the AFS records but deliberately does not file: ELITEA-2235 step 3 says the ELITEA logo is \"at the top center of the card\", but Onboarding.jsx renders the wordmark ABOVE the card (styles.logo / onboarding-page-logo), outside onboarding-tour-container. The AFS calls it cosmetic and files no ticket. Reasonable on its own, but it is the same document that is stale in f… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md Coverage Map row 3"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS/impl mismatch, non-blocking. ELITEA-2236's AFS Axis-2 row claims the slide position is asserted \"1 / 48 before, in dialog, and after\" — the BEFORE assertion is not in the code. Step 1 asserts only tour_container visibility and captures bounding boxes; the counter is first asserted inside the dialog (step 6) and again after collapse (Axis 2 block). Coverage loss is small because the tour … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py:~105 (Step 1)"
+        },
+        {
+          "kind": "note",
+          "note": "Fragility to watch at the hardening gate. The step-4 \"fullscreen\" geometry check has four legs: (a) dialog anchored at viewport origin, (b) dialog covers at least onboarding-page-container's box measured BEFORE the click, (c) dialog strictly larger than the embedded card, (d) exact viewport match when page.viewport_size is not None. Leg (b) is the weak one: if the onboarding page shell ever become… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py:~130 (Step 4, leg b)"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt result: CLEAN, and the #1753 console filter is not masking. It excludes one narrow substring (\"does not accept focus\"), the issue is filed, OPEN and labelled `bug` (verified via gh), the exclusion is commented `# Known defect: #1753`, every other console error still fails the test, and the red returns automatically when the product fix lands. Established suite precedent for exactly th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_jump_in.py:150-162"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks, command + output. LOCATOR GREP `git diff tests/batch-onboarding-w2...tests/2235-2236-2241-onboarding-tips-card -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 3 hits, all COMPLIANT: `self.page.locator(self.DIALOG_TIP_CONTENT)` / `DIALOG_TIP_IMAGE` /… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1755 diff"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified with a FRESH `cd ../EliteaUI && git fetch origin` + the two-stage grep. All 17 testids these three specs use are YES on origin/automation/testids and **no on origin/main** — so none of the three cases is deployed-env promotable; the closure record must carry the \"NOT yet on main, human cherry-pick owed\" row. Zero-functional-impact check on the testid commit: `git show 3b… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@3ba7967d"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, do not act on it now. The jump-in spec asserts sidebar presence on /chat through OnboardingPage.sidebar_toggle — a field declared in onboarding_page.py for the Welcome state's ABSENCE assertions. It works and keeps the one-testid-one-file convention intact, but the field's semantic home is BasePage (where sidebar_menu_item already lives). Worth a sweep the next time someone touches BasePage's… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_jump_in.py:127"
+        }
+      ],
+      "afs": "test-specs/onboarding/lhigh_onboarding_tips_fullscreen_expand_collapse_ELITEA-2236.md",
+      "branch": "tests/2235-2236-2241-onboarding-tips-card",
+      "pr": 1755,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          53.05,
+          53,
+          51.15
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2241",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "FILED (bug, MINOR) — the interactive-tour first-visit prompt logs `MUI: The modal content node does not accept focus.` at error level every time it opens. Deterministic 4/4 on the ELITEA-2241 path (/onboarding -> Jump in now! -> /chat); control run navigating straight to /chat (no prompt) produced 0 console errors, localising it to FirstVisitPrompt.jsx (TrapFocus around a TourCard with no focusabl… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1753"
+        },
+        {
+          "kind": "clarification",
+          "note": "FILED (question/CLARIFICATION) — ELITEA-2241 step 7 says the full sidebar is 'displayed and functional' right after 'Jump in now!', but the product opens a modal first-visit tour prompt whose backdrop intercepts pointer events; Playwright: `<li data-testid=\"sidebar-menu-item-agents\"> ... <div class=\"MuiBox-root css-1u2wpa0\"> intercepts pointer events`. Product behaviour is correct (it is a modal) … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1754"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing testid-convention issue, NOT filed (not this batch's to fix, and it is existing code): the shared TourCardHeader hardcodes feature-scoped testids `interactive-tour-complete-title` / `interactive-tour-complete-icon`, which therefore also render inside the FirstVisitPrompt ('New here?' card) where the name is simply wrong. This is the `.agents/testing.md` shared-component-hardcodes-a-fe… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "src/[fsd]/features/interactive-tours/ui/TourCardHeader.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "New exploration digest created for the onboarding surface (none existed). It carries the three-state map of Onboarding.jsx (Welcome / tour+provisioning / tour+ready and their exact gates), the confirmed testid inventory with provenance, and four quirks the next agent would otherwise burn a session rediscovering: the duplicate-testid trap behind the fullscreen dialog, the localStorage `interactive-… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Intake wrote a 4th case snapshot into .agents/automation/onboarding-w2/cases/ (ELITEA-2232) that was not part of this dispatch. Not analysed here. Worth knowing: 2232 is presumably the 'Sure, let's go!' transition, which is the ONE case in this family that genuinely needs the first-login precondition (personal_project_id null) and therefore ELITEA-2231's route mock — unlike 2235/2236/2241, which m… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2232"
+        },
+        {
+          "kind": "note",
+          "note": "Judgement call flagged for the reviewer rather than settled silently: ELITEA-2241 step 3 asks for a 'teal/green' colour. I specced `to_have_css(\"background-color\", \"rgb(106, 232, 250)\")` (measured live on the default dark theme) because dropping the step entirely would lose case coverage, but the constant is theme-dependent — the AFS names the theme in a comment and offers the fallback (visible + … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_jump_in_now_ELITEA-2241.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS § Testids to add row #2 specified onboarding-tour-fullscreen-dialog on the <Dialog> root. Shipped on slotProps.paper instead: MUI spreads a data-testid passed to <Dialog> onto the Modal ROOT, which is position:fixed/inset:0 for every dialog — so the AFS's step-4 bounding-box 'is it fullscreen' assertion against it would have passed even with fullScreen removed (a tautology). The paper is the e… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2236"
+        },
+        {
+          "kind": "note",
+          "note": "Framework-wide gotcha worth knowing beyond this case: automation/conftest.py uses no_viewport=True when HEADLESS=false (the suite default), so page.viewport_size is None in headed mode. Any AFS row saying 'assert bounding_box() == page.viewport_size' is unevaluatable locally. Shipped assertion keeps an unconditional core (origin-anchored + covers onboarding-page-container's box + strictly larger t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2236"
+        },
+        {
+          "kind": "note",
+          "note": "Both known defects from analysis were confirmed live during implementation and are handled without masking: #1753 (deterministic 'MUI: The modal content node does not accept focus.' when the first-visit prompt opens) is filtered as ONE message with a '# Known defect: #1753' comment — every other console error still fails the test and the red returns automatically when #1753 ships; #1754 (case text… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2241"
+        },
+        {
+          "kind": "note",
+          "note": "Feature-scoped testids for the first-visit prompt are hardcoded at the FEATURE call site (FirstVisitPrompt.jsx) and ride the shared TourCard / BaseBtn '...rest' spread onto their MUI root — no testId-prop plumbing was needed and no feature-scoped testid was hardcoded inside a shared component. Useful precedent for other shared TourCard/BaseBtn consumers."
+        },
+        {
+          "kind": "note",
+          "note": "Phase 6 step 5 (comment the PR link on the originating tracking card) was NOT performed: the dispatch named no board issue number for these three cases, and board #9 discipline is the lead's per .agents/team-comms.md. Nothing was invented — flagging so the lead can post it. Phase 6 step 6: TMS back-write wiring exists (.agents/test-automation.yaml § backwrite_on_done) and is the orchestrator's pos… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability: all 7 new testids plus every pre-existing onboarding-* / sidebar-menu-item-* testid these specs use are on EliteaAI/EliteaUI automation/testids ONLY, not on main. The three specs are green on localhost and would be red on any deployed env until a human cherry-picks EliteaAI/EliteaUI@3ba7967d (and the earlier onboarding testid commits) to main. Closure records should say 'merged, NOT… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "clarification",
+          "note": "OPEN LOOP FOR THE LEAD — declared improvisation with no question card yet. All three case snapshots open with \"Log in to the application for the first time\"; all three specs instead navigate to /onboarding as an existing authenticated user (personal_project_id truthy). I verified the AFS's reasoning and it holds: Onboarding.jsx gates the WorkspaceIsReady banner on thePrivateProjectIsReady (set fro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md § Entry path"
+        },
+        {
+          "kind": "clarification",
+          "note": "Second, smaller case-text drift the AFS records but deliberately does not file: ELITEA-2235 step 3 says the ELITEA logo is \"at the top center of the card\", but Onboarding.jsx renders the wordmark ABOVE the card (styles.logo / onboarding-page-logo), outside onboarding-tour-container. The AFS calls it cosmetic and files no ticket. Reasonable on its own, but it is the same document that is stale in f… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md Coverage Map row 3"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS/impl mismatch, non-blocking. ELITEA-2236's AFS Axis-2 row claims the slide position is asserted \"1 / 48 before, in dialog, and after\" — the BEFORE assertion is not in the code. Step 1 asserts only tour_container visibility and captures bounding boxes; the counter is first asserted inside the dialog (step 6) and again after collapse (Axis 2 block). Coverage loss is small because the tour … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py:~105 (Step 1)"
+        },
+        {
+          "kind": "note",
+          "note": "Fragility to watch at the hardening gate. The step-4 \"fullscreen\" geometry check has four legs: (a) dialog anchored at viewport origin, (b) dialog covers at least onboarding-page-container's box measured BEFORE the click, (c) dialog strictly larger than the embedded card, (d) exact viewport match when page.viewport_size is not None. Leg (b) is the weak one: if the onboarding page shell ever become… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py:~130 (Step 4, leg b)"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt result: CLEAN, and the #1753 console filter is not masking. It excludes one narrow substring (\"does not accept focus\"), the issue is filed, OPEN and labelled `bug` (verified via gh), the exclusion is commented `# Known defect: #1753`, every other console error still fails the test, and the red returns automatically when the product fix lands. Established suite precedent for exactly th… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_jump_in.py:150-162"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks, command + output. LOCATOR GREP `git diff tests/batch-onboarding-w2...tests/2235-2236-2241-onboarding-tips-card -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 3 hits, all COMPLIANT: `self.page.locator(self.DIALOG_TIP_CONTENT)` / `DIALOG_TIP_IMAGE` /… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1755 diff"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified with a FRESH `cd ../EliteaUI && git fetch origin` + the two-stage grep. All 17 testids these three specs use are YES on origin/automation/testids and **no on origin/main** — so none of the three cases is deployed-env promotable; the closure record must carry the \"NOT yet on main, human cherry-pick owed\" row. Zero-functional-impact check on the testid commit: `git show 3b… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@3ba7967d"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, do not act on it now. The jump-in spec asserts sidebar presence on /chat through OnboardingPage.sidebar_toggle — a field declared in onboarding_page.py for the Welcome state's ABSENCE assertions. It works and keeps the one-testid-one-file convention intact, but the field's semantic home is BasePage (where sidebar_menu_item already lives). Worth a sweep the next time someone touches BasePage's… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_jump_in.py:127"
+        }
+      ],
+      "afs": "test-specs/onboarding/lmedium_onboarding_jump_in_now_ELITEA-2241.md",
+      "branch": "tests/2235-2236-2241-onboarding-tips-card",
+      "pr": 1755,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          53.05,
+          53,
+          51.15
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2232",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "TMS case text drift, filed as EliteaAI/elitea-testing-public#1756 (label `question`, not a product bug). Step 9 says clicking 'Sure, let's go!' triggers project provisioning - the UI issues no provisioning request at all; handleShowTour() (Onboarding.jsx:66-85) only writes sessionStorage, starts a client-side progress animation and a 5s poll of GET /api/v2/social/author/. Provisioning is backend-s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1756"
+        },
+        {
+          "kind": "question",
+          "note": "Fidelity - needs your ruling. The AFS declares TWO transit substitutions. (1) mock_fresh_user_state() nulls personal_project_id on GET /social/author/ to establish the case's own first-login precondition - already sanctioned by your onboarding-w1 DECISIONS D3 and merged in test_onboarding_welcome.py. (2) NEW BEYOND D3: the mask is RELEASED mid-test so the next poll receives the unmodified backend … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2232"
+        },
+        {
+          "kind": "note",
+          "note": "New testid required: `project-selector-option-{label}` (dynamic) on SidebarProjectSelect.jsx customRenderOption (lines 67-84) - the project rows in the open left-menu dropdown carry no testid, so step 11's 'private project appears on left menu dropdown' cannot be asserted on the option itself. It is a feature call site (the render function lives in SidebarProjectSelect.jsx, not in the shared Proje… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2232"
+        },
+        {
+          "kind": "note",
+          "note": "Two gotchas the implementer must not rediscover. (a) FRESH CONTEXT IS MANDATORY: the Get-Started click writes sessionStorage.onboarding_state='true' and showTour initialises from it (Onboarding.jsx:36-37), so a reused context skips the Welcome card entirely and the case cannot start. (b) The sidebar entity menu fills in PROGRESSIVELY after the ready transition - only sidebar-menu-item-skills and -… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2232"
+        },
+        {
+          "kind": "note",
+          "note": "Zero console errors observed across the entire flow (mask -> click -> poll -> release -> sidebar), so this spec's console assertion needs no filter. The #1753 MUI focus error documented in the digest requires the first-visit interactive-tour prompt, which only appears after 'Jump in now!' navigates to /chat - hence the AFS's explicit instruction to stay on /onboarding.",
+          "ref": "#1753"
+        },
+        {
+          "kind": "question",
+          "note": "The AFS's Fidelity Declaration #2 — RELEASING the author-details mask mid-test so the next poll receives the unmodified backend response, in order to observe the provisioning->ready transition — is a declared improvisation beyond lead ruling onboarding-w1 DECISIONS § D3 (which sanctioned only INSTALLING the mock). It is implemented as specced and declared in the test docstring + PR body. Per .agen… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md § Fidelity Declaration"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended on this branch: the Axis-2 progress-bar row specified `aria-valuenow == \"5\"` exactly right after the click. Shipped as a bound (`5 <= initial <= 12`) plus the unchanged `later > initial`. Reason: the read lands inside — but not reliably at the START of — the product's first 1s setInterval tick (Onboarding.jsx:71-73), so exact equality is a stopwatch race against the 3x merge gate while… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift is real and already filed by the analyst as clarification #1756 — the click issues NO provisioning call; handleShowTour() starts a 5s poll of GET /api/v2/social/author/. Case step 9 (\"provisioning begins only now\") is automated as the poll START (0 requests in a 7s post-Welcome quiet window, >=2 within 12s of the click), which is the honest observable. Confirmed live by this run. N… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1756"
+        },
+        {
+          "kind": "note",
+          "note": "Memory-index gap worth a compaction pass: .agents/memory/test-automation-engineer/eliteaui_commitlint_requires_el_ticket.md exists but has no line in MEMORY.md, so it did not reach this dispatch — my first testid commit used `[ELITEA-2232]` and was rejected outright by EliteaUI's husky commit-msg hook (`subject must container ticket number - [EL-XXXX]`). This is exactly the preventive class that e… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/MEMORY.md"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability: the spec binds 12 onboarding-* testids plus the newly added project-selector-option-Private and the dynamic sidebar-menu-item-chat — all on EliteaAI/EliteaUI automation/testids only. Only sidebar-toggle and project-selector-trigger are on main. So this test is green on localhost and would be red on any deployed env until a human cherry-picks the testids; the closure record's promota… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@bb8b9adc"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS↔implementation drift (Important). The AFS Axis-2 table declares `expect(tour_prev_button).to_be_disabled()` as independent proof the card really is at the FIRST slide (a rendering bug could print '1 / 48' at the wrong position). No `prev` reference exists anywhere in the shipped spec, and the AFS docs commit 9a586e18c amended the *progress-bar* Axis-2 row in the same breath while leaving this … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:247"
+        },
+        {
+          "kind": "question",
+          "note": "Open decision for the lead, NOT a blocker on my read. Substitution #2 — releasing the author-details mask mid-test so the next real poll delivers the unmodified backend payload — is a declared improvisation extending lead ruling D3 (which sanctioned only *installing* the mock). I judge it transit/timing-control and compliant: after release the test authors nothing, and every step-11 observable (fo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md (§ Fidelity Declaration #2)"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability, verified fresh (`cd ../EliteaUI && git fetch origin`, two-stage grep): main:no / testids:YES for project-selector-option-*, sidebar-menu-item-*, onboarding-progress-status-label, onboarding-progress-estimated-time, onboarding-progress-bar, onboarding-tour-page-indicator; main:YES for sidebar-toggle and project-selector-trigger. EliteaAI/EliteaUI@bb8b9adc (the one new testid) is pres… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md (Handles Reference)"
+        },
+        {
+          "kind": "note",
+          "note": "Flake vector I checked and cleared, recorded so the gate can interpret a red correctly. Step 9a asserts ZERO GET /social/author/ requests in a fixed 7 s window opened after the Welcome card is visible; the analyst measured two such calls at page load (+0.9 s, +1.6 s). I read ../EliteaUI/src/pages/Onboarding/Onboarding.jsx:28-85 — the only authorDetails callers are ProtectedRoutes.jsx (pre-render, … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:270"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: clean. No pytest.skip / xfail / test.fail, no soft asserts, no weakened expectations; assertion strength is good throughout (to_have_text exact for the counter/label/estimate, to_have_count(0) for the four absence handles, to_contain_text only where the case text is a substring of one shared markdown node). POM discipline holds — 0 removed lines in onboarding_page.py, so every ELITEA… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Two durable facts the implementer appended to the surface digest are worth other agents' attention: (1) EliteaUI's husky commit-msg hook rejects [ELITEA-NNNN] and requires [EL-XXXX] in the subject — a testid commit in that repo fails outright otherwise; (2) the sidebar entity menu fills in progressively after the ready transition, so anchor on one item with an auto-waiting expect and never assert … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/_surface.md:230"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of this review round, worth carrying into the batch's lessons: a PARTIAL AFS amendment hides dropped rows. I amended one Axis-2 row (progress bar) in a docs(afs) commit, which made the AFS look freshly reconciled while a second Axis-2 row (previous-slide disabled) was silently unimplemented. The cheap guard is to re-walk EVERY Axis-1 and Axis-2 row against the diff whenever ANY row is a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1757 / commit 9a586e18c"
+        },
+        {
+          "kind": "clarification",
+          "note": "The dispatch preamble (and CLAUDE.md's memory paragraph) state that .agents/memory/<role>/ is gitignored and must never be `git add`ed, but it is NOT ignored in this repo — `git check-ignore -v .agents/memory/test-automation-engineer/daily/2026-08-24.md` exits 1, and .gitignore:88 only whitelists `.claude/agent-memory/`. Prior commits on this very branch already carry memory (d38e14e8c from the re… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".gitignore:88 / dispatch preamble"
+        },
+        {
+          "kind": "note",
+          "note": "No new testid was needed for this fix — `onboarding-tour-prev-button` already exists on automation/testids (added for the ELITEA-2235/2236 family). Promotability of this case's testid set is unchanged by this round, so the closure record's testid row does not need re-deriving after the fix.",
+          "ref": "automation/pages/onboarding_page.py:215"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker FIXED: `expect(onboarding_page.tour_prev_button).to_be_disabled()` now sits inside the Step 7 allure block (automation/tests/ui/onboarding/test_onboarding_provisioning.py:308, commit 2cf9608d5). All five AFS Axis-2 rows are implemented now — no silently dropped row survives.",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:308"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff: 3 hits, all compliant — `self.page.locator(self.PROJECT_SELECTOR_OPTION.format(label))` and `self.page.locator(self.SIDEBAR_MENU_ITEM.format(value))`, both off class-level `[data-testid=\"project-selector-option-{}\"]` / `[data-testid=\"sidebar-menu-item-{}\"]` template constants (onboarding_page.py:275,283), plus one comment line. No inline get_by_test_id, no… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/onboarding_page.py:275"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep on the full diff: 4 hits. (1) `mock_fresh_user_state()` — TRANSIT, establishes the case's own first-login precondition (personal_project_id null) which no account here has; lead-sanctioned batch onboarding-w1 DECISIONS §D3, precedent already merged in test_onboarding_welcome.py; every step 1-10 observable is rendered by the product from that state. (2) two `page.evaluate(\"… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:253"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: 0 hits for skip/xfail/expect.soft/.fail(/sleep( on the added lines. The two `page.wait_for_timeout()` calls are declared observation windows (assert-nothing-happened for the pre-click quiet window; assert-a-number-moved for the progress advance) — there is no condition to wait for in either, so this is the correct tool, and both carry the rationale as an inline comment. No condition-… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:283"
+        },
+        {
+          "kind": "note",
+          "note": "Absence assertions are all non-vacuous. Every `to_have_count(0)` locator in this spec (welcome_card, sidebar_toggle, project_selector_trigger, workspace_ready_title, progress_footer) is ALSO asserted `to_be_visible()` at another point in the same executed path, so a typo'd or upstream-renamed testid cannot make the absence check pass silently. This spec gets that for free because it walks the stat… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:340"
+        },
+        {
+          "kind": "question",
+          "note": "OPEN LOOP FOR THE LEAD (role-overrides § Declared-improvisation protocol, limit 2): substitution #2 — releasing the author-details mock MID-TEST to observe the provisioning→ready transition — is declared in both the AFS and the test docstring as an extension beyond D3 (which sanctioned only INSTALLING the mock). The declaration is sound and I verified it rather than deferring to it: once released,… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md"
+        },
+        {
+          "kind": "note",
+          "note": "Closure-record input: the spec depends on `project-selector-option-{label}`, ADDED at implementation (EliteaAI/EliteaUI@bb8b9adc) and living on `automation/testids` only — not on main. Most other onboarding-* testids the spec uses are in the same state; only `sidebar-toggle` and `project-selector-trigger` are on-main. So this case is green on localhost and NOT deployed-env promotable until a human… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md:151"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift is handled correctly, not masked. Case step 9 says the click 'triggers project provisioning'; live, `handleShowTour()` issues no provisioning call — it starts a 5 s poll of GET /api/v2/social/author/. The AFS rewrites the observable to the poll START (0 requests in a ≥7 s post-Welcome quiet window, ≥2 within 12 s of the click) and files it as clarification #1756 rather than as a pr… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:271"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking, no change requested): the allure step blocks are not in numeric order — 9a, 1, 8, 2, 3, 4, 5, 6, 7, 10, Axis-2, Axis-2, 9b, 11. The reordering is deliberate and commented (step 8 runs first among the state checks so the progress bar's aria-valuenow is read at the top of the provisioning state; step 9 splits into a pre-click baseline and a post-click window). Every step keeps its… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:294"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the progress-bar baseline bound `5 <= initial <= 12` is loose — at 95/150 per second, 12 tolerates ~11 s of drift, whereas the read happens 1-2 s after the click. The amendment away from exact `== 5` is justified and properly reflected in the AFS Axis-2 row (an amendment commit in the same PR, per contract), and the paired `later > initial` assertion is what actually proves the… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_provisioning.py:229"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha another agent will want (already captured in test-specs/onboarding/_surface.md by the implementer): EliteaUI's husky commit-msg hook rejects `[ELITEA-NNNN]` subjects — it enforces `[EL-XXXX]`. Testid commits in that repo must read `test: [EL-2232] ...` or the commit is rejected outright.",
+          "ref": "test-specs/onboarding/_surface.md"
+        }
+      ],
+      "afs": "test-specs/onboarding/lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md",
+      "branch": "tests/ELITEA-2232-onboarding-provisioning",
+      "pr": 1757,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          53.05,
+          53,
+          51.15
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 4
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

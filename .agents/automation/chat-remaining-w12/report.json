@@ -1,0 +1,653 @@
+{
+  "batch": "chat-remaining-w12",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w12",
+  "gate": {
+    "verdict": "incomplete",
+    "runs": 0,
+    "seconds": [],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2177",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Testid gap (implementer work, not a bug): AgentEditorPanel.jsx's composer 'X' / remove-participant icon button (aria-label=\"switch to model\", tooltip \"Switch to model\") has NO data-testid at all, in either of its two render branches (~line 178 collapsed/loading view, ~line 294 full view). ELITEA-2465's own case step 4 needs to verify this icon's presence. Recommended name: chat-switch-to-model-but… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/features/chat/ui/chat-input/AgentEditorPanel.jsx"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2178's case text expects the remove-agent confirmation modal to read \"Are you sure to remove the Claude B agent from conversation?\" -- live product reads \"...agent from chat?\" (word difference: conversation -> chat). Live product is correct/current; case text is stale. Not filed as a defect per the reverse-masking guard -- documented in the AFS's Test Data section for the implementer to ass… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_remove-agent-clears-conversation-starters_ELITEA-2178.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case family's own example agent name 'Claude B' does not exist in either project checked (Private/399, Elitea Testing Team/471) -- confirmed via full agent listing in both. All three AFS route around this by specifying a disposable-agent test-data setup instead (or the pre-existing Catalog agent 'StarterComposer' as a quick manual alternative)."
+        },
+        {
+          "kind": "note",
+          "note": "Backend inconsistency (not filed as a ticket, workaround exists): POST .../elitea_core/applications/prompt_lib/{project} silently accepts llm_settings.reasoning_effort:\"none\" (201, bad value persisted); POST .../elitea_core/participants/prompt_lib/{project}/{conv_id} for that same agent then 400s with a Pydantic literal-enum error (only low/medium/high accepted). Asymmetric validation between the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The Playwright MCP browser's persistent profile can default to a DIFFERENT active project than .env.test's ELITEA_PROJECT_ID -- this session opened on project 471 instead of the expected 399, making API-seeded test data invisible in the UI's own agent search until the project switcher was used to align them. Logged to qa-engineer memory as an indexed (preventive) entry since it changes the first m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "chat-send-button force=True click silently no-ops right after a conversation-starter-tile click populates the composer — confirmed as a SECOND independent flow hitting the same race class already documented for ELITEA-2093 (Agent Hub modal starter). Fixed with a plain .click(); memory entry chat_send_button_force_click_race.md updated with Recurrence 2. Worth generalizing the lesson beyond 'the Ag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.is_participants_badge_visible() only waits for state=visible, so `assert not is_participants_badge_visible(...)` right after a removal click can read 'still visible' a moment before the DOM update lands (positive-existence wait asserting a negative transition). Added ChatPage.wait_for_participants_badge_absent(section, timeout) as the correct fix — any other test asserting badge absence r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "The participants-popover row (PARTICIPANT_ROW) renders a literal 'Participant Name' loading-skeleton placeholder before its real content settles — a one-shot wait_for(visible)+text_content() read can capture the placeholder instead of the real name. Fixed via expect(row).to_contain_text(name, timeout=...). Any future case reading a participant row's name (popover OR the expanded side-panel form) s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py"
+        },
+        {
+          "kind": "note",
+          "note": "chat_page.py carried a stale comment (predating the ELITEA-1886 dispatch) claiming ChatConversationStarters.jsx's chat-conversation-starter-tile call site was 'intentionally left unwired per canon ruling #511'. It was actually wired for ELITEA-1886 (EliteaAI/EliteaUI@afb48435, 2026-08-07) and is live on main automation/testids — corrected the comment in place so a future implementer doesn't re-add… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL (PLAUSIBLE) — ELITEA-2177's and ELITEA-2465's tests likely exercise the WRONG React call site, undermining the AFS's own 'fresh coverage, not already-covered' argument. Both tests call `_open_new_conversation()` (waits for `chat.new_conversation_greeting`, which `chat_page.py:5753-5759` documents as 'visible only for a brand-new, unsent conversation') and then IMMEDIATELY add the agent pa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:249-276,580-611"
+        },
+        {
+          "kind": "defect",
+          "note": "Locator constructed directly in the spec file: `row = popper.locator(chat.PARTICIPANT_ROW.format(unique_id))` inside `test_add_agent_with_starters_and_send_via_starter`'s Step 5 block. `.agents/testing.md` § Locator policy and `.agents/conventions.md` Hard Don'ts are explicit: 'Locators live ONLY as page-object class fields... never construct a locator inside a method body... and never in spec fil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:617"
+        },
+        {
+          "kind": "defect",
+          "note": "Per-step assertion attribution drift (ELITEA-2177). Case step 3's own expected result ('Full text inserted in message field') — which the AFS Coverage Map explicitly attributes to 'Step 3' — is asserted only inside the 'Step 4' allure.step block (`assert chat.message_input.input_value() == starter_text` at line ~299). The 'Step 3' block itself (line 295-296) performs only the bare click with zero … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:295-307"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_add-agent-with-starters-to-conversation_ELITEA-2177.md",
+      "branch": "tests/2177-2178-2465-agent-starters-add-remove",
+      "pr": 1567
+    },
+    {
+      "id": "ELITEA-2178",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Testid gap (implementer work, not a bug): AgentEditorPanel.jsx's composer 'X' / remove-participant icon button (aria-label=\"switch to model\", tooltip \"Switch to model\") has NO data-testid at all, in either of its two render branches (~line 178 collapsed/loading view, ~line 294 full view). ELITEA-2465's own case step 4 needs to verify this icon's presence. Recommended name: chat-switch-to-model-but… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/features/chat/ui/chat-input/AgentEditorPanel.jsx"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2178's case text expects the remove-agent confirmation modal to read \"Are you sure to remove the Claude B agent from conversation?\" -- live product reads \"...agent from chat?\" (word difference: conversation -> chat). Live product is correct/current; case text is stale. Not filed as a defect per the reverse-masking guard -- documented in the AFS's Test Data section for the implementer to ass… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_remove-agent-clears-conversation-starters_ELITEA-2178.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case family's own example agent name 'Claude B' does not exist in either project checked (Private/399, Elitea Testing Team/471) -- confirmed via full agent listing in both. All three AFS route around this by specifying a disposable-agent test-data setup instead (or the pre-existing Catalog agent 'StarterComposer' as a quick manual alternative)."
+        },
+        {
+          "kind": "note",
+          "note": "Backend inconsistency (not filed as a ticket, workaround exists): POST .../elitea_core/applications/prompt_lib/{project} silently accepts llm_settings.reasoning_effort:\"none\" (201, bad value persisted); POST .../elitea_core/participants/prompt_lib/{project}/{conv_id} for that same agent then 400s with a Pydantic literal-enum error (only low/medium/high accepted). Asymmetric validation between the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The Playwright MCP browser's persistent profile can default to a DIFFERENT active project than .env.test's ELITEA_PROJECT_ID -- this session opened on project 471 instead of the expected 399, making API-seeded test data invisible in the UI's own agent search until the project switcher was used to align them. Logged to qa-engineer memory as an indexed (preventive) entry since it changes the first m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "chat-send-button force=True click silently no-ops right after a conversation-starter-tile click populates the composer — confirmed as a SECOND independent flow hitting the same race class already documented for ELITEA-2093 (Agent Hub modal starter). Fixed with a plain .click(); memory entry chat_send_button_force_click_race.md updated with Recurrence 2. Worth generalizing the lesson beyond 'the Ag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.is_participants_badge_visible() only waits for state=visible, so `assert not is_participants_badge_visible(...)` right after a removal click can read 'still visible' a moment before the DOM update lands (positive-existence wait asserting a negative transition). Added ChatPage.wait_for_participants_badge_absent(section, timeout) as the correct fix — any other test asserting badge absence r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "The participants-popover row (PARTICIPANT_ROW) renders a literal 'Participant Name' loading-skeleton placeholder before its real content settles — a one-shot wait_for(visible)+text_content() read can capture the placeholder instead of the real name. Fixed via expect(row).to_contain_text(name, timeout=...). Any future case reading a participant row's name (popover OR the expanded side-panel form) s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py"
+        },
+        {
+          "kind": "note",
+          "note": "chat_page.py carried a stale comment (predating the ELITEA-1886 dispatch) claiming ChatConversationStarters.jsx's chat-conversation-starter-tile call site was 'intentionally left unwired per canon ruling #511'. It was actually wired for ELITEA-1886 (EliteaAI/EliteaUI@afb48435, 2026-08-07) and is live on main automation/testids — corrected the comment in place so a future implementer doesn't re-add… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL (PLAUSIBLE) — ELITEA-2177's and ELITEA-2465's tests likely exercise the WRONG React call site, undermining the AFS's own 'fresh coverage, not already-covered' argument. Both tests call `_open_new_conversation()` (waits for `chat.new_conversation_greeting`, which `chat_page.py:5753-5759` documents as 'visible only for a brand-new, unsent conversation') and then IMMEDIATELY add the agent pa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:249-276,580-611"
+        },
+        {
+          "kind": "defect",
+          "note": "Locator constructed directly in the spec file: `row = popper.locator(chat.PARTICIPANT_ROW.format(unique_id))` inside `test_add_agent_with_starters_and_send_via_starter`'s Step 5 block. `.agents/testing.md` § Locator policy and `.agents/conventions.md` Hard Don'ts are explicit: 'Locators live ONLY as page-object class fields... never construct a locator inside a method body... and never in spec fil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:617"
+        },
+        {
+          "kind": "defect",
+          "note": "Per-step assertion attribution drift (ELITEA-2177). Case step 3's own expected result ('Full text inserted in message field') — which the AFS Coverage Map explicitly attributes to 'Step 3' — is asserted only inside the 'Step 4' allure.step block (`assert chat.message_input.input_value() == starter_text` at line ~299). The 'Step 3' block itself (line 295-296) performs only the bare click with zero … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:295-307"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_remove-agent-clears-conversation-starters_ELITEA-2178.md",
+      "branch": "tests/2177-2178-2465-agent-starters-add-remove",
+      "pr": 1567
+    },
+    {
+      "id": "ELITEA-2179",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w12, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Both cases' final step ('waveform reappears' / 'response begins generating') read as if the waveform reappears WHILE the LLM is still streaming. Source- and live-confirmed this is wrong: UserInput.jsx swaps the whole send-button slot to a Stop control while isStreaming is true (neither Send nor waveform render); the waveform only reappears once generation COMPLETES. This matches ChatPage's own pre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "5 new EliteaUI testids added on automation/testids (human cherry-pick to main pending): chat-voice-mode-button, chat-voice-input-button, chat-composer-focus-border (+data-focused), chat-message-sender-name, chat-message-sender-avatar. Commits: EliteaAI/EliteaUI@b84f4f8d, @bfdc3148, @3762995c. Also gave two PRE-EXISTING, previously-uncalled testids (model-settings-button, plus-menu-button) their fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Self-caught mid-session: initially added a 6th testid on LLMModelSelector.jsx's 'field' variant, then live-verified via querySelectorAll against the actual composer that it renders the DEFAULT variant (which already has model-settings-button, unused). Reverted the unused addition same-session (EliteaAI/EliteaUI@293d3aee) before it shipped as dead instrumentation. Logged as a durable memory entry f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Process learning for future combined analyst+implementer dispatches: I wrote the build-half code directly on the batch trunk before committing the AFS/digest separately, catching it before anything broke. Correct sequencing (per the dispatch contract) is: commit+push AFS+digest to the trunk FIRST, THEN cut the feature branch for the build. Recorded in daily memory log so it doesn't recur."
+        },
+        {
+          "kind": "note",
+          "note": "automation/tests/ui/chat/test_streaming_response.py, Step 6 block (~lines 371-379, 'neither button renders while streaming'): uses raw `assert chat.send_button.count() == 0` / `assert chat.voice_mode_button.count() == 0` — a one-shot snapshot with no retry/timeout — right where the test observes an inherently async client-side state transition (isStreaming flipping true). Every other step in the s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_streaming_response.py:371"
+        },
+        {
+          "kind": "question",
+          "note": "The AFS combines ELITEA-2179 (5 steps) and ELITEA-2466 (10 steps, a strict granularity-superset of 2179's flow — every 2179 step maps 1:1 onto a 2466 step) into ONE 'Family AFS' / one test method via two @allure.issue tags. Coverage is genuinely sound — I triangulated every row of both cases' Coverage Maps against the diff and every claimed assertion exists at the claimed step — but the test-case-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_composer-send-button-visibility-toggle_ELITEA-2179.md"
+        },
+        {
+          "kind": "question",
+          "note": "The AFS's Fidelity Declaration documents a case-text drift under the reverse-masking guard: both cases' wording ('waveform reappears... LLM begins responding') reads at a glance like the waveform reappears WHILE streaming; source- and live-confirmed it only reappears once generation COMPLETES (UserInput.jsx renders a Stop control, not SendButton, while isStreaming). The AFS handles this correctly … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Positive finding, not a defect: all 7 testids the diff references (chat-voice-mode-button, chat-voice-input-button, model-settings-button, plus-menu-button, chat-composer-focus-border, chat-message-sender-name, chat-message-sender-avatar) were independently confirmed present on EliteaAI/EliteaUI@automation/testids (git grep after git fetch origin) exactly matching the AFS's provenance table. Zero-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_composer-send-button-visibility-toggle_ELITEA-2179.md",
+      "branch": "tests/2179-2466-composer-send-button-waveform-toggle",
+      "pr": 1568
+    },
+    {
+      "id": "ELITEA-2182",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED (2/2 deterministic): clicking the composer's Stop control during response generation wipes the ENTIRE message exchange for that turn (the user's own sent prompt AND the partial AI reply) — both from the UI and server-side. Verified via direct REST GET on the conversation's own endpoint (message_groups_count:0, message_groups:[]) persisting after a full page reload, on two independent fre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1569"
+        },
+        {
+          "kind": "note",
+          "note": "Chat composer's Stop control (UserInput.jsx ~line 552-562, onClick={onStop}, <StopIcon>) has NO data-testid today. Both AFS files spec 'testid needed: chat-stop-generation-button' as implementer work (add-data-testid), not added during this analysis pass. Renders in the same footer slot the already-merged composer-send-button test proves is neither Send nor waveform during streaming (by eliminatio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed Playwright-MCP gotcha (previously documented by the composer-send-button AFS): navigating to the bare http://localhost:5173/chat URL can silently redirect to the last-viewed conversation instead of a genuinely fresh/blank composer. Forcing a true new conversation requires clicking the sidebar's '+ Chat' button (testid sidebar-create-button) instead of a bare navigation. Recorded in tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_stop-button-appears-during-response-generation_ELITEA-2182.md"
+    },
+    {
+      "id": "ELITEA-2183",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED (2/2 deterministic): clicking the composer's Stop control during response generation wipes the ENTIRE message exchange for that turn (the user's own sent prompt AND the partial AI reply) — both from the UI and server-side. Verified via direct REST GET on the conversation's own endpoint (message_groups_count:0, message_groups:[]) persisting after a full page reload, on two independent fre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1569"
+        },
+        {
+          "kind": "note",
+          "note": "Chat composer's Stop control (UserInput.jsx ~line 552-562, onClick={onStop}, <StopIcon>) has NO data-testid today. Both AFS files spec 'testid needed: chat-stop-generation-button' as implementer work (add-data-testid), not added during this analysis pass. Renders in the same footer slot the already-merged composer-send-button test proves is neither Send nor waveform during streaming (by eliminatio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed Playwright-MCP gotcha (previously documented by the composer-send-button AFS): navigating to the bare http://localhost:5173/chat URL can silently redirect to the last-viewed conversation instead of a genuinely fresh/blank composer. Forcing a true new conversation requires clicking the sidebar's '+ Chat' button (testid sidebar-create-button) instead of a bare navigation. Recorded in tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_after-stopping-generation-new-message-sent-normally_ELITEA-2183.md"
+    },
+    {
+      "id": "ELITEA-2184",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w12, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Re-confirmed (3rd independent occurrence) that clicking Stop mid-stream wipes the ENTIRE message exchange, not just the streaming response. This directly blocks ELITEA-2186's precondition. Cross-referenced, not re-filed (dedup: same object/trigger/expected-actual as the ELITEA-2182 filing).",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1569"
+        },
+        {
+          "kind": "note",
+          "note": "Batch trunk tests/batch-chat-remaining-w12 had pre-existing UNCOMMITTED local modifications (test_streaming_response.py + an AFS file) on top of WIP commit d2c3dcc2 ('verification run in progress', ELITEA-2182/2183) plus an untracked memory file, when this dispatch started. Left completely untouched per the never-clean-wholesale rule, but the lead should check whether that unit is still active or … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New, previously-undocumented product behavior confirmed live: chat-regenerate-button/chat-delete-button testids are last-AI-message-EXCLUSIVE by design (isLastMessage-gated in the DOM, not merely CSS-hover-hidden), while chat-copy-button/chat-read-out-button render on every AI message. Recorded in test-specs/chat-interface/_surface.md and .agents/memory/test-automation-engineer/chat_regenerate_act… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2184 and ELITEA-2187 are near-duplicate TMS cases (identical 'Regenerate visible only on last response' assertion; 2187 additionally requires 3+ message pairs and adds a click-triggers-generation step). Handled as a family AFS per team convention rather than flagging as a TMS-authoring question - no action needed from the lead unless the team wants the TMS cases themselves consolidated."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2185: AFS Coverage Map row 3 (test-specs/chat-interface/l2_regenerate-replaces-response-with-new-generation_ELITEA-2185.md) claims the implementation asserts the RotatingMessages/Thought-accordion/model-chip sequence ('reused ELITEA-2181 contract'), citing the exact page-object handles `chat.answer_loading_placeholder` / `chat.answer_thought_accordion` / `chat.answer_model_chip` used in tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:355-359"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2185's and ELITEA-2187's 'text differs from pre-regenerate text' check is a `logger.warning` only (test_regenerate_response.py:285-290, :385-390), not a hard assert. AFS Axis 2 rationalizes this as avoiding a false failure on a 'coincidentally identical' LLM completion, but for ELITEA-2185 specifically this is the case's own headline claim ('Clicking Regenerate Generates a New Response...')… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:385-390"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: ELITEA-2184's case step 1 ('Scroll to the last LLM response → Last response visible') has no explicit `expect(last_message).to_be_visible()` as the AFS Coverage Map row claims — visibility is only implicitly enforced via `scroll_into_view_if_needed()` + `.hover()`'s actionability checks (test_regenerate_response.py:150-152). Functionally equivalent (hover() would time out on a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:150"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: family AFS's Coverage Map row for ELITEA-2184 step 2 says 'assert 4 scoped icon locators visible', but the implementation checks Regenerate via the PAGE-WIDE `chat.regenerate_action_button` field (not `last_message.locator(chat.REGENERATE_ACTION_BUTTON)`) while the other 3 icons use the scoped constants. This is deliberate and functionally sound per the page-object's own docst… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:626-636"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run on the full diff (origin/tests/batch-chat-remaining-w12...origin/tests/2184-2187-regenerate-response, scoped to automation/): fidelity/substitution grep `\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(` → 0 hits (clean, no substitution). Locator grep `get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2184/2185/2187 (this PR) otherwise triangulate cleanly against their case snapshots and AFS: setup math (message-index arithmetic across _send_and_wait calls), the DOM-wide count==1 exclusivity assertion for ELITEA-2184, the earlier-vs-last scoped absence/presence checks for ELITEA-2187, and the user-message-unchanged / in-place-replace / count-unchanged checks for ELITEA-2185 all match the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_regenerate-visible-and-exclusive-to-last-response_ELITEA-2184_2187.md"
+        },
+        {
+          "kind": "note",
+          "note": "Branch tests/2184-2187-regenerate-response had pre-existing UNCOMMITTED changes not related to this fix-round dispatch: automation/tests/ui/chat/test_streaming_response.py (a #1570 console-warning filter/soft-fail pattern), test-specs/chat-interface/l1_stop-button-appears-during-response-generation_ELITEA-2182.md, and an untracked memory file .agents/memory/test-automation-engineer/stop_generation… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both fixed assertions were verified live against the real DEV backend, not just made syntactically correct: 2 consecutive full-file runs (6 total test executions across the 2 affected tests) all produced genuinely differing pre/post-regenerate text and all showed the full RotatingMessages/Thought-accordion/model-chip sequence — the theoretical LLM-coincidence flake risk the original AFS hedged aga… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1571"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (ELITEA-2185 AFS Coverage-Map row 3) is FIXED, verified by code inspection: test_regenerate_response.py:380-383 now asserts chat.answer_loading_placeholder, chat.answer_thought_accordion, chat.answer_model_chip visible (in addition to the pre-existing chat.stop_generation_button check), matching the AFS's 'reused ELITEA-2181 contract' claim. Sequence is copied verbatim from the est… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:380-383"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (demoted logger.warning) is FIXED, verified by code inspection: both ELITEA-2187 (test_regenerate_response.py:299-303) and ELITEA-2185 (test_regenerate_response.py:422-426) now use a hard assert post_click_body != pre_click_body instead of a logged/soft comparison. The unused logging import/logger noted in the fix commit message is confirmed gone (grep for logging/logger in the fil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:299-303,422-426"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity-substitution grep on the full unit diff (tests/batch-chat-remaining-w12...tests/2184-2187-regenerate-response, automation/ scope): git diff ... -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()' -> 0 hits."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the same diff: git diff ... -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' -> 10 real hits, all .locator(chat.REGENERATE_ACTION_BUTTON|DELETE_ACTION_BUTTON|COPY_ACTION_BUTTON|READ_OUT_ACTION_BUTTON) referencing UPPER_CASE class constants whose… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:640-643"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on the shared chat_page.py: git diff ... -- automation/pages/chat_page.py | grep -E '^-[^-]' -> 0 hits (no existing lines removed). ruff check on the new test file and on the diff's chat_page.py line range (600-790) is clean; the 36 pre-existing ruff errors in chat_page.py are all outside the diff (e.g. lines 5845, 6912, unrelated pre-existing E501s and a duplicate-method warni… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All testids used (chat-regenerate-button, chat-delete-button, chat-copy-button, chat-read-out-button, chat-stop-generation-button, chat-answer-loading-placeholder, chat-answer-thought-accordion, chat-answer-model-chip, chat-message-item) are pre-existing (ELITEA-2181/2182/2183) and unchanged by this PR -- no new EliteaUI testid work or promotability gap introduced by this unit."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_regenerate-visible-and-exclusive-to-last-response_ELITEA-2184_2187.md",
+      "branch": "tests/2184-2187-regenerate-response",
+      "pr": 1571
+    },
+    {
+      "id": "ELITEA-2185",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w12, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Re-confirmed (3rd independent occurrence) that clicking Stop mid-stream wipes the ENTIRE message exchange, not just the streaming response. This directly blocks ELITEA-2186's precondition. Cross-referenced, not re-filed (dedup: same object/trigger/expected-actual as the ELITEA-2182 filing).",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1569"
+        },
+        {
+          "kind": "note",
+          "note": "Batch trunk tests/batch-chat-remaining-w12 had pre-existing UNCOMMITTED local modifications (test_streaming_response.py + an AFS file) on top of WIP commit d2c3dcc2 ('verification run in progress', ELITEA-2182/2183) plus an untracked memory file, when this dispatch started. Left completely untouched per the never-clean-wholesale rule, but the lead should check whether that unit is still active or … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New, previously-undocumented product behavior confirmed live: chat-regenerate-button/chat-delete-button testids are last-AI-message-EXCLUSIVE by design (isLastMessage-gated in the DOM, not merely CSS-hover-hidden), while chat-copy-button/chat-read-out-button render on every AI message. Recorded in test-specs/chat-interface/_surface.md and .agents/memory/test-automation-engineer/chat_regenerate_act… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2184 and ELITEA-2187 are near-duplicate TMS cases (identical 'Regenerate visible only on last response' assertion; 2187 additionally requires 3+ message pairs and adds a click-triggers-generation step). Handled as a family AFS per team convention rather than flagging as a TMS-authoring question - no action needed from the lead unless the team wants the TMS cases themselves consolidated."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2185: AFS Coverage Map row 3 (test-specs/chat-interface/l2_regenerate-replaces-response-with-new-generation_ELITEA-2185.md) claims the implementation asserts the RotatingMessages/Thought-accordion/model-chip sequence ('reused ELITEA-2181 contract'), citing the exact page-object handles `chat.answer_loading_placeholder` / `chat.answer_thought_accordion` / `chat.answer_model_chip` used in tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:355-359"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2185's and ELITEA-2187's 'text differs from pre-regenerate text' check is a `logger.warning` only (test_regenerate_response.py:285-290, :385-390), not a hard assert. AFS Axis 2 rationalizes this as avoiding a false failure on a 'coincidentally identical' LLM completion, but for ELITEA-2185 specifically this is the case's own headline claim ('Clicking Regenerate Generates a New Response...')… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:385-390"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: ELITEA-2184's case step 1 ('Scroll to the last LLM response → Last response visible') has no explicit `expect(last_message).to_be_visible()` as the AFS Coverage Map row claims — visibility is only implicitly enforced via `scroll_into_view_if_needed()` + `.hover()`'s actionability checks (test_regenerate_response.py:150-152). Functionally equivalent (hover() would time out on a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:150"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: family AFS's Coverage Map row for ELITEA-2184 step 2 says 'assert 4 scoped icon locators visible', but the implementation checks Regenerate via the PAGE-WIDE `chat.regenerate_action_button` field (not `last_message.locator(chat.REGENERATE_ACTION_BUTTON)`) while the other 3 icons use the scoped constants. This is deliberate and functionally sound per the page-object's own docst… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:626-636"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run on the full diff (origin/tests/batch-chat-remaining-w12...origin/tests/2184-2187-regenerate-response, scoped to automation/): fidelity/substitution grep `\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(` → 0 hits (clean, no substitution). Locator grep `get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2184/2185/2187 (this PR) otherwise triangulate cleanly against their case snapshots and AFS: setup math (message-index arithmetic across _send_and_wait calls), the DOM-wide count==1 exclusivity assertion for ELITEA-2184, the earlier-vs-last scoped absence/presence checks for ELITEA-2187, and the user-message-unchanged / in-place-replace / count-unchanged checks for ELITEA-2185 all match the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_regenerate-visible-and-exclusive-to-last-response_ELITEA-2184_2187.md"
+        },
+        {
+          "kind": "note",
+          "note": "Branch tests/2184-2187-regenerate-response had pre-existing UNCOMMITTED changes not related to this fix-round dispatch: automation/tests/ui/chat/test_streaming_response.py (a #1570 console-warning filter/soft-fail pattern), test-specs/chat-interface/l1_stop-button-appears-during-response-generation_ELITEA-2182.md, and an untracked memory file .agents/memory/test-automation-engineer/stop_generation… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both fixed assertions were verified live against the real DEV backend, not just made syntactically correct: 2 consecutive full-file runs (6 total test executions across the 2 affected tests) all produced genuinely differing pre/post-regenerate text and all showed the full RotatingMessages/Thought-accordion/model-chip sequence — the theoretical LLM-coincidence flake risk the original AFS hedged aga… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1571"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (ELITEA-2185 AFS Coverage-Map row 3) is FIXED, verified by code inspection: test_regenerate_response.py:380-383 now asserts chat.answer_loading_placeholder, chat.answer_thought_accordion, chat.answer_model_chip visible (in addition to the pre-existing chat.stop_generation_button check), matching the AFS's 'reused ELITEA-2181 contract' claim. Sequence is copied verbatim from the est… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:380-383"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (demoted logger.warning) is FIXED, verified by code inspection: both ELITEA-2187 (test_regenerate_response.py:299-303) and ELITEA-2185 (test_regenerate_response.py:422-426) now use a hard assert post_click_body != pre_click_body instead of a logged/soft comparison. The unused logging import/logger noted in the fix commit message is confirmed gone (grep for logging/logger in the fil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:299-303,422-426"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity-substitution grep on the full unit diff (tests/batch-chat-remaining-w12...tests/2184-2187-regenerate-response, automation/ scope): git diff ... -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()' -> 0 hits."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the same diff: git diff ... -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' -> 10 real hits, all .locator(chat.REGENERATE_ACTION_BUTTON|DELETE_ACTION_BUTTON|COPY_ACTION_BUTTON|READ_OUT_ACTION_BUTTON) referencing UPPER_CASE class constants whose… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:640-643"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on the shared chat_page.py: git diff ... -- automation/pages/chat_page.py | grep -E '^-[^-]' -> 0 hits (no existing lines removed). ruff check on the new test file and on the diff's chat_page.py line range (600-790) is clean; the 36 pre-existing ruff errors in chat_page.py are all outside the diff (e.g. lines 5845, 6912, unrelated pre-existing E501s and a duplicate-method warni… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All testids used (chat-regenerate-button, chat-delete-button, chat-copy-button, chat-read-out-button, chat-stop-generation-button, chat-answer-loading-placeholder, chat-answer-thought-accordion, chat-answer-model-chip, chat-message-item) are pre-existing (ELITEA-2181/2182/2183) and unchanged by this PR -- no new EliteaUI testid work or promotability gap introduced by this unit."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_regenerate-replaces-response-with-new-generation_ELITEA-2185.md",
+      "branch": "tests/2184-2187-regenerate-response",
+      "pr": 1571
+    },
+    {
+      "id": "ELITEA-2186",
+      "outcome": "blocked",
+      "note": "Case's own precondition ('a conversation where a previous generation was stopped exists') cannot be honestly constructed against the live product. Reproduced live, deterministically, on the first attempt using the case's own 'generate a poem' Test Data: clicking Stop mid-stream removes the ENTIRE exchange (user message + partial AI reply), not just the streaming response - no 'stopped response' re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Re-confirmed (3rd independent occurrence) that clicking Stop mid-stream wipes the ENTIRE message exchange, not just the streaming response. This directly blocks ELITEA-2186's precondition. Cross-referenced, not re-filed (dedup: same object/trigger/expected-actual as the ELITEA-2182 filing).",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1569"
+        },
+        {
+          "kind": "note",
+          "note": "Batch trunk tests/batch-chat-remaining-w12 had pre-existing UNCOMMITTED local modifications (test_streaming_response.py + an AFS file) on top of WIP commit d2c3dcc2 ('verification run in progress', ELITEA-2182/2183) plus an untracked memory file, when this dispatch started. Left completely untouched per the never-clean-wholesale rule, but the lead should check whether that unit is still active or … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New, previously-undocumented product behavior confirmed live: chat-regenerate-button/chat-delete-button testids are last-AI-message-EXCLUSIVE by design (isLastMessage-gated in the DOM, not merely CSS-hover-hidden), while chat-copy-button/chat-read-out-button render on every AI message. Recorded in test-specs/chat-interface/_surface.md and .agents/memory/test-automation-engineer/chat_regenerate_act… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2184 and ELITEA-2187 are near-duplicate TMS cases (identical 'Regenerate visible only on last response' assertion; 2187 additionally requires 3+ message pairs and adds a click-triggers-generation step). Handled as a family AFS per team convention rather than flagging as a TMS-authoring question - no action needed from the lead unless the team wants the TMS cases themselves consolidated."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_regenerate-after-stopped-generation_ELITEA-2186.md"
+    },
+    {
+      "id": "ELITEA-2187",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w12, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Re-confirmed (3rd independent occurrence) that clicking Stop mid-stream wipes the ENTIRE message exchange, not just the streaming response. This directly blocks ELITEA-2186's precondition. Cross-referenced, not re-filed (dedup: same object/trigger/expected-actual as the ELITEA-2182 filing).",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1569"
+        },
+        {
+          "kind": "note",
+          "note": "Batch trunk tests/batch-chat-remaining-w12 had pre-existing UNCOMMITTED local modifications (test_streaming_response.py + an AFS file) on top of WIP commit d2c3dcc2 ('verification run in progress', ELITEA-2182/2183) plus an untracked memory file, when this dispatch started. Left completely untouched per the never-clean-wholesale rule, but the lead should check whether that unit is still active or … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New, previously-undocumented product behavior confirmed live: chat-regenerate-button/chat-delete-button testids are last-AI-message-EXCLUSIVE by design (isLastMessage-gated in the DOM, not merely CSS-hover-hidden), while chat-copy-button/chat-read-out-button render on every AI message. Recorded in test-specs/chat-interface/_surface.md and .agents/memory/test-automation-engineer/chat_regenerate_act… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2184 and ELITEA-2187 are near-duplicate TMS cases (identical 'Regenerate visible only on last response' assertion; 2187 additionally requires 3+ message pairs and adds a click-triggers-generation step). Handled as a family AFS per team convention rather than flagging as a TMS-authoring question - no action needed from the lead unless the team wants the TMS cases themselves consolidated."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2185: AFS Coverage Map row 3 (test-specs/chat-interface/l2_regenerate-replaces-response-with-new-generation_ELITEA-2185.md) claims the implementation asserts the RotatingMessages/Thought-accordion/model-chip sequence ('reused ELITEA-2181 contract'), citing the exact page-object handles `chat.answer_loading_placeholder` / `chat.answer_thought_accordion` / `chat.answer_model_chip` used in tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:355-359"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2185's and ELITEA-2187's 'text differs from pre-regenerate text' check is a `logger.warning` only (test_regenerate_response.py:285-290, :385-390), not a hard assert. AFS Axis 2 rationalizes this as avoiding a false failure on a 'coincidentally identical' LLM completion, but for ELITEA-2185 specifically this is the case's own headline claim ('Clicking Regenerate Generates a New Response...')… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:385-390"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: ELITEA-2184's case step 1 ('Scroll to the last LLM response → Last response visible') has no explicit `expect(last_message).to_be_visible()` as the AFS Coverage Map row claims — visibility is only implicitly enforced via `scroll_into_view_if_needed()` + `.hover()`'s actionability checks (test_regenerate_response.py:150-152). Functionally equivalent (hover() would time out on a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:150"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: family AFS's Coverage Map row for ELITEA-2184 step 2 says 'assert 4 scoped icon locators visible', but the implementation checks Regenerate via the PAGE-WIDE `chat.regenerate_action_button` field (not `last_message.locator(chat.REGENERATE_ACTION_BUTTON)`) while the other 3 icons use the scoped constants. This is deliberate and functionally sound per the page-object's own docst… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:626-636"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps run on the full diff (origin/tests/batch-chat-remaining-w12...origin/tests/2184-2187-regenerate-response, scoped to automation/): fidelity/substitution grep `\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(` → 0 hits (clean, no substitution). Locator grep `get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2184/2185/2187 (this PR) otherwise triangulate cleanly against their case snapshots and AFS: setup math (message-index arithmetic across _send_and_wait calls), the DOM-wide count==1 exclusivity assertion for ELITEA-2184, the earlier-vs-last scoped absence/presence checks for ELITEA-2187, and the user-message-unchanged / in-place-replace / count-unchanged checks for ELITEA-2185 all match the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_regenerate-visible-and-exclusive-to-last-response_ELITEA-2184_2187.md"
+        },
+        {
+          "kind": "note",
+          "note": "Branch tests/2184-2187-regenerate-response had pre-existing UNCOMMITTED changes not related to this fix-round dispatch: automation/tests/ui/chat/test_streaming_response.py (a #1570 console-warning filter/soft-fail pattern), test-specs/chat-interface/l1_stop-button-appears-during-response-generation_ELITEA-2182.md, and an untracked memory file .agents/memory/test-automation-engineer/stop_generation… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both fixed assertions were verified live against the real DEV backend, not just made syntactically correct: 2 consecutive full-file runs (6 total test executions across the 2 affected tests) all produced genuinely differing pre/post-regenerate text and all showed the full RotatingMessages/Thought-accordion/model-chip sequence — the theoretical LLM-coincidence flake risk the original AFS hedged aga… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1571"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (ELITEA-2185 AFS Coverage-Map row 3) is FIXED, verified by code inspection: test_regenerate_response.py:380-383 now asserts chat.answer_loading_placeholder, chat.answer_thought_accordion, chat.answer_model_chip visible (in addition to the pre-existing chat.stop_generation_button check), matching the AFS's 'reused ELITEA-2181 contract' claim. Sequence is copied verbatim from the est… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:380-383"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (demoted logger.warning) is FIXED, verified by code inspection: both ELITEA-2187 (test_regenerate_response.py:299-303) and ELITEA-2185 (test_regenerate_response.py:422-426) now use a hard assert post_click_body != pre_click_body instead of a logged/soft comparison. The unused logging import/logger noted in the fix commit message is confirmed gone (grep for logging/logger in the fil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_regenerate_response.py:299-303,422-426"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity-substitution grep on the full unit diff (tests/batch-chat-remaining-w12...tests/2184-2187-regenerate-response, automation/ scope): git diff ... -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()' -> 0 hits."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the same diff: git diff ... -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' -> 10 real hits, all .locator(chat.REGENERATE_ACTION_BUTTON|DELETE_ACTION_BUTTON|COPY_ACTION_BUTTON|READ_OUT_ACTION_BUTTON) referencing UPPER_CASE class constants whose… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:640-643"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on the shared chat_page.py: git diff ... -- automation/pages/chat_page.py | grep -E '^-[^-]' -> 0 hits (no existing lines removed). ruff check on the new test file and on the diff's chat_page.py line range (600-790) is clean; the 36 pre-existing ruff errors in chat_page.py are all outside the diff (e.g. lines 5845, 6912, unrelated pre-existing E501s and a duplicate-method warni… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All testids used (chat-regenerate-button, chat-delete-button, chat-copy-button, chat-read-out-button, chat-stop-generation-button, chat-answer-loading-placeholder, chat-answer-thought-accordion, chat-answer-model-chip, chat-message-item) are pre-existing (ELITEA-2181/2182/2183) and unchanged by this PR -- no new EliteaUI testid work or promotability gap introduced by this unit."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_regenerate-visible-and-exclusive-to-last-response_ELITEA-2184_2187.md",
+      "branch": "tests/2184-2187-regenerate-response",
+      "pr": 1571
+    },
+    {
+      "id": "ELITEA-2465",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Testid gap (implementer work, not a bug): AgentEditorPanel.jsx's composer 'X' / remove-participant icon button (aria-label=\"switch to model\", tooltip \"Switch to model\") has NO data-testid at all, in either of its two render branches (~line 178 collapsed/loading view, ~line 294 full view). ELITEA-2465's own case step 4 needs to verify this icon's presence. Recommended name: chat-switch-to-model-but… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/features/chat/ui/chat-input/AgentEditorPanel.jsx"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2178's case text expects the remove-agent confirmation modal to read \"Are you sure to remove the Claude B agent from conversation?\" -- live product reads \"...agent from chat?\" (word difference: conversation -> chat). Live product is correct/current; case text is stale. Not filed as a defect per the reverse-masking guard -- documented in the AFS's Test Data section for the implementer to ass… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_remove-agent-clears-conversation-starters_ELITEA-2178.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case family's own example agent name 'Claude B' does not exist in either project checked (Private/399, Elitea Testing Team/471) -- confirmed via full agent listing in both. All three AFS route around this by specifying a disposable-agent test-data setup instead (or the pre-existing Catalog agent 'StarterComposer' as a quick manual alternative)."
+        },
+        {
+          "kind": "note",
+          "note": "Backend inconsistency (not filed as a ticket, workaround exists): POST .../elitea_core/applications/prompt_lib/{project} silently accepts llm_settings.reasoning_effort:\"none\" (201, bad value persisted); POST .../elitea_core/participants/prompt_lib/{project}/{conv_id} for that same agent then 400s with a Pydantic literal-enum error (only low/medium/high accepted). Asymmetric validation between the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The Playwright MCP browser's persistent profile can default to a DIFFERENT active project than .env.test's ELITEA_PROJECT_ID -- this session opened on project 471 instead of the expected 399, making API-seeded test data invisible in the UI's own agent search until the project switcher was used to align them. Logged to qa-engineer memory as an indexed (preventive) entry since it changes the first m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "chat-send-button force=True click silently no-ops right after a conversation-starter-tile click populates the composer — confirmed as a SECOND independent flow hitting the same race class already documented for ELITEA-2093 (Agent Hub modal starter). Fixed with a plain .click(); memory entry chat_send_button_force_click_race.md updated with Recurrence 2. Worth generalizing the lesson beyond 'the Ag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.is_participants_badge_visible() only waits for state=visible, so `assert not is_participants_badge_visible(...)` right after a removal click can read 'still visible' a moment before the DOM update lands (positive-existence wait asserting a negative transition). Added ChatPage.wait_for_participants_badge_absent(section, timeout) as the correct fix — any other test asserting badge absence r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "The participants-popover row (PARTICIPANT_ROW) renders a literal 'Participant Name' loading-skeleton placeholder before its real content settles — a one-shot wait_for(visible)+text_content() read can capture the placeholder instead of the real name. Fixed via expect(row).to_contain_text(name, timeout=...). Any future case reading a participant row's name (popover OR the expanded side-panel form) s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py"
+        },
+        {
+          "kind": "note",
+          "note": "chat_page.py carried a stale comment (predating the ELITEA-1886 dispatch) claiming ChatConversationStarters.jsx's chat-conversation-starter-tile call site was 'intentionally left unwired per canon ruling #511'. It was actually wired for ELITEA-1886 (EliteaAI/EliteaUI@afb48435, 2026-08-07) and is live on main automation/testids — corrected the comment in place so a future implementer doesn't re-add… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL (PLAUSIBLE) — ELITEA-2177's and ELITEA-2465's tests likely exercise the WRONG React call site, undermining the AFS's own 'fresh coverage, not already-covered' argument. Both tests call `_open_new_conversation()` (waits for `chat.new_conversation_greeting`, which `chat_page.py:5753-5759` documents as 'visible only for a brand-new, unsent conversation') and then IMMEDIATELY add the agent pa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:249-276,580-611"
+        },
+        {
+          "kind": "defect",
+          "note": "Locator constructed directly in the spec file: `row = popper.locator(chat.PARTICIPANT_ROW.format(unique_id))` inside `test_add_agent_with_starters_and_send_via_starter`'s Step 5 block. `.agents/testing.md` § Locator policy and `.agents/conventions.md` Hard Don'ts are explicit: 'Locators live ONLY as page-object class fields... never construct a locator inside a method body... and never in spec fil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:617"
+        },
+        {
+          "kind": "defect",
+          "note": "Per-step assertion attribution drift (ELITEA-2177). Case step 3's own expected result ('Full text inserted in message field') — which the AFS Coverage Map explicitly attributes to 'Step 3' — is asserted only inside the 'Step 4' allure.step block (`assert chat.message_input.input_value() == starter_text` at line ~299). The 'Step 3' block itself (line 295-296) performs only the bare click with zero … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_agent_starters_add_remove.py:295-307"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_add-agent-with-starters-and-send-via-starter_ELITEA-2465.md",
+      "branch": "tests/2177-2178-2465-agent-starters-add-remove",
+      "pr": 1567
+    },
+    {
+      "id": "ELITEA-2466",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w12, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Both cases' final step ('waveform reappears' / 'response begins generating') read as if the waveform reappears WHILE the LLM is still streaming. Source- and live-confirmed this is wrong: UserInput.jsx swaps the whole send-button slot to a Stop control while isStreaming is true (neither Send nor waveform render); the waveform only reappears once generation COMPLETES. This matches ChatPage's own pre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "5 new EliteaUI testids added on automation/testids (human cherry-pick to main pending): chat-voice-mode-button, chat-voice-input-button, chat-composer-focus-border (+data-focused), chat-message-sender-name, chat-message-sender-avatar. Commits: EliteaAI/EliteaUI@b84f4f8d, @bfdc3148, @3762995c. Also gave two PRE-EXISTING, previously-uncalled testids (model-settings-button, plus-menu-button) their fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Self-caught mid-session: initially added a 6th testid on LLMModelSelector.jsx's 'field' variant, then live-verified via querySelectorAll against the actual composer that it renders the DEFAULT variant (which already has model-settings-button, unused). Reverted the unused addition same-session (EliteaAI/EliteaUI@293d3aee) before it shipped as dead instrumentation. Logged as a durable memory entry f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Process learning for future combined analyst+implementer dispatches: I wrote the build-half code directly on the batch trunk before committing the AFS/digest separately, catching it before anything broke. Correct sequencing (per the dispatch contract) is: commit+push AFS+digest to the trunk FIRST, THEN cut the feature branch for the build. Recorded in daily memory log so it doesn't recur."
+        },
+        {
+          "kind": "note",
+          "note": "automation/tests/ui/chat/test_streaming_response.py, Step 6 block (~lines 371-379, 'neither button renders while streaming'): uses raw `assert chat.send_button.count() == 0` / `assert chat.voice_mode_button.count() == 0` — a one-shot snapshot with no retry/timeout — right where the test observes an inherently async client-side state transition (isStreaming flipping true). Every other step in the s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_streaming_response.py:371"
+        },
+        {
+          "kind": "question",
+          "note": "The AFS combines ELITEA-2179 (5 steps) and ELITEA-2466 (10 steps, a strict granularity-superset of 2179's flow — every 2179 step maps 1:1 onto a 2466 step) into ONE 'Family AFS' / one test method via two @allure.issue tags. Coverage is genuinely sound — I triangulated every row of both cases' Coverage Maps against the diff and every claimed assertion exists at the claimed step — but the test-case-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_composer-send-button-visibility-toggle_ELITEA-2179.md"
+        },
+        {
+          "kind": "question",
+          "note": "The AFS's Fidelity Declaration documents a case-text drift under the reverse-masking guard: both cases' wording ('waveform reappears... LLM begins responding') reads at a glance like the waveform reappears WHILE streaming; source- and live-confirmed it only reappears once generation COMPLETES (UserInput.jsx renders a Stop control, not SendButton, while isStreaming). The AFS handles this correctly … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Positive finding, not a defect: all 7 testids the diff references (chat-voice-mode-button, chat-voice-input-button, model-settings-button, plus-menu-button, chat-composer-focus-border, chat-message-sender-name, chat-message-sender-avatar) were independently confirmed present on EliteaAI/EliteaUI@automation/testids (git grep after git fetch origin) exactly matching the AFS's provenance table. Zero-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_composer-send-button-visibility-toggle_ELITEA-2179.md",
+      "branch": "tests/2179-2466-composer-send-button-waveform-toggle",
+      "pr": 1568
+    }
+  ],
+  "totals": {
+    "blocked": 6,
+    "merged-ungated": 5
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

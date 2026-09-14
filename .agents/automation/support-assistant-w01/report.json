@@ -1,0 +1,511 @@
+{
+  "batch": "support-assistant-w01",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1400",
+  "integration_branch": "tests/batch-support-assistant-w01",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      269.92,
+      262.89,
+      323.71
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2418",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Bug #1581 ('Support Assistant send button never enables when typing actual text') is STALE and does NOT reproduce - re-verified twice on 2026-08-22. It was an artefact of synthetic typing (input.value assignment + hand-dispatched InputEvent) against a React controlled <textarea>: the DOM shows the text but component state never updates, so disabled={!text.trim()} stays true. Real typing (fill/type… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1581"
+        },
+        {
+          "kind": "note",
+          "note": "This AFS SUPERSEDES the previously merged defect-found AFS for the same case (commit d472a6103). Same path, rewritten in full, with a Classification note explaining the supersession. That prior AFS itself flagged the contradiction (an existing smoke test sends messages fine) and shipped defect-found anyway - worth knowing when weighing similar 'control never enables' findings.",
+          "ref": "test-specs/support-assistant/l2_empty_message_cannot_be_sent_ELITEA-2418.md"
+        },
+        {
+          "kind": "note",
+          "note": "Trap for EVERY Support Assistant case in this batch: the widget RESTORES the user's prior conversation on open (16 message wrappers in this run). Any 'conversation unchanged' assertion must capture a baseline count and compare a delta - an absolute to_have_count(0)/(1) will false-fail. Recorded in the new _surface.md digest.",
+          "ref": "test-specs/support-assistant/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work for this case spans two repos and is entirely greenfield: ../elitea_assistant/src contains ZERO data-testid attributes today. Needed: sidebar-support-assistant-button (EliteaUI, src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx:294-298 - the Box that owns onClick), plus support-assistant-widget / -widget-title / -message-input / -send-button / -message-item in elitea_assistant. Per can… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Launcher click quirk re-confirmed live: a native click on button.elitea-assistant-button is intercepted by the MUI Tooltip clone. Clicking the wrapper [data-tour=\"sidebar-support-assistant\"] works first try and is a genuine user-equivalent gesture - no page.evaluate needed (the legacy SupportAssistantPage.open_widget() still JS-clicks; tech debt).",
+          "ref": "automation/pages/support_assistant_page.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Console assertions on this surface must filter to type == 'error': the Vite dev server emits a 'Module \"stream\" has been externalized for browser compatibility' WARNING on every load of /chat. Asserting 'no console messages' would false-fail. (Only console output in the entire run - no errors.)"
+        },
+        {
+          "kind": "note",
+          "note": "Created the first exploration digest for this surface, test-specs/support-assistant/_surface.md (two-repo handle map, launcher quirk, restored-conversation trap, send-button contract, 33-135s reply latency with NO token streaming, Vite console-warning filter). Later units in support-assistant-w01 should read it before exploring.",
+          "ref": "test-specs/support-assistant/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The Vite dev server does NOT hot-reload edits under OneDrive — fs-watch never fires, so a freshly added testid is correct on disk but the server keeps serving the pre-edit module and get_by_test_id times out. Cost this unit its one rerun. Diagnose in one second with `curl -s http://localhost:5173/src/<path>.jsx | grep -c <testid>` (0 => stale; connected-repo modules are served under /@fs<abs-path>… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/_surface.md"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS Axis-2 specified 'zero POST requests' as the network-level proof that Enter sends nothing. That observable is vacuously true: the Support Assistant sends over Socket.IO, not HTTP — src/lib/hooks/chat.hook.ts:152 does socket.emit(SOCKET_EVENTS.PREDICT, params). A broken early-return in handleSend would emit a WS frame and produce zero POSTs anyway, so the AFS assertion could never have failed. … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_empty_message_cannot_be_sent_ELITEA-2418.md"
+        },
+        {
+          "kind": "note",
+          "note": "Bug #1581 ('Send button never enables when typing actual text') is confirmed non-reproducing for a third time — this time by the automated test itself, which asserts a hard expect(send_button).to_be_enabled() after typing and passes. Root cause of the original report: synthetic input.value assignment + hand-dispatched InputEvent, which a React controlled <textarea> ignores. Per the AFS I added no … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1581"
+        },
+        {
+          "kind": "note",
+          "note": "No '[Automate][ELITEA-2418]' tracking card exists on board #9 — the only issue matching the case id is the (stale) bug #1581. Phase-6 step 5 (comment the PR link on the originating issue) therefore had no target and was skipped rather than invented; the PR link is not lost, it is on the batch trunk PR path. Flagging so the orchestrator can decide whether the batch's intake sweep missed this case o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/pull/1646"
+        },
+        {
+          "kind": "note",
+          "note": "Before this unit, ../elitea_assistant/src contained ZERO data-testid attributes; these five are the first. Its automation/testids branch has a husky/lint-staged pre-commit hook that runs prettier + eslint --fix AND a full tsc --noEmit + vite build on commit (~30s), and EliteaUI's commitlint rejects any subject without an [EL-XXXX] ticket token (ELITEA-2418 must be written [EL-2418]). Both cost a f… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea_assistant"
+        },
+        {
+          "kind": "defect",
+          "note": "Important (flake risk, non-blocking) — the \"no message sent\" proof asserts `posts == []` where `posts` is a PAGE-WIDE capture of every POST request. Any unrelated background POST inside the 1.5 s window (analytics, token refresh, a socket.io polling-transport fallback, a lazy chunk fetch) turns the step red for a reason unrelated to the case. The WebSocket half is done right (`predict_frames_since… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_empty_message.py:257 (and :291)"
+        },
+        {
+          "kind": "defect",
+          "note": "Important (race, non-blocking) — `baseline_count` is read immediately after the widget opens (title + input visible), but the widget RESTORES the prior session asynchronously (16 messages in the analyst's run). If a restored message lands after the baseline read, `to_have_count(baseline_count)` fails for 10 s and false-reds. AFS Implementation Note 1 explicitly instructed \"wait for the message-ite… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_empty_message.py:247"
+        },
+        {
+          "kind": "question",
+          "note": "Declared improvisation, reasoning verified sound — two `page.wait_for_timeout(NO_SEND_SETTLE_MS)` calls. Asserting an ABSENCE over a window genuinely has no positive condition to wait on (Playwright's auto-retrying assertions pass the instant they are satisfied), so the settle window is the right shape and it is declared in both a named constant + comment and the AFS Implementation Record. Two cav… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_empty_message.py:157-163"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance VERIFIED independently with a fresh fetch in both repos — all six exist on `automation/testids`, NONE on `main`:\nEliteaUI: sidebar-support-assistant-button → main:no testids:YES (origin/automation/testids:src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx:297)\nelitea_assistant: support-assistant-widget / -widget-title / -message-input / -send-button / -message-item → all main:no t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_empty_message_cannot_be_sent_ELITEA-2418.md (Handles Reference)"
+        },
+        {
+          "kind": "note",
+          "note": "Bug #1581 (\"Send button never enables when typing actual text\") is still OPEN and labelled `bug`, but this case's re-analysis shows it does not reproduce — the original finding came from synthetic `input.value` assignment + hand-dispatched InputEvent, which a React controlled `<textarea>` ignores. The spec correctly hard-asserts Step 6 (`to_be_enabled()`, no soft-assert, no `# Known defect` commen… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1581"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — the six new testid fields semantically duplicate legacy `fallback=` fields on the same class (`widget`/`widget_container`, `widget_header_title`/`widget_title`, `message_input_field`/`message_input`, `send_message_button`/`send_button`). The duplication is deliberate and documented in the block comment (legacy fields kept byte-identical for their existing callers, per #25/#42 tech-debt polic… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/support_assistant_page.py:129-158"
+        },
+        {
+          "kind": "note",
+          "note": "Lint: `../.venv/bin/ruff check` on the branch copy of `support_assistant_page.py` reports 4 errors (I001 import sort, 3× E501) — byte-identical count and identity on `automation/base`, i.e. all pre-existing, none introduced by this diff. The new spec file is ruff-clean (0 findings).",
+          "ref": "automation/pages/support_assistant_page.py"
+        }
+      ],
+      "afs": "test-specs/support-assistant/l2_empty_message_cannot_be_sent_ELITEA-2418.md",
+      "branch": "tests/ELITEA-2418-empty-message-cannot-be-sent",
+      "pr": 1646,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          269.92,
+          262.89,
+          323.71
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2419",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text vs product, ELITEA-2419 Step 5: the case says 'verify a visual confirmation (e.g., icon change, tooltip \"Copied\") appears'. Live, the tooltip text is 'Copy to clipboard' BEFORE and AFTER the click — it never becomes 'Copied'. The confirmation is delivered purely as an SVG path swap (CopyIcon -> CheckIcon) that self-reverts after exactly 2000 ms (CopyButton.tsx:11-15). Because the case of… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_copy-assistant-response-to-clipboard_ELITEA-2419.md § Known Deviations"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer trap: the clipboard receives the RAW MARKDOWN source (message.content), not the rendered bubble text. Observed clipboard held '**Need more help?**' and '---' where the bubble renders <strong> and <hr>. A clipboard == bubble.inner_text() assertion WILL fail. The AFS prescribes a markdown-tolerant correspondence assertion anchored on the response's first paragraph, plus an exact to_have_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/_surface.md quirk 12"
+        },
+        {
+          "kind": "note",
+          "note": "Nothing in the DOM names the copied state today — aria-label and className are identical before and after the click, so the only current discriminator is SVG path data. That is why the AFS requests a data-copied='true|false' attribute on the button (canon PR #581 state-as-data-attribute shape; the `copied` useState already exists, the attribute only reflects it). Combined with the 2000 ms self-rev… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "../elitea_assistant/src/components/shared/CopyButton.tsx:11-26"
+        },
+        {
+          "kind": "note",
+          "note": "The copy button is the cheapest and most accurate reply-COMPLETE signal on this surface (MessageItem.tsx:70-73 renders it only when !isStreaming && !isAnimating) — better than a message-count delta, which fires while the message is still streaming. But a 'New chat' is NOT empty: it starts with 1 assistant greeting, hence 1 copy button. Always wait on count > baseline. Recommend a 180 s timeout, no… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/_surface.md quirks 9-10, 15"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing tech debt the implementer should NOT extend: SupportAssistantPage.send_message() and wait_for_response() build raw locators inside method bodies and drive the widget via page.evaluate. The new copy-flow work must go through fresh class-level LocatorDescriptor(testid=...) fields and UPPER_CASE [data-testid=...] class constants (shapes given in the AFS § Page-object shape expected), lea… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/support_assistant_page.py:355-380"
+        },
+        {
+          "kind": "note",
+          "note": "Testids for this case live in the connected repo elitea_assistant, not EliteaUI, so promotion has TWO hops, not one: a human cherry-picks 216da01 to elitea_assistant main, and only then must EliteaUI bump the @eliteaai/elitea-assistant git-dependency for any deployed env to serve them. Local is green now (VITE_ASSISTANT_LOCAL=1 alias). The closure record's promotability row should name both hops w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea_assistant@216da01"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says the confirmation is 'e.g., icon change, tooltip \"Copied\"'. Live, the tooltip text stays 'Copy to clipboard' before and after the click — only the SVG icon swaps (self-reverting after exactly 2000 ms). The case offers the icon change as its FIRST alternative and it is present, so the expected result is satisfied; per the AFS this is not a defect and no ticket was filed. Recorded so n… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2419 Step 5"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says the pasted content should 'match the assistant response text'. The clipboard actually receives the RAW MARKDOWN source (message.content: `**Need more help?**`, `---`), while the bubble renders it. Intentional copy-the-markdown behaviour, not a defect. The spec asserts correspondence on a markdown-normalised basis (first-paragraph anchor) and keeps exact equality where it is genuinel… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2419 Step 6"
+        },
+        {
+          "kind": "note",
+          "note": "The OneDrive stale-Vite-module quirk (digest quirk 7) reproduced for the connected assistant repo: after committing the testids, curl of the @fs module URL still served the pre-edit source, so get_by_test_id would have timed out. Fix that worked: kill the npm run dev + vite + esbuild PIDs, rm -rf EliteaUI/node_modules/.vite, restart, re-curl until the attribute appears. Budget one dev-server resta… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/_surface.md item 18"
+        },
+        {
+          "kind": "note",
+          "note": "The dispatch preamble states role memory is 'LOCAL and gitignored — never git add it', but in THIS repo it is git-tracked (367 files already committed under .agents/memory/test-automation-engineer/, and git check-ignore returns NOT IGNORED). I followed the repo's own established practice and my skill's serial-pipeline rule: committed the new entry and daily line by exact path on my branch. Flaggin… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/test-automation-engineer/"
+        },
+        {
+          "kind": "note",
+          "note": "The elitea_assistant clone carries four PRE-EXISTING modified build artifacts (dist/elitea-assistant.{cjs,js}{,.map}) that are not mine and not from this case. I staged only the two src/ files and left them untouched; they survived lint-staged's internal stash. Someone should decide whether those dist/ edits are intentional — they are unrelated to any testid work.",
+          "ref": "../elitea_assistant"
+        },
+        {
+          "kind": "note",
+          "note": "Correspondence assertion can go vacuous. test_support_assistant_copy_response.py:186-190 — `first_paragraph = bubble_text.split(\"\\n\")[0].strip()` then `assert _plain(first_paragraph) in _plain(clipboard_text)`. If the rendered bubble's first line is ever empty (leading blank line in the rendered markdown), `_plain(\"\") in x` is trivially True and Step 6's substantive check silently degrades to 'cli… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_copy_response.py:186"
+        },
+        {
+          "kind": "note",
+          "note": "`_plain()` (line 90-100) strips `*_`#` and horizontal rules but not markdown link syntax `[text](url)`. The producer is a live LLM, so a future reply whose first paragraph contains a link or an inline code span with brackets would fail the containment assertion against the rendered bubble. Flake risk for the hardening gate, not a defect in this diff.",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_copy_response.py:90"
+        },
+        {
+          "kind": "note",
+          "note": "Step 5's copied-state assertion is page-scoped rather than element-scoped: `expect(page.locator(support_page.MESSAGE_COPY_BUTTON_COPIED)).to_have_count(1)` proves *some* copy button carries data-copied=\"true\". `expect(copy_button).to_have_attribute(\"data-copied\", \"true\")` (the shape already used for the \"false\" edges at lines 274 and 302) would bind the flip to the element actually clicked. Practi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_copy_response.py:289"
+        },
+        {
+          "kind": "note",
+          "note": "AFS internal inconsistency after the implementer's amendment: § Implementation Notes and the digest were updated to the shipped `expect(...).to_have_count(baseline+1, 180_000)` wait, but the Coverage Map Axis-1 Step 3 row still reads \"`wait_for_function` on copy-button count > baseline (180 s)\". Doc-only drift inside the AFS; the shipped code is the better shape (keeps page.evaluate out of the dif… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_copy-assistant-response-to-clipboard_ELITEA-2419.md"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability (verified after `git fetch origin` in ../elitea_assistant): support-assistant-message-copy-button / -message-bubble / -message-item + data-copied + data-role are on EliteaAI/elitea_assistant `automation/testids` (EliteaAI/elitea_assistant@216da01, confirmed ancestor of origin/automation/testids) and NOT on that repo's `main`. Two promotion hops remain (human cherry-pick to assistant … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_copy-assistant-response-to-clipboard_ELITEA-2419.md"
+        },
+        {
+          "kind": "note",
+          "note": "Gate-flake heads-up: the spec ends with an unfiltered `assert console_errors == []` (line 204). `.agents/testing.md` § Known issues records a CONFIRMED recurring pattern of unrelated-resource console 500/404s intermittently failing exactly this assertion shape. This matches the sibling ELITEA-2418 spec already on the trunk, so it is batch convention, not a deviation introduced here — but if the ha… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_copy_response.py:204"
+        },
+        {
+          "kind": "note",
+          "note": "Lint: `.venv/bin/ruff check` on the three touched files reports 6 errors, ALL pre-existing and outside this diff's added ranges (pages/support_assistant_page.py E501 at 71/237/355; pages/base_page.py I001 + W293 at 245). The new spec file lints clean and the new page-object block introduces no violations. No action for this PR.",
+          "ref": "automation/pages/support_assistant_page.py:71"
+        }
+      ],
+      "afs": "test-specs/support-assistant/l2_copy-assistant-response-to-clipboard_ELITEA-2419.md",
+      "branch": "tests/ELITEA-2419-copy-assistant-response-to-clipboard",
+      "pr": 1647,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          269.92,
+          262.89,
+          323.71
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2422",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Issue #1581 is a confirmed FALSE bug and is still OPEN. It blocked the 2026-08-18 ELITEA-2422 analysis into a committed `defect-found` AFS - a fully working case parked for four days. It already carried two 'does not reproduce' comments and is contradicted by the green ELITEA-2418 spec. I re-verified non-reproduction a fourth time and, per the dedup rule, consolidated the evidence as a comment on … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1581"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift (reverse-masking guard: the product is correct, the case text is imprecise - NOT a defect). Step 4 says 'Verify the widget is still open (or can be reopened via the launcher)' and Step 6 says 'Open the widget if it closed during navigation'. Live, the widget is never closed by in-app navigation - it is mounted outside the routed subtree, so those conditionals can never fire. The he… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2422 Steps 4 and 6"
+        },
+        {
+          "kind": "note",
+          "note": "Digest extended with quirks 19-23 from this run: (19) the app-shell mount point and its consequence for any persistence case on this surface; (20) the full live-enumerated sidebar testid inventory (chat/agents/pipelines/skills/toolkits/mcps/credentials/applications/artifacts + the six chrome buttons) reachable via BasePage.SIDEBAR_MENU_ITEM, plus 'wait on the URL, not networkidle, after a sidebar … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Deployed-env promotability gap: all 10 handles this case needs sit on the two `automation/testids` integration branches and NONE are on either repo's `main` (verified with a fresh fetch + the workflow.md two-stage grep). This includes the sidebar navigation testids themselves, which are runtime-composed at SidebarBody.jsx:272 (`testId={`sidebar-menu-item-${i.value}`}`) and are absent from main ent… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_widget-state-preserved-after-in-app-navigation_ELITEA-2422.md"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS drift caught and amended: the same-session proof was specified as `expect(item_with_text(\"Navigation persistence test\")).to_have_count(1)`. That is an absolute where the surface only supports deltas — the widget restores the previous session and these specs deliberately leave their messages behind (no teardown), so from the SECOND run onward the string is present twice. It would have passed my… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_widget-state-preserved-after-in-app-navigation_ELITEA-2422.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text is WEAKER than the live product and the analyst flagged it but chose not to file it (AFS § Known Deviations, 'raise it if the TMS owner does a case-text pass'). Step 4 hedges 'still open (or can be reopened via the launcher)' and Step 6 says 'open the widget if it closed during navigation' — the widget is mounted at app-shell level outside the routed subtree (SupportAssistant.jsx:33-44) … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2422 case text, Steps 4 and 6"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1581 ('Support Assistant Send button never enables') is still OPEN and is a false bug — an artefact of synthetic `input.value = ...` writes against a React controlled textarea. This spec is the fourth independent non-reproduction: real `fill` typing left Send `to_be_enabled()` immediately and both messages sent and were answered. It already carries two 'does not reproduce' comments plus the… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1581"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability input for your closure record (analyst-verified 2026-08-22, NOT re-derived by me): all 10 handles are `main:no · testids:YES` — sidebar-support-assistant-button + sidebar-menu-item-* from EliteaAI/EliteaUI@37176b46, the widget/message/copy testids from EliteaAI/elitea_assistant@b8a287b and @216da01. This case is green on localhost and red on any deployed env until a human cherry-pick… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_widget-state-preserved-after-in-app-navigation_ELITEA-2422.md § Handles Reference"
+        },
+        {
+          "kind": "note",
+          "note": "Appended two attributed implementation-time quirks (24, 25) on my branch: (24) every conversation observable on this surface is a delta — items, copy buttons AND message text; (25) an in-app sidebar round trip with the widget open needs no re-settle wait at all — `page.wait_for_url(...)` then assert directly, no wait_for_timeout / networkidle / reopen. Behavior and scope claims in the digest were … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Flake watch for the hardening gate: Step 8 asserts `console_errors == []` with only Vite/socket.io ERR_CONNECTION_REFUSED filtered. `.agents/testing.md` § Known issues records a CONFIRMED recurring class of intermittent unrelated-resource console 500s (3 occurrences) and 404s (3 occurrences) that fail exactly this assertion shape on unrelated specs. Nothing is wrong with the code — but if the 3x g… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_navigation_persistence.py:208"
+        },
+        {
+          "kind": "note",
+          "note": "Second-most-plausible flake source, non-blocking: the three baselines (`get_message_item_count`, `get_copy_button_count`, `user_message_item_with_text(...).count()`) are non-retrying `.count()` snapshots taken as soon as `open_widget_via_sidebar` sees the header title + input visible. If session restore ever renders its messages asynchronously after that point, the baseline is understated and the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_navigation_persistence.py:114"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (not blocking): Steps 3 and 5 carry only `page.wait_for_url(...)` for the case's 'Target page/section loads successfully' expected result. It is a real failing check, but a URL change to a blank or error page would satisfy it. Acceptable here because Step 4/6 assert real DOM immediately after and Step 8 would catch a load error on /agents/all; worth a `to_be_visible()` on an Agents-page landma… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_navigation_persistence.py:151"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text hedge, recorded but not filed: case Step 4 says 'still open (or can be reopened via the launcher)' and Step 6 'open the widget if it closed'. Live product never closes the widget (app-shell mount, SupportAssistant.jsx:33-44), so the hedges are satisfied but weaker than reality. The AFS § Known Deviations documents this and deliberately did NOT file a TMS clarification ('light-touch rule'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_widget-state-preserved-after-in-app-navigation_ELITEA-2422.md"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability, for the closure record: all 10 handles are `main:no · testids:YES` per the AFS Handles Reference (EliteaAI/EliteaUI@37176b46 for the sidebar launcher, EliteaAI/elitea_assistant@b8a287b / @216da01 for the widget internals, plus the runtime-composed `sidebar-menu-item-*`). This spec is green on localhost and red on any deployed env until a human cherry-picks — and the assistant handle… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_widget-state-preserved-after-in-app-navigation_ELITEA-2422.md"
+        },
+        {
+          "kind": "note",
+          "note": "Lint context so it is not mistaken for new breakage: `ruff check` reports 4 errors in `pages/support_assistant_page.py` (I001 import block, E501 x3 at :71, :237, :355). All 4 are byte-identical on the batch trunk before this unit's commit — pre-existing, untouched by the additive helper. The new spec file is lint-clean.",
+          "ref": "automation/pages/support_assistant_page.py:71"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer memory committed on the branch as b1cabc7a5 (`docs(memory): qa-engineer — text-presence assertions need a baseline on data-leaving suites`), additive, touches nothing under automation/. The durable lesson: on a suite that leaves its data behind, `expect(item_with_text(MSG)).to_have_count(1)` is green on run 1 and red on run 2 — it clears the implementer's single run and dies in the 3x gat… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/support_assistant_page.py:736"
+        }
+      ],
+      "afs": "test-specs/support-assistant/l2_widget-state-preserved-after-in-app-navigation_ELITEA-2422.md",
+      "branch": "tests/ELITEA-2422-widget-state-navigation",
+      "pr": 1648,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          269.92,
+          262.89,
+          323.71
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2423",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "STALE BLOCKER RETIRED: the previous ELITEA-2423 AFS on origin/automation/base was status defect-found, blocked at Step 1 by #1581 ('Support Assistant send button never enables'). #1581 is a FALSE bug — it only reproduces with synthetic input.value assignment on a React controlled textarea. With real fill(), send-disabled was False immediately, twice, and both messages sent and were answered. This … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1581"
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed #1649 (label question, dedup checked against 137 open question issues — no match): ELITEA-2423's case text misstates two things, both product-correct. (1) Step 4 says the History-panel click issues GET /api/v2/support_assistant/conversations/; it does not — initAssistant.hook.ts:44 issues it in the mount useEffect, so the reload triggers it and the click fires ZERO requests. (2) Step 5's 'ca… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1649"
+        },
+        {
+          "kind": "note",
+          "note": "IMPLEMENTER/REVIEWER TRAP on this case — a vacuous green. If the response listener for the conversations-list status is armed around the History-button click, it collects nothing, and `all(status == 200)` over an empty list is True: the test passes forever, including against a backend returning 500, and it clears an N-times-green gate perfectly because it never touches the network. The AFS specifi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Product behaviour worth knowing, NOT a defect and not filed: restore-after-refresh always loads items[0] of the conversation list, and that list is ordered by CREATION, not by last activity — sending a message does not reorder it. Live proof: MSG2 was sent into the list's index-1 conversation, and after the next reload the widget restored index 0 again, so MSG2 was not visible (count 0) while inde… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work is in the CONNECTED repo, not EliteaUI: all three history handles live in ../elitea_assistant/src/components/chat/ChatHeader.tsx. Attributes only — the elements, their state and the disabled flag already exist, so no new DOM node, hook or state is required (zero-functional-impact rule satisfied). The AFS explicitly instructs NOT to request a data-current attribute: the native `disabled… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The existing page-object helpers open_history() (L446), get_history_session_count() (L457) and select_history_session() (L475) on automation/pages/support_assistant_page.py are pre-policy tech debt — history_button is a fallback= lambda and both helpers construct page.locator('button.elitea-assistant-history-item') INSIDE method bodies. The AFS directs the implementer to add testid-bound siblings … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#986"
+        },
+        {
+          "kind": "note",
+          "note": "This project has no .agents/knowledge/ layer at all (the directory does not exist), so the cross-role lesson from this run — 'a status assertion armed on the wrong trigger collects nothing and asserts nothing' — was written to role memory (.agents/memory/qa-engineer/status_assertion_armed_on_wrong_trigger.md, indexed) rather than promoted. It is genuinely cross-role (analyst designs it, implemente… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Three new testids (support-assistant-history-button / -dropdown / -item) are on the elitea_assistant automation/testids branch only, NOT on its main. The spec is green on localhost and would be red on any deployed env until a human cherry-picks them — and the assistant is a connected repo, so it needs the extra hop of EliteaUI bumping the @eliteaai/elitea-assistant git-dependency. The closure reco… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea_assistant@7413180"
+        },
+        {
+          "kind": "note",
+          "note": "Digest quirk 7/18 reproduced again: after committing the testids the Vite dev server kept serving the pre-edit module (curl of the @fs URL returned 0 testid hits). The documented fix worked — kill npm run dev + vite + esbuild PIDs, rm -rf EliteaUI/node_modules/.vite, restart. Budget one restart into any dispatch that adds a testid on this surface; it is now three confirmed occurrences, all on this… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Two live facts new to this surface, now in test-specs/support-assistant/_surface.md as attributed quirks 34 and 35. (34) The history button lives in the widget HEADER, so it does not exist while the widget is closed — combined with quirk 29 (no auto-open after reload) the 'history loaded' enabled-wait cannot be the post-reload settle. (35) Selecting a history entry clears the message list before t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "clarification",
+          "note": "The two case-text imprecisions the analyst filed (#1649, label question) both held up in implementation and neither is a product defect: Step 4 reads as if opening the History panel issues the GET (it is issued on page load), and Step 5's 'can be opened' cannot mean index 0 (that entry is the auto-restored current conversation and is disabled by design). Automated per the corrected mechanics — rev… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1649"
+        },
+        {
+          "kind": "note",
+          "note": "Deliberately NOT asserted: the second probe message's visibility after the second refresh. Restore always loads the conversation list's FIRST entry, which is ordered by creation rather than last activity, so the session opened in Step 5 is not the one restored (AFS Known Deviations 3). Reviewers may read the absence as a coverage gap — it is the opposite; asserting it would be red-by-design agains… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "I did not post a work-log/PR-link comment on the tracking board card. profile.md Status reporting says yes to that, but the dispatch gave me no tracking issue number for ELITEA-2423 and board writes are the lead's in this pipeline — flagging rather than guessing a card, since a wrong-card comment on board #9 is hard to unpick."
+        },
+        {
+          "kind": "note",
+          "note": "The elitea_assistant clone has four pre-existing dirty files under dist/ (build artifacts: elitea-assistant.cjs/.js and their maps) that I did not create and did not touch — I staged only src/components/chat/ChatHeader.tsx. Worth someone deciding whether those should be gitignored or rebuilt; they will keep showing up as noise in every testid dispatch on this repo."
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (Important). The 'Pass criterion no errors in any step' row bundles `NON-200 SA CALLS == []` + the console-error assertion and disposes `covered`; only the console assertion is in the diff. The 'Asserted where' cell points at a 'side-channel block' that does not exist in the spec — that mismatch is the tell. Every other AFS drift in this PR was amended (testid provenance rows 7-9, the shi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_history-loads-correctly-after-page-refresh_ELITEA-2423.md — Coverage Map Axis 1, last row"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion check PASSES for all six case steps. Step 1 widget visible + title + user-bubble text + copy-button delta; Step 2 reload settled on `sidebar_launcher` visible (the case's own 200 check is deliberately and correctly deferred to Step 4, where the case itself puts it, because the GET fires on the reload — verified in ../elitea_assistant/src/lib/hooks/initAssistant.hook.ts); Step 3 … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_history_after_refresh.py:1-315"
+        },
+        {
+          "kind": "note",
+          "note": "The Step-5 settle (`expect(message_copy_buttons).not_to_have_count(0)`) is only a genuine settle because `expect(history_dropdown).not_to_be_visible()` precedes it. Verified in source: ChatHeader.tsx `handleSelectConversation` calls `onSelectConversation(id)` then `setShowHistory(false)` in the same React handler, and chat.hook.ts:559-563 runs `setMessages([])` synchronously before its first `awai… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_history_after_refresh.py:285-300"
+        },
+        {
+          "kind": "note",
+          "note": "Environment coupling worth watching at the hardening gate: Step 3's `baseline_items + 2` and Step 6's `to_have_count(history_count_before)` both assume the post-reload restore lands on the SAME conversation Step 1 wrote into (the widget restores history items[0], creation-ordered — AFS § Known Deviations 3). That holds while the test account already has >= 1 conversation, which the AFS states as a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_history_after_refresh.py:246-256"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability for the closure record: NONE of this case's testids are on `main` in either repo. The three new history testids are on `EliteaAI/elitea_assistant` `automation/testids` only (EliteaAI/elitea_assistant@7413180, verified with a fresh fetch — pasted in my summary), and `sidebar-support-assistant-button` / the message + copy testids are on EliteaAI/EliteaUI `automation/testids` only. The … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_history-loads-correctly-after-page-refresh_ELITEA-2423.md — Handles Reference"
+        },
+        {
+          "kind": "note",
+          "note": "`../.venv/bin/ruff check` (run from automation/) reports 4 errors in support_assistant_page.py — I001 unsorted imports (L13-18) and three E501 long lines (L71, L264, L382). ALL are pre-existing, outside this diff's hunks (the diff adds at L180 and L761). The new spec file is ruff-clean. Not blocking, but `ruff check .` is not green on that file for whoever runs it next.",
+          "ref": "automation/pages/support_assistant_page.py:13,71,264,382"
+        },
+        {
+          "kind": "note",
+          "note": "POM discipline is clean and additive-only. The pre-policy `history_button` `fallback=` field (L60) and the legacy `open_history()` / `get_history_session_count()` / `select_history_session()` helpers (which build `button.elitea-assistant-history-item` inside method bodies, tech debt #25/#42) are left byte-identical for their existing callers; the new testid field is deliberately named `history_tog… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/support_assistant_page.py:180-206,761-814"
+        },
+        {
+          "kind": "note",
+          "note": "#1581 (\"Support Assistant send button never enables\") is now test-enforced as a false bug: the spec does a real `set_message_text()` then `expect(send_message_button).to_be_enabled()`. If #1581 were real this test would go red at Step 1 rather than the bug being re-cited as a blocker. Any support-assistant AFS still naming #1581 as blocking is stale — worth closing the loop on #1581 in the tracker… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_history_after_refresh.py:229-233"
+        },
+        {
+          "kind": "question",
+          "note": "The analyst filed case-text clarification #1649 (label `question`) for ELITEA-2423 Steps 4 and 5 — the GET fires on page load rather than on the History click, and index 0 of the history list is `disabled` by design so \"can be opened\" cannot mean index 0. Both are reverse-masking-guard CLARIFICATIONs (product correct, case text imprecise) and the implementation asserts the live contract, which is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1649"
+        },
+        {
+          "kind": "note",
+          "note": "The pass-criterion fix surfaced a general gap worth carrying forward: a whole-run HTTP sweep keyed on a URL pattern is vacuously green the moment the pattern stops matching, and nothing about it looks broken — no diff, no error, no red. The shipped shape (record every matching response, assert non-empty before filtering) is cheap and should probably be the default whenever a spec asserts 'no faili… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2423"
+        },
+        {
+          "kind": "note",
+          "note": "`pageerror` was added to this spec alongside the console assertion. My own role memory (console_side_channel_checks) already treats the dual console+pageerror listener as the canonical shape, but the support-assistant specs merged so far assert console only. If the lead agrees, the same one-line listener is worth backfilling across the support_assistant suite — an uncaught exception is invisible t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2423"
+        },
+        {
+          "kind": "note",
+          "note": "Flake-watch, unchanged from the reviewer's ELITEA-2422 note and still worth the lead's attention at the merge gate: this spec's `console_errors == []` assertion sits against testing.md's CONFIRMED recurring environmental noise class (unrelated-resource 500/404 console errors, 3+ occurrences across the chat campaign, no URL captured yet). Three consecutive clean runs today (2 loads + 2 reloads + 2 … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2423"
+        },
+        {
+          "kind": "note",
+          "note": "Doc under-claim (Nit, non-blocking): the module docstring still says the pass criterion is asserted as \"two independent side channels\" and the AFS Coverage-Map row says \"two independent checks, both shipped\" before listing (a) HTTP sweep, (b) console, (c) pageerror. Three channels are actually asserted. This is the safe direction (code ships more than the doc claims) but it is the same doc-vs-code… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_history_after_refresh.py:12"
+        },
+        {
+          "kind": "note",
+          "note": "Flake watch for the hardening gate: the blanket sweep asserts EVERY /api/v2/support_assistant/ response has status exactly 200. A legitimate 304 (ETag revalidation on config/) or a pre-auth 401 would false-red even though nothing is broken. The analyst's live run and the implementer's run both recorded zero non-200 SA calls across this exact flow, so there is no evidence of such a response today —… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_history_after_refresh.py:466"
+        },
+        {
+          "kind": "note",
+          "note": "Step 5 settle ordering is sound in practice but rests on an implicit assumption: `expect(message_copy_buttons).not_to_have_count(0)` is meant to wait out the transient empty list before the absence assertion `user_message_item_with_text(MSG1).to_have_count(0)`. If the list clear ever landed AFTER the detail response resolves, the settle would be satisfied by the OLD conversation's still-rendered c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/support_assistant/test_support_assistant_history_after_refresh.py:383"
+        },
+        {
+          "kind": "note",
+          "note": "Product observation carried by the AFS (Known Deviation 3), recorded nowhere else: restore-after-refresh always loads history items[0], and the list is ordered by CREATION, not by last activity — so a conversation the user just messaged is not the one restored (live: MSG2 sent into list index 1, after reload the widget restored index 0 and MSG2 was not visible). The case asserts nothing about orde… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_history-loads-correctly-after-page-refresh_ELITEA-2423.md"
+        },
+        {
+          "kind": "note",
+          "note": "`ruff check` reports 4 errors on automation/pages/support_assistant_page.py (I001 import block, 3x E501). All four are PRE-EXISTING — reproduced identically against the base version of the file (git show tests/batch-support-assistant-w01:automation/pages/support_assistant_page.py). This PR introduces none; the new spec file is ruff-clean. Noted so the gate does not attribute them to this unit.",
+          "ref": "automation/pages/support_assistant_page.py:13"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability, verified fresh (git fetch origin in ../elitea_assistant): support-assistant-history-button / -dropdown / -item are on origin/automation/testids (EliteaAI/elitea_assistant@7413180) and NOT on origin/main. The connected-repo promotion also needs the EliteaUI @eliteaai/elitea-assistant git-dep bump after the human cherry-pick, so the closure record must mark this case merged-but-not-de… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/support-assistant/l2_history-loads-correctly-after-page-refresh_ELITEA-2423.md"
+        }
+      ],
+      "afs": "test-specs/support-assistant/l2_history-loads-correctly-after-page-refresh_ELITEA-2423.md",
+      "branch": "tests/2423-history-loads-after-page-refresh",
+      "pr": 1650,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          269.92,
+          262.89,
+          323.71
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 4
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

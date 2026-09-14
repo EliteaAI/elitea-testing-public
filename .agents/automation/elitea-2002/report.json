@@ -1,0 +1,107 @@
+{
+  "batch": "elitea-2002",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2002",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      49.895706334,
+      46.678797,
+      46.771760042
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2002",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "PipelineDetailPage has zero save-as-version fields/methods today (only version_selector/get_version_display() for reading) but the underlying testids (agent-save-as-version-button, agent-version-dialog-name-input, agent-version-dialog-save-button, agent-version-dialog-cancel-button, agent-version-dialog-close-button, dynamic version-option-{name}) are already live in the DOM -- confirmed via direc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_create-pipeline-version_ELITEA-2002.md"
+        },
+        {
+          "kind": "note",
+          "note": "discard-button IS live-wired on the Pipeline detail page (correctly reflects dirty state), a divergence from the existing pipelines digest note that this same shared testid is NOT rendered on AgentDetailPage. Noted in the AFS handles table and the surface digest as a pre-existing, unrelated Agent-side gap -- not this case's concern to fix.",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed the existing 'seeding gotcha' from the digest (avoid PipelineAPI.create_pipeline_with_nodes() for any case needing a clean Save/Discard-disabled baseline) applies to this case too -- PipelineAPI.create_pipeline() (zero-node) was used instead and loads with Save/Save-As-Version/Discard all correctly disabled."
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS Step 1 (and the _surface.md digest, twice) claimed 'Save/Save-As-Version/Discard all disabled on a clean baseline' — false for Save As Version specifically. ApplicationTabBar.jsx (source read, confirmed live) passes SaveNewVersionButton no `disabled` prop at all, so it is NEVER gated on form dirtiness on either Agents or Pipelines — only a mid-request state disables it. Corrected in both test-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1307"
+        },
+        {
+          "kind": "note",
+          "note": "ReactFlow always renders a synthetic END node on the canvas even for a pipeline with zero configured nodes (PipelineAPI.create_pipeline()) — any future case doing a type-agnostic '.react-flow__node' count needs to account for this off-by-one; use the new wait_for_node_type_count(node_type, ...) for a type-specific count instead of the generic wait_for_node_count()/get_node_count().",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "select_version_by_name()'s convergence race (VERSION trigger text can settle before the Information-panel version-id / URL path segment) is NOT specific to the Agent Publish flow (#614) — it also fires on a plain Pipeline VERSION-dropdown switch/Save-As-Version. Any future page object porting this method for a new entity type (Skills, etc.) should default to the reload-based belt-and-braces cycle … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/pipeline_save_as_version_quirks.md"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL — locator-policy violation. automation/pages/pipeline_detail_page.py:1902-1903 (new method wait_for_node_type_count, added by this PR): `selector = f\".react-flow__node-{css_type}\"` then `self.canvas_wrapper.locator(selector)` — a raw CSS-class handle, not a `[data-testid=` literal or an UPPER_CASE class-constant referencing one. Mechanical grep on the diff (`git diff <base>...<branch> -- … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:1902-1903"
+        },
+        {
+          "kind": "defect",
+          "note": "IMPORTANT — shipped documentation directly contradicts this PR's own test and its own AFS correction. automation/pages/pipeline_form_page.py:68-70 (save_as_version_button class-field comment) and :382-383 (is_save_as_version_enabled() docstring) both still state Save As Version is 'enabled only when the form is dirty (mirrors save_button/discard_button's dirtiness gating)' / 'same dirtiness-gated … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_form_page.py:68-70"
+        },
+        {
+          "kind": "note",
+          "note": "Minor: create_version_cancel_button / create_version_close_button (pipeline_detail_page.py, new LocatorDescriptor fields) are added but wired into no method and called by no test in this case — the AFS itself flags this as deliberate ('add the field for completeness/consistency... no test in THIS case calls it'). These pre-exist in the shared component (no add-data-testid work, no EliteaUI coverag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:131-141"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map triangulation: verified all 6 case elements from the ELITEA-2002 case snapshot map cleanly to AFS Coverage Map rows and, in turn, to real allure.step-wrapped assertions in test_pipeline_create_version.py (node-added state, dialog validation, version-id/URL convergence on both switch directions, dropdown listing, Save re-disabled after persist). Axis-2 additions (baseline disabled/enab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_create_version.py"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing ruff I001 (unsorted import block) in automation/pages/pipeline_form_page.py, confirmed identical on automation/base — not introduced by this branch, out of scope for this fix round."
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round verification for PR #1307 (ELITEA-2002). Mechanical grep of automation/ diff (git diff origin/tests/batch-elitea-2002...origin/tests/2002-create-pipeline-version -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 3 hits, all compliant: (1) `self.page.loc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both prior blocking findings verified fixed, not just cosmetically touched. Finding 1 (raw CSS-class locator in wait_for_node_type_count): rebuilt around NODE_TYPE_DISPLAY_PREFIX dict + RF_NODE_TESTID_PREFIX class constant, scoped under canvas_wrapper, with a ValueError guard for unconfirmed node types instead of guessing casing. Finding 2 (stale dirtiness-gated comments): both cited sites (pipeli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot .agents/automation/elitea-2002/cases/ELITEA-2002.md <-> AFS test-specs/pipelines/l2_create-pipeline-version_ELITEA-2002.md <-> diff) is clean: all 6 case steps map to Coverage-Map rows, every asserted row has a real allure.step-wrapped assertion at that exact step in test_pipeline_create_version.py (Save/Discard/Save-As-Version baseline states, dialog validation, URL/v… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_create-pipeline-version_ELITEA-2002.md",
+      "branch": "tests/2002-create-pipeline-version",
+      "pr": 1307,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          49.895706334,
+          46.678797,
+          46.771760042
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

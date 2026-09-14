@@ -1,0 +1,97 @@
+{
+  "batch": "pipeline-router-node-2033",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-pipeline-router-node-2033",
+  "gate": {
+    "verdict": "red",
+    "runs": 3,
+    "seconds": [
+      43.9,
+      46.92,
+      42.76
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_router_node_configuration.py::test_router_node_configuration_and_edge_wiring",
+        "signature": "pytest.fail: Soft assertion(s) failed (known isolated product defect) — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036: default-output edge Router 1default_output -> END did not render immediately after selecting Default output = END on a fresh Router node. Rest of the flow (Condition/Routes/Input/routes-edges/Save/reload) passed cleanly in all 3 runs — identical failur… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2033"
+        ]
+      },
+      {
+        "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant",
+        "signature": "pytest.fail: Soft assertion(s) failed — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1039: a bare LLM node errors instead of responding when used as a chat participant: AI response did not complete within 60000ms — Copy button never appeared. Steps 1-10 passed cleanly.",
+        "case_ids": [
+          "ELITEA-2079"
+        ]
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py::test_hitl_node_runtime_behavior",
+        "signature": "pytest.fail: Soft assertion(s) failed (sanctioned RED — known defect #1103) — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1103: Reject should end the pipeline at END with no further processing, but the backend re-emitted ['agent_start', 'start_task'] — the pipeline restarted from the entry point instead.",
+        "case_ids": [
+          "ELITEA-2015"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2033",
+      "outcome": "blocked",
+      "note": "gate red: pytest.fail: Soft assertion(s) failed (known isolated product defect) — Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036: default-output edge Router 1default_output -> END di",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2033's precondition/step-4 wording (\"target nodes for routing exist\" / \"add route values\") undersells live mechanics: the Router node's Routes field is a multi-select picklist of EXISTING pipeline node ids (+ synthetic END), not a freeform/creatable tag field. To route to \"approve\"/\"reject\" the precondition pipeline needs nodes actually renamed to those exact strings (done live via canvas i… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Own-code (not app) docstring drift found in automation/pages/pipeline_detail_page.py:1765-1767 -- edit_node_name()'s docstring claims a node rename retains the type prefix (\"LLM 1\" -> \"MyNode\" becomes data-id \"LLM MyNode\"). Live-confirmed FALSE: renaming \"Printer 1\" to \"approve\" produces data-id exactly \"approve\", no prefix. The method's actual behavior (and the Enter-does-not-commit / pane-click-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:1765"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale over-generalization in test-specs/pipelines/_surface.md (line ~43, from the 2026-08-03 ELITEA-2018/2030/2031/2032 session): it claimed \"only HITL has a visible Route concept\", which is now proven false -- the dedicated Router node type also has a first-class Routes field plus a separate Default-output field/edge. Corrected in place per the digest's own \"update in place, don't app… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment/tooling gotcha (not a product defect): a localhost browser session's ACTIVE project (sidebar selector) can differ from .env.test's ELITEA_PROJECT_ID default. A standalone PipelineAPI script using the default project id created a pipeline the mismatched browser session then 400'd trying to load; attempting to create directly against the browser's actual (different) project hit a 403 acc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "test"
+        },
+        {
+          "kind": "defect",
+          "note": "Step 9's default-output-edge comment (test_pipeline_router_node_configuration.py:238-241, just above the try/except that follows) claims \"the edge cannot survive a reload (the app's YAML->canvas parser only draws this edge when default_output is truthy)\" — this is factually wrong and directly contradicted by the PR's own evidence: a prior comment on the linked issue elitea-testing-public#1036 (pos… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_router_node_configuration.py:238"
+        },
+        {
+          "kind": "note",
+          "note": "edit_node_name()'s new JS-evaluate fallback branch (prefix-based match) is documented as \"kept for any call site that predates this fix\" — but git grep against origin/tests/batch-pipeline-router-node-2033 shows edit_node_name() had ZERO callers before this PR, so no such call site exists. Harmless dead defensive code, just an inaccurate docstring claim — low-priority follow-up, not blocking.",
+          "ref": "automation/pages/pipeline_detail_page.py:1854"
+        },
+        {
+          "kind": "note",
+          "note": "Step 9's approve/reject edge checks call wait_for_edge() (which itself raises AssertionError via Playwright's expect().to_have_count() on timeout) immediately followed by a redundant assert edge_testid_present(...) checking the same condition on the same locator template. Not wrong, just dead-weight duplication — nit only.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_router_node_configuration.py:233"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation verified clean: mechanical grep (git diff origin/tests/batch-pipeline-router-node-2033...origin/tests/2033-pipeline-router-node-configuration -- automation/pages automation/tests | grep -E non-testid-handle-pattern) returned 7 hits, all compliant — 6 reference pre-existing class constants (EDGE_TESTID, SELECT_OPTION, SELECT_OPTION_PREFIX, all `[data-testid=` string templates defined … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-router-node-configuration_ELITEA-2033.md",
+      "branch": "tests/2033-pipeline-router-node-configuration",
+      "pr": 1145
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

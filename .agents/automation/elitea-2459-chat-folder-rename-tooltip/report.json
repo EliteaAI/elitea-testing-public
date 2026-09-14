@@ -1,0 +1,88 @@
+{
+  "batch": "elitea-2459-chat-folder-rename-tooltip",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2459-chat-folder-rename-tooltip",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      57.018027792,
+      54.892694167,
+      55.862926833
+    ],
+    "failures": []
+  },
+  "stabilize_rounds": [
+    {
+      "round": 1,
+      "prior_gate": {
+        "verdict": "red",
+        "runs": 3,
+        "seconds": [57.911254708, 54.70437375, 55.744143667],
+        "failures": [
+          {
+            "spec": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py::TestChatFolderRenameCheckmarkValidation::test_folder_rename_checkmark_validation",
+            "signature": "AssertionError: Unexpected console errors during folder rename: ['Failed to load resource: the server responded with a status of 500 (Internal Server Error)'] (failed on run 3/3; runs 1 and 2 of the same node id were GREEN — non-deterministic across the 3 invocations)",
+            "case_ids": ["ELITEA-2458"]
+          }
+        ]
+      },
+      "cause": "Unbounded chat-folder leak (open issue #1309 — dead FOLDER_MENU_DELETE_ITEM testid) makes every create/rename's RTK-Query folder-list refetch an increasingly fragile network call; both specs in this file trigger it every run",
+      "kind": "test-data",
+      "fix_commit": "28ae505d",
+      "fix_summary": "ChatPage.delete_folder_via_menu() now falls back to a new delete_folder_via_api() when the dead FOLDER_MENU_DELETE_ITEM testid prevents the dot-menu delete from locating its target, instead of silently swallowing the timeout and leaking the folder. Verified via independent ground truth (fresh page reload + raw API GET), not just 'no exception raised'. Added regression test TestChatFolderDeleteApiFallbackRegression::test_delete_folder_via_api_actually_removes_the_folder. Root cause (#1309, the dead testid) stays open/tracked — this is the test-side mitigation for the leak class it produces, not a mask.",
+      "regate": { "verdict": "green", "runs": 3, "failures": [] }
+    }
+  ],
+  "cases": [
+    {
+      "id": "ELITEA-2459",
+      "outcome": "automated",
+      "note": "extend-existing against the merged ELITEA-2458 covering spec. Reviewer APPROVED after 1 fix round (third no-op signal + Coverage Map row-1 correction). Hardening gate went red non-deterministically on the pre-existing ELITEA-2458 test (unrelated to this case's own new scenarios); batch-stabilize diagnosed + fixed the real cause (test-data leak, #1309) in round 1; re-gate 3/3 green. Merged to automation/base via PR #1313 (squash, 5cc8647c).",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Reconfirmed live during analysis: EliteaAI/elitea-testing-public#1309 (chat-folder-menu-delete-menuitem regression) is still present/unresolved on main/automation/testids — document.querySelector for that testid returns null even though the visible Delete menuitem + confirmation dialog still function by text/role. Not fixed here (out of this case's own scope); it IS what caused the gate's red (see below) and now has a test-side mitigation (not a product fix).",
+          "ref": "EliteaAI/elitea-testing-public#1309"
+        },
+        {
+          "kind": "defect",
+          "note": "#1309 (dead chat-folder dot-menu Delete testid) is confirmed to be actively accelerating shared-DEV-project data pollution: 19+ leaked chat folders as of 2026-08-07, and every run of this file's tests (both the pre-existing ELITEA-2458 test and this batch's new one) added 2 more permanently-orphaned folders every single hardening-gate re-run before the stabilize fix landed. This batch added a test-side leak-stopper (API-delete fallback) but the underlying UI regression is still open and still needs a human/product fix.",
+          "ref": "EliteaAI/elitea-testing-public#1309"
+        },
+        {
+          "kind": "defect",
+          "note": "Assertion-strength regression from established in-file precedent, caught and fixed in fix round 1: the covering ELITEA-2458 test's own no-op-click check uses THREE independent signals (editor stays open + input value unchanged + no PUT fires), with 'editor stays open' as a compound check including chat.get_folder_item(folder_id).count()==0. The first implementation of this case's two new scenarios only used two signals. Fixed: third signal added to both new no-op-click blocks.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "AFS extend-existing Axis-2 'signal parity' claims should be verified by diffing the actual assertion lists against the covering spec, not by matching prose — this round's gap slipped through because the description text was copied faithfully while one assertion was dropped. Durable memory entry written by the implementer: afs_signal_parity_claim_needs_assertion_diff.md.",
+          "ref": "ELITEA-2459"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical testid-only-locator grep on the full diff (both build and stabilize rounds, automation/ paths) returned 0 hits — no non-testid handle introduced.",
+          "ref": null
+        },
+        {
+          "kind": "note",
+          "note": "reports/archive shows this same covering test also failed earlier the same session (00:07:00, single-spec run, before this batch's second test existed) with a different symptom — a 10s timeout waiting for a folder item to render after creation. Independent corroboration that this shared DEV project's folder-list read/render timing is already somewhat unstable; worth tracking if it recurs in a future batch.",
+          "ref": null
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_folder-rename-tooltip-special-chars-and-space-first-char_ELITEA-2459.md",
+      "branch": "tests/2459-chat-folder-rename-tooltip-special-chars-space",
+      "pr": 1312,
+      "trunk_pr": 1313,
+      "merge_commit": "5cc8647c"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -1,0 +1,236 @@
+{
+  "batch": "settings-w06",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w06",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      174.64,
+      148.05,
+      149.46
+    ],
+    "spec_set": "the 11 spec files the trunk adds/changes vs origin/automation/base, together in ONE invocation per run (32 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each. Scope = clusters B and C only; cluster A (PR #1945, ELITEA-2314..2319) is NOT on the trunk. NOTE: the gate refused the first attempt because a stray uncommitted memory file overlapped the proof set \u2014 committed it and re-ran, which is the guard working as designed.",
+    "blast_radius_note": "The workflow's gate reported 2 failures on PRE-EXISTING specs (test_analytics_agents_pipelines_tab.py / test_analytics_agent_detail_view.py). I ran a MATCHED CONTROL on pristine origin/automation/base and both reproduce byte-identically there \u2014 product drift + a fixture signature mismatch, already filed as #1946, not caused by this batch. Blast-radius red does not block the verdict.",
+    "repaired": "test_analytics_users_activity_table.py (ELITEA-2312) was red on base for the same #1946 column drift and is GREEN on this trunk \u2014 ELITEA-2323's extend-existing work repaired it.",
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2314",
+      "outcome": "blocked",
+      "note": "NOT merged \u2014 PR #1945 remains OPEN. The build/review loop stopped after 2 fix rounds because the reviewer left surviving blockers unclassified twice (unaddressed vs unfixable indistinguishable), so the loop could not judge whether another round would help. The surviving blockers are REAL and precisely specified: (1) ELITEA-2318 Agents-tab chart data never asserted (presence-only); (2) ELITEA-2317 year-boundary arithmetic in _chart_tick_span_days gives a deterministic false-RED for ~4 weeks each January; (3) ELITEA-2315 AFS claims KPI values are matched against the captured response, the code does not assert them. Earlier rounds already fixed a called-but-nonexistent `wait_for_tab_settled()` (5 call sites) and the Tools-chart data gap. Resume in wave 7 from PR #1945 \u2014 the findings are written down, nothing needs re-deriving.",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_date-presets-update-pickers-and-content_ELITEA-2314.md",
+      "branch": "tests/ELITEA-2314-analytics-date-filter",
+      "pr": 1945
+    },
+    {
+      "id": "ELITEA-2315",
+      "outcome": "blocked",
+      "note": "NOT merged \u2014 PR #1945 remains OPEN. The build/review loop stopped after 2 fix rounds because the reviewer left surviving blockers unclassified twice (unaddressed vs unfixable indistinguishable), so the loop could not judge whether another round would help. The surviving blockers are REAL and precisely specified: (1) ELITEA-2318 Agents-tab chart data never asserted (presence-only); (2) ELITEA-2317 year-boundary arithmetic in _chart_tick_span_days gives a deterministic false-RED for ~4 weeks each January; (3) ELITEA-2315 AFS claims KPI values are matched against the captured response, the code does not assert them. Earlier rounds already fixed a called-but-nonexistent `wait_for_tab_settled()` (5 call sites) and the Tools-chart data gap. Resume in wave 7 from PR #1945 \u2014 the findings are written down, nothing needs re-deriving.",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_custom-date-range-filters-data_ELITEA-2315.md",
+      "branch": "tests/ELITEA-2314-analytics-date-filter",
+      "pr": 1945
+    },
+    {
+      "id": "ELITEA-2316",
+      "outcome": "blocked",
+      "note": "NOT merged \u2014 PR #1945 remains OPEN. The build/review loop stopped after 2 fix rounds because the reviewer left surviving blockers unclassified twice (unaddressed vs unfixable indistinguishable), so the loop could not judge whether another round would help. The surviving blockers are REAL and precisely specified: (1) ELITEA-2318 Agents-tab chart data never asserted (presence-only); (2) ELITEA-2317 year-boundary arithmetic in _chart_tick_span_days gives a deterministic false-RED for ~4 weeks each January; (3) ELITEA-2315 AFS claims KPI values are matched against the captured response, the code does not assert them. Earlier rounds already fixed a called-but-nonexistent `wait_for_tab_settled()` (5 call sites) and the Tools-chart data gap. Resume in wave 7 from PR #1945 \u2014 the findings are written down, nothing needs re-deriving.",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_from-date-cannot-exceed-to-date_ELITEA-2316.md",
+      "branch": "tests/ELITEA-2314-analytics-date-filter",
+      "pr": 1945
+    },
+    {
+      "id": "ELITEA-2317",
+      "outcome": "blocked",
+      "note": "NOT merged \u2014 PR #1945 remains OPEN. The build/review loop stopped after 2 fix rounds because the reviewer left surviving blockers unclassified twice (unaddressed vs unfixable indistinguishable), so the loop could not judge whether another round would help. The surviving blockers are REAL and precisely specified: (1) ELITEA-2318 Agents-tab chart data never asserted (presence-only); (2) ELITEA-2317 year-boundary arithmetic in _chart_tick_span_days gives a deterministic false-RED for ~4 weeks each January; (3) ELITEA-2315 AFS claims KPI values are matched against the captured response, the code does not assert them. Earlier rounds already fixed a called-but-nonexistent `wait_for_tab_settled()` (5 call sites) and the Tools-chart data gap. Resume in wave 7 from PR #1945 \u2014 the findings are written down, nothing needs re-deriving.",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_preset-switch-updates-overview-content_ELITEA-2317.md",
+      "branch": "tests/ELITEA-2314-analytics-date-filter",
+      "pr": 1945
+    },
+    {
+      "id": "ELITEA-2318",
+      "outcome": "blocked",
+      "note": "NOT merged \u2014 PR #1945 remains OPEN. The build/review loop stopped after 2 fix rounds because the reviewer left surviving blockers unclassified twice (unaddressed vs unfixable indistinguishable), so the loop could not judge whether another round would help. The surviving blockers are REAL and precisely specified: (1) ELITEA-2318 Agents-tab chart data never asserted (presence-only); (2) ELITEA-2317 year-boundary arithmetic in _chart_tick_span_days gives a deterministic false-RED for ~4 weeks each January; (3) ELITEA-2315 AFS claims KPI values are matched against the captured response, the code does not assert them. Earlier rounds already fixed a called-but-nonexistent `wait_for_tab_settled()` (5 call sites) and the Tools-chart data gap. Resume in wave 7 from PR #1945 \u2014 the findings are written down, nothing needs re-deriving.",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_preset-switch-updates-tab-content_ELITEA-2318.md",
+      "branch": "tests/ELITEA-2314-analytics-date-filter",
+      "pr": 1945
+    },
+    {
+      "id": "ELITEA-2319",
+      "outcome": "blocked",
+      "note": "NOT merged \u2014 PR #1945 remains OPEN. The build/review loop stopped after 2 fix rounds because the reviewer left surviving blockers unclassified twice (unaddressed vs unfixable indistinguishable), so the loop could not judge whether another round would help. The surviving blockers are REAL and precisely specified: (1) ELITEA-2318 Agents-tab chart data never asserted (presence-only); (2) ELITEA-2317 year-boundary arithmetic in _chart_tick_span_days gives a deterministic false-RED for ~4 weeks each January; (3) ELITEA-2315 AFS claims KPI values are matched against the captured response, the code does not assert them. Earlier rounds already fixed a called-but-nonexistent `wait_for_tab_settled()` (5 call sites) and the Tools-chart data gap. Resume in wave 7 from PR #1945 \u2014 the findings are written down, nothing needs re-deriving.",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l1_date-filter-retained-across-tabs_ELITEA-2319.md",
+      "branch": "tests/ELITEA-2314-analytics-date-filter",
+      "pr": 1945
+    },
+    {
+      "id": "ELITEA-2311",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_overview-tab-kpi-cards_ELITEA-2311.md",
+      "branch": "tests/ELITEA-2311-2325-analytics-tabs",
+      "pr": 1953,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2322",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_tools-tab-chart-and-details-table_ELITEA-2322.md",
+      "branch": "tests/ELITEA-2311-2325-analytics-tabs",
+      "pr": 1953,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2323",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/lextend_users-tab-search-filters-activity-table_ELITEA-2323.md",
+      "branch": "tests/ELITEA-2311-2325-analytics-tabs",
+      "pr": 1953,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2324",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_health-tab-chart-and-event-type-table_ELITEA-2324.md",
+      "branch": "tests/ELITEA-2311-2325-analytics-tabs",
+      "pr": 1953,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2325",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_guide-tab-metric-documentation_ELITEA-2325.md",
+      "branch": "tests/ELITEA-2311-2325-analytics-tabs",
+      "pr": 1953,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2326",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_overview-daily-activity-chart-hover-tooltip_ELITEA-2326.md",
+      "branch": "tests/ELITEA-2326-2329-chart-hover-tooltips",
+      "pr": 1956,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2327",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_bar-chart-hover-tooltip_ELITEA-2327-2328.md",
+      "branch": "tests/ELITEA-2326-2329-chart-hover-tooltips",
+      "pr": 1956,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2328",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/l2_bar-chart-hover-tooltip_ELITEA-2327-2328.md",
+      "branch": "tests/ELITEA-2326-2329-chart-hover-tooltips",
+      "pr": 1956,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2329",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (32 tests per run, 174.64/148.05/149.46s).",
+      "findings": [],
+      "afs": "test-specs/settings-analytics/lextend_user-detail-daily-activity-tooltip_ELITEA-2329.md",
+      "branch": "tests/ELITEA-2326-2329-chart-hover-tooltips",
+      "pr": 1956,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.03,
+          145.36,
+          176.73
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 9,
+    "blocked": 6
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

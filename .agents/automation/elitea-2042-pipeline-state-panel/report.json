@@ -1,0 +1,133 @@
+{
+  "batch": "elitea-2042-pipeline-state-panel",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2042-pipeline-state-panel",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      25.76445225,
+      23.285947125,
+      23.79154875
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py",
+        "signature": "TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant — pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — steps 1-10 passed cleanly). Known defect elitea-testing-public#1039: a bare LLM node added via +Add Node with zero further config errors instead of responding when used as a chat participant — AI res… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2079",
+          "ELITEA-2077"
+        ]
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_toolkit_node_config_and_input_mapping.py",
+        "signature": "test_toolkit_node_config_and_input_mapping — AssertionError: No console errors expected at any step — two 404 (Not Found) resource-load console errors captured. Not marked as a known/sanctioned defect in the failure text.",
+        "case_ids": [
+          "ELITEA-2010"
+        ]
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py",
+        "signature": "test_hitl_node_runtime_behavior — pytest.fail: Soft assertion(s) failed (sanctioned RED — known defect elitea-testing-public#1103): Reject should end the pipeline at END with no further processing, but the backend re-emitted ['agent_start','start_task'] — the pipeline restarted from the entry point instead.",
+        "case_ids": [
+          "ELITEA-2015"
+        ]
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_yaml_flow_sync.py",
+        "signature": "test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save — AssertionError: No console errors expected at any step — one 500 (Internal Server Error) resource-load console error captured. Not marked as a known/sanctioned defect in the failure text.",
+        "case_ids": [
+          "ELITEA-2028"
+        ]
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_router_node_configuration.py",
+        "signature": "test_router_node_configuration_and_edge_wiring — pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — rest of the flow: Condition/Routes/Input/routes-edges/Save/reload passed cleanly). Known defect elitea-testing-public#1036: default-output edge Router1 default_output->END did not render immediately after selecting Default output=END on a fresh Router nod… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2033"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2042",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "TMS case ELITEA-2042 step 4 wording (\"input (str, toggle on) and messages (list, toggle on)\") implies the STATE panel's collapsed default-variable row visibly shows the variable's type. Live UI renders only name + toggle switch — no type indicator on the row at all (confirmed via full outerHTML capture + StateVariableItem.jsx/StateVariableItemActions.jsx source). Type is only observable via the YA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1154"
+        },
+        {
+          "kind": "note",
+          "note": "Type dropdown trap for future extension: the 4th type option displays label \"Json\" but its internal/YAML persisted value is `dict`, not `json` (StateVariableTypes map in flowEditor.constants.js). Any future test selecting Json must assert type: dict in the YAML. Documented in both the AFS Automation Hints and the _surface.md digest."
+        },
+        {
+          "kind": "note",
+          "note": "5 new dynamic-template testids needed before implementation (all in the StateVariableItem.jsx -> StateVariableItemActions.jsx -> StateTypeSelector.jsx -> StateVariableIconButton.jsx chain under src/[fsd]/features/pipelines/flow-editor/ui/state/): row name label, row toggle, row delete button (all dynamic -{name} suffix), the 4 type-selector menu items (static per internal type value: -str/-number/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Process note (not product-related): this case's AFS was found already fully written but uncommitted on disk at dispatch start, evidence of a prior session that did the analysis but was interrupted before its mandatory commit step. Verified every externally-checkable claim (filed issue, testid presence on automation/testids and main, page-object wiring) before trusting and committing it as this ses… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS matched the live product exactly — no drift found during Phase 2 exploration; no AFS amendment needed.",
+          "ref": "test-specs/pipelines/l2_pipeline-state-panel-default-and-custom-variables_ELITEA-2042.md"
+        },
+        {
+          "kind": "note",
+          "note": "No [Automate][ELITEA-2042] tracking issue exists on board #9 — only the analyst's [Clarification][ELITEA-2042] issue #1154. Per Phase 6 step 4 (seed-governed), skipped the PR-link tracker comment rather than inventing an issue; the lead may want to confirm whether this unit was meant to have a tracking card."
+        },
+        {
+          "kind": "note",
+          "note": "5 new dynamic testids added to EliteaUI's StateVariableItem/StateVariableItemActions/StateTypeSelector/StateVariableIconButton chain, threading a new `name` prop down 3 levels and a new `testId` prop on StateVariableIconButton (the sibling StateVariableTextField in the same file still uses the older `dataTestId` shape — left untouched, not mine to fix). Pushed to automation/testids @ d120871f, not… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI@d120871f"
+        },
+        {
+          "kind": "defect",
+          "note": "Step 8 ('Select desired type (String)') is a bare action (`pipeline_page.select_open_state_type_option(\"str\", ...)`) with zero assertion, but the AFS Coverage Map explicitly claims disposition 'asserted' for this row: '8 Select desired type (String) | String type selected | step 8 | step 8: type-select icon stays `Abc` | asserted'. No such icon/type-retention check exists anywhere in the implement… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_default_and_custom_variables.py:117-119"
+        },
+        {
+          "kind": "note",
+          "note": "General pattern discovered for future MUI dropdown 'is X still selected' assertions: check whether the option component receives a `selected`/`isSelected` MUI prop before reaching for icon-based or aria-based verification — MUI renders a Mui-selected class for free in that case, avoiding any new raw-handle temptation."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (step 8 had no real assertion for 'String type is selected') is fixed. Implementation now re-opens the type dropdown after selecting String (select_open_state_type_option('str')), asserts is_state_type_option_selected('str') is True (reads MUI's Mui-selected class off the re-opened MenuItem, backed by a new PipelineDetailPage.is_state_type_option_selected() method in automat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_default_and_custom_variables.py step 8 (~line 118-126)"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' against `git diff origin/tests/batch-elitea-2042-pipeline-state-panel...origin/tests/2042-state-panel-default-and-custom-variables -- automation/`) -> 9 hits, all self.page.locator(self.STATE_VARIAB… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:405-419"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid commit d120871f (EliteaAI/EliteaUI, automation/testids) reviewed for convention: all 5 new testids are feature-scoped (src/[fsd]/features/pipelines/flow-editor/ui/state/), stable per-row identity keyed by name (not state-value-switched), and the new prop on the shared-looking StateVariableIconButton is named testId (compliant, not dataTestId). Commit message '[EL-0000] ... (ELITEA-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-state-panel-default-and-custom-variables_ELITEA-2042.md",
+      "branch": "tests/2042-state-panel-default-and-custom-variables",
+      "pr": 1155,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          25.76445225,
+          23.285947125,
+          23.79154875
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

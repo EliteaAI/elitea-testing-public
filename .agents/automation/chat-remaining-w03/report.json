@@ -1,0 +1,673 @@
+{
+  "batch": "chat-remaining-w03",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w03",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      203.6,
+      200.43,
+      201.64
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2105",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatched case-snapshot path (.agents/automation/chat-remaining-w03/cases/ELITEA-210[5-9].md) and the batch trunk (tests/batch-chat-remaining-w03) did not exist on disk anywhere — the intake step that normally materializes these apparently didn't run for this wave. Worked around by reading the case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ and creati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended in-PR: ConversationItem.jsx renders the chat-conversation-item-{id} testid ONLY when NOT editing — while the inline rename editor stays open (the disabled-checkmark no-op scenario in 2105-2108), that testid is absent from the DOM entirely. First implementation run failed 4/4 on this wrong assumption; fixed by reading the persisted name via conversation_api.get_conversation() (real back… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracker/board issue number was supplied in this dispatch for ELITEA-2105-2109, so the PR-link work-log comment (profile.md § Status reporting, step 4 of the handoff protocol) was skipped — no card to comment on. If a corresponding board card exists from a separate intake pass, the lead should post the PR #1519 link there."
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-security correctness gap): automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134-241 — the parametrized Shape-A test registers a console-error listener into `console_messages` (identical to the Shape-B test at lines 277-375) but never asserts on it; the listener is silently discarded in the `finally` block. This is net-new dead instrumentation introduced by… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result (case ↔ AFS ↔ diff), all 5 cases: PASS on every other axis. Case snapshots at .agents/automation/chat-remaining-w03/cases/ never existed on disk (the batch trunk/intake dir was never created for this wave — recurring gap also seen for w01/w02 per implementer's own daily-log note); fetched the 5 case bodies directly from the onetest-ai-tm-Elitea sibling clone (tests/automated-f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mid-session AFS amendment is correctly reflected in the same PR and is honest, not a fidelity violation: the implementer discovered chat-conversation-item-{id} does not render in the DOM while ConversationItem.jsx is in isEditing state (the sidebar node unmounts entirely, replaced by the inline editor tree), so the AFS's original \"sidebar item text == original\" check for the 4 Shape-A rows was swa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (role-overrides.md § Reviewer slot), run against `git diff origin/tests/batch-chat-remaining-w03...origin/tests/ELITEA-2105-2109-checkmark-active-state -- automation/`: substitution grep `grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 0 hits. Non-testid-handle grep `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation, not filed as a finding: `no_op_put_requests.stop()` / `rename_put_requests.stop()` calls sit AFTER their preceding `assert`, so a failing assertion (the exact scenario where an unexpected PUT actually fires) skips `.stop()` and leaks the request listener — but this is identical to the pre-existing, already-merged pattern in test_conversation_rename_basic_via_edit_option.p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed reviewer memory on the PR branch (tests/ELITEA-2105-2109-checkmark-active-state, pushed): updated .agents/memory/qa-engineer/console_assertion_window_gap.md with a 'Variant B' section (assertion missing entirely in one twin test vs. Variant A's mistimed-assertion pattern from PR #1322) and logged the review in .agents/memory/qa-engineer/daily/2026-08-15.md.",
+          "ref": ".agents/memory/qa-engineer/console_assertion_window_gap.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer finding on PR #1519 was a real, addressable gap (not a false positive): Shape-A parametrized test had console_messages scaffolding but no assertion, while its sibling Shape-B test in the same file had both. Fixed by adding the matching assertion. No product defect, no scope change — pure test-completeness fix.",
+          "ref": "PR #1519 / ELITEA-2105-2108"
+        },
+        {
+          "kind": "note",
+          "note": "Fix verified: Shape-A's test_rename_checkmark_inactive_click_has_no_effect (ELITEA-2105/2106/2107/2108) now asserts `assert not console_messages` at the tail of Step 4, mirroring Shape-B's test_rename_checkmark_activates_at_three_characters (ELITEA-2109). Dead-instrumentation blocker from round 1 is resolved.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot intake gap persists: .agents/automation/chat-remaining-w03/cases/ was never created on any branch (trunk or feature) — same gap noted for w01/w02. Read the 5 case .md files directly from ../onetest-ai-tm-Elitea instead. Worth a process fix at intake time so future analyst/reviewer dispatches don't repeat the workaround."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps against the full base...branch diff (automation/) all returned 0 hits: substitution shapes, non-testid locator additions, and skip/xfail/masking patterns. No new page-object changes shipped or needed — all called methods pre-exist on the trunk's chat_page.py/base_page.py."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-checkmark-active-inactive-states_ELITEA-2105_2106_2107_2108_2109.md",
+      "branch": "tests/ELITEA-2105-2109-checkmark-active-state",
+      "pr": 1519,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2106",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatched case-snapshot path (.agents/automation/chat-remaining-w03/cases/ELITEA-210[5-9].md) and the batch trunk (tests/batch-chat-remaining-w03) did not exist on disk anywhere — the intake step that normally materializes these apparently didn't run for this wave. Worked around by reading the case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ and creati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended in-PR: ConversationItem.jsx renders the chat-conversation-item-{id} testid ONLY when NOT editing — while the inline rename editor stays open (the disabled-checkmark no-op scenario in 2105-2108), that testid is absent from the DOM entirely. First implementation run failed 4/4 on this wrong assumption; fixed by reading the persisted name via conversation_api.get_conversation() (real back… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracker/board issue number was supplied in this dispatch for ELITEA-2105-2109, so the PR-link work-log comment (profile.md § Status reporting, step 4 of the handoff protocol) was skipped — no card to comment on. If a corresponding board card exists from a separate intake pass, the lead should post the PR #1519 link there."
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-security correctness gap): automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134-241 — the parametrized Shape-A test registers a console-error listener into `console_messages` (identical to the Shape-B test at lines 277-375) but never asserts on it; the listener is silently discarded in the `finally` block. This is net-new dead instrumentation introduced by… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result (case ↔ AFS ↔ diff), all 5 cases: PASS on every other axis. Case snapshots at .agents/automation/chat-remaining-w03/cases/ never existed on disk (the batch trunk/intake dir was never created for this wave — recurring gap also seen for w01/w02 per implementer's own daily-log note); fetched the 5 case bodies directly from the onetest-ai-tm-Elitea sibling clone (tests/automated-f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mid-session AFS amendment is correctly reflected in the same PR and is honest, not a fidelity violation: the implementer discovered chat-conversation-item-{id} does not render in the DOM while ConversationItem.jsx is in isEditing state (the sidebar node unmounts entirely, replaced by the inline editor tree), so the AFS's original \"sidebar item text == original\" check for the 4 Shape-A rows was swa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (role-overrides.md § Reviewer slot), run against `git diff origin/tests/batch-chat-remaining-w03...origin/tests/ELITEA-2105-2109-checkmark-active-state -- automation/`: substitution grep `grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 0 hits. Non-testid-handle grep `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation, not filed as a finding: `no_op_put_requests.stop()` / `rename_put_requests.stop()` calls sit AFTER their preceding `assert`, so a failing assertion (the exact scenario where an unexpected PUT actually fires) skips `.stop()` and leaks the request listener — but this is identical to the pre-existing, already-merged pattern in test_conversation_rename_basic_via_edit_option.p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed reviewer memory on the PR branch (tests/ELITEA-2105-2109-checkmark-active-state, pushed): updated .agents/memory/qa-engineer/console_assertion_window_gap.md with a 'Variant B' section (assertion missing entirely in one twin test vs. Variant A's mistimed-assertion pattern from PR #1322) and logged the review in .agents/memory/qa-engineer/daily/2026-08-15.md.",
+          "ref": ".agents/memory/qa-engineer/console_assertion_window_gap.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer finding on PR #1519 was a real, addressable gap (not a false positive): Shape-A parametrized test had console_messages scaffolding but no assertion, while its sibling Shape-B test in the same file had both. Fixed by adding the matching assertion. No product defect, no scope change — pure test-completeness fix.",
+          "ref": "PR #1519 / ELITEA-2105-2108"
+        },
+        {
+          "kind": "note",
+          "note": "Fix verified: Shape-A's test_rename_checkmark_inactive_click_has_no_effect (ELITEA-2105/2106/2107/2108) now asserts `assert not console_messages` at the tail of Step 4, mirroring Shape-B's test_rename_checkmark_activates_at_three_characters (ELITEA-2109). Dead-instrumentation blocker from round 1 is resolved.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot intake gap persists: .agents/automation/chat-remaining-w03/cases/ was never created on any branch (trunk or feature) — same gap noted for w01/w02. Read the 5 case .md files directly from ../onetest-ai-tm-Elitea instead. Worth a process fix at intake time so future analyst/reviewer dispatches don't repeat the workaround."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps against the full base...branch diff (automation/) all returned 0 hits: substitution shapes, non-testid locator additions, and skip/xfail/masking patterns. No new page-object changes shipped or needed — all called methods pre-exist on the trunk's chat_page.py/base_page.py."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-checkmark-active-inactive-states_ELITEA-2105_2106_2107_2108_2109.md",
+      "branch": "tests/ELITEA-2105-2109-checkmark-active-state",
+      "pr": 1519,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2107",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatched case-snapshot path (.agents/automation/chat-remaining-w03/cases/ELITEA-210[5-9].md) and the batch trunk (tests/batch-chat-remaining-w03) did not exist on disk anywhere — the intake step that normally materializes these apparently didn't run for this wave. Worked around by reading the case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ and creati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended in-PR: ConversationItem.jsx renders the chat-conversation-item-{id} testid ONLY when NOT editing — while the inline rename editor stays open (the disabled-checkmark no-op scenario in 2105-2108), that testid is absent from the DOM entirely. First implementation run failed 4/4 on this wrong assumption; fixed by reading the persisted name via conversation_api.get_conversation() (real back… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracker/board issue number was supplied in this dispatch for ELITEA-2105-2109, so the PR-link work-log comment (profile.md § Status reporting, step 4 of the handoff protocol) was skipped — no card to comment on. If a corresponding board card exists from a separate intake pass, the lead should post the PR #1519 link there."
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-security correctness gap): automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134-241 — the parametrized Shape-A test registers a console-error listener into `console_messages` (identical to the Shape-B test at lines 277-375) but never asserts on it; the listener is silently discarded in the `finally` block. This is net-new dead instrumentation introduced by… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result (case ↔ AFS ↔ diff), all 5 cases: PASS on every other axis. Case snapshots at .agents/automation/chat-remaining-w03/cases/ never existed on disk (the batch trunk/intake dir was never created for this wave — recurring gap also seen for w01/w02 per implementer's own daily-log note); fetched the 5 case bodies directly from the onetest-ai-tm-Elitea sibling clone (tests/automated-f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mid-session AFS amendment is correctly reflected in the same PR and is honest, not a fidelity violation: the implementer discovered chat-conversation-item-{id} does not render in the DOM while ConversationItem.jsx is in isEditing state (the sidebar node unmounts entirely, replaced by the inline editor tree), so the AFS's original \"sidebar item text == original\" check for the 4 Shape-A rows was swa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (role-overrides.md § Reviewer slot), run against `git diff origin/tests/batch-chat-remaining-w03...origin/tests/ELITEA-2105-2109-checkmark-active-state -- automation/`: substitution grep `grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 0 hits. Non-testid-handle grep `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation, not filed as a finding: `no_op_put_requests.stop()` / `rename_put_requests.stop()` calls sit AFTER their preceding `assert`, so a failing assertion (the exact scenario where an unexpected PUT actually fires) skips `.stop()` and leaks the request listener — but this is identical to the pre-existing, already-merged pattern in test_conversation_rename_basic_via_edit_option.p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed reviewer memory on the PR branch (tests/ELITEA-2105-2109-checkmark-active-state, pushed): updated .agents/memory/qa-engineer/console_assertion_window_gap.md with a 'Variant B' section (assertion missing entirely in one twin test vs. Variant A's mistimed-assertion pattern from PR #1322) and logged the review in .agents/memory/qa-engineer/daily/2026-08-15.md.",
+          "ref": ".agents/memory/qa-engineer/console_assertion_window_gap.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer finding on PR #1519 was a real, addressable gap (not a false positive): Shape-A parametrized test had console_messages scaffolding but no assertion, while its sibling Shape-B test in the same file had both. Fixed by adding the matching assertion. No product defect, no scope change — pure test-completeness fix.",
+          "ref": "PR #1519 / ELITEA-2105-2108"
+        },
+        {
+          "kind": "note",
+          "note": "Fix verified: Shape-A's test_rename_checkmark_inactive_click_has_no_effect (ELITEA-2105/2106/2107/2108) now asserts `assert not console_messages` at the tail of Step 4, mirroring Shape-B's test_rename_checkmark_activates_at_three_characters (ELITEA-2109). Dead-instrumentation blocker from round 1 is resolved.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot intake gap persists: .agents/automation/chat-remaining-w03/cases/ was never created on any branch (trunk or feature) — same gap noted for w01/w02. Read the 5 case .md files directly from ../onetest-ai-tm-Elitea instead. Worth a process fix at intake time so future analyst/reviewer dispatches don't repeat the workaround."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps against the full base...branch diff (automation/) all returned 0 hits: substitution shapes, non-testid locator additions, and skip/xfail/masking patterns. No new page-object changes shipped or needed — all called methods pre-exist on the trunk's chat_page.py/base_page.py."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-checkmark-active-inactive-states_ELITEA-2105_2106_2107_2108_2109.md",
+      "branch": "tests/ELITEA-2105-2109-checkmark-active-state",
+      "pr": 1519,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2108",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatched case-snapshot path (.agents/automation/chat-remaining-w03/cases/ELITEA-210[5-9].md) and the batch trunk (tests/batch-chat-remaining-w03) did not exist on disk anywhere — the intake step that normally materializes these apparently didn't run for this wave. Worked around by reading the case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ and creati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended in-PR: ConversationItem.jsx renders the chat-conversation-item-{id} testid ONLY when NOT editing — while the inline rename editor stays open (the disabled-checkmark no-op scenario in 2105-2108), that testid is absent from the DOM entirely. First implementation run failed 4/4 on this wrong assumption; fixed by reading the persisted name via conversation_api.get_conversation() (real back… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracker/board issue number was supplied in this dispatch for ELITEA-2105-2109, so the PR-link work-log comment (profile.md § Status reporting, step 4 of the handoff protocol) was skipped — no card to comment on. If a corresponding board card exists from a separate intake pass, the lead should post the PR #1519 link there."
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-security correctness gap): automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134-241 — the parametrized Shape-A test registers a console-error listener into `console_messages` (identical to the Shape-B test at lines 277-375) but never asserts on it; the listener is silently discarded in the `finally` block. This is net-new dead instrumentation introduced by… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result (case ↔ AFS ↔ diff), all 5 cases: PASS on every other axis. Case snapshots at .agents/automation/chat-remaining-w03/cases/ never existed on disk (the batch trunk/intake dir was never created for this wave — recurring gap also seen for w01/w02 per implementer's own daily-log note); fetched the 5 case bodies directly from the onetest-ai-tm-Elitea sibling clone (tests/automated-f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mid-session AFS amendment is correctly reflected in the same PR and is honest, not a fidelity violation: the implementer discovered chat-conversation-item-{id} does not render in the DOM while ConversationItem.jsx is in isEditing state (the sidebar node unmounts entirely, replaced by the inline editor tree), so the AFS's original \"sidebar item text == original\" check for the 4 Shape-A rows was swa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (role-overrides.md § Reviewer slot), run against `git diff origin/tests/batch-chat-remaining-w03...origin/tests/ELITEA-2105-2109-checkmark-active-state -- automation/`: substitution grep `grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 0 hits. Non-testid-handle grep `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation, not filed as a finding: `no_op_put_requests.stop()` / `rename_put_requests.stop()` calls sit AFTER their preceding `assert`, so a failing assertion (the exact scenario where an unexpected PUT actually fires) skips `.stop()` and leaks the request listener — but this is identical to the pre-existing, already-merged pattern in test_conversation_rename_basic_via_edit_option.p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed reviewer memory on the PR branch (tests/ELITEA-2105-2109-checkmark-active-state, pushed): updated .agents/memory/qa-engineer/console_assertion_window_gap.md with a 'Variant B' section (assertion missing entirely in one twin test vs. Variant A's mistimed-assertion pattern from PR #1322) and logged the review in .agents/memory/qa-engineer/daily/2026-08-15.md.",
+          "ref": ".agents/memory/qa-engineer/console_assertion_window_gap.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer finding on PR #1519 was a real, addressable gap (not a false positive): Shape-A parametrized test had console_messages scaffolding but no assertion, while its sibling Shape-B test in the same file had both. Fixed by adding the matching assertion. No product defect, no scope change — pure test-completeness fix.",
+          "ref": "PR #1519 / ELITEA-2105-2108"
+        },
+        {
+          "kind": "note",
+          "note": "Fix verified: Shape-A's test_rename_checkmark_inactive_click_has_no_effect (ELITEA-2105/2106/2107/2108) now asserts `assert not console_messages` at the tail of Step 4, mirroring Shape-B's test_rename_checkmark_activates_at_three_characters (ELITEA-2109). Dead-instrumentation blocker from round 1 is resolved.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot intake gap persists: .agents/automation/chat-remaining-w03/cases/ was never created on any branch (trunk or feature) — same gap noted for w01/w02. Read the 5 case .md files directly from ../onetest-ai-tm-Elitea instead. Worth a process fix at intake time so future analyst/reviewer dispatches don't repeat the workaround."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps against the full base...branch diff (automation/) all returned 0 hits: substitution shapes, non-testid locator additions, and skip/xfail/masking patterns. No new page-object changes shipped or needed — all called methods pre-exist on the trunk's chat_page.py/base_page.py."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-checkmark-active-inactive-states_ELITEA-2105_2106_2107_2108_2109.md",
+      "branch": "tests/ELITEA-2105-2109-checkmark-active-state",
+      "pr": 1519,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2109",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatched case-snapshot path (.agents/automation/chat-remaining-w03/cases/ELITEA-210[5-9].md) and the batch trunk (tests/batch-chat-remaining-w03) did not exist on disk anywhere — the intake step that normally materializes these apparently didn't run for this wave. Worked around by reading the case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ and creati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended in-PR: ConversationItem.jsx renders the chat-conversation-item-{id} testid ONLY when NOT editing — while the inline rename editor stays open (the disabled-checkmark no-op scenario in 2105-2108), that testid is absent from the DOM entirely. First implementation run failed 4/4 on this wrong assumption; fixed by reading the persisted name via conversation_api.get_conversation() (real back… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No GitHub tracker/board issue number was supplied in this dispatch for ELITEA-2105-2109, so the PR-link work-log comment (profile.md § Status reporting, step 4 of the handoff protocol) was skipped — no card to comment on. If a corresponding board card exists from a separate intake pass, the lead should post the PR #1519 link there."
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-security correctness gap): automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134-241 — the parametrized Shape-A test registers a console-error listener into `console_messages` (identical to the Shape-B test at lines 277-375) but never asserts on it; the listener is silently discarded in the `finally` block. This is net-new dead instrumentation introduced by… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py:134"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result (case ↔ AFS ↔ diff), all 5 cases: PASS on every other axis. Case snapshots at .agents/automation/chat-remaining-w03/cases/ never existed on disk (the batch trunk/intake dir was never created for this wave — recurring gap also seen for w01/w02 per implementer's own daily-log note); fetched the 5 case bodies directly from the onetest-ai-tm-Elitea sibling clone (tests/automated-f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mid-session AFS amendment is correctly reflected in the same PR and is honest, not a fidelity violation: the implementer discovered chat-conversation-item-{id} does not render in the DOM while ConversationItem.jsx is in isEditing state (the sidebar node unmounts entirely, replaced by the inline editor tree), so the AFS's original \"sidebar item text == original\" check for the 4 Shape-A rows was swa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps (role-overrides.md § Reviewer slot), run against `git diff origin/tests/batch-chat-remaining-w03...origin/tests/ELITEA-2105-2109-checkmark-active-state -- automation/`: substitution grep `grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 0 hits. Non-testid-handle grep `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation, not filed as a finding: `no_op_put_requests.stop()` / `rename_put_requests.stop()` calls sit AFTER their preceding `assert`, so a failing assertion (the exact scenario where an unexpected PUT actually fires) skips `.stop()` and leaks the request listener — but this is identical to the pre-existing, already-merged pattern in test_conversation_rename_basic_via_edit_option.p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed reviewer memory on the PR branch (tests/ELITEA-2105-2109-checkmark-active-state, pushed): updated .agents/memory/qa-engineer/console_assertion_window_gap.md with a 'Variant B' section (assertion missing entirely in one twin test vs. Variant A's mistimed-assertion pattern from PR #1322) and logged the review in .agents/memory/qa-engineer/daily/2026-08-15.md.",
+          "ref": ".agents/memory/qa-engineer/console_assertion_window_gap.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer finding on PR #1519 was a real, addressable gap (not a false positive): Shape-A parametrized test had console_messages scaffolding but no assertion, while its sibling Shape-B test in the same file had both. Fixed by adding the matching assertion. No product defect, no scope change — pure test-completeness fix.",
+          "ref": "PR #1519 / ELITEA-2105-2108"
+        },
+        {
+          "kind": "note",
+          "note": "Fix verified: Shape-A's test_rename_checkmark_inactive_click_has_no_effect (ELITEA-2105/2106/2107/2108) now asserts `assert not console_messages` at the tail of Step 4, mirroring Shape-B's test_rename_checkmark_activates_at_three_characters (ELITEA-2109). Dead-instrumentation blocker from round 1 is resolved.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_checkmark_active_state.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot intake gap persists: .agents/automation/chat-remaining-w03/cases/ was never created on any branch (trunk or feature) — same gap noted for w01/w02. Read the 5 case .md files directly from ../onetest-ai-tm-Elitea instead. Worth a process fix at intake time so future analyst/reviewer dispatches don't repeat the workaround."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps against the full base...branch diff (automation/) all returned 0 hits: substitution shapes, non-testid locator additions, and skip/xfail/masking patterns. No new page-object changes shipped or needed — all called methods pre-exist on the trunk's chat_page.py/base_page.py."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-checkmark-active-inactive-states_ELITEA-2105_2106_2107_2108_2109.md",
+      "branch": "tests/ELITEA-2105-2109-checkmark-active-state",
+      "pr": 1519,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2110",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Intake gap recurs: .agents/automation/chat-remaining-w03/cases/ never existed on disk (same as the 2105-2109 dispatch on this same wave). Worked around by reading the three case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ (source of truth anyway) and the _surface.md digest for prior confirmation. Recommend the batch-build workflow actually write case sn… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid added: chat-conversation-name-confirm-tooltip-content on ConversationItem.jsx's rename-confirm Tooltip (mirrors the pre-existing chat-folder-name-confirm-tooltip-content from ELITEA-2458 exactly). Committed EliteaAI/EliteaUI@888dac13 on automation/testids, pushed -- confirmed NOT yet on main (awaiting human cherry-pick).",
+          "ref": "EliteaAI/EliteaUI@888dac13"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed live: MUI surfaces a non-empty title attribute in a Playwright browser_snapshot's accessible-name read even without a real hover ever mounting the Tooltip popper -- the accessibility-tree text alone is not evidence the tooltip rendered. Only page.locator(testid).hover() then reading the popper's own testid is honest evidence. Same gotcha already documented for the sibling folder-rename… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity mechanical grep (git diff tests/batch-chat-remaining-w03...tests/2110-2112-2113-conversation-rename-invalid-recovery -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') returned 0 hits — no substitution of the system under test."
+        },
+        {
+          "kind": "note",
+          "note": "Locator mechanical grep returned 1 hit: automation/pages/chat_page.py new get_conversation_name_confirm_tooltip_text() uses self.page.locator(self.CONVERSATION_NAME_CONFIRM_TOOLTIP_CONTENT) — compliant, the UPPER_CASE class constant is a literal `[data-testid=\"chat-conversation-name-confirm-tooltip-content\"]` string per the dynamic/scoped-selector pattern.",
+          "ref": "automation/pages/chat_page.py:6521"
+        },
+        {
+          "kind": "note",
+          "note": "New testid chat-conversation-name-confirm-tooltip-content verified for real: git fetch + git grep on origin/automation/testids in EliteaUI confirms it at ConversationItem.jsx:516, added by commit EliteaAI/EliteaUI@888dac13 (single-line slotProps addition on a pre-existing Tooltip/Box). Zero-functional-impact greps (new useState/Effect/Memo/Callback/Ref, new <Box>/div/span, non-testid deletions) on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Per-row triangulation for the family spec verified: ELITEA-2110 and ELITEA-2112 each map to a distinct pytest.param row asserting the row's own invalid_name value (input value, tooltip text, no-op click, persisted-name-unchanged) rather than a shared/flattened assertion; ELITEA-2113 has its own standalone test with its own step-by-step assertions. Every case step + every Axis-2 addition (uniform t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py"
+        },
+        {
+          "kind": "note",
+          "note": "Referenced page-object methods/locators (set_conversation_name, is_conversation_name_confirm_enabled, capture_requests_matching, wait_for_network, get_toast_alert, conversation_name_input/confirm_button) all pre-exist on the trunk and match the AFS Concrete Handles table exactly — no invented handles."
+        },
+        {
+          "kind": "note",
+          "note": "ruff check on the new test file: 0 errors. chat_page.py's 37 pre-existing ruff errors are unchanged before/after this diff (verified against the trunk copy) — none introduced by this PR's additive tooltip constant/method."
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no pytest.skip/xfail/test.fail/weakened-assert patterns found in the diff."
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking nit: NAVIGATION_TIMEOUT = 15_000 is defined but never referenced anywhere in the new file — dead code.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:56"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking nit: no_op_put_requests.stop() / rename_put_requests.stop() are called after the assertions rather than in a finally block, so an assertion failure leaks the request listener for the rest of that test run. Same idiom as the already-merged ELITEA-2105-2109 sibling spec (not a new deviation), so not blocking here, but worth a suite-wide follow-up.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:178"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot dir .agents/automation/chat-remaining-w03/cases/ still does not exist on disk (same recurring intake gap noted for every unit in this batch) — fetched ELITEA-2110/2112/2113 live via mcp__onetest-tms__get_test_case instead; no drift found between the fetched case text and the AFS/diff."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-invalid-chars-leading-space-and-recovery_ELITEA-2110_2112_2113.md",
+      "branch": "tests/2110-2112-2113-conversation-rename-invalid-recovery",
+      "pr": 1520,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2111",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "chat-remaining-w03 batch: every dispatch (ELITEA-2105-2109, 2110/2112/2113, and this one) named a case-snapshot path .agents/automation/chat-remaining-w03/cases/<ID>.md that never existed on disk for this campaign — read the raw TMS case file directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ instead each time. Not a novel-ground signal; logged to memory (chat_remaining… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2111's own case text matches the live product exactly (ConversationNameWarningMessage byte-for-byte) — no clarification or defect filed."
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (TMS case ELITEA-2111 ↔ AFS lextend_conversation-rename-tooltip-validation-message-content_ELITEA-2111.md ↔ diff on automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py) is clean. AFS correctly targets the covering spec via the merged-target rule (commit db9a08aa, merged onto tests/batch-chat-remaining-w03 BEFORE this branch existed — confirmed the AFS… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_conversation-rename-tooltip-validation-message-content_ELITEA-2111.md"
+        },
+        {
+          "kind": "note",
+          "note": "Verified byte-for-byte: case's quoted tooltip string == ConversationNameWarningMessage in EliteaUI/src/common/constants.js:96 == the test's EXPECTED_TOOLTIP_TEXT constant (which the diff does not touch — it already existed for ELITEA-2110/2112). No case-text drift.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py"
+        },
+        {
+          "kind": "note",
+          "note": "New parametrize row data (\"Ch$t %@name\", drawn from the case's own '$ % @' hint) genuinely violates ConversationNameRegExp's charset per source; new row runs the shared method body's real assertions for steps 1-4 (input pre-fill, exact tooltip text, data-disabled==\"true\", no-op click with a real PUT-absence capture + persisted-name-via-API check) — nothing is asserted-by-existence.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:113"
+        },
+        {
+          "kind": "note",
+          "note": "The step-5 coverage-tag-only claim on test_rename_recovers_and_saves_after_invalid_value_replaced was verified against the ACTUAL pre-existing (unmodified-by-this-diff) Step 3 code: it asserts data-disabled==\"false\" AND get_conversation_name_confirm_tooltip_text(timeout=1500)==\"\" data-value-agnostically (doesn't reference which invalid string preceded the valid one) — a legitimate covered-by-asser… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:388"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance re-verified fresh (git fetch origin in EliteaUI + git grep on both origin/main [no hit] and origin/automation/testids [hit, ConversationItem.jsx:516]) — matches the AFS's claim exactly: chat-conversation-name-confirm-tooltip-content is testids-only, not yet on main."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on the full base(tests/batch-chat-remaining-w03)...head diff, automation/ only: substitution grep (mock_/page.route/route.fulfill/monkeypatch/.evaluate) = 0 hits; non-testid-handle grep (get_by_*/query_selector/page.locator/.locator() additions) = 0 hits; removed-lines (grep -E '^-[^-]') are all docstring/header prose only — additive-only contract holds, no assertion/decorator/tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_conversation-rename-tooltip-validation-message-content_ELITEA-2111.md",
+      "branch": "tests/ELITEA-2111-conversation-rename-tooltip-content",
+      "pr": 1521,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2112",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Intake gap recurs: .agents/automation/chat-remaining-w03/cases/ never existed on disk (same as the 2105-2109 dispatch on this same wave). Worked around by reading the three case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ (source of truth anyway) and the _surface.md digest for prior confirmation. Recommend the batch-build workflow actually write case sn… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid added: chat-conversation-name-confirm-tooltip-content on ConversationItem.jsx's rename-confirm Tooltip (mirrors the pre-existing chat-folder-name-confirm-tooltip-content from ELITEA-2458 exactly). Committed EliteaAI/EliteaUI@888dac13 on automation/testids, pushed -- confirmed NOT yet on main (awaiting human cherry-pick).",
+          "ref": "EliteaAI/EliteaUI@888dac13"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed live: MUI surfaces a non-empty title attribute in a Playwright browser_snapshot's accessible-name read even without a real hover ever mounting the Tooltip popper -- the accessibility-tree text alone is not evidence the tooltip rendered. Only page.locator(testid).hover() then reading the popper's own testid is honest evidence. Same gotcha already documented for the sibling folder-rename… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity mechanical grep (git diff tests/batch-chat-remaining-w03...tests/2110-2112-2113-conversation-rename-invalid-recovery -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') returned 0 hits — no substitution of the system under test."
+        },
+        {
+          "kind": "note",
+          "note": "Locator mechanical grep returned 1 hit: automation/pages/chat_page.py new get_conversation_name_confirm_tooltip_text() uses self.page.locator(self.CONVERSATION_NAME_CONFIRM_TOOLTIP_CONTENT) — compliant, the UPPER_CASE class constant is a literal `[data-testid=\"chat-conversation-name-confirm-tooltip-content\"]` string per the dynamic/scoped-selector pattern.",
+          "ref": "automation/pages/chat_page.py:6521"
+        },
+        {
+          "kind": "note",
+          "note": "New testid chat-conversation-name-confirm-tooltip-content verified for real: git fetch + git grep on origin/automation/testids in EliteaUI confirms it at ConversationItem.jsx:516, added by commit EliteaAI/EliteaUI@888dac13 (single-line slotProps addition on a pre-existing Tooltip/Box). Zero-functional-impact greps (new useState/Effect/Memo/Callback/Ref, new <Box>/div/span, non-testid deletions) on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Per-row triangulation for the family spec verified: ELITEA-2110 and ELITEA-2112 each map to a distinct pytest.param row asserting the row's own invalid_name value (input value, tooltip text, no-op click, persisted-name-unchanged) rather than a shared/flattened assertion; ELITEA-2113 has its own standalone test with its own step-by-step assertions. Every case step + every Axis-2 addition (uniform t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py"
+        },
+        {
+          "kind": "note",
+          "note": "Referenced page-object methods/locators (set_conversation_name, is_conversation_name_confirm_enabled, capture_requests_matching, wait_for_network, get_toast_alert, conversation_name_input/confirm_button) all pre-exist on the trunk and match the AFS Concrete Handles table exactly — no invented handles."
+        },
+        {
+          "kind": "note",
+          "note": "ruff check on the new test file: 0 errors. chat_page.py's 37 pre-existing ruff errors are unchanged before/after this diff (verified against the trunk copy) — none introduced by this PR's additive tooltip constant/method."
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no pytest.skip/xfail/test.fail/weakened-assert patterns found in the diff."
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking nit: NAVIGATION_TIMEOUT = 15_000 is defined but never referenced anywhere in the new file — dead code.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:56"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking nit: no_op_put_requests.stop() / rename_put_requests.stop() are called after the assertions rather than in a finally block, so an assertion failure leaks the request listener for the rest of that test run. Same idiom as the already-merged ELITEA-2105-2109 sibling spec (not a new deviation), so not blocking here, but worth a suite-wide follow-up.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:178"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot dir .agents/automation/chat-remaining-w03/cases/ still does not exist on disk (same recurring intake gap noted for every unit in this batch) — fetched ELITEA-2110/2112/2113 live via mcp__onetest-tms__get_test_case instead; no drift found between the fetched case text and the AFS/diff."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-invalid-chars-leading-space-and-recovery_ELITEA-2110_2112_2113.md",
+      "branch": "tests/2110-2112-2113-conversation-rename-invalid-recovery",
+      "pr": 1520,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2113",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Intake gap recurs: .agents/automation/chat-remaining-w03/cases/ never existed on disk (same as the 2105-2109 dispatch on this same wave). Worked around by reading the three case .md files directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ (source of truth anyway) and the _surface.md digest for prior confirmation. Recommend the batch-build workflow actually write case sn… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid added: chat-conversation-name-confirm-tooltip-content on ConversationItem.jsx's rename-confirm Tooltip (mirrors the pre-existing chat-folder-name-confirm-tooltip-content from ELITEA-2458 exactly). Committed EliteaAI/EliteaUI@888dac13 on automation/testids, pushed -- confirmed NOT yet on main (awaiting human cherry-pick).",
+          "ref": "EliteaAI/EliteaUI@888dac13"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed live: MUI surfaces a non-empty title attribute in a Playwright browser_snapshot's accessible-name read even without a real hover ever mounting the Tooltip popper -- the accessibility-tree text alone is not evidence the tooltip rendered. Only page.locator(testid).hover() then reading the popper's own testid is honest evidence. Same gotcha already documented for the sibling folder-rename… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity mechanical grep (git diff tests/batch-chat-remaining-w03...tests/2110-2112-2113-conversation-rename-invalid-recovery -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') returned 0 hits — no substitution of the system under test."
+        },
+        {
+          "kind": "note",
+          "note": "Locator mechanical grep returned 1 hit: automation/pages/chat_page.py new get_conversation_name_confirm_tooltip_text() uses self.page.locator(self.CONVERSATION_NAME_CONFIRM_TOOLTIP_CONTENT) — compliant, the UPPER_CASE class constant is a literal `[data-testid=\"chat-conversation-name-confirm-tooltip-content\"]` string per the dynamic/scoped-selector pattern.",
+          "ref": "automation/pages/chat_page.py:6521"
+        },
+        {
+          "kind": "note",
+          "note": "New testid chat-conversation-name-confirm-tooltip-content verified for real: git fetch + git grep on origin/automation/testids in EliteaUI confirms it at ConversationItem.jsx:516, added by commit EliteaAI/EliteaUI@888dac13 (single-line slotProps addition on a pre-existing Tooltip/Box). Zero-functional-impact greps (new useState/Effect/Memo/Callback/Ref, new <Box>/div/span, non-testid deletions) on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Per-row triangulation for the family spec verified: ELITEA-2110 and ELITEA-2112 each map to a distinct pytest.param row asserting the row's own invalid_name value (input value, tooltip text, no-op click, persisted-name-unchanged) rather than a shared/flattened assertion; ELITEA-2113 has its own standalone test with its own step-by-step assertions. Every case step + every Axis-2 addition (uniform t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py"
+        },
+        {
+          "kind": "note",
+          "note": "Referenced page-object methods/locators (set_conversation_name, is_conversation_name_confirm_enabled, capture_requests_matching, wait_for_network, get_toast_alert, conversation_name_input/confirm_button) all pre-exist on the trunk and match the AFS Concrete Handles table exactly — no invented handles."
+        },
+        {
+          "kind": "note",
+          "note": "ruff check on the new test file: 0 errors. chat_page.py's 37 pre-existing ruff errors are unchanged before/after this diff (verified against the trunk copy) — none introduced by this PR's additive tooltip constant/method."
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no pytest.skip/xfail/test.fail/weakened-assert patterns found in the diff."
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking nit: NAVIGATION_TIMEOUT = 15_000 is defined but never referenced anywhere in the new file — dead code.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:56"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking nit: no_op_put_requests.stop() / rename_put_requests.stop() are called after the assertions rather than in a finally block, so an assertion failure leaks the request listener for the rest of that test run. Same idiom as the already-merged ELITEA-2105-2109 sibling spec (not a new deviation), so not blocking here, but worth a suite-wide follow-up.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_invalid_chars_and_recovery.py:178"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot dir .agents/automation/chat-remaining-w03/cases/ still does not exist on disk (same recurring intake gap noted for every unit in this batch) — fetched ELITEA-2110/2112/2113 live via mcp__onetest-tms__get_test_case instead; no drift found between the fetched case text and the AFS/diff."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-invalid-chars-leading-space-and-recovery_ELITEA-2110_2112_2113.md",
+      "branch": "tests/2110-2112-2113-conversation-rename-invalid-recovery",
+      "pr": 1520,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          203.6,
+          200.43,
+          201.64
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 9
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

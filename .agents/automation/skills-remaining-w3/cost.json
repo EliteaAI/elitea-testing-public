@@ -1,0 +1,358 @@
+{
+ "v": 1,
+ "batch": "skills-remaining-w3",
+ "generatedAt": "2026-09-14T12:03:20.434Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-29T03:51:32.000Z",
+   "end": "2026-08-14T03:51:32.000Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 8
+ },
+ "delivered": 0,
+ "gate": {
+  "verdict": "red",
+  "runs": 1,
+  "seconds": [
+   964.89
+  ],
+  "failures": [
+   {
+    "spec": "automation/tests/ui/skills/test_agent_skills_validation_attribution_and_token_invalidation.py",
+    "signature": "playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 260.7s into the run)",
+    "case_ids": [
+     "ELITEA-2601"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/skills/test_agent_with_skills_publishing_flow.py",
+    "signature": "playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 368.7s into the run)",
+    "case_ids": [
+     "ELITEA-2600"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/skills/test_published_agent_version_cannot_be_modified.py",
+    "signature": "playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 238.8s into the run)",
+    "case_ids": [
+     "ELITEA-2614"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/skills/test_skill_publish_token_invalidation_and_ttl.py::TestSkillPublishTokenInvalidationAndTTL::test_publish_token_invalidated_by_modification",
+    "signature": "requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skill/prompt_lib/399/1663 (63.6s)",
+    "case_ids": [
+     "ELITEA-2597"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/skills/test_skill_publish_token_invalidation_and_ttl.py::TestSkillPublishTokenInvalidationAndTTL::test_publish_token_expires_after_ttl",
+    "signature": "requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skills/prompt_lib/399 (0.8s — cascaded from the module's shared fixture)",
+    "case_ids": [
+     "ELITEA-2597"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/skills/test_skill_unpublish_republish_lifecycle.py",
+    "signature": "requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skills/prompt_lib/399 (0.8s)",
+    "case_ids": [
+     "ELITEA-2599"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2595",
+   "outcome": "blocked",
+   "findings": 12,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2596",
+   "outcome": "blocked",
+   "findings": 12,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2597",
+   "outcome": "blocked",
+   "findings": 21,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2598",
+   "outcome": "blocked",
+   "findings": 12,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2599",
+   "outcome": "blocked",
+   "findings": 19,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2600",
+   "outcome": "blocked",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2601",
+   "outcome": "blocked",
+   "findings": 16,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2614",
+   "outcome": "blocked",
+   "findings": 11,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 8
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2595",
+   "ELITEA-2596",
+   "ELITEA-2597",
+   "ELITEA-2598",
+   "ELITEA-2599",
+   "ELITEA-2600",
+   "ELITEA-2601",
+   "ELITEA-2614"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

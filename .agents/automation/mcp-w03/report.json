@@ -1,0 +1,630 @@
+{
+  "batch": "mcp-w03",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1396",
+  "integration_branch": "tests/batch-mcp-w03",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      85.25,
+      84.57,
+      90.68
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1942",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "#1737 (OPEN, bug, filed this session): MCP dashboard 'Local' type filter does not filter — with the filter visibly active (?tags[]=Local, chip lit, Clear-all present) all 19 Remote MCPs stay listed and the list request carries no toolkit_type parameter. Deterministic (2/2, incl. pristine navigation), root-caused in useLoadToolkits.hooks.js:88-96: an empty resolved type set is conflated with 'no fi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1737"
+        },
+        {
+          "kind": "question",
+          "note": "#1738 (OPEN, question, filed this session): no Local (pre-built mcp_*) MCP exists in the DEV/automation project and none can be created — toolkit_types?mcp=true returns only ['mcp'] and /mcps/create offers one type card ('Remote MCP'). Human decision needed: provision a Local MCP, or rescope/retire ELITEA-1943 and drop the 'Local MCPs hidden' step from ELITEA-1942's TMS text. Both cases' precondit… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1738"
+        },
+        {
+          "kind": "note",
+          "note": "Handle-policy gap worth knowing (recorded in _surface.md, NOT demanded for these cases): the Types-panel chip's SELECTED state is expressed only by an emotion CSS class hash (css-1oy09ev selected vs css-16qy5qb idle) — no aria-selected, no data-* attribute. Per .agents/testing.md § Locator policy state belongs in a data-* attribute (data-selected on StyledChip in the shared Categories.jsx). ELITEA… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Timing gotcha for the implementer: the Types chips mount LATER than McpListPage.navigate()'s own load signal (the card-view toggle button). A click immediately after navigate fails with 'does not match any elements' — observed live. Wait for the chip itself; never a fixed sleep."
+        },
+        {
+          "kind": "clarification",
+          "note": "TMS metadata inconsistency in both cases: YAML frontmatter says priority: high, the case body says 'Priority: medium'. Treated as high (l1) per frontmatter, consistent with the neighbouring MCP-dashboard specs ELITEA-1941/1944. Reported, not guessed at further."
+        },
+        {
+          "kind": "note",
+          "note": "Reuse observation: automation/pages/credentials_list_page.py already implements the exact Types-panel shape these cases need (TYPE_FILTER_CHIP template, tags_clear_all_button, entity_card_tag_chip collection, click_type_filter/remove_type_filter/clear_all_type_filters/get_visible_type_badges) against the SAME shared Categories.jsx component — the implementer should port that shape into McpListPage… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case precondition 'Both Local MCPs (ADO, FileSystem, PlaywrightMCP) and Remote MCPs exist' is unsatisfiable in this environment (already parked by the analyst as question #1738). Case step 5 ('Local MCPs are hidden') is therefore vacuous and is automated as the honest absence form — no rendered card carries a `Local` badge while the Remote filter is active — which turns red the day a Local MCP exi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1738"
+        },
+        {
+          "kind": "note",
+          "note": "Product defect #1737 (the Local chip applies visibly but does not filter) is NOT exercised by this case and does not affect it — the Remote path is correct. Recorded in the spec docstring with an explicit warning that the Local absence assertion must never be 'fixed' by clicking the Local chip.",
+          "ref": "#1737"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation-time facts appended (attributed) to test-specs/mcp/_surface.md for the next agent on this surface: (a) the deterministic settle signal for a chip click is the list GET's `toolkit_type=` param presence/absence — no sleep anywhere in the flow; (b) the restored list renders a tick AFTER the unfiltered GET resolves, so a synchronous card read can see an empty grid — `McpListPage._settle… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Console assertion collects msg.type == 'error' only. Warnings are deliberately excluded because /mcps/all carries the pre-existing #291 'missing key' React dev warning via the shared ToolkitTypeSelector render path (already documented by test_mcp_search_by_name.py) — matching the AFS's 'No console errors' wording rather than widening it into a known-noise false red.",
+          "ref": "#291"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING. @allure.issue links `mcp/ELITEA-1942_mcp-dashboard-filter-by-type-remote.md`; the TMS file is `ELITEA-1942_mcp-dashboard-filter-by-type-remote-only.md`. Silent 404 in every report — same failure class as automation_test_id Form-C drift: a hand-derived reference that never fails loudly. One-word fix; worth doing in the same round as the dead-code item below.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_filter.py:73"
+        },
+        {
+          "kind": "defect",
+          "note": "Dead code: `McpListPage.clear_all_type_filters()` is added but called by nothing — the spec deselects via `remove_type_filter()` at step 6, and no other MCP test references it (grep over tests/ returns only the CredentialsListPage caller in test_credential_filter_by_type.py). The AFS listed it as a *suggested* addition, which is not the same as needed. Standing check `Naming + dead code`, and the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_list_page.py:532"
+        },
+        {
+          "kind": "note",
+          "note": "Asymmetric settle. `remove_type_filter()`/`clear_all_type_filters()` call `_settle_restored_list()` (network + first card visible), but `click_type_filter()` (select) does not — it returns right after `_expect_list_response`'s `wait_for_network()`. Step 4 then calls `get_visible_type_badges()`, which does zero waiting (`badges.nth(i)` over an immediate `.count()`), so an un-rendered grid would yie… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_list_page.py:473"
+        },
+        {
+          "kind": "note",
+          "note": "Console-error listener scope is wider than the AFS declares. It is attached before the `has_any_mcp()` precondition navigation and before `_seed_mcp_via_ui()`, so on an empty project the /mcps/create seed flow's console errors land in the step-8 assertion, which the AFS scoped to 'across the filter flow' on /mcps/all (verified clean there, unlike /mcps/create which the AFS itself flags as carrying… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_filter.py:87"
+        },
+        {
+          "kind": "note",
+          "note": "Discriminating power of this case is genuinely low in this environment and the diff is honest about it — every MCP in project 399 is Remote, so step 4's `filtered_names == baseline_names` and step 5's Local-absence assertion are both vacuous (a Remote filter that did nothing at all would still pass steps 4/5/7). The only assertions that would catch a broken Remote filter are step 3's `tags[]=Remot… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_mcp-dashboard-filter-by-type-remote_ELITEA-1942.md"
+        },
+        {
+          "kind": "note",
+          "note": "Style divergence, not a defect: this spec is a module-level function while its siblings in the same directory (test_mcp_search_by_name.py, test_mcp_view_toggle.py) use a `TestX` class. Form C back-write handles unclassed tests (drop the <Class> segment → `tests.ui.toolkits.test_mcp_type_filter.test_mcp_dashboard_filter_by_type_remote`); flagging only so the orchestrator writes the class-less form … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_filter.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "Positives worth recording: read-only-by-default respected (seed only when `has_any_mcp()` is false, deleted in `finally` via `toolkit_api.delete_toolkit`); no hardcoded counts or MCP names anywhere — the baseline is captured live at step 1 and every later assertion compares against it; `_expect_list_response` awaits the real `toolkit_type=`-bearing GET rather than sleeping; `wait_for_type_panel()`… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "This is the 7th occurrence of the derived-TMS-slug class, and the 5th to survive a first implementation round untouched. The memory entry is indexed and was still not consulted at authoring time. The per-spec guard now exists for this spec-set, but the entry also records ~116/588 dead @allure.issue links suite-wide — pre-existing traceability debt that per-spec guards will never close. Worth a ded… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-automation-engineer memory: allure_issue_tms_link_filename_verify_before_commit.md"
+        },
+        {
+          "kind": "note",
+          "note": "No product behaviour changed this round — the fix was a decorator string. The live spec was still re-run end-to-end (1 passed, 21.58s) rather than relying on the previous round's green, per verification-before-completion.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_filter.py"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker RESOLVED. automation/tests/ui/toolkits/test_mcp_type_filter.py:73 @allure.issue now names ELITEA-1942_mcp-dashboard-filter-by-type-remote-only.md; verified present via `ls ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/mcp/ | grep 1942`. Additionally guarded by a new AST-based static test.",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_filter.py:73"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff: 1 hit — `return self.page.locator(self.TYPE_FILTER_CHIP.format(type_label))` (mcp_list_page.py). COMPLIANT via one-hop: TYPE_FILTER_CHIP = '[data-testid=\"tags-panel-chip-{}\"]' is an UPPER_CASE class-level template constant, the sanctioned dynamic-testid shape, mirroring CredentialsListPage.TYPE_FILTER_CHIP. No other non-testid handles added.",
+          "ref": "automation/pages/mcp_list_page.py:87"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical provenance grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) on the full diff: 0 hits / (no matches). Every asserted observable — card names, badge texts, URL query param, Clear-all mount state, HTTP 200 on both list GETs — is produced by the live product; the baseline is captured at run time, never hardcoded."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case ↔ AFS ↔ diff clean. All 7 case steps have a Coverage-Map row and a real assertion AT that step, each inside its own allure.step. Case's unsatisfiable precondition (no Local MCP exists/creatable in DEV) is carried faithfully case → AFS clarification (question #1738) → docstring + step-5 absence assertion `badges.count(\"Local\") == 0`, which is the honest test-enforced form and tur… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l1_mcp-dashboard-filter-by-type-remote_ELITEA-1942.md"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: the only skip in the diff is @pytest.mark.skipif on the unit guard, gated on the ../onetest-ai-tm-Elitea sibling clone being absent, with a declared reason citing .agents/architecture.md. Not a product-defect skip. No xfail, no expect.soft, no weakened assertions in the UI spec. Known defect #1737 (Local chip does not filter) is documented in the docstring and correctly NOT exercised… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_mcp_type_filter_spec_allure_issue_link.py:96"
+        },
+        {
+          "kind": "note",
+          "note": "New unit guard is precedent, not scope creep: verbatim the shape of four existing per-spec guards (test_artifacts_bucket_retention_spec_allure_issue_link.py, test_artifacts_delete_all_specs_allure_issue_links.py, test_artifacts_tree_specs_allure_issue_links.py, test_skill_agent_interaction_allure_issue_links.py). It also self-checks the extractor (exactly 1 link, case id ELITEA-1942), closing the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_mcp_type_filter_spec_allure_issue_link.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit (non-blocking, dead code): McpListPage.clear_all_type_filters() (mcp_list_page.py:532) has no caller anywhere in tests/ or pages/ — the spec deselects via remove_type_filter(). The AFS suggested it, and the underlying testid `tags-panel-clear-all` IS exercised on the executed path via is_type_filter_active(), so no orphan-testid / #511 problem; it is just an unused method. Either drop it or le… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_list_page.py:532"
+        },
+        {
+          "kind": "note",
+          "note": "Seed-if-empty precondition and cleanup mirror the merged test_mcp_view_toggle.py (ELITEA-1944) exactly; toolkit_api fixture (fixtures/api_fixtures.py:184), ToolkitAPI.delete_toolkit (api/client.py:1944) and all McpFormPage methods used by _seed_mcp_via_ui verified to exist. Read-only-by-default (Hard Rule 10) is honoured — pre-existing MCPs are reused, nothing is created unless the project is genu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_filter.py:35"
+        },
+        {
+          "kind": "clarification",
+          "note": "Environment-coupled assertions to be aware of at the hardening gate (specced by the AFS, not a defect): step 4 asserts `filtered_names == baseline_names` (order-sensitive) and `len(badges) == len(filtered_names)`. Both hold only while every MCP in the shared DEV project is Remote and carries exactly one tag chip. If a Local MCP ever appears, or a card ever renders a second tag / a `+N` overflow ba… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_filter.py:150"
+        }
+      ],
+      "afs": "test-specs/mcp/l1_mcp-dashboard-filter-by-type-remote_ELITEA-1942.md",
+      "branch": "tests/ELITEA-1942-mcp-type-filter-remote",
+      "pr": 1739,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          85.25,
+          84.57,
+          90.68
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1943",
+      "outcome": "blocked",
+      "note": "Executed live; two independent blockers. (1) PRODUCT DEFECT #1737 (filed, OPEN, bug): selecting the Local chip applies visibly (URL ?tags[]=Local, chip lit, tags-panel-clear-all present) but the list keeps showing all 19 Remote MCPs — the list query goes out with no toolkit_type parameter at all. Reproduced 2/2 including a pristine goto('/mcps/all?tags[]=Local'); root-caused in src/[fsd]/features/… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "#1737 (OPEN, bug, filed this session): MCP dashboard 'Local' type filter does not filter — with the filter visibly active (?tags[]=Local, chip lit, Clear-all present) all 19 Remote MCPs stay listed and the list request carries no toolkit_type parameter. Deterministic (2/2, incl. pristine navigation), root-caused in useLoadToolkits.hooks.js:88-96: an empty resolved type set is conflated with 'no fi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1737"
+        },
+        {
+          "kind": "question",
+          "note": "#1738 (OPEN, question, filed this session): no Local (pre-built mcp_*) MCP exists in the DEV/automation project and none can be created — toolkit_types?mcp=true returns only ['mcp'] and /mcps/create offers one type card ('Remote MCP'). Human decision needed: provision a Local MCP, or rescope/retire ELITEA-1943 and drop the 'Local MCPs hidden' step from ELITEA-1942's TMS text. Both cases' precondit… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1738"
+        },
+        {
+          "kind": "note",
+          "note": "Handle-policy gap worth knowing (recorded in _surface.md, NOT demanded for these cases): the Types-panel chip's SELECTED state is expressed only by an emotion CSS class hash (css-1oy09ev selected vs css-16qy5qb idle) — no aria-selected, no data-* attribute. Per .agents/testing.md § Locator policy state belongs in a data-* attribute (data-selected on StyledChip in the shared Categories.jsx). ELITEA… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Timing gotcha for the implementer: the Types chips mount LATER than McpListPage.navigate()'s own load signal (the card-view toggle button). A click immediately after navigate fails with 'does not match any elements' — observed live. Wait for the chip itself; never a fixed sleep."
+        },
+        {
+          "kind": "clarification",
+          "note": "TMS metadata inconsistency in both cases: YAML frontmatter says priority: high, the case body says 'Priority: medium'. Treated as high (l1) per frontmatter, consistent with the neighbouring MCP-dashboard specs ELITEA-1941/1944. Reported, not guessed at further."
+        },
+        {
+          "kind": "note",
+          "note": "Reuse observation: automation/pages/credentials_list_page.py already implements the exact Types-panel shape these cases need (TYPE_FILTER_CHIP template, tags_clear_all_button, entity_card_tag_chip collection, click_type_filter/remove_type_filter/clear_all_type_filters/get_visible_type_badges) against the SAME shared Categories.jsx component — the implementer should port that shape into McpListPage… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/mcp/l1_mcp-dashboard-filter-by-type-local_ELITEA-1943.md"
+    },
+    {
+      "id": "ELITEA-1945",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed [CLARIFICATION][ELITEA-1945]: the case's step 7 ('MCP returns to its original position') fails against a correctly-behaving product if asserted right after the unpin click. Pinning re-sorts optimistically and client-side; unpinning does not re-sort at all — the original order returns only on the next list fetch. The AFS mandates a re-navigation before that assertion and explicitly forbids as… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1740"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha worth carrying to the implementer and the reviewer: the list-card pin toggle renders at opacity:0 until the card is hovered (pointer-events stay auto, so an unhovered click still works). Playwright's visibility definition ignores opacity, so a bare to_be_visible() passes on a control no human can see. The AFS asserts hover + to_have_css('opacity','1') for the case's 'button is vis… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1945"
+        },
+        {
+          "kind": "defect",
+          "note": "Third independent reproduction of the Local type-filter no-op (first two came from ELITEA-1943). New evidence added to the issue: the Local-filtered list request is byte-identical to the unfiltered one — no toolkit_type parameter at all — while the Remote filter correctly adds &toolkit_type=mcp. Not re-filed (same object, same trigger, same expected/actual); occurrence commented on the existing is… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1737"
+        },
+        {
+          "kind": "question",
+          "note": "The 'no Local MCP exists or can be created in DEV' gap now gates THREE cases: ELITEA-1942 (partially, its Local-absence assertion is vacuous), ELITEA-1943 (blocked) and ELITEA-1958 (blocked). Commented the third occurrence on the issue. A human scope decision would unblock ELITEA-1958 in a weaker form (Local -> 0 results + empty state) only if #1737 is fixed first.",
+          "ref": "#1738"
+        },
+        {
+          "kind": "note",
+          "note": "TMS case-text oddity, not worth its own ticket but worth knowing: ELITEA-1958's step table jumps 3 -> 6; steps 4 and 5 do not exist in the source. No content appears to be missing — recorded in the AFS so nobody hunts for two dropped steps.",
+          "ref": "ELITEA-1958"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/mcp/_surface.md is now ~1040 lines after my append. The open canon question #1735 (split into index + per-subarea files?) is still unanswered, so I appended rather than restructuring mid-batch — a split would move paths several merged AFS files reference.",
+          "ref": "#1735"
+        },
+        {
+          "kind": "note",
+          "note": "AFS matched the live product exactly — no drift, no amendment. Every predicted observable (POST 201 / DELETE 204, immediate client-side pin re-sort, unpin non-re-sort until next list fetch, byte-identical restored order, 0 console errors on /mcps/all) reproduced on the first run.",
+          "ref": "ELITEA-1945"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live during implementation: unpinning does NOT re-sort the list in place — the card stays at index 0 with its label already flipped back to 'Pin to top' until the next list fetch. Step 7 therefore re-navigates before asserting 'no longer at the top'. The analyst's clarification #1740 (case text omits the re-fetch) is accurate; asserting the case text literally would fail against a correc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1740"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation-time timing fact worth knowing for future pin cases: the pin's client-side re-sort is immediate but lands one render tick AFTER the pin response resolves, so reading get_card_names() straight off the awaited 201 can race. Handled with McpListPage.wait_for_card_at_top(name) — a retrying expect() on the first card's text, not a sleep. Same for the aria-label flip (wait_for_pin_toggle_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1945"
+        },
+        {
+          "kind": "note",
+          "note": "Shared-file touch to flag for review: the only removed line in the page-object diff is `from playwright.sync_api import Locator, Page, Response`, replaced by the same line plus `expect` (needed for the two retrying web-first waits). No existing method body was modified, so the additive-only contract holds for every merged caller.",
+          "ref": "automation/pages/mcp_list_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "The 'nothing is pinned' precondition guard needed a collection read across all rendered pin toggles, which have per-id dynamic testids. Used a prefix class constant `[data-testid^=\"mcp-pin-toggle-button-\"]` — established precedent in this suite (agent_detail_page.py, admin_users_page.py both carry `[data-testid^=` UPPER_CASE constants), so not a declared improvisation. Reviewer note: the literal i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PIN_TOGGLE_BUTTON_ANY"
+        },
+        {
+          "kind": "note",
+          "note": "CLOSURE-RECORD WARNING for the lead: the standard two-stage promotability grep returns a FALSE NEGATIVE for `mcp-pin-toggle-button`. Verified with `cd ../EliteaUI && git fetch origin` first: `git grep -- mcp-pin-toggle-button origin/main -- src/` = no hits, `origin/automation/testids` = no hits — yet the testid IS on main, runtime-composed at src/[fsd]/widgets/pin-toggler/ui/PinButton.jsx:98 (`dat… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_mcp-dashboard-pin-unpin-mcp_ELITEA-1945.md:Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Card-view precondition is assumed rather than established. The case precondition says 'MCP list page is in Card view'; the test navigates and immediately reads `get_card_names()` without calling the existing `McpListPage.switch_to_card_view()` (mcp_list_page.py:310) or asserting card view is active. If a prior spec (e.g. test_mcp_view_toggle.py, which switches to table view) leaves a persisted tab… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_pin_unpin.py:130"
+        },
+        {
+          "kind": "note",
+          "note": "Possible flake vector for the hardening gate: `restored_names == baseline_names` is a byte-identical whole-page-1 order comparison, but `get_card_names()` (mcp_list_page.py:347) only waits for the FIRST card to be visible before counting — it never waits for the full page-1 set (limit=20) to settle. If either read lands mid-render the two lists differ in LENGTH and the assertion fails with a confu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_pin_unpin.py:216"
+        },
+        {
+          "kind": "note",
+          "note": "Convention check, non-blocking: the console-error assertion (`assert not console_errors`) sits outside any `allure.step` block, so it will not surface as a step in the Allure report even though the AFS lists it as step 9. This matches the merged neighbour convention exactly (test_mcp_back_navigation.py:210, test_mcp_copy_link_from_menu.py:233), so it is suite-wide shape, not this PR's deviation — … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_pin_unpin.py:240"
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking disposition VERIFIED, not just claimed: clarification #1740 exists, state OPEN, label `question` (not `bug`) — '[CLARIFICATION][ELITEA-1945] MCP list unpin does not re-sort in place'. The AFS and the test docstring both explicitly refuse to assert the intermediate 'still at index 0 after unpin' optimistic-update state, which is the right call — it is real today but is not the case'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1740"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion-honesty strength worth naming: case step 2 ('Pin to top button is visible on the card') is asserted as hover + `to_have_css(\"opacity\", \"1\")` rather than `to_be_visible()`. Playwright's visibility definition ignores opacity, so the card's hover-reveal toggle at `opacity: 0` would have passed a bare `to_be_visible()` — the case step would have been vacuous. Recorded as durable role memory … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_pin_unpin.py:36"
+        },
+        {
+          "kind": "note",
+          "note": "POM discipline is clean and additive-only: five new methods appended to McpListPage (pin_toggle_button, hover_pin_toggle, click_pin_toggle, wait_for_pin_toggle_label, get_all_pin_toggle_labels, wait_for_card_at_top) plus one class constant — nothing existing was modified, so no shared-caller blast radius. Waits are all condition-based (`expect_response` on the real /social/pin round trip, retrying… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_list_page.py:449"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_mcp-dashboard-pin-unpin-mcp_ELITEA-1945.md",
+      "branch": "tests/1945-mcp-pin-unpin",
+      "pr": 1741,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          85.25,
+          84.57,
+          90.68
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1948",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed #1742 — [Clarification][ELITEA-1949] the MCP type-picker 'Local' filter hides the Local section entirely (heading + empty-state message + Documentation link all unmount) and shows the generic 'No MCPs found' instead of the case's 'Only Local section is visible'. Labelled question + case-text-drift, screenshot uploaded to the evidence release and embedded inline. Cross-linked as a SIBLING of … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1742"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1948's step 9 omits the Discard confirmation modal — the THIRD case to hit the gap already tracked as #1718 (after ELITEA-1928 and ELITEA-1971). Per the profile's dedup rule (same object + same trigger + same expected/actual) this was NOT re-filed: the new occurrence was commented on #1718 with the live evidence (modal text, the revert landing only after confirm, empty write-method network … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1718#issuecomment-5391281211"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1949 needs three testids added via add-data-testid before it can be implemented, TWO of them in the SHARED component src/[fsd]/shared/ui/filter/CategoryFilter.jsx — so they must be caller-supplied props, not hardcoded feature-scoped testids. The AFS names the exact in-repo precedents to copy (searchInputTestId's existing plumbing through GroupedCategory.jsx for the prop pattern; the sibling… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_mcp-type-selection-local-vs-remote-display_ELITEA-1949.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1948 will merge localhost-green but deployed-red: it depends on toolkit-detail-discard-confirm-modal / -button, which are on EliteaAI/EliteaUI automation/testids (EliteaAI/EliteaUI@a51c9318) and NOT on main — re-verified 2026-08-24 after git fetch, same gap ELITEA-1928 already carries. The closure record must name the human cherry-pick as the unblock owner. ELITEA-1949's three new testids w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Environment fact #1738 (no Local MCP exists or can be created in DEV — GET /toolkit_types/prompt_lib/{project}?mcp=true returns {\"rows\":[\"mcp\"],\"total\":1}) now gates a FOURTH case. ELITEA-1949 is automatable BECAUSE of it (the case is written for the empty-Local state), but if a Local MCP ever appears in DEV, steps 3, 4 and 7 change meaning and this AFS must be re-run. Worth noting on #1738.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1738"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/mcp/_surface.md is now 1085 lines (997 before this dispatch) — far past the ~150-line split-into-index smell in the test-case-analysis skill. It is still a useful grep target but no longer a comfortable single read, and every mcp-wave analyst pays for that. I did NOT split it this dispatch: doing it properly (index + per-subarea files, without dropping content) would have consumed the r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Tooling gotcha for every agent driving CodeMirror through Playwright MCP: browser_type maps to locator.fill(), which replaces the ENTIRE contenteditable document (observed 30 lines -> 1, invalid JSON, Save stuck disabled, reload-only recovery). The digest warned about .fill() but not that the MCP tool silently is .fill(). Honest workaround used: browser_run_code_unsafe with page.keyboard.type() af… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "The AFS work order would have shipped a regression, caught before commit. It put the `isMCP ? chipTestIdPrefix : undefined` decision inside src/pages/Toolkits/ToolkitTypeSelector.jsx, but that component has TWO call sites that both pass isMCP: the standalone /mcps/create page (CreateToolkit.jsx) and the in-chat MCP canvas (src/[fsd]/features/chat/ui/editors/ToolkitEditor.jsx:304). Deriving the tes… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1949 AFS — Testid work order A/B"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1949 step 7 case-text drift confirmed live and asserted against the live contract per the reverse-masking guard: selecting the Local filter unmounts the empty Local section entirely and renders catalog-no-results-title 'No MCPs found' / -description 'Try adjusting your search terms', rather than leaving 'only the Local section visible'. Already filed by the analyst as clarification #1742; n… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1742"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1948 step 9 omits the Discard confirmation modal that the live product raises. Third case to hit it (after ELITEA-1928, ELITEA-1971). Already tracked; the analyst commented the new occurrence. The spec asserts the modal explicitly, including that nothing reverts until it is confirmed.",
+          "ref": "#1718"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1949 is written FOR the state where no Local MCP exists or can be created (GET /toolkit_types/prompt_lib/{project}?mcp=true returns {rows:[mcp]}). If a Local MCP ever appears in DEV, steps 3, 4 and 7 change meaning and the spec's step-7 assertions (local_empty_state count 0, no-results state) will legitimately fail. The multi-select assertion in step 8 is the deliberate tripwire for that.",
+          "ref": "#1738"
+        },
+        {
+          "kind": "note",
+          "note": "Appended two attributed implementation-time sections under the type-picker heading: (a) the three testid gaps are now resolved with commit SHAs and the new page-object handle names, so chip selection is readable as data-selected and the emotion-class-hash warning no longer constrains this surface; (b) the two-call-site trap above. No behavior or scope claim of the analyst's was rewritten.",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI's husky/commitlint enforces a 100-char header AND a [EL-XXXX] ticket token in the subject — an ELITEA-#### form and a 107-char header were both rejected. Cost one retry; worth knowing for any agent adding testids there.",
+          "ref": "EliteaUI commitlint"
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep `git diff tests/batch-mcp-w03...tests/mcp-w03-1948-1949 -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits: `mcp_form_page.py` `return self.page.locator(self.TYPE_FILTER_CHIP.format(chip_slug))` and `...TYPE_FILTER_CHIP_SELECTED.format(...)`. Both COM… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "mechanical greps (PASTED)"
+        },
+        {
+          "kind": "note",
+          "note": "Zero-functional-impact check on the case's EliteaUI JSX: hooks grep 0 hits, new-DOM-node grep 0 hits, non-testid removals = only the `ToolkitTypeSelector` props destructure reformatted to multi-line to accept two optional props (declared in the commit body). CategoryFilter keeps `category-filter-tab` as the no-prefix fallback; `data-selected` is an additive attribute mirroring the CategoryRail pre… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@f4ce7128, @989db4f0"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the shared-component hoist does not regress merged specs: `category-filter-tab` / `select_remote_category_tab` consumers are ONLY tests/ui/chat/test_create_mcp_from_conversation.py:206 and ..._discard_changes.py:172 (the in-chat canvas, which CreateToolkit.jsx's prop scoping leaves byte-identical), plus toolkit_creation_page.py CATEGORY_TAB (non-MCP toolkits, untouched). The AFS amendment… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_picker_local_vs_remote.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fresh ground truth (`cd ../EliteaUI && git fetch origin`, 2026-08-24): mcp-type-picker-heading main:no testids:YES; mcp-type-picker-local-documentation-link main:no testids:YES; mcp-type-picker-filter-chip-{local,remote} runtime-composed, prefix wired at CreateToolkit.jsx:205-206 on automation/testids only; toolkit-detail-discard-confirm-modal / -button main:no testids:YES (EliteaAI/EliteaUI@a51c9… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "promotability"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking robustness: the write-guard filters on `f\"/tool/prompt_lib/{project_id}\" in request.url` (SINGULAR). The detail-page PUT and the DELETE do use `/tool/prompt_lib/{project}/{id}` so the realistic write IS captured, but the create endpoint is `/tools/prompt_lib/{project}` (PLURAL, api/client.py:1756) and would NOT match — so the Axis-2 claim 'no PUT/POST/PATCH fires' is only enforced for… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_form_raw_json_view_sync.py:101"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking flake risk at the 3× hardening gate: several state checks use non-retrying calls — `form_view_toggle.get_attribute('aria-pressed')`, `detail_save_button.is_disabled()`, `detail_discard_button.is_disabled()` — instead of auto-waiting `expect(...).to_be_disabled()/to_be_enabled()/to_have_attribute(...)`. Mitigated in practice because the page-object helpers (`switch_to_raw_json_view`/`s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_form_raw_json_view_sync.py:112-296"
+        },
+        {
+          "kind": "defect",
+          "note": "Dead code added: `selected_type_filter_chip()`, `is_type_filter_selected()` and the `TYPE_FILTER_CHIP_SELECTED` constant they wrap are never called by either spec — the test asserts selection via `expect(chip).to_have_attribute('data-selected', ...)` directly. The AFS did specify them, so this is AFS-faithful, not implementer drift; recommend deleting the two unused helpers (or using `selected_typ… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:604-640"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS↔impl drift, non-blocking: the AFS Coverage Map's Step-2 row says the read fields 'equal the seeded/default values', but the code asserts only truthiness for Url/Timeout/Cache TTL (`assert form_url`, `assert form_timeout`, `assert form_cache_ttl`) and does not assert Enable Caching / Ssl Verify at all at that step. The case's own expected result ('Current values are observed') is satisfie… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_form_raw_json_view_sync.py:150-159"
+        },
+        {
+          "kind": "note",
+          "note": "Case 1949 Step 5's '…with icon' is the one case element not asserted; the AFS declares it out-of-scope (the icon is an untestid'd `<Box>` in the shared `CategoryItemCard.jsx:19`, and the step's Expected Result column is only 'Remote MCP card is visible', so a testid there would be a #511 blanket-add). Accepted as a documented disposition, flagged so the lead sees the one uncovered fragment.",
+          "ref": "test-specs/mcp/l2_mcp-type-selection-local-vs-remote-display_ELITEA-1949.md — Coverage Map"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both case-text divergences are correctly routed, not masked. 1949 Step 7: the product unmounts the empty Local section on filter-select and falls through to `catalog-no-results-*`; asserted against the LIVE contract with clarification #1742 (verified OPEN, labels `question` + `case-text-drift`). 1948 Step 9: the Discard confirmation modal absent from the case text is asserted as live behaviour, lo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1742 / #1718"
+        },
+        {
+          "kind": "note",
+          "note": "For the record: `data-testid={chipTestIdPrefix ? `${chipTestIdPrefix}-${slugifyCategory(category)}` : 'category-filter-tab'}` is a same-element conditional pair on a per-mount prop (#277 territory, not the PR #581 state-switched anti-pattern). It passes because the fallback branch is a PRE-EXISTING testid that remains referenced on merged executed paths (the two chat-canvas specs verified above) r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#277 / shared-component testid"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_mcp-form-raw-json-view-toggle-data-consistency_ELITEA-1948.md",
+      "branch": "tests/mcp-w03-1948-1949",
+      "pr": 1743,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          85.25,
+          84.57,
+          90.68
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1949",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed #1742 — [Clarification][ELITEA-1949] the MCP type-picker 'Local' filter hides the Local section entirely (heading + empty-state message + Documentation link all unmount) and shows the generic 'No MCPs found' instead of the case's 'Only Local section is visible'. Labelled question + case-text-drift, screenshot uploaded to the evidence release and embedded inline. Cross-linked as a SIBLING of … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1742"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1948's step 9 omits the Discard confirmation modal — the THIRD case to hit the gap already tracked as #1718 (after ELITEA-1928 and ELITEA-1971). Per the profile's dedup rule (same object + same trigger + same expected/actual) this was NOT re-filed: the new occurrence was commented on #1718 with the live evidence (modal text, the revert landing only after confirm, empty write-method network … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1718#issuecomment-5391281211"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1949 needs three testids added via add-data-testid before it can be implemented, TWO of them in the SHARED component src/[fsd]/shared/ui/filter/CategoryFilter.jsx — so they must be caller-supplied props, not hardcoded feature-scoped testids. The AFS names the exact in-repo precedents to copy (searchInputTestId's existing plumbing through GroupedCategory.jsx for the prop pattern; the sibling… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/l2_mcp-type-selection-local-vs-remote-display_ELITEA-1949.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1948 will merge localhost-green but deployed-red: it depends on toolkit-detail-discard-confirm-modal / -button, which are on EliteaAI/EliteaUI automation/testids (EliteaAI/EliteaUI@a51c9318) and NOT on main — re-verified 2026-08-24 after git fetch, same gap ELITEA-1928 already carries. The closure record must name the human cherry-pick as the unblock owner. ELITEA-1949's three new testids w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Environment fact #1738 (no Local MCP exists or can be created in DEV — GET /toolkit_types/prompt_lib/{project}?mcp=true returns {\"rows\":[\"mcp\"],\"total\":1}) now gates a FOURTH case. ELITEA-1949 is automatable BECAUSE of it (the case is written for the empty-Local state), but if a Local MCP ever appears in DEV, steps 3, 4 and 7 change meaning and this AFS must be re-run. Worth noting on #1738.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1738"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/mcp/_surface.md is now 1085 lines (997 before this dispatch) — far past the ~150-line split-into-index smell in the test-case-analysis skill. It is still a useful grep target but no longer a comfortable single read, and every mcp-wave analyst pays for that. I did NOT split it this dispatch: doing it properly (index + per-subarea files, without dropping content) would have consumed the r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Tooling gotcha for every agent driving CodeMirror through Playwright MCP: browser_type maps to locator.fill(), which replaces the ENTIRE contenteditable document (observed 30 lines -> 1, invalid JSON, Save stuck disabled, reload-only recovery). The digest warned about .fill() but not that the MCP tool silently is .fill(). Honest workaround used: browser_run_code_unsafe with page.keyboard.type() af… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "The AFS work order would have shipped a regression, caught before commit. It put the `isMCP ? chipTestIdPrefix : undefined` decision inside src/pages/Toolkits/ToolkitTypeSelector.jsx, but that component has TWO call sites that both pass isMCP: the standalone /mcps/create page (CreateToolkit.jsx) and the in-chat MCP canvas (src/[fsd]/features/chat/ui/editors/ToolkitEditor.jsx:304). Deriving the tes… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1949 AFS — Testid work order A/B"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1949 step 7 case-text drift confirmed live and asserted against the live contract per the reverse-masking guard: selecting the Local filter unmounts the empty Local section entirely and renders catalog-no-results-title 'No MCPs found' / -description 'Try adjusting your search terms', rather than leaving 'only the Local section visible'. Already filed by the analyst as clarification #1742; n… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1742"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1948 step 9 omits the Discard confirmation modal that the live product raises. Third case to hit it (after ELITEA-1928, ELITEA-1971). Already tracked; the analyst commented the new occurrence. The spec asserts the modal explicitly, including that nothing reverts until it is confirmed.",
+          "ref": "#1718"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1949 is written FOR the state where no Local MCP exists or can be created (GET /toolkit_types/prompt_lib/{project}?mcp=true returns {rows:[mcp]}). If a Local MCP ever appears in DEV, steps 3, 4 and 7 change meaning and the spec's step-7 assertions (local_empty_state count 0, no-results state) will legitimately fail. The multi-select assertion in step 8 is the deliberate tripwire for that.",
+          "ref": "#1738"
+        },
+        {
+          "kind": "note",
+          "note": "Appended two attributed implementation-time sections under the type-picker heading: (a) the three testid gaps are now resolved with commit SHAs and the new page-object handle names, so chip selection is readable as data-selected and the emotion-class-hash warning no longer constrains this surface; (b) the two-call-site trap above. No behavior or scope claim of the analyst's was rewritten.",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI's husky/commitlint enforces a 100-char header AND a [EL-XXXX] ticket token in the subject — an ELITEA-#### form and a 107-char header were both rejected. Cost one retry; worth knowing for any agent adding testids there.",
+          "ref": "EliteaUI commitlint"
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep `git diff tests/batch-mcp-w03...tests/mcp-w03-1948-1949 -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits: `mcp_form_page.py` `return self.page.locator(self.TYPE_FILTER_CHIP.format(chip_slug))` and `...TYPE_FILTER_CHIP_SELECTED.format(...)`. Both COM… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "mechanical greps (PASTED)"
+        },
+        {
+          "kind": "note",
+          "note": "Zero-functional-impact check on the case's EliteaUI JSX: hooks grep 0 hits, new-DOM-node grep 0 hits, non-testid removals = only the `ToolkitTypeSelector` props destructure reformatted to multi-line to accept two optional props (declared in the commit body). CategoryFilter keeps `category-filter-tab` as the no-prefix fallback; `data-selected` is an additive attribute mirroring the CategoryRail pre… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@f4ce7128, @989db4f0"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the shared-component hoist does not regress merged specs: `category-filter-tab` / `select_remote_category_tab` consumers are ONLY tests/ui/chat/test_create_mcp_from_conversation.py:206 and ..._discard_changes.py:172 (the in-chat canvas, which CreateToolkit.jsx's prop scoping leaves byte-identical), plus toolkit_creation_page.py CATEGORY_TAB (non-MCP toolkits, untouched). The AFS amendment… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_type_picker_local_vs_remote.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fresh ground truth (`cd ../EliteaUI && git fetch origin`, 2026-08-24): mcp-type-picker-heading main:no testids:YES; mcp-type-picker-local-documentation-link main:no testids:YES; mcp-type-picker-filter-chip-{local,remote} runtime-composed, prefix wired at CreateToolkit.jsx:205-206 on automation/testids only; toolkit-detail-discard-confirm-modal / -button main:no testids:YES (EliteaAI/EliteaUI@a51c9… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "promotability"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking robustness: the write-guard filters on `f\"/tool/prompt_lib/{project_id}\" in request.url` (SINGULAR). The detail-page PUT and the DELETE do use `/tool/prompt_lib/{project}/{id}` so the realistic write IS captured, but the create endpoint is `/tools/prompt_lib/{project}` (PLURAL, api/client.py:1756) and would NOT match — so the Axis-2 claim 'no PUT/POST/PATCH fires' is only enforced for… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_form_raw_json_view_sync.py:101"
+        },
+        {
+          "kind": "defect",
+          "note": "Non-blocking flake risk at the 3× hardening gate: several state checks use non-retrying calls — `form_view_toggle.get_attribute('aria-pressed')`, `detail_save_button.is_disabled()`, `detail_discard_button.is_disabled()` — instead of auto-waiting `expect(...).to_be_disabled()/to_be_enabled()/to_have_attribute(...)`. Mitigated in practice because the page-object helpers (`switch_to_raw_json_view`/`s… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_form_raw_json_view_sync.py:112-296"
+        },
+        {
+          "kind": "defect",
+          "note": "Dead code added: `selected_type_filter_chip()`, `is_type_filter_selected()` and the `TYPE_FILTER_CHIP_SELECTED` constant they wrap are never called by either spec — the test asserts selection via `expect(chip).to_have_attribute('data-selected', ...)` directly. The AFS did specify them, so this is AFS-faithful, not implementer drift; recommend deleting the two unused helpers (or using `selected_typ… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/mcp_form_page.py:604-640"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS↔impl drift, non-blocking: the AFS Coverage Map's Step-2 row says the read fields 'equal the seeded/default values', but the code asserts only truthiness for Url/Timeout/Cache TTL (`assert form_url`, `assert form_timeout`, `assert form_cache_ttl`) and does not assert Enable Caching / Ssl Verify at all at that step. The case's own expected result ('Current values are observed') is satisfie… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_form_raw_json_view_sync.py:150-159"
+        },
+        {
+          "kind": "note",
+          "note": "Case 1949 Step 5's '…with icon' is the one case element not asserted; the AFS declares it out-of-scope (the icon is an untestid'd `<Box>` in the shared `CategoryItemCard.jsx:19`, and the step's Expected Result column is only 'Remote MCP card is visible', so a testid there would be a #511 blanket-add). Accepted as a documented disposition, flagged so the lead sees the one uncovered fragment.",
+          "ref": "test-specs/mcp/l2_mcp-type-selection-local-vs-remote-display_ELITEA-1949.md — Coverage Map"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both case-text divergences are correctly routed, not masked. 1949 Step 7: the product unmounts the empty Local section on filter-select and falls through to `catalog-no-results-*`; asserted against the LIVE contract with clarification #1742 (verified OPEN, labels `question` + `case-text-drift`). 1948 Step 9: the Discard confirmation modal absent from the case text is asserted as live behaviour, lo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1742 / #1718"
+        },
+        {
+          "kind": "note",
+          "note": "For the record: `data-testid={chipTestIdPrefix ? `${chipTestIdPrefix}-${slugifyCategory(category)}` : 'category-filter-tab'}` is a same-element conditional pair on a per-mount prop (#277 territory, not the PR #581 state-switched anti-pattern). It passes because the fallback branch is a PRE-EXISTING testid that remains referenced on merged executed paths (the two chat-canvas specs verified above) r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#277 / shared-component testid"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_mcp-type-selection-local-vs-remote-display_ELITEA-1949.md",
+      "branch": "tests/mcp-w03-1948-1949",
+      "pr": 1743,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          85.25,
+          84.57,
+          90.68
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1958",
+      "outcome": "blocked",
+      "note": "Executed live; blocked on two already-open issues, nothing re-filed. (1) #1738 - the precondition 'both Local and Remote MCPs exist' is unsatisfiable: 19 cards, every badge 'Remote', /mcps/create offers only the Remote type card, toolkit_types endpoint returns {rows:[mcp],total:1}. (2) #1737 - the Local chip does not filter: URL becomes ?tags[]=Local, chip lights, clear-all appears, yet all 19 Rem… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed [CLARIFICATION][ELITEA-1945]: the case's step 7 ('MCP returns to its original position') fails against a correctly-behaving product if asserted right after the unpin click. Pinning re-sorts optimistically and client-side; unpinning does not re-sort at all — the original order returns only on the next list fetch. The AFS mandates a re-navigation before that assertion and explicitly forbids as… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1740"
+        },
+        {
+          "kind": "note",
+          "note": "Framework gotcha worth carrying to the implementer and the reviewer: the list-card pin toggle renders at opacity:0 until the card is hovered (pointer-events stay auto, so an unhovered click still works). Playwright's visibility definition ignores opacity, so a bare to_be_visible() passes on a control no human can see. The AFS asserts hover + to_have_css('opacity','1') for the case's 'button is vis… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1945"
+        },
+        {
+          "kind": "defect",
+          "note": "Third independent reproduction of the Local type-filter no-op (first two came from ELITEA-1943). New evidence added to the issue: the Local-filtered list request is byte-identical to the unfiltered one — no toolkit_type parameter at all — while the Remote filter correctly adds &toolkit_type=mcp. Not re-filed (same object, same trigger, same expected/actual); occurrence commented on the existing is… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1737"
+        },
+        {
+          "kind": "question",
+          "note": "The 'no Local MCP exists or can be created in DEV' gap now gates THREE cases: ELITEA-1942 (partially, its Local-absence assertion is vacuous), ELITEA-1943 (blocked) and ELITEA-1958 (blocked). Commented the third occurrence on the issue. A human scope decision would unblock ELITEA-1958 in a weaker form (Local -> 0 results + empty state) only if #1737 is fixed first.",
+          "ref": "#1738"
+        },
+        {
+          "kind": "note",
+          "note": "TMS case-text oddity, not worth its own ticket but worth knowing: ELITEA-1958's step table jumps 3 -> 6; steps 4 and 5 do not exist in the source. No content appears to be missing — recorded in the AFS so nobody hunts for two dropped steps.",
+          "ref": "ELITEA-1958"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/mcp/_surface.md is now ~1040 lines after my append. The open canon question #1735 (split into index + per-subarea files?) is still unanswered, so I appended rather than restructuring mid-batch — a split would move paths several merged AFS files reference.",
+          "ref": "#1735"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_mcp-dashboard-multiple-mcps-mixed-types_ELITEA-1958.md"
+    }
+  ],
+  "totals": {
+    "automated": 4,
+    "blocked": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

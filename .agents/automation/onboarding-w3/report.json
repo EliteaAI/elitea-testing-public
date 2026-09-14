@@ -1,0 +1,268 @@
+{
+  "batch": "onboarding-w3",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1397",
+  "integration_branch": "tests/batch-onboarding-w3",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      23.1,
+      21.54,
+      23.43
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2237",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Surface-digest quirk 1 (duplicate testids while the fullscreen dialog is open) extends to BOTH navigation arrows, which the wave-2 digest did not cover: onboarding-tour-prev-button and onboarding-tour-next-button each resolve to 2 visible nodes in that state, so an unscoped expect() is a strict-mode violation. Digest updated and the page object now ships DIALOG_PREV_BUTTON / DIALOG_NEXT_BUTTON plu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2239"
+        },
+        {
+          "kind": "note",
+          "note": "The boundary-disabled arrows carry pointer-events: none, so click(force=True) is mandatory for the 'click the inactive arrow and verify nothing happens' steps. A plain .click() times out on Playwright's actionability check and reads like a product failure. This is an observation about the product's styling, not a workaround - the asserted observable (counter unchanged) is still produced by the pro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2238"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 9's expected result - 'verify navigation is consistent with the same behavior as in the collapsed card view' - is a prose judgement with no single observable. Implemented as the two invariants the product actually guarantees (both views report the same slide at every navigation point; the slide reached in the dialog survives collapsing it). Deliberately NOT filed as a case-text ticket: t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2239"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR gotcha, cost ~4 turns: after editing JSX under ../EliteaUI/src, the dev server served the NEW module (cache-busted curl with ?t=<epoch> showed the testid) while the already-open browser page kept the OLD one, and a plain re-goto of the SAME url did not dislodge it - a cache-busted navigation (/onboarding?r=1) did. Distinct from (and cheaper than) the known server-transform-cache case, whi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Memory hygiene: .agents/memory/test-automation-engineer/ already held SEVEN near-duplicate Vite-staleness entries (vite_dev_server_misses_jsx_edits_on_onedrive, vite_dev_server_serves_stale_transform, vite_dev_server_stale_on_onedrive, vite_hmr_misses_fsd_bracket_dirs, vite_hmr_misses_src_edits_restart_dev_server, vite_hmr_stale_module_on_onedrive, vite_serves_stale_jsx_on_onedrive_checkout) plus … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Dead code (Nit, non-blocking): `click_prev_slide()` is added to OnboardingPage but never called — grep across automation/ finds zero call sites. It exists because ELITEA-2238's two \"click the inactive arrow\" steps deliberately force-click the descriptor directly (`tour_prev_button.click(force=True)`), which the method does not do. Either drop it or give it a `force: bool = False` parameter and rou… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/onboarding_page.py:420"
+        },
+        {
+          "kind": "note",
+          "note": "Brittleness note, deliberate and declared: `_DISABLED_ARROW_COLOR = \"rgb(104, 108, 118)\"` hardcodes the resolved MUI `text.disabled` value. A theme palette change fails ELITEA-2238 steps 2 and 7 with no product regression. The ELITEA-2238 AFS argues this explicitly (a computed-style read on both arrows would trip the fidelity grep and buy nothing; the paired `not_to_have_css` on the sibling active… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_navigation.py:96"
+        },
+        {
+          "kind": "note",
+          "note": "Unacknowledged partial overlap: the already-merged ELITEA-2235 spec already asserts `expect(tour_prev_button).to_be_disabled()` at 1/48, which is a subset of ELITEA-2238 step 2. The ELITEA-2238 AFS does not mention it. Not a merged-target violation and NOT a reason to have gone `extend-existing` — 2238's assertions are strictly stronger (greyed colour + pointer-events + force-click no-navigation +… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_card.py:141"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability, verified not copied (fresh `cd ../EliteaUI && git fetch origin`): onboarding-tour-next-button / -prev-button / -page-indicator / -tip-content / -tip-image / -container / -fullscreen-dialog / -fullscreen-button / -fullscreen-close-button — all NINE are main:no, automation/testids:YES. So this unit is green on localhost and would be red on any deployed env; the closure record must car… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_navigate_forward_ELITEA-2237.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2239 step 9's expected result — 'navigation is consistent with the same behavior as in the collapsed card view' — is prose, not an observable. The AFS decomposes it into two machine-checkable invariants (both copies report the same slide at every navigation point; the slide reached in the dialog survives collapsing it) and explicitly files NO clarification ticket, on the grounds that the st… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_fullscreen_navigation_ELITEA-2239.md"
+        },
+        {
+          "kind": "note",
+          "note": "Positive verification worth recording: ELITEA-2238 step 4 walks the full range with `for step in range(2, _LAST_SLIDE + 1)` = exactly 47 clicks (matches the AFS's live-confirmed count), asserts the counter after EVERY click, and is bounded by the constant rather than `while not disabled` — an off-by-one or a skipped slide fails at the click that caused it instead of silently adapting. Similarly EL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_navigation.py:216"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer-trap worth keeping (also written to my role memory and committed on this branch): `.claude/rules/ui-tests.md` § 'Which Page Object to Import?' explicitly sanctions locator access from a specialized page object inside a spec (`form_page.name_input.click()  # Locator access ✅`). Its 'Use Page Objects - Never Direct Locators' heading targets raw `page.locator(...)` in specs. So `onboarding_p… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".claude/rules/ui-tests.md:34"
+        },
+        {
+          "kind": "note",
+          "note": "AFS-amendment discipline satisfied: commit 98b9800dd ('docs(afs): ELITEA-2238 — sync inactive-arrow rows to the shipped assertion shape') updates rows 2 and 7 plus § Concrete Handles Reference to the shape actually shipped (to_have_css pair rather than an evaluate-based relative comparison), in the same PR as the code. No residual AFS↔implementation drift found in any of the three specs.",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_arrow_boundaries_ELITEA-2238.md"
+        }
+      ],
+      "afs": "test-specs/onboarding/l2_onboarding_tips_navigate_forward_ELITEA-2237.md",
+      "branch": "tests/2237-2238-2239-onboarding-tips-navigation",
+      "pr": 1762,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          23.1,
+          21.54,
+          23.43
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2238",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Surface-digest quirk 1 (duplicate testids while the fullscreen dialog is open) extends to BOTH navigation arrows, which the wave-2 digest did not cover: onboarding-tour-prev-button and onboarding-tour-next-button each resolve to 2 visible nodes in that state, so an unscoped expect() is a strict-mode violation. Digest updated and the page object now ships DIALOG_PREV_BUTTON / DIALOG_NEXT_BUTTON plu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2239"
+        },
+        {
+          "kind": "note",
+          "note": "The boundary-disabled arrows carry pointer-events: none, so click(force=True) is mandatory for the 'click the inactive arrow and verify nothing happens' steps. A plain .click() times out on Playwright's actionability check and reads like a product failure. This is an observation about the product's styling, not a workaround - the asserted observable (counter unchanged) is still produced by the pro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2238"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 9's expected result - 'verify navigation is consistent with the same behavior as in the collapsed card view' - is a prose judgement with no single observable. Implemented as the two invariants the product actually guarantees (both views report the same slide at every navigation point; the slide reached in the dialog survives collapsing it). Deliberately NOT filed as a case-text ticket: t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2239"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR gotcha, cost ~4 turns: after editing JSX under ../EliteaUI/src, the dev server served the NEW module (cache-busted curl with ?t=<epoch> showed the testid) while the already-open browser page kept the OLD one, and a plain re-goto of the SAME url did not dislodge it - a cache-busted navigation (/onboarding?r=1) did. Distinct from (and cheaper than) the known server-transform-cache case, whi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Memory hygiene: .agents/memory/test-automation-engineer/ already held SEVEN near-duplicate Vite-staleness entries (vite_dev_server_misses_jsx_edits_on_onedrive, vite_dev_server_serves_stale_transform, vite_dev_server_stale_on_onedrive, vite_hmr_misses_fsd_bracket_dirs, vite_hmr_misses_src_edits_restart_dev_server, vite_hmr_stale_module_on_onedrive, vite_serves_stale_jsx_on_onedrive_checkout) plus … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Dead code (Nit, non-blocking): `click_prev_slide()` is added to OnboardingPage but never called — grep across automation/ finds zero call sites. It exists because ELITEA-2238's two \"click the inactive arrow\" steps deliberately force-click the descriptor directly (`tour_prev_button.click(force=True)`), which the method does not do. Either drop it or give it a `force: bool = False` parameter and rou… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/onboarding_page.py:420"
+        },
+        {
+          "kind": "note",
+          "note": "Brittleness note, deliberate and declared: `_DISABLED_ARROW_COLOR = \"rgb(104, 108, 118)\"` hardcodes the resolved MUI `text.disabled` value. A theme palette change fails ELITEA-2238 steps 2 and 7 with no product regression. The ELITEA-2238 AFS argues this explicitly (a computed-style read on both arrows would trip the fidelity grep and buy nothing; the paired `not_to_have_css` on the sibling active… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_navigation.py:96"
+        },
+        {
+          "kind": "note",
+          "note": "Unacknowledged partial overlap: the already-merged ELITEA-2235 spec already asserts `expect(tour_prev_button).to_be_disabled()` at 1/48, which is a subset of ELITEA-2238 step 2. The ELITEA-2238 AFS does not mention it. Not a merged-target violation and NOT a reason to have gone `extend-existing` — 2238's assertions are strictly stronger (greyed colour + pointer-events + force-click no-navigation +… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_card.py:141"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability, verified not copied (fresh `cd ../EliteaUI && git fetch origin`): onboarding-tour-next-button / -prev-button / -page-indicator / -tip-content / -tip-image / -container / -fullscreen-dialog / -fullscreen-button / -fullscreen-close-button — all NINE are main:no, automation/testids:YES. So this unit is green on localhost and would be red on any deployed env; the closure record must car… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_navigate_forward_ELITEA-2237.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2239 step 9's expected result — 'navigation is consistent with the same behavior as in the collapsed card view' — is prose, not an observable. The AFS decomposes it into two machine-checkable invariants (both copies report the same slide at every navigation point; the slide reached in the dialog survives collapsing it) and explicitly files NO clarification ticket, on the grounds that the st… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_fullscreen_navigation_ELITEA-2239.md"
+        },
+        {
+          "kind": "note",
+          "note": "Positive verification worth recording: ELITEA-2238 step 4 walks the full range with `for step in range(2, _LAST_SLIDE + 1)` = exactly 47 clicks (matches the AFS's live-confirmed count), asserts the counter after EVERY click, and is bounded by the constant rather than `while not disabled` — an off-by-one or a skipped slide fails at the click that caused it instead of silently adapting. Similarly EL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_navigation.py:216"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer-trap worth keeping (also written to my role memory and committed on this branch): `.claude/rules/ui-tests.md` § 'Which Page Object to Import?' explicitly sanctions locator access from a specialized page object inside a spec (`form_page.name_input.click()  # Locator access ✅`). Its 'Use Page Objects - Never Direct Locators' heading targets raw `page.locator(...)` in specs. So `onboarding_p… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".claude/rules/ui-tests.md:34"
+        },
+        {
+          "kind": "note",
+          "note": "AFS-amendment discipline satisfied: commit 98b9800dd ('docs(afs): ELITEA-2238 — sync inactive-arrow rows to the shipped assertion shape') updates rows 2 and 7 plus § Concrete Handles Reference to the shape actually shipped (to_have_css pair rather than an evaluate-based relative comparison), in the same PR as the code. No residual AFS↔implementation drift found in any of the three specs.",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_arrow_boundaries_ELITEA-2238.md"
+        }
+      ],
+      "afs": "test-specs/onboarding/l2_onboarding_tips_arrow_boundaries_ELITEA-2238.md",
+      "branch": "tests/2237-2238-2239-onboarding-tips-navigation",
+      "pr": 1762,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          23.1,
+          21.54,
+          23.43
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2239",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Surface-digest quirk 1 (duplicate testids while the fullscreen dialog is open) extends to BOTH navigation arrows, which the wave-2 digest did not cover: onboarding-tour-prev-button and onboarding-tour-next-button each resolve to 2 visible nodes in that state, so an unscoped expect() is a strict-mode violation. Digest updated and the page object now ships DIALOG_PREV_BUTTON / DIALOG_NEXT_BUTTON plu… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2239"
+        },
+        {
+          "kind": "note",
+          "note": "The boundary-disabled arrows carry pointer-events: none, so click(force=True) is mandatory for the 'click the inactive arrow and verify nothing happens' steps. A plain .click() times out on Playwright's actionability check and reads like a product failure. This is an observation about the product's styling, not a workaround - the asserted observable (counter unchanged) is still produced by the pro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2238"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 9's expected result - 'verify navigation is consistent with the same behavior as in the collapsed card view' - is a prose judgement with no single observable. Implemented as the two invariants the product actually guarantees (both views report the same slide at every navigation point; the slide reached in the dialog survives collapsing it). Deliberately NOT filed as a case-text ticket: t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2239"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR gotcha, cost ~4 turns: after editing JSX under ../EliteaUI/src, the dev server served the NEW module (cache-busted curl with ?t=<epoch> showed the testid) while the already-open browser page kept the OLD one, and a plain re-goto of the SAME url did not dislodge it - a cache-busted navigation (/onboarding?r=1) did. Distinct from (and cheaper than) the known server-transform-cache case, whi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Memory hygiene: .agents/memory/test-automation-engineer/ already held SEVEN near-duplicate Vite-staleness entries (vite_dev_server_misses_jsx_edits_on_onedrive, vite_dev_server_serves_stale_transform, vite_dev_server_stale_on_onedrive, vite_hmr_misses_fsd_bracket_dirs, vite_hmr_misses_src_edits_restart_dev_server, vite_hmr_stale_module_on_onedrive, vite_serves_stale_jsx_on_onedrive_checkout) plus … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Dead code (Nit, non-blocking): `click_prev_slide()` is added to OnboardingPage but never called — grep across automation/ finds zero call sites. It exists because ELITEA-2238's two \"click the inactive arrow\" steps deliberately force-click the descriptor directly (`tour_prev_button.click(force=True)`), which the method does not do. Either drop it or give it a `force: bool = False` parameter and rou… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/onboarding_page.py:420"
+        },
+        {
+          "kind": "note",
+          "note": "Brittleness note, deliberate and declared: `_DISABLED_ARROW_COLOR = \"rgb(104, 108, 118)\"` hardcodes the resolved MUI `text.disabled` value. A theme palette change fails ELITEA-2238 steps 2 and 7 with no product regression. The ELITEA-2238 AFS argues this explicitly (a computed-style read on both arrows would trip the fidelity grep and buy nothing; the paired `not_to_have_css` on the sibling active… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_navigation.py:96"
+        },
+        {
+          "kind": "note",
+          "note": "Unacknowledged partial overlap: the already-merged ELITEA-2235 spec already asserts `expect(tour_prev_button).to_be_disabled()` at 1/48, which is a subset of ELITEA-2238 step 2. The ELITEA-2238 AFS does not mention it. Not a merged-target violation and NOT a reason to have gone `extend-existing` — 2238's assertions are strictly stronger (greyed colour + pointer-events + force-click no-navigation +… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_card.py:141"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability, verified not copied (fresh `cd ../EliteaUI && git fetch origin`): onboarding-tour-next-button / -prev-button / -page-indicator / -tip-content / -tip-image / -container / -fullscreen-dialog / -fullscreen-button / -fullscreen-close-button — all NINE are main:no, automation/testids:YES. So this unit is green on localhost and would be red on any deployed env; the closure record must car… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_navigate_forward_ELITEA-2237.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2239 step 9's expected result — 'navigation is consistent with the same behavior as in the collapsed card view' — is prose, not an observable. The AFS decomposes it into two machine-checkable invariants (both copies report the same slide at every navigation point; the slide reached in the dialog survives collapsing it) and explicitly files NO clarification ticket, on the grounds that the st… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_fullscreen_navigation_ELITEA-2239.md"
+        },
+        {
+          "kind": "note",
+          "note": "Positive verification worth recording: ELITEA-2238 step 4 walks the full range with `for step in range(2, _LAST_SLIDE + 1)` = exactly 47 clicks (matches the AFS's live-confirmed count), asserts the counter after EVERY click, and is bounded by the constant rather than `while not disabled` — an off-by-one or a skipped slide fails at the click that caused it instead of silently adapting. Similarly EL… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/onboarding/test_onboarding_tips_navigation.py:216"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer-trap worth keeping (also written to my role memory and committed on this branch): `.claude/rules/ui-tests.md` § 'Which Page Object to Import?' explicitly sanctions locator access from a specialized page object inside a spec (`form_page.name_input.click()  # Locator access ✅`). Its 'Use Page Objects - Never Direct Locators' heading targets raw `page.locator(...)` in specs. So `onboarding_p… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".claude/rules/ui-tests.md:34"
+        },
+        {
+          "kind": "note",
+          "note": "AFS-amendment discipline satisfied: commit 98b9800dd ('docs(afs): ELITEA-2238 — sync inactive-arrow rows to the shipped assertion shape') updates rows 2 and 7 plus § Concrete Handles Reference to the shape actually shipped (to_have_css pair rather than an evaluate-based relative comparison), in the same PR as the code. No residual AFS↔implementation drift found in any of the three specs.",
+          "ref": "test-specs/onboarding/l2_onboarding_tips_arrow_boundaries_ELITEA-2238.md"
+        }
+      ],
+      "afs": "test-specs/onboarding/l2_onboarding_tips_fullscreen_navigation_ELITEA-2239.md",
+      "branch": "tests/2237-2238-2239-onboarding-tips-navigation",
+      "pr": 1762,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          23.1,
+          21.54,
+          23.43
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 3
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

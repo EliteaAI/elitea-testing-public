@@ -1,0 +1,67 @@
+{
+  "batch": "elitea-2040",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2040",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      56.003107792,
+      53.261985042,
+      53.939567625
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2040",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Component gap (not a product bug): SimpleLLMInputItem.jsx's Variable-mode Value field (a MUI Select rendered when Type=variable) never receives data-testid={valueFieldTestId} even though the prop is already threaded and correctly applied to the Fixed/F-String textarea branch. One-line add-data-testid fix needed in EliteaUI src before this case's AFS can be implemented (steps 6-9). Likely affects H… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/features/pipelines/flow-editor/ui/settings/SimpleLLMInputItem.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Behavioural confirmation for implementers: Type=Variable clears the Value field (any transition touching Variable clears; only Fixed<->F-String preserves the typed value) -- confirmed via source (shouldPreserveValue logic) and live DOM reads both directions. A test walking Fixed->F-String->Variable on one field must re-enter the value after the Variable transition, matching the case's own step wor… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift found and fixed in-branch (not a rerun of product behavior, just AFS accuracy): the LLM node Type select's live DOM option order is fstring/variable/fixed (FlowEditorConstants.agentTaskTypeOptions, flowEditor.constants.js), not fixed/fstring/variable as the analyst originally recorded. Option set was correct. Amended test-specs/pipelines/lextend_pipeline-input-mapping-types-fixed-fstring… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-input-mapping-types-fixed-fstring-variable_ELITEA-2040.md"
+        },
+        {
+          "kind": "note",
+          "note": "Durable framework gotcha for future implementers touching any EliteaUI SingleSelect: shared/ui/select/SingleSelect.jsx puts the caller's data-testid on the outer <Select> FormControl root (role=None), and a SEPARATE '${base}-combobox'-suffixed testid on the actual role=combobox display node via SelectDisplayProps. Asserting 'this field is now rendered as a Select' needs the -combobox-suffixed loca… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/shared/ui/select/SingleSelect.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "One testid fix shipped via add-data-testid: SimpleLLMInputItem.jsx's Variable-mode Value SingleSelect (the 'else' branch rendering when Type=Variable) was missing data-testid={valueFieldTestId} — the Fixed/F-String branch already threads it through NodeFieldInput's inputProps. One-line addition, reused the existing testid name (no new testid minted). Pushed to EliteaAI/EliteaUI automation/testids … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/features/pipelines/flow-editor/ui/settings/SimpleLLMInputItem.jsx"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-input-mapping-types-fixed-fstring-variable_ELITEA-2040.md",
+      "branch": "tests/2040-pipeline-input-mapping-types-fixed-fstring-variable",
+      "pr": 1152,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          56.003107792,
+          53.261985042,
+          53.939567625
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

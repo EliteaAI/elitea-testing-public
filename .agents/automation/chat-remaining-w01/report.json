@@ -1,0 +1,262 @@
+{
+  "batch": "chat-remaining-w01",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w01",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      142.42,
+      257.32,
+      157.72
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2091",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Drag-and-drop composer drop-zone (EliteaUI/src/ComponentsLib/Chat/UserInput.jsx, the outer Box wrapping onDragOver/onDragLeave/onDrop) has NO data-testid anywhere — needs add-data-testid work (e.g. chat-composer-dropzone) before ELITEA-2091's step 5 can be automated with a stable handle. The drag-drop feature itself is real and wired (useFileDragAndDrop hook, not a stub) — confirmed via source rea… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_create-new-conversation-team-project-attachments-and-llm_ELITEA-2091.md"
+        },
+        {
+          "kind": "note",
+          "note": "model-selector-option-{name} testid in LLMModelsMenu.jsx is keyed by the model's internal/raw id (e.g. eu.anthropic.claude-sonnet-4-5-20250929-v1:0), never the display name shown in the UI. Selected-state is Mui-selected class + a conditionally-rendered CheckedIcon child on the SAME testid'd parent, not a testid ternary — no new testid needed for the checkmark. Recorded as a durable memory entry f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/model_selector_option_testid_keyed_by_internal_id.md"
+        },
+        {
+          "kind": "note",
+          "note": "No intake snapshot existed at .agents/automation/chat-remaining-w01/cases/ELITEA-2091.md for this batch — fell back to fetching the case body directly from the onetest-ai-tm-Elitea repo file per the skill's fallback rule. Flagging in case the batch's intake step was expected to have written snapshots and didn't."
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot file named in the dispatch prompt (.agents/automation/chat-remaining-w01/cases/ELITEA-2091.md) does not exist on disk/in git on this branch. Worked around by fetching the case directly via mcp__onetest-tms__get_test_case and cross-checking it against the AFS's own Coverage Map (1:1 match, no gaps) — but the batch's case-snapshot materialization step for this wave may be worth checkin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.get_overflow_attachment_names() (pre-existing helper) has an undocumented side effect: its internal Escape-key press, used to close the overflow sub-menu it opens, also closes the WHOLE plus-menu popper (same class of bug ChatPage.close_plus_menu_popper()'s docstring already warns about for ELITEA-2203). Any test calling get_all_attached_file_names() while an overflow bucket exists should… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered during debugging (not filed as a bug — confirmed intentional): the backend sanitizes/renames uploaded attachment filenames on send (useUploadAttachments.js's uploadedInfo.filepath -> sanitizedName), so the message thread's rendered attachment names can differ from the client-side original filename. Not exercised as a live defect in this run (the one instance I saw was actually cross-ses… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS § Test Steps step 9's prose says 'the composer disables while the AI response streams' but this is not tracked in the Coverage Map's 'Asserted where' column for row 9 (which only lists thread content + URL) and is not implemented in the test. Not blocking: the raw TMS case's step 9 Expected Result and the case's Pass/Fail Criteria section never require this, so it's an AFS-narrative overstatem… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_create-new-conversation-team-project-attachments-and-llm_ELITEA-2091.md step 9 / Coverage Map row 9"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map row 10's 'Expected result' cell says only 'conversation auto-named', silently dropping the 'response is generating' half of the raw case's compound Expected Result text for step 10. Not blocking: the case's authoritative Pass/Fail Criteria doesn't name this as a pass condition, and the test's actual coverage (naming-placeholder-to-title transition) is exactly what the case's accep… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_create-new-conversation-team-project-attachments-and-llm_ELITEA-2091.md Coverage Map row 10"
+        },
+        {
+          "kind": "note",
+          "note": "The implementer discovered a live fact worth capturing durably (excluding options whose model.name contains 'broken' when picking a candidate LLM to switch to, to avoid a deliberately-broken smoke-test model entry) but it isn't recorded in test-specs/chat-interface/_surface.md alongside the other 4 implementation findings that WERE recorded there. Minor digest-completeness gap, not a code defect —… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py (select_llm_model_by_suffix call site in the new test, step 7)"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_create-new-conversation-team-project-attachments-and-llm_ELITEA-2091.md",
+      "branch": "tests/2091-team-project-attachments-and-llm",
+      "pr": 1508,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          142.42,
+          257.32,
+          157.72
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2093",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "chat-send-button click(force=True) — the same pattern the merged ELITEA-2368/2369 siblings use successfully — silently no-op'd in this flow because the composer text and the agent participant populate together off the SAME 100ms setTimeout right before Send (NewConversationView.jsx's useEffect on selectedAgent+activeConversation.isNew), leaving disabledSend still mid-flap when the force click bypa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case text says 'CONVERSATION STARTERS' section header; live product reads 'CHAT STARTERS' — same drift already tracked in EliteaAI/elitea-testing-public#1042 (which already names ELITEA-2368/2369 as affected siblings). Cited in the AFS and test docstring, not re-filed.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1042"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer found and fixed a real send-button timing bug (chat.send_button.click(force=True) silently no-ops in this flow because composer text + agent participant populate off the same 100ms setTimeout, so disabledSend can be mid-flap when force=True bypasses Playwright's actionability wait). Fixed with plain .click(), reproduced 2/2 clean. Documented in test docstring + new memory entry chat_se… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_agent_hub_create_conversation_via_starter.py:169-188"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift \"CONVERSATION STARTERS\" (case) vs live \"CHAT STARTERS\" (product) correctly classified — cited to existing tracker issue #1042 (already names the ELITEA-2368/2369 siblings), not re-filed. No action needed."
+        }
+      ],
+      "afs": "test-specs/agent-hub/l2_agent-hub-create-conversation-via-starter_ELITEA-2093.md",
+      "branch": "tests/ELITEA-2093-agent-hub-conversation-starter",
+      "pr": 1509,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          142.42,
+          257.32,
+          157.72
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2096",
+      "outcome": "blocked",
+      "note": "Family AFS with ELITEA-2097. Case needs an existing conversation in the 'This Week' sidebar section (not today). Confirmed via source read (EliteaUI conversationList.api.js) that Today/This-Week/Older bucketing is computed SERVER-SIDE from real created_at, not client date math — so page.clock/time mocking can't move a conversation between buckets. Confirmed via live OpenAPI spec that ConversationU… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "automation/CLAUDE.md § API Quirks table claims 'Exception: Conversation delete uses plural path' — this is stale/wrong. Confirmed live this session: DELETE .../elitea_core/conversations/prompt_lib/{pid}/{id} (plural) returns 404; DELETE .../elitea_core/conversation/prompt_lib/{pid}/{id} (singular) returns 204. ConversationAPI.delete_conversation()'s own docstring already has this right — only the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/CLAUDE.md"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2096/ELITEA-2097 are blocked purely on test-data age (no conversation exists that's dated outside 'today', and the API/environment offer no honest way to produce one — see the family AFS § Blocked Steps for the full technical grounding: server-side grouped=true bucketing, no timestamp field on ConversationUpdate, zero non-today conversations in either accessible project). This is a human de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_open-existing-conversation-this-week-older-sections_ELITEA-2096.md"
+        },
+        {
+          "kind": "note",
+          "note": "Intake snapshot files (.agents/automation/chat-remaining-w01/cases/ELITEA-209{6,7,8}.md) were missing from disk — fetched all 3 case bodies fresh via the onetest-tms MCP get_test_case verb instead. No functional impact (fetch succeeded cleanly) but flagging the gap since the dispatch prompt said they'd been written at intake."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_open-existing-conversation-this-week-older-sections_ELITEA-2096.md"
+    },
+    {
+      "id": "ELITEA-2097",
+      "outcome": "blocked",
+      "note": "Same family AFS and identical root cause as ELITEA-2096 (server-side date-group bucketing, no honest seed path, zero aged data in environment) — 'Older' section instead of 'This Week', same blocker.",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "automation/CLAUDE.md § API Quirks table claims 'Exception: Conversation delete uses plural path' — this is stale/wrong. Confirmed live this session: DELETE .../elitea_core/conversations/prompt_lib/{pid}/{id} (plural) returns 404; DELETE .../elitea_core/conversation/prompt_lib/{pid}/{id} (singular) returns 204. ConversationAPI.delete_conversation()'s own docstring already has this right — only the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/CLAUDE.md"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2096/ELITEA-2097 are blocked purely on test-data age (no conversation exists that's dated outside 'today', and the API/environment offer no honest way to produce one — see the family AFS § Blocked Steps for the full technical grounding: server-side grouped=true bucketing, no timestamp field on ConversationUpdate, zero non-today conversations in either accessible project). This is a human de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_open-existing-conversation-this-week-older-sections_ELITEA-2096.md"
+        },
+        {
+          "kind": "note",
+          "note": "Intake snapshot files (.agents/automation/chat-remaining-w01/cases/ELITEA-209{6,7,8}.md) were missing from disk — fetched all 3 case bodies fresh via the onetest-tms MCP get_test_case verb instead. No functional impact (fetch succeeded cleanly) but flagging the gap since the dispatch prompt said they'd been written at intake."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_open-existing-conversation-this-week-older-sections_ELITEA-2096.md"
+    },
+    {
+      "id": "ELITEA-2098",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "automation/CLAUDE.md § API Quirks table claims 'Exception: Conversation delete uses plural path' — this is stale/wrong. Confirmed live this session: DELETE .../elitea_core/conversations/prompt_lib/{pid}/{id} (plural) returns 404; DELETE .../elitea_core/conversation/prompt_lib/{pid}/{id} (singular) returns 204. ConversationAPI.delete_conversation()'s own docstring already has this right — only the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/CLAUDE.md"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-2096/ELITEA-2097 are blocked purely on test-data age (no conversation exists that's dated outside 'today', and the API/environment offer no honest way to produce one — see the family AFS § Blocked Steps for the full technical grounding: server-side grouped=true bucketing, no timestamp field on ConversationUpdate, zero non-today conversations in either accessible project). This is a human de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_open-existing-conversation-this-week-older-sections_ELITEA-2096.md"
+        },
+        {
+          "kind": "note",
+          "note": "Intake snapshot files (.agents/automation/chat-remaining-w01/cases/ELITEA-209{6,7,8}.md) were missing from disk — fetched all 3 case bodies fresh via the onetest-tms MCP get_test_case verb instead. No functional impact (fetch succeeded cleanly) but flagging the gap since the dispatch prompt said they'd been written at intake."
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS for ELITEA-2098 specced the whole test against the Private project (399), but the case's own step 6 (PARTICIPANTS panel) cannot be genuinely tested there — ExpandedParticipantsList.jsx's !isPrivateProject guard unconditionally omits the whole Users/owner badge on the account's own Private project (confirmed against EliteaUI main source, not a defect). This is the identical constraint ELITEA-20… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_open-existing-conversation-from-folder_ELITEA-2098.md"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object method click_conversation_in_folder() deliberately does NOT use force=True (unlike its date-group sibling click_conversation_in_group()) — a forced click right after expand_folder() races the folder's MUI Collapse height animation (data-expanded flips synchronously, the CSS transition does not) and can silently miss with no error signal, just a downstream wait_for_conversation_url(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "is_conversation_active() (pre-existing, ELITEA-2114) reads the data-active attribute exactly once with no retry — safe for baseline/already-settled reads, but unsafe immediately after a click whose async state flip hasn't landed yet. Added a bidirectional wait_for_conversation_active(id, active: bool, timeout) sibling using Playwright's native expect(...).to_have_attribute(...), matching the canon… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Case (onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ELITEA-2098_open-existing-conversation-from-a-folder.md) step 3 expected result is 'Conversation content is displayed with full message history.' AFS Coverage Map row 3 disposes this as 'asserted (message-history assertion left to implementer per note above)' — an internally inconsistent disposition: it claims 'asserted' while admi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_open_conversation_from_folder.py:205"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep on the full diff (mock_/page.route(/route.fulfill(/monkeypatch/.evaluate() pattern) returned 0 hits — clean, matches the PR's own claim."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff returned 3 hits, not the 2 the PR description's 'Verification' section claims: two CONVERSATION_ITEM class-constant chains in chat_page.py plus one FOLDER_ICON class-constant chain in the test file itself (Step 1's `expect(folder_item.locator(chat.FOLDER_ICON))`). All three are compliant [data-testid=] class-constant references — no policy violation — but t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_open_conversation_from_folder.py:350"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Concrete Handles table does not list FOLDER_ICON, which the implementation actually uses in Step 1's assertion. Pre-existing, correctly-used handle (automation/pages/chat_page.py:1178) — not a new testid and not a violation — just an incomplete AFS handle inventory. Non-blocking.",
+          "ref": "test-specs/chat-interface/l3_open-existing-conversation-from-folder_ELITEA-2098.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS § Test Data and § Cleanup sections still cite literal project-399 endpoint examples even though § Implementer amendment explains the whole test switched to project 471. The amendment narrative is correct and the actual code correctly uses project 471 throughout (team_conversation_api) — only the AFS's pre-amendment literal examples are stale, an internal AFS inconsistency rather than a code de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_open-existing-conversation-from-folder_ELITEA-2098.md"
+        },
+        {
+          "kind": "note",
+          "note": "New chat-UI interaction quirk discovered mid-fix: FolderItem.jsx's defaultExpanded={containsActiveConversation} auto-expands a folder the moment it contains the active/open conversation (on reload). Not a defect — sensible UX — but a real trap for any future test that seeds a conversation and then moves it into a folder while that conversation is still open. Logged to test-automation-engineer memo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "One debugging-phase test run hit a transient 2x 'Failed to load resource ... 404 ()' console-error side-channel failure with no URL captured (msg.location was empty for these). Not reproduced across 3 subsequent counted green runs. Not root-caused or filtered — flagged in the PR description rather than silently added to the known-403 filter, since a genuine cause hasn't been identified."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding resolved genuinely: case step 3's expected result (\"Conversation content is displayed with full message history\") now has a real assertion. Fix-round-1 commit 593abff5 re-seeds conv_a via the UI's own +Chat flow (1 user + 1 AI message, same worked idiom as ELITEA-2095/#691 dodge) instead of the plain API create, and Step 3 now asserts wait_for_message_count(2) + get_message_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_open_conversation_from_folder.py:~330-345"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep (git diff ... | grep -nE '\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(') on the full diff: 0 hits. Mechanical raw-locator grep on automation/pages/ + automation/tests/: 3 hits, all class-level [data-testid=...] constants (CONVERSATION_ITEM, FOLDER_ICON) referenced via .format()/.locator() chained off a testid parent — compliant, no new raw handles. No El… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Minor staleness (non-blocking): AFS § Test Data and § Cleanup still describe the pre-fix-round-1 setup (conv_a seeded via plain API POST, no mention of the throwaway other_conversation or the navigate-away step) even though § Blocked Steps' \"Resolved during implementation\" note and the test docstring both correctly describe the actual fix-round-1 setup. A future reader skimming only § Test Data/Cl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_open-existing-conversation-from-folder_ELITEA-2098.md"
+        },
+        {
+          "kind": "note",
+          "note": "Minor robustness note (non-blocking): after reopening conv_a from the folder in Step 3, the test waits only for wait_for_message_count(2) before reading message bodies via _extract_message_body — no additional content-stability wait analogous to wait_for_message_content_stable() used during the initial seed. Verified green in 3/3 local runs per the PR commit message, so not treated as a live defec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_open-existing-conversation-from-folder_ELITEA-2098.md",
+      "branch": "tests/2098-open-existing-conversation-from-folder",
+      "pr": 1510,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          142.42,
+          257.32,
+          157.72
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 3,
+    "blocked": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

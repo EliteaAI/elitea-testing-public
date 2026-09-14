@@ -1,0 +1,605 @@
+{
+  "batch": "settings-w03",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w03",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      150.22,
+      144.8,
+      146.19
+    ],
+    "spec_set": "the 15 spec files the trunk adds/changes vs origin/automation/base, together in ONE invocation per run (31 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each. Independent of, and in addition to, the workflow's own internal gate (which also went 3/3 green: 147.16/153.03/178.72s). No red at any point this wave.",
+    "workflow_internal_gate": {
+      "verdict": "green",
+      "runs": 3,
+      "seconds": [
+        147.163513375,
+        153.033112958,
+        178.720807667
+      ]
+    },
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2266",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text drift: steps 3-15 describe a single page with a 'Project Context' toggle card at the top, a 'Project Background' section (subtitle + Build with AI + upload icon + </> icon + eye icon + line-numbered editor) and Save/Discard at the BOTTOM. No such page exists. Live: /settings/project-context renders empty-state ('Still no Project Context' + Create + Build with AI, NO toggle) or saved-view\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2266"
+        },
+        {
+          "kind": "clarification",
+          "note": "Flow not reachable as written. The enable toggle exists ONLY in ProjectContextSavedView (i.e. requires a non-empty saved context \u2014 the case states no such precondition; with empty content the page has no toggle at all). ProjectContextSavedView.handleToggle fires the PUT immediately on change, so steps 4 and 7 ('Click Save') have no control to click. Also 'ON by default' is only true for a never-se\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2267"
+        },
+        {
+          "kind": "clarification",
+          "note": "Flow not reachable as written: it requires toggle + editor + Save on one page. The toggle is in the saved view (no editor, no Save button); the editor route has Save/Discard but no toggle. Additionally, saving empty content flips the page back to the empty state (ProjectContextContent gates on serverData.content.trim()), which the case does not describe.",
+          "ref": "ELITEA-2276"
+        },
+        {
+          "kind": "note",
+          "note": "Digest is stale/incomplete for these cases (written 2026-08-05 for ELITEA-2272's create/editor flow). It claims the three views are switched by a '?view=' query param \u2014 the editor is now its own route (RouteDefinitions.ProjectContextEdit, navigated with router state {openAi,openAiEdit}); it does not document the saved view's EnableToggleCard, the immediate-PUT toggle semantics, the 'Project Contex\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha for whoever picks these up: the MCP browser session's selected project was 'Bugs & Features' (406), where the test user has NO projectContext.edit permission \u2014 banner 'You don't have permission to edit this setting.' and the Switch renders disabled. Toggle cases must run against a project where the user can edit (digest names ${ELITEA_PROJECT_ID}=399 'Private'), and never the Pu\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2267"
+        },
+        {
+          "kind": "note",
+          "note": "No branch/trunk was created (tests/batch-settings-w03 exists nowhere) and no code was written. Role memory was committed by path on automation/base: commit 80ebd804e, .agents/memory/test-automation-engineer/project_context_page_layout_vs_case_texts.md + daily/2026-08-26.md. A pre-existing untracked memory file from an earlier dispatch (basemodal_close_button_testid_prop.md) was left untouched."
+        },
+        {
+          "kind": "defect",
+          "note": "MERGED SPEC IS RED, pre-existing, blocks reuse. tests/ui/admin/test_project_context_character_limit.py (ELITEA-2272) fails on the current build: `TimeoutError: Timeout 10000ms exceeded. waiting for navigation to \"**/settings/project-context?view=create\"`. The product retired the ?view= query param \u2014 src/routes.js now has ProjectContext: '/settings/project-context' and ProjectContextEdit: '/setting\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1794"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift across all three cases. ELITEA-2266 (and the layout assumptions ELITEA-2267/2276 inherit) describes Settings -> Project Context as ONE page: toggle card -> a 'Project Background' section with a goals/terminology/workflows/constraints subtitle -> Build with AI / upload / </> / eye buttons -> line-numbered editor -> Save and Discard AT THE BOTTOM. The product renders three views (emp\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1792"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2276's step order is unperformable, with three distinct live causes worth a product decision: (a) toggle OFF disables Edit and Edit-with-AI, so the editor is unreachable by clicking \u2014 yet the /settings/project-context/edit route is NOT guarded and direct-URL navigation opens a fully working editor (affordance guard vs route guard are inconsistent); (b) saving empty content collapses the vie\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1793"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation the reviewer should verify rather than wave through (role-overrides \u00a7 Declared-improvisation protocol): ELITEA-2276's AFS re-orders the case into two independent phases (OFF phase, then ON phase, each re-establishing its own precondition) instead of one continuous sequence, and reaches the editor by direct URL during the OFF phase. My reading is that this stays under the pro\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2276"
+        },
+        {
+          "kind": "note",
+          "note": "Precondition NOT stated by any of the three cases, but load-bearing for two of them: the Project Context enable toggle renders ONLY in the saved view, i.e. only when content is non-empty. On a project with no context the page shows the empty state, which has no toggle. ELITEA-2266 and ELITEA-2267 therefore both need content seeded before the toggle exists to assert on. All three AFS seed it via AP\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Project selection is a real trap on this surface. A fresh browser profile defaults to the 'Bugs & Features' project, where the test user has NO edit permission \u2014 the saved view renders 'You don't have permission to edit this setting.' and the toggle is disabled, which would look like a product defect to anyone who did not check. Project 399 'Private' has full rights and is what ELITEA-2272 already\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid shape guidance for the implementer, worth flagging early because three of the thirteen requested testids target shared components: the enable toggle is a shared Switch.BaseSwitch, the disabled banner is a shared Banner.BannerMessage, and the two editor mode buttons come from a shared TabGroupButton arrayBtn. Per .agents/testing.md \u00a7 Locator policy these must be CALLER-SUPPLIED testId-style \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "#1794 RESOLVED during this unit. ProjectContextPage.click_create() and the merged ELITEA-2272 spec (test_project_context_character_limit.py) both waited for the retired ?view=create URL and timed out on every run; routes.js now declares a real /settings/project-context/edit route. Both repaired and re-run green alongside the three new specs. click_create() had exactly one caller (grep-enumerated),\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1794"
+        },
+        {
+          "kind": "note",
+          "note": "Vite's file watcher does not see JSX edits on this OneDrive checkout. All 13 testids were on disk and correct, yet the dev server kept serving its cached pre-edit transform through HMR, a hard browser reload AND a touch of the files \u2014 every locator timed out and it looked like the JSX was wrong. The check that separates 'my JSX is wrong' from 'the server never saw it' is curl -s http://localhost:5\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "The merged ELITEA-2272 spec's @allure.issue 'onetest-ai Test Case link' 404'd: it pointed at tests/automated-full-regression-ui/settings-project-params/ELITEA-2272_project-context-character-limit-2500.md, but this module's case files live under settings/project-params/ and the real filename slug is truncated (\u2026-is-enforced-at-2500-characte.md). Nothing in a test run validates these links, so it sh\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_project_context_character_limit.py"
+        },
+        {
+          "kind": "note",
+          "note": "The testids these three specs depend on are on EliteaUI automation/testids only, NOT on main. The specs are green on localhost and will be RED on any deployed env until a human cherry-picks EliteaAI/EliteaUI@b05bbc9a to main and it deploys. The closure record's promotability row should say so; these cases are not deployed-env promotable yet, owner = human.",
+          "ref": "EliteaAI/EliteaUI@b05bbc9a"
+        },
+        {
+          "kind": "note",
+          "note": "Shared-component change worth a reviewer's eye: src/[fsd]/shared/ui/banner-message/BannerMessage.jsx now takes a testId prop DEFAULTING to the pre-existing hardcoded 'credential-warning-banner'. That default is what keeps agent_detail_page.py, toolkit_detail_page.py and pipeline_detail_page.py (and their merged specs) working unchanged. It also opens the path to retiring that feature-scoped testid\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI src/[fsd]/shared/ui/banner-message/BannerMessage.jsx"
+        },
+        {
+          "kind": "clarification",
+          "note": "All three case-text divergences were analyst-declared and already filed (#1792 layout drift, #1793 toggle reachability); I implemented the live contract and asserted the divergence rather than working around it, so a product fix turns these specs red instead of leaving a silent workaround. Specifically: ELITEA-2276 asserts project-context-edit-button is disabled while the toggle is OFF (the fact t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1792, #1793"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (`git diff 1a46c5503...tests/2266-2267-2276-project-context -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`) \u2014 exactly 1 hit: `return self.editor_wrapper.locator(self.EDITOR_GUTTERS)`. COMPLIANT: #579 exception 2 (CodeMirror-inte\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:306"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance / substitution grep on the full diff (`... | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'`) \u2014 0 hits (no matches). All three specs read product-produced values: real `PUT` responses via `page.expect_response`, real keyboard input for the clear, real toast text, real post-save view. The only substitution class present is the API precondition seed \u2014 s\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/"
+        },
+        {
+          "kind": "note",
+          "note": "Testid commit checks (repo `../EliteaUI`, fetched fresh; commit is on `origin/automation/testids` \u2713, matching the AFS provenance rows). Zero-functional-impact Step-5.5 greps: hooks `^\\+.*\\buse(State|Effect|Memo|Callback|Ref)\\(` \u2192 0 hits; `^\\+.*<(Box|div|span|Fragment)` \u2192 2 hits, both reformats of pre-existing nodes (the matching `-` lines are `<Box sx={styles.toggleCard}>` and `<Box sx={styles.loa\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@b05bbc9a"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map Axis 1 ticked against the source case snapshots for all three cases. ELITEA-2266: 16/16 case steps rowed; 13 asserted and each maps to a real assertion at its step; steps 7-9 ('Project Background' section title + subtitle) carry a `clarification #1792` disposition and are genuinely absent from the product (verified in the digest by grep over both EliteaUI refs). ELITEA-2267: 8/8 rowed\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/l3_project-context-page-layout_ELITEA-2266.md:199"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift is handled correctly (reverse-masking guard, not `defect-found`): the three-view product layout vs the case's single page (#1792, OPEN, `question`), and the toggle's unreachability once content is empty plus Edit-disabled-while-OFF (#1793, OPEN, `question`). Both issues verified to exist in the tracker with the right label. Save/Discard position ('at the bottom' \u2014 actually the head\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/automation/settings-w03/cases/ELITEA-2266.md"
+        },
+        {
+          "kind": "note",
+          "note": "#1794 is repaired rather than worked around: `click_create()` now waits for `/settings/project-context/edit` and the merged ELITEA-2272 spec's two URL assertions were tightened from substring checks to `endswith(PROJECT_CONTEXT_EDIT_PATH)` / `endswith(PROJECT_CONTEXT_PATH)` \u2014 strictly stronger than what they replaced. The `allure.issue` link on that spec was also repointed at the real case-file pa\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:176"
+        },
+        {
+          "kind": "note",
+          "note": "POM discipline is additive-only on the shared-caller surface, as required: `navigate()` and `click_save()` are left byte-identical for their merged ELITEA-2272 caller, and the new behaviour lands as siblings (`navigate_to_saved_view`, `navigate_to_editor`, `click_save_and_wait_for_put`). The one in-place edit is `click_create()`, which was broken (#1794) and had exactly one caller, enumerated and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:288"
+        },
+        {
+          "kind": "question",
+          "note": "`project_context_seed` deletes the active project's Project Context before AND after every test, on the shared project 399 \u2014 same blast radius as the pre-existing `clean_project_context`, so no new risk, but it does mean any two project-context specs are mutually exclusive under xdist and will clobber each other if the suite is ever parallelised. Worth a line in `.agents/testing.md` \u00a7 Test data st\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/fixtures/data_fixtures.py:2542"
+        },
+        {
+          "kind": "note",
+          "note": "Two durable gotchas the digest records and I'd echo to the lead: (1) Vite's file watcher does not see JSX edits on this OneDrive checkout \u2014 the served module, not the DOM, is ground truth (`curl http://localhost:5173/src/.../File.jsx | grep <testid>`), fix is a dev-server restart; (2) TMS case files for this module live under `settings/project-params/`, not `settings-project-params/` \u2014 the merged \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/_surface.md:172"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause worth carrying past this unit: a precondition write that sets N fields is N substitutions, but a Fidelity Declaration tends to name only the ONE field the reason-for-substituting covers. Here the true reason (the toggle only renders while content is non-empty) covered `content` and quietly laundered `enabled`, which was the case's own observable in all three cases. Every downstream gate\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1795"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2276 Phase B's `enabled=False` seed is a deliberate, declared explicit flag and MUST stay explicit \u2014 it is not an oversight to be 'cleaned up' to the None default. Phase A's empty save leaves the server at content=\"\" with the toggle gone, so Phase B has to re-establish the OFF state before case step 6 has a control to act on. The new unit guard allows exactly `False` there and blocks `True`\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2276"
+        },
+        {
+          "kind": "note",
+          "note": "The 2272 doc-sync guard deliberately excludes docstrings (via AST) when scanning the spec for the retired route param, because that spec's module docstring legitimately narrates the #1794 history and naming the retired param there is correct documentation. Only string literals the code acts on are checked. If someone later 'simplifies' that guard to a plain text grep it will false-fail on its own \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test_project_context_2272_afs_route_matches_page_object.py"
+        },
+        {
+          "kind": "note",
+          "note": "Product fact confirmed at source during this fix and now recorded in the AFS Fidelity Declarations and _surface.md: the Project Context enable flag defaults to true at BOTH layers \u2014 the API GET returns `enabled: true` on an unset context, and the UI independently applies `serverData?.enabled ?? true` (ProjectContextSavedView.jsx:27, ProjectContextEditor.jsx:157). The editor's own Save also carries\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2266/2267"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 1 RESOLVED. The ELITEA-2272 AFS step-3 row now specifies `/settings/project-context/edit` (was `?view=create`), carries a dated implementer amendment explaining #1794, and the automation-hints wait-strategy line was swept too (not just the named row). Additionally pinned by automation/tests/unit/test_project_context_2272_afs_route_matches_page_object.py, which fails if the retired \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/l2_project-context-character-limit-2500_ELITEA-2272.md:65"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 2 RESOLVED, and I verified the fix is real rather than cosmetic. `_seed(content, enabled=None)` now defaults to GET-and-echo (`_current_enabled`), and the fixture DELETEs before seeding \u2014 so the echoed value comes from a GET on an ABSENT resource. That would be a laundered tautology if the GET 404'd or omitted the field; the surface digest records the live contract (`_surface.md:92\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/fixtures/data_fixtures.py:2542"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 2(a) RESOLVED for ELITEA-2276. Case step 6 is now a real click on the real switch (`click_enable_toggle_and_wait_for_put`), waited on the product's own PUT, with the switch asserted UNCHECKED before (step B1) and CHECKED after (step B2). Phase B's `enabled=False` seed is a declared precondition restoring the OFF state Phase A's own click produced (and the empty save erased along wi\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_project_context_empty_save_toggle_off_on.py:186"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit (non-blocking): `line_number_gutter()` asserts `.cm-gutters` is visible, which proves a gutter container exists but not that LINE NUMBERS render \u2014 case ELITEA-2266 step 14 says \"editor with line numbers\", and the AFS's own live note observed the gutter rendering `1`. `.cm-gutters .cm-lineNumbers` (or a `:visible`-filtered `.cm-gutterElement` count, per the project's own codemirror_gutter_hidde\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:340"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit (non-blocking): `test_the_off_precondition_is_asserted_before_the_on_click` only checks that `not_to_be_checked()` and `to_be_checked()` both appear somewhere in the file \u2014 it does not check ORDER, despite the name and the docstring (\"the pre-click assertion is what makes the ON state a product-produced change\"). A future edit that moves the unchecked assertion after the click would still pass\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py:163"
+        },
+        {
+          "kind": "note",
+          "note": "Asymmetric fault tolerance worth knowing about: `_delete_project_context` tolerates the API's 404, but `_current_enabled()` calls `raise_for_status()` on the GET. That is correct TODAY because the GET is documented (live-confirmed) as always 200 \u2014 and it is deliberately the loud failure mode: if the backend ever starts 404ing an absent context, all three specs error in setup rather than silently f\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/fixtures/data_fixtures.py:2596"
+        },
+        {
+          "kind": "question",
+          "note": "Low-risk race worth a second look at gate time: `click_save_and_wait_for_put()` waits the toast visible, THEN waits the URL to leave /edit, and the specs read `get_toast_text()` afterwards. If the app's toast auto-dismiss is short relative to the SPA route change, the text read could catch an emptied toast. The 2272 spec (merged, same page object) has run this shape via `click_save` + `get_toast_t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:378"
+        },
+        {
+          "kind": "note",
+          "note": "For the closure record: all 13 testids this unit depends on are `main:no / automation/testids:YES` after a fresh `git fetch origin` in ../EliteaUI (project-context-page-title, -toggle-card, -toggle-card-title, -toggle-card-description, -enable-toggle, -disabled-banner, -edit-button, -discard-button, -import-button, -mode-edit-button, -mode-preview-button, -editor-wrapper, -loader), all introduced \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Coverage Map ticked against the source case snapshots for all three cases: every case element has a row; the only non-`covered` dispositions are ELITEA-2266 rows 7-9 (a \"Project Background\" section title and its subtitle that exist nowhere in the product) routed as clarification #1792 under the reverse-masking guard, plus two position claims (toggle card \"at the top\", Save/Discard \"at the bottom\" \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/l3_project-context-page-layout_ELITEA-2266.md"
+        }
+      ],
+      "afs": "test-specs/settings-project-params/l3_project-context-page-layout_ELITEA-2266.md",
+      "branch": "tests/2266-2267-2276-project-context",
+      "pr": 1795,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2267",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text drift: steps 3-15 describe a single page with a 'Project Context' toggle card at the top, a 'Project Background' section (subtitle + Build with AI + upload icon + </> icon + eye icon + line-numbered editor) and Save/Discard at the BOTTOM. No such page exists. Live: /settings/project-context renders empty-state ('Still no Project Context' + Create + Build with AI, NO toggle) or saved-view\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2266"
+        },
+        {
+          "kind": "clarification",
+          "note": "Flow not reachable as written. The enable toggle exists ONLY in ProjectContextSavedView (i.e. requires a non-empty saved context \u2014 the case states no such precondition; with empty content the page has no toggle at all). ProjectContextSavedView.handleToggle fires the PUT immediately on change, so steps 4 and 7 ('Click Save') have no control to click. Also 'ON by default' is only true for a never-se\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2267"
+        },
+        {
+          "kind": "clarification",
+          "note": "Flow not reachable as written: it requires toggle + editor + Save on one page. The toggle is in the saved view (no editor, no Save button); the editor route has Save/Discard but no toggle. Additionally, saving empty content flips the page back to the empty state (ProjectContextContent gates on serverData.content.trim()), which the case does not describe.",
+          "ref": "ELITEA-2276"
+        },
+        {
+          "kind": "note",
+          "note": "Digest is stale/incomplete for these cases (written 2026-08-05 for ELITEA-2272's create/editor flow). It claims the three views are switched by a '?view=' query param \u2014 the editor is now its own route (RouteDefinitions.ProjectContextEdit, navigated with router state {openAi,openAiEdit}); it does not document the saved view's EnableToggleCard, the immediate-PUT toggle semantics, the 'Project Contex\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha for whoever picks these up: the MCP browser session's selected project was 'Bugs & Features' (406), where the test user has NO projectContext.edit permission \u2014 banner 'You don't have permission to edit this setting.' and the Switch renders disabled. Toggle cases must run against a project where the user can edit (digest names ${ELITEA_PROJECT_ID}=399 'Private'), and never the Pu\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2267"
+        },
+        {
+          "kind": "note",
+          "note": "No branch/trunk was created (tests/batch-settings-w03 exists nowhere) and no code was written. Role memory was committed by path on automation/base: commit 80ebd804e, .agents/memory/test-automation-engineer/project_context_page_layout_vs_case_texts.md + daily/2026-08-26.md. A pre-existing untracked memory file from an earlier dispatch (basemodal_close_button_testid_prop.md) was left untouched."
+        },
+        {
+          "kind": "defect",
+          "note": "MERGED SPEC IS RED, pre-existing, blocks reuse. tests/ui/admin/test_project_context_character_limit.py (ELITEA-2272) fails on the current build: `TimeoutError: Timeout 10000ms exceeded. waiting for navigation to \"**/settings/project-context?view=create\"`. The product retired the ?view= query param \u2014 src/routes.js now has ProjectContext: '/settings/project-context' and ProjectContextEdit: '/setting\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1794"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift across all three cases. ELITEA-2266 (and the layout assumptions ELITEA-2267/2276 inherit) describes Settings -> Project Context as ONE page: toggle card -> a 'Project Background' section with a goals/terminology/workflows/constraints subtitle -> Build with AI / upload / </> / eye buttons -> line-numbered editor -> Save and Discard AT THE BOTTOM. The product renders three views (emp\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1792"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2276's step order is unperformable, with three distinct live causes worth a product decision: (a) toggle OFF disables Edit and Edit-with-AI, so the editor is unreachable by clicking \u2014 yet the /settings/project-context/edit route is NOT guarded and direct-URL navigation opens a fully working editor (affordance guard vs route guard are inconsistent); (b) saving empty content collapses the vie\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1793"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation the reviewer should verify rather than wave through (role-overrides \u00a7 Declared-improvisation protocol): ELITEA-2276's AFS re-orders the case into two independent phases (OFF phase, then ON phase, each re-establishing its own precondition) instead of one continuous sequence, and reaches the editor by direct URL during the OFF phase. My reading is that this stays under the pro\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2276"
+        },
+        {
+          "kind": "note",
+          "note": "Precondition NOT stated by any of the three cases, but load-bearing for two of them: the Project Context enable toggle renders ONLY in the saved view, i.e. only when content is non-empty. On a project with no context the page shows the empty state, which has no toggle. ELITEA-2266 and ELITEA-2267 therefore both need content seeded before the toggle exists to assert on. All three AFS seed it via AP\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Project selection is a real trap on this surface. A fresh browser profile defaults to the 'Bugs & Features' project, where the test user has NO edit permission \u2014 the saved view renders 'You don't have permission to edit this setting.' and the toggle is disabled, which would look like a product defect to anyone who did not check. Project 399 'Private' has full rights and is what ELITEA-2272 already\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid shape guidance for the implementer, worth flagging early because three of the thirteen requested testids target shared components: the enable toggle is a shared Switch.BaseSwitch, the disabled banner is a shared Banner.BannerMessage, and the two editor mode buttons come from a shared TabGroupButton arrayBtn. Per .agents/testing.md \u00a7 Locator policy these must be CALLER-SUPPLIED testId-style \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "#1794 RESOLVED during this unit. ProjectContextPage.click_create() and the merged ELITEA-2272 spec (test_project_context_character_limit.py) both waited for the retired ?view=create URL and timed out on every run; routes.js now declares a real /settings/project-context/edit route. Both repaired and re-run green alongside the three new specs. click_create() had exactly one caller (grep-enumerated),\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1794"
+        },
+        {
+          "kind": "note",
+          "note": "Vite's file watcher does not see JSX edits on this OneDrive checkout. All 13 testids were on disk and correct, yet the dev server kept serving its cached pre-edit transform through HMR, a hard browser reload AND a touch of the files \u2014 every locator timed out and it looked like the JSX was wrong. The check that separates 'my JSX is wrong' from 'the server never saw it' is curl -s http://localhost:5\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "defect",
+          "note": "The merged ELITEA-2272 spec's @allure.issue 'onetest-ai Test Case link' 404'd: it pointed at tests/automated-full-regression-ui/settings-project-params/ELITEA-2272_project-context-character-limit-2500.md, but this module's case files live under settings/project-params/ and the real filename slug is truncated (\u2026-is-enforced-at-2500-characte.md). Nothing in a test run validates these links, so it sh\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_project_context_character_limit.py"
+        },
+        {
+          "kind": "note",
+          "note": "The testids these three specs depend on are on EliteaUI automation/testids only, NOT on main. The specs are green on localhost and will be RED on any deployed env until a human cherry-picks EliteaAI/EliteaUI@b05bbc9a to main and it deploys. The closure record's promotability row should say so; these cases are not deployed-env promotable yet, owner = human.",
+          "ref": "EliteaAI/EliteaUI@b05bbc9a"
+        },
+        {
+          "kind": "note",
+          "note": "Shared-component change worth a reviewer's eye: src/[fsd]/shared/ui/banner-message/BannerMessage.jsx now takes a testId prop DEFAULTING to the pre-existing hardcoded 'credential-warning-banner'. That default is what keeps agent_detail_page.py, toolkit_detail_page.py and pipeline_detail_page.py (and their merged specs) working unchanged. It also opens the path to retiring that feature-scoped testid\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI src/[fsd]/shared/ui/banner-message/BannerMessage.jsx"
+        },
+        {
+          "kind": "clarification",
+          "note": "All three case-text divergences were analyst-declared and already filed (#1792 layout drift, #1793 toggle reachability); I implemented the live contract and asserted the divergence rather than working around it, so a product fix turns these specs red instead of leaving a silent workaround. Specifically: ELITEA-2276 asserts project-context-edit-button is disabled while the toggle is OFF (the fact t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1792, #1793"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (`git diff 1a46c5503...tests/2266-2267-2276-project-context -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`) \u2014 exactly 1 hit: `return self.editor_wrapper.locator(self.EDITOR_GUTTERS)`. COMPLIANT: #579 exception 2 (CodeMirror-inte\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:306"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance / substitution grep on the full diff (`... | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'`) \u2014 0 hits (no matches). All three specs read product-produced values: real `PUT` responses via `page.expect_response`, real keyboard input for the clear, real toast text, real post-save view. The only substitution class present is the API precondition seed \u2014 s\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/"
+        },
+        {
+          "kind": "note",
+          "note": "Testid commit checks (repo `../EliteaUI`, fetched fresh; commit is on `origin/automation/testids` \u2713, matching the AFS provenance rows). Zero-functional-impact Step-5.5 greps: hooks `^\\+.*\\buse(State|Effect|Memo|Callback|Ref)\\(` \u2192 0 hits; `^\\+.*<(Box|div|span|Fragment)` \u2192 2 hits, both reformats of pre-existing nodes (the matching `-` lines are `<Box sx={styles.toggleCard}>` and `<Box sx={styles.loa\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@b05bbc9a"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map Axis 1 ticked against the source case snapshots for all three cases. ELITEA-2266: 16/16 case steps rowed; 13 asserted and each maps to a real assertion at its step; steps 7-9 ('Project Background' section title + subtitle) carry a `clarification #1792` disposition and are genuinely absent from the product (verified in the digest by grep over both EliteaUI refs). ELITEA-2267: 8/8 rowed\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/l3_project-context-page-layout_ELITEA-2266.md:199"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift is handled correctly (reverse-masking guard, not `defect-found`): the three-view product layout vs the case's single page (#1792, OPEN, `question`), and the toggle's unreachability once content is empty plus Edit-disabled-while-OFF (#1793, OPEN, `question`). Both issues verified to exist in the tracker with the right label. Save/Discard position ('at the bottom' \u2014 actually the head\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/automation/settings-w03/cases/ELITEA-2266.md"
+        },
+        {
+          "kind": "note",
+          "note": "#1794 is repaired rather than worked around: `click_create()` now waits for `/settings/project-context/edit` and the merged ELITEA-2272 spec's two URL assertions were tightened from substring checks to `endswith(PROJECT_CONTEXT_EDIT_PATH)` / `endswith(PROJECT_CONTEXT_PATH)` \u2014 strictly stronger than what they replaced. The `allure.issue` link on that spec was also repointed at the real case-file pa\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:176"
+        },
+        {
+          "kind": "note",
+          "note": "POM discipline is additive-only on the shared-caller surface, as required: `navigate()` and `click_save()` are left byte-identical for their merged ELITEA-2272 caller, and the new behaviour lands as siblings (`navigate_to_saved_view`, `navigate_to_editor`, `click_save_and_wait_for_put`). The one in-place edit is `click_create()`, which was broken (#1794) and had exactly one caller, enumerated and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:288"
+        },
+        {
+          "kind": "question",
+          "note": "`project_context_seed` deletes the active project's Project Context before AND after every test, on the shared project 399 \u2014 same blast radius as the pre-existing `clean_project_context`, so no new risk, but it does mean any two project-context specs are mutually exclusive under xdist and will clobber each other if the suite is ever parallelised. Worth a line in `.agents/testing.md` \u00a7 Test data st\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/fixtures/data_fixtures.py:2542"
+        },
+        {
+          "kind": "note",
+          "note": "Two durable gotchas the digest records and I'd echo to the lead: (1) Vite's file watcher does not see JSX edits on this OneDrive checkout \u2014 the served module, not the DOM, is ground truth (`curl http://localhost:5173/src/.../File.jsx | grep <testid>`), fix is a dev-server restart; (2) TMS case files for this module live under `settings/project-params/`, not `settings-project-params/` \u2014 the merged \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/_surface.md:172"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause worth carrying past this unit: a precondition write that sets N fields is N substitutions, but a Fidelity Declaration tends to name only the ONE field the reason-for-substituting covers. Here the true reason (the toggle only renders while content is non-empty) covered `content` and quietly laundered `enabled`, which was the case's own observable in all three cases. Every downstream gate\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "PR #1795"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2276 Phase B's `enabled=False` seed is a deliberate, declared explicit flag and MUST stay explicit \u2014 it is not an oversight to be 'cleaned up' to the None default. Phase A's empty save leaves the server at content=\"\" with the toggle gone, so Phase B has to re-establish the OFF state before case step 6 has a control to act on. The new unit guard allows exactly `False` there and blocks `True`\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2276"
+        },
+        {
+          "kind": "note",
+          "note": "The 2272 doc-sync guard deliberately excludes docstrings (via AST) when scanning the spec for the retired route param, because that spec's module docstring legitimately narrates the #1794 history and naming the retired param there is correct documentation. Only string literals the code acts on are checked. If someone later 'simplifies' that guard to a plain text grep it will false-fail on its own \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test_project_context_2272_afs_route_matches_page_object.py"
+        },
+        {
+          "kind": "note",
+          "note": "Product fact confirmed at source during this fix and now recorded in the AFS Fidelity Declarations and _surface.md: the Project Context enable flag defaults to true at BOTH layers \u2014 the API GET returns `enabled: true` on an unset context, and the UI independently applies `serverData?.enabled ?? true` (ProjectContextSavedView.jsx:27, ProjectContextEditor.jsx:157). The editor's own Save also carries\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2266/2267"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 1 RESOLVED. The ELITEA-2272 AFS step-3 row now specifies `/settings/project-context/edit` (was `?view=create`), carries a dated implementer amendment explaining #1794, and the automation-hints wait-strategy line was swept too (not just the named row). Additionally pinned by automation/tests/unit/test_project_context_2272_afs_route_matches_page_object.py, which fails if the retired \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/l2_project-context-character-limit-2500_ELITEA-2272.md:65"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 2 RESOLVED, and I verified the fix is real rather than cosmetic. `_seed(content, enabled=None)` now defaults to GET-and-echo (`_current_enabled`), and the fixture DELETEs before seeding \u2014 so the echoed value comes from a GET on an ABSENT resource. That would be a laundered tautology if the GET 404'd or omitted the field; the surface digest records the live contract (`_surface.md:92\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/fixtures/data_fixtures.py:2542"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker 2(a) RESOLVED for ELITEA-2276. Case step 6 is now a real click on the real switch (`click_enable_toggle_and_wait_for_put`), waited on the product's own PUT, with the switch asserted UNCHECKED before (step B1) and CHECKED after (step B2). Phase B's `enabled=False` seed is a declared precondition restoring the OFF state Phase A's own click produced (and the empty save erased along wi\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_project_context_empty_save_toggle_off_on.py:186"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit (non-blocking): `line_number_gutter()` asserts `.cm-gutters` is visible, which proves a gutter container exists but not that LINE NUMBERS render \u2014 case ELITEA-2266 step 14 says \"editor with line numbers\", and the AFS's own live note observed the gutter rendering `1`. `.cm-gutters .cm-lineNumbers` (or a `:visible`-filtered `.cm-gutterElement` count, per the project's own codemirror_gutter_hidde\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:340"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit (non-blocking): `test_the_off_precondition_is_asserted_before_the_on_click` only checks that `not_to_be_checked()` and `to_be_checked()` both appear somewhere in the file \u2014 it does not check ORDER, despite the name and the docstring (\"the pre-click assertion is what makes the ON state a product-produced change\"). A future edit that moves the unchecked assertion after the click would still pass\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py:163"
+        },
+        {
+          "kind": "note",
+          "note": "Asymmetric fault tolerance worth knowing about: `_delete_project_context` tolerates the API's 404, but `_current_enabled()` calls `raise_for_status()` on the GET. That is correct TODAY because the GET is documented (live-confirmed) as always 200 \u2014 and it is deliberately the loud failure mode: if the backend ever starts 404ing an absent context, all three specs error in setup rather than silently f\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/fixtures/data_fixtures.py:2596"
+        },
+        {
+          "kind": "question",
+          "note": "Low-risk race worth a second look at gate time: `click_save_and_wait_for_put()` waits the toast visible, THEN waits the URL to leave /edit, and the specs read `get_toast_text()` afterwards. If the app's toast auto-dismiss is short relative to the SPA route change, the text read could catch an emptied toast. The 2272 spec (merged, same page object) has run this shape via `click_save` + `get_toast_t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/project_context_page.py:378"
+        },
+        {
+          "kind": "note",
+          "note": "For the closure record: all 13 testids this unit depends on are `main:no / automation/testids:YES` after a fresh `git fetch origin` in ../EliteaUI (project-context-page-title, -toggle-card, -toggle-card-title, -toggle-card-description, -enable-toggle, -disabled-banner, -edit-button, -discard-button, -import-button, -mode-edit-button, -mode-preview-button, -editor-wrapper, -loader), all introduced \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Coverage Map ticked against the source case snapshots for all three cases: every case element has a row; the only non-`covered` dispositions are ELITEA-2266 rows 7-9 (a \"Project Background\" section title and its subtitle that exist nowhere in the product) routed as clarification #1792 under the reverse-masking guard, plus two position claims (toggle card \"at the top\", Save/Discard \"at the bottom\" \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-project-params/l3_project-context-page-layout_ELITEA-2266.md"
+        }
+      ],
+      "afs": "test-specs/settings-project-params/l2_project-context-toggle-enable-disable_ELITEA-2267.md",
+      "branch": "tests/2266-2267-2276-project-context",
+      "pr": 1795,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2276",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_empty-project-background-save-toggle-off-on_ELITEA-2276.md",
+      "branch": "tests/2266-2267-2276-project-context",
+      "pr": 1795,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2268",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_project-context-markdown-editor-and-preview_ELITEA-2268.md",
+      "branch": "tests/2268-2275-project-context-editor-save-discard",
+      "pr": 1796,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2273",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_project-context-save-persists-after-reload_ELITEA-2273.md",
+      "branch": "tests/2268-2275-project-context-editor-save-discard",
+      "pr": 1796,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2274",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_project-context-discard-reverts-unsaved-changes_ELITEA-2274.md",
+      "branch": "tests/2268-2275-project-context-editor-save-discard",
+      "pr": 1796,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2275",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_project-context-save-discard-enabled-only-when-dirty_ELITEA-2275.md",
+      "branch": "tests/2268-2275-project-context-editor-save-discard",
+      "pr": 1796,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2269",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_project-context-build-with-ai-generates-content_ELITEA-2269.md",
+      "branch": "tests/2269-2271-project-context-build-with-ai",
+      "pr": 1798,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2270",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_project-context-build-with-ai-cancel-leaves-content_ELITEA-2270.md",
+      "branch": "tests/2269-2271-project-context-build-with-ai",
+      "pr": 1798,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2271",
+      "outcome": "automated",
+      "note": "",
+      "findings": [],
+      "afs": "test-specs/settings-project-params/l3_project-context-import-markdown-file_ELITEA-2271.md",
+      "branch": "tests/2269-2271-project-context-build-with-ai",
+      "pr": 1798,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          147.163513375,
+          153.033112958,
+          178.720807667
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 10
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -12,6 +12,29 @@
           }
         ],
         "_bundle": "sdlc-core"
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --sweep",
+            "timeout": 120,
+            "async": true
+          }
+        ],
+        "_tokenomics": true
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/tokenomics/hooks/scope-hook.mjs\" --announce",
+            "timeout": 10
+          }
+        ],
+        "_tokenomics": true
       }
     ],
     "SubagentStart": [
@@ -38,6 +61,56 @@
           }
         ],
         "_bundle": "test-automation"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/tokenomics/hooks/telemetry-capture.mjs\" --dispatch",
+            "timeout": 60,
+            "async": true
+          }
+        ],
+        "_tokenomics": true
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/tokenomics/hooks/telemetry-capture.mjs\"",
+            "timeout": 120
+          }
+        ],
+        "_tokenomics": true
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent|Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/tokenomics/hooks/scope-hook.mjs\" --mark-dispatch",
+            "timeout": 10,
+            "async": true
+          }
+        ],
+        "_tokenomics": true
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/tokenomics/hooks/scope-hook.mjs\" --gate",
+            "timeout": 10
+          }
+        ],
+        "_tokenomics": true
       }
     ]
   }

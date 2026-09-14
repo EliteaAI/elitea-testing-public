@@ -1,0 +1,97 @@
+{
+  "batch": "elitea-2307",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2307",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      19.3,
+      17.69,
+      17.52
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2307",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Product behaves correctly: Settings → Users → Invite-users dialog's email-format validation is BLUR-gated (onBlur, not onChange) per InviteUserDialog.jsx source and live confirmation — typing an invalid email alone shows no error; only after Tab/blur does 'Invalid email: {email}' appear and the Invite button stays disabled. Documented in the AFS's Automation Hints and in test-specs/settings-users-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l3_invite-user-invalid-email-validation_ELITEA-2307.md"
+        },
+        {
+          "kind": "note",
+          "note": "New testid needed for the implementer: users-invite-emails-error-text on InviteUserDialog.jsx's <FormHelperText>{helperText}</FormHelperText> node (zero testid today, confirmed live via DOM query — class MuiFormHelperText-root Mui-error, data-testid: null). Thread a new emailsErrorTestId prop at Users.jsx's InviteUserDialog call site, same shape as the existing emailsInputTestId/roleSelectTestId/c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l3_invite-user-invalid-email-validation_ELITEA-2307.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live-product quirk found during implementation, not a defect: InviteUserDialog.jsx's email validation is blur-gated ONLY while `error` is false. Once `error` flips true (after a blur on an invalid email), a second useEffect keyed on [error, inputText] re-validates on every keystroke — i.e. becomes live-as-you-type. This doesn't contradict the AFS's 'blur-gated, not live-as-you-type' hint (which wa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "InviteUserDialog.jsx"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (Important). The AFS's Axis-2 addition explicitly claims the Invite-button-disabled assertions 'directly exercise the disabled={... || error} gate ... the real mechanism preventing an invalid-email submission' (AFS line ~77). But `InviteUserDialog.jsx`'s confirm button is `disabled={!emails.length || !selectedRoles.length || error}` (EliteaUI src/components/InviteUserDialog.jsx, confirm-b… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_invite_user_invalid_email_validation.py:100,127 (AFS: test-specs/settings-users-and-roles/l3_invite-user-invalid-email-validation_ELITEA-2307.md:77)"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking nit: the class-level comment above `invite_emails_error_text` (\"see `type_invalid_email_and_blur()` below\") references a method name that doesn't exist in this diff — the actual methods added are `type_email_in_invite_dialog()` and `blur_invite_emails_field()`. Stale/typo'd docstring reference, harmless but worth a one-line fix in a follow-up.",
+          "ref": "automation/pages/admin_users_page.py: invite_emails_error_text docstring comment"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates cleanly. Verified independently (not just trusted): (1) the new testid `users-invite-emails-error-text` is real — fetched EliteaAI/EliteaUI@8bda203c on origin/automation/testids, confirms `emailsErrorTestId` prop threaded InviteUserDialog.jsx -> Users.jsx call site exactly as the PR/AFS describe, same shape as the 3 pre-existing testid props. (2) Mechanical grep for ad… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        },
+        {
+          "kind": "note",
+          "note": "Preventive lesson captured: when a component's `disabled` prop is an OR of multiple independent gates, a 'button (still) disabled' assertion only proves the specific gate under test if every other gate is pre-satisfied first — read the full boolean expression in source before writing such an assertion as evidence of a targeted validation state. Recorded in .agents/memory/test-automation-engineer/d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1183 / ELITEA-2307"
+        },
+        {
+          "kind": "note",
+          "note": "Fix verified: diff 32c84b96..21ce912d adds users_page.select_role_in_invite_dialog(SELECTED_ROLE) right after open_invite_dialog(), inside the per-email loop, before BOTH disabled-button assertions (test_invite_user_invalid_email_validation.py lines ~118-131 and ~150-163). This directly resolves the isolation confound: Step 2's assertion is now driven purely by !emails.length (role selected, no em… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_invite_user_invalid_email_validation.py:118"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added non-testid handles across the diff (automation/pages/, automation/tests/): 0 hits. Command: git diff origin/automation/base...origin/tests/ELITEA-2307-invite-user-invalid-email-validation -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "N/A"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid users-invite-emails-error-text was added correctly: new emailsErrorTestId prop threaded through InviteUserDialog.jsx's <FormHelperText> -> Users.jsx call site, committed as EliteaAI/EliteaUI@8bda203c. Verified present on origin/automation/testids via `git branch -r --contains 8bda203c` (output: origin/automation/testids). No fallback selector was specified — AFS explicitly forbade … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "N/A (EliteaAI/EliteaUI@8bda203c)"
+        },
+        {
+          "kind": "note",
+          "note": "All 4 original TMS case steps have Coverage Map rows disposed 'asserted', each with a real per-step assertion (not just an end-state check): Step1 page title + row count, Step2 dialog+role+disabled, Step3 typed value + no-error-yet, Step4 blur + exact error text + disabled-with-isolation-reasoning. Axis-2 additions (disabled-button assertions, two example emails, console side-channel check) are al… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l3_invite-user-invalid-email-validation_ELITEA-2307.md"
+        }
+      ],
+      "afs": "test-specs/settings-users-and-roles/l3_invite-user-invalid-email-validation_ELITEA-2307.md",
+      "branch": "tests/ELITEA-2307-invite-user-invalid-email-validation",
+      "pr": 1183,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          19.3,
+          17.69,
+          17.52
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -1,0 +1,120 @@
+{
+  "batch": "mcp-w01",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1396",
+  "integration_branch": "tests/batch-mcp-w01",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      172.77,
+      195.07,
+      204.25
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/toolkits/test_mcp_create_validation.py::test_create_remote_mcp_validation_on_missing_required_field[ELITEA-1924]",
+        "signature": "AssertionError: Locator expected to be disabled / Actual value: enabled — Expect \"to_be_disabled\" with timeout 5000ms, waiting for get_by_test_id(\"toolkit-form-save-button\"), 14 x locator resolved to <button data-testid=\"toolkit-form-save-button\">Save</button>, unexpected value \"enabled\"",
+        "case_ids": [
+          "ELITEA-1924"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/toolkits/test_mcp_create_remote.py::test_create_remote_mcp_all_fields_populated",
+        "signature": "playwright._impl._errors.TimeoutError: Locator.input_value: Timeout 10000ms exceeded. Call log: waiting for get_by_test_id(\"toolkit-field-url-input\")",
+        "case_ids": []
+      },
+      {
+        "spec": "automation/tests/ui/toolkits/test_mcp_create_remote.py::test_create_remote_mcp_minimal_required_fields",
+        "signature": "playwright._impl._errors.TimeoutError: Locator.input_value: Timeout 10000ms exceeded. Call log: waiting for get_by_test_id(\"toolkit-field-url-input\")",
+        "case_ids": []
+      },
+      {
+        "spec": "automation/tests/ui/toolkits/test_mcp_edit_toggle_enable_caching.py::test_mcp_edit_toggle_enable_caching",
+        "signature": "playwright._impl._errors.TimeoutError: Locator.is_checked: Timeout 10000ms exceeded. Call log: waiting for get_by_test_id(\"toolkit-field-enable_caching-checkbox-field\")",
+        "case_ids": []
+      },
+      {
+        "spec": "automation/tests/ui/toolkits/test_mcp_load_tools_discovery.py::test_mcp_load_tools_discovery",
+        "signature": "playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 10000ms exceeded. Call log: waiting for get_by_test_id(\"toolkit-test-empty-tool-select\") to be visible",
+        "case_ids": []
+      },
+      {
+        "spec": "automation/tests/ui/toolkits/test_mcp_test_settings_select_and_run_tool.py::test_mcp_test_settings_select_and_run_tool",
+        "signature": "playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 10000ms exceeded. Call log: waiting for get_by_test_id(\"toolkit-test-empty-tool-select\") to be visible",
+        "case_ids": []
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1923",
+      "outcome": "automated",
+      "note": ""
+    },
+    {
+      "id": "ELITEA-1924",
+      "outcome": "merged-sanctioned-red",
+      "note": "red by design pending #633, #633 — the gate ran it but could not count it; merged with the batch, re-enter once the product ships"
+    },
+    {
+      "id": "ELITEA-1925",
+      "outcome": "automated",
+      "note": ""
+    },
+    {
+      "id": "ELITEA-1926",
+      "outcome": "automated",
+      "note": ""
+    },
+    {
+      "id": "ELITEA-1928",
+      "outcome": "automated",
+      "note": ""
+    },
+    {
+      "id": "ELITEA-1930",
+      "outcome": "automated",
+      "note": ""
+    },
+    {
+      "id": "ELITEA-1931",
+      "outcome": "automated",
+      "note": ""
+    },
+    {
+      "id": "ELITEA-1932",
+      "outcome": "automated",
+      "note": ""
+    }
+  ],
+  "totals": {
+    "automated": 7,
+    "merged-sanctioned-red": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "case_ids": [
+        "ELITEA-1924"
+      ],
+      "spec": "automation/tests/ui/toolkits/test_mcp_create_validation.py",
+      "test_id": "test_create_remote_mcp_validation_on_missing_required_field[ELITEA-1924]",
+      "ticket": "#633",
+      "why": "Sanctioned RED. The case asserts the Save button remains disabled when only the Url is filled; live it is enabled because shouldDisableSave = isLoading || !formik?.dirty (CreateToolkitToolTabBar.jsx:43-45) consults only Formik's dirty flag, never required-field validity. Written as the case states it with expect.soft() + '# Known defect: #633' so the divergence stays visible instead of being reverse-masked. Deterministic and single-cause: the ONLY failure in the row is 'Locator expected to be disabled'; all 9 other steps pass hard. Expect exactly this one soft failure on every gate run. Needs a human ruling (product changes, or ELITEA-1924's case text changes) - see the 2026-08-24 comment on #633.",
+      "unit": "ELITEA-1923+ELITEA-1924"
+    },
+    {
+      "spec": "automation/tests/ui/toolkits/test_mcp_create_validation.py",
+      "test_id": "tests/ui/toolkits/test_mcp_create_validation.py::test_create_remote_mcp_validation_on_missing_required_field[ELITEA-1924]",
+      "ticket": "#633",
+      "why": "Sanctioned RED, unchanged by this fix round. ELITEA-1924 step 4 states the Save button 'remains disabled' while only the Url is filled; live it is ENABLED because shouldDisableSave = isLoading || !formik?.dirty (EliteaUI src/pages/Toolkits/CreateToolkitToolTabBar.jsx:43-45) consults only Formik's dirty flag, never required-field validity. Asserted as the CASE states it via expect.soft() + '# Known defect: #633' per .agents/testing.md § Merge gate -> Analysis-time entry. Deterministic, single-cause, linked to an OPEN defect. Case status stays blocked-on-#633, never automated.",
+      "case_ids": [
+        "ELITEA-1924"
+      ],
+      "unit": "ELITEA-1923+ELITEA-1924"
+    }
+  ],
+  "parked": []
+}

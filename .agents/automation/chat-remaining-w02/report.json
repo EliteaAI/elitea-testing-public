@@ -1,0 +1,325 @@
+{
+  "batch": "chat-remaining-w02",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w02",
+  "gate": {
+    "verdict": "red",
+    "runs": 2,
+    "seconds": [
+      142.0257395,
+      199.362339458
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/chat/test_conversation_rename_length_boundaries.py",
+        "signature": "AssertionError: [ELITEA-2104] Unexpected console errors during the rename flow: ['Failed to load resource: the server responded with a status of 500 (Internal Server Error)'] — tests/ui/chat/test_conversation_rename_length_boundaries.py:510, test_rename_conversation_paste_beyond_max_length_truncates",
+        "case_ids": [
+          "ELITEA-2104"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2099",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "TMS case ELITEA-2099 step 3 is stale vs the live product: case says the context menu shows 'Delete, Edit, Move to, Export, Playback, Pin on top' (6 items). Live product (ConversationItem.jsx menuItems, project 471 non-personal/non-public) shows Rename, Move to, Playback, Duplicate, Make public, Share, Pin on top, Delete (8 items) -- 'Edit' doesn't exist as a label (it's 'Rename'), 'Export' doesn't… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1513"
+        },
+        {
+          "kind": "note",
+          "note": "Added 3 testids to EliteaUI's ConversationItem.jsx rename editor (chat-conversation-name-input, chat-conversation-name-confirm-button with data-disabled state attribute, chat-conversation-name-cancel-button), mirroring FolderItem.jsx's pre-existing chat-folder-name-* shapes exactly (same inputProps channel, zero new DOM/hooks -- verified via the three Step-5.5 greps, all empty). Committed EliteaAI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed live: the same a11y-snapshot-pruning gotcha documented for the folder-rename confirm button (ELITEA-2458) also applies to the new conversation-rename confirm button -- in the disabled/unchanged state it may be pruned from a Playwright browser_snapshot's accessibility tree (cursor:default). Implementer must assert via the testid locator directly, never via a snapshot accessible-name rea… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "select_conversation_by_id() (automation/pages/chat_page.py) is unreliable for re-navigating to a just-renamed conversation by id despite its docstring claiming otherwise — used get_conversation_item(id) + click(force=True) instead. Logged as durable memory (select_conversation_by_id_unreliable_for_renavigation.md) for the next implementer touching this surface; not fixed inline (out of this case's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift for ELITEA-2099's Step 3 (stale menu-item list/label) is already covered by issue #1513, filed by the analyst as a sibling of #695 (ELITEA-2114) — no new ticket needed; test asserts the live product set.",
+          "ref": "#1513"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot missing at expected path .agents/automation/chat-remaining-w02/cases/ELITEA-2099.md (no chat-remaining-w02 dir exists locally or on the batch trunk tests/batch-chat-remaining-w02). Fetched the case directly from ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ELITEA-2099_chat-conversation-rename-basic-rename-via-edit-option.md instead, per the skill's fallback. Orches… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity self-check grep (git diff tests/batch-chat-remaining-w02...tests/2099-conversation-rename-basic-via-edit-option -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') → 0 hits, confirmed independently."
+        },
+        {
+          "kind": "note",
+          "note": "Locator-policy grep (same diff | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') → 0 hits, confirmed independently. All three new LocatorDescriptor fields (conversation_name_input/_confirm_button/_cancel_button) are testid-only."
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI@ff56e29d (testids commit) verified: pushed to origin/automation/testids (git branch -r --contains), diff is additive-only (4 lines: data-testid + data-disabled attrs, inputProps widening), no new DOM nodes/hooks/state — passes the zero-functional-impact check."
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1513 (case-text-drift clarification for Step 3's menu-item list) verified via gh issue view: OPEN, labelled question + case-text-drift, correctly cites ELITEA-2099, names sibling #695, matches the AFS's reverse-masking disposition exactly."
+        },
+        {
+          "kind": "note",
+          "note": "Verified the AFS's ready-for-automation (not extend-existing) call against the cited 'related existing coverage' test_rename_conversation_via_ui (test_conversation_management.py:380): that test uses name/href-based rename_conversation_via_menu() confirming via Enter, checks persistence only via API re-fetch, and asserts none of pre-fill/checkmark-disabled-state/context-menu-content/explicit-checkm… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-basic-via-edit-option_ELITEA-2099.md",
+      "branch": "tests/2099-conversation-rename-basic-via-edit-option",
+      "pr": 1514
+    },
+    {
+      "id": "ELITEA-2100",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Manual/standalone ConversationAPI(browser_cookies=[]) instantiation resolves to project 399 (config default) while the live browser auth_state session runs project 471 — produces a false 'Conversation not found' when opening the created conversation in the browser. Only affects ad-hoc exploration scripts run outside the pytest fixture chain; the session-scoped conversation_api fixture used by actu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2100's case-text 'Edit option' vs the live product's 'Rename' menu label is the same already-filed, already-accepted case-text drift as issue #1513 (filed during ELITEA-2099's analysis, sibling of #695). Not re-filed — this AFS's step 2 asserts the live label per that existing clarification (reverse-masking guard).",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1513"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch prompt named .agents/automation/chat-remaining-w02/cases/ELITEA-2100.md as the case snapshot for the coverage cross-check, but no such file (or cases/ subdir) exists for this campaign — only .agents/automation/chat-remaining-w01/ has a cases/ dir and .agents/automation/campaigns/chat-remaining.md is the wave-02 tracking card. Worked around by reading the original TMS case directly from ..… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep (mandatory reviewer check) — command: git --no-pager diff origin/tests/batch-chat-remaining-w02...origin/tests/2100-conversation-rename-cancel-discards-changes -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' → 0 hits."
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity/provenance grep (mandatory reviewer check) — command: git --no-pager diff origin/tests/batch-chat-remaining-w02...origin/tests/2100-conversation-rename-cancel-discards-changes -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()' → 0 hits. No substitution of the system under test; all assertions (input pre-fill, checkmark data-disabled state, … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all 3 artifacts: TMS case (read live from onetest-ai-tm-Elitea sibling clone, since .agents/automation/chat-remaining-w02/cases/ does not exist — matches the implementer's own Run Report note) ↔ AFS (test-specs/chat-interface/l3_conversation-rename-cancel-discards-changes_ELITEA-2100.md, already merged to trunk, untouched by this diff) ↔ implementation (test_conversation_rename_cancel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Step 6's 'navigate away and back' round trip is weaker than the AFS/docstring imply: chat.navigate_to_chat() no-ops (skips the actual navigate() call) whenever the current URL already contains '/chat' — and the browser has been on /chat since Setup (rename happens from the sidebar list, never opening conv_target), so there is no real 'away' leg; only the subsequent explicit click-into-conv_target … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_cancel_discards_changes.py:203"
+        },
+        {
+          "kind": "note",
+          "note": "chat_page.py defines get_conversation_item(...) twice with identical bodies (lines ~3109 and ~3393) — pre-existing on the batch trunk, not touched by this diff. Harmless (the second definition simply shadows the first with the same behavior) but is dead-code duplication worth a tech-debt cleanup card, unrelated to this PR's correctness.",
+          "ref": "automation/pages/chat_page.py:3393"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-cancel-discards-changes_ELITEA-2100.md",
+      "branch": "tests/2100-conversation-rename-cancel-discards-changes",
+      "pr": 1515
+    },
+    {
+      "id": "ELITEA-2101",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Intake gap: .agents/automation/chat-remaining-w02/cases/ directory was never created for this wave -- only chat-remaining-w01 has a cases/ dir on disk. Both ELITEA-2101 and ELITEA-2102 (and presumably ELITEA-2099/2100/2103/2104 before/after them) had to be fetched live via the onetest-tms MCP adapter instead of reading a pre-written snapshot. Worth flagging to whoever runs intake for future waves … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No product defect and no case-text drift found for either case -- both TMS cases describe the live product's behavior correctly, including the 50-char boundary being an acceptance point, not a rejection point. This is the rare pair in this rename-cluster campaign that needed zero clarification filing."
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot files named in the dispatch (.agents/automation/chat-remaining-w02/cases/ELITEA-2101.md, .../ELITEA-2102.md) do not exist on disk — that directory only contains campaigns/chat-remaining.md, no per-case snapshot subdir. Same gap already noted in the ELITEA-2100 session earlier in this batch. Cross-checked coverage against the AFS's own detailed Coverage Map instead; found no gap, but … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "6th recorded occurrence (this repo, this role) of committing straight onto a batch trunk instead of a feature branch cut from it, despite an explicit dispatch instruction and 5 prior memory write-ups of the same mistake (see verify_feature_branch_before_first_commit.md). Self-caught before any push this time — zero external impact — but the pattern itself (reading `git branch --show-current` outpu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot dir .agents/automation/chat-remaining-w02/cases/ (named in the dispatch) does not exist in git history or on disk — fetched ELITEA-2101/2102 live via mcp__onetest-tms__get_test_case instead. Already self-flagged by the implementer in their own memory (verify_feature_branch_before_first_commit.md, 6th-occurrence note); orchestrator may want to fix intake for this batch's remaining uni… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/automation/chat-remaining-w02/cases/"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps for fidelity substitution (mock_/page.route/route.fulfill/monkeypatch/.evaluate) and for raw non-testid locators (get_by_role/get_by_text/page.locator/.locator(/etc.) both returned 0 hits on the diff, reproduced independently — matches the PR's own pasted self-checks.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_length_boundaries.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-length-boundaries_ELITEA-2101_2102.md",
+      "branch": "tests/2101-2102-chat-conversation-rename-length-boundaries",
+      "pr": 1516
+    },
+    {
+      "id": "ELITEA-2102",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Intake gap: .agents/automation/chat-remaining-w02/cases/ directory was never created for this wave -- only chat-remaining-w01 has a cases/ dir on disk. Both ELITEA-2101 and ELITEA-2102 (and presumably ELITEA-2099/2100/2103/2104 before/after them) had to be fetched live via the onetest-tms MCP adapter instead of reading a pre-written snapshot. Worth flagging to whoever runs intake for future waves … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No product defect and no case-text drift found for either case -- both TMS cases describe the live product's behavior correctly, including the 50-char boundary being an acceptance point, not a rejection point. This is the rare pair in this rename-cluster campaign that needed zero clarification filing."
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot files named in the dispatch (.agents/automation/chat-remaining-w02/cases/ELITEA-2101.md, .../ELITEA-2102.md) do not exist on disk — that directory only contains campaigns/chat-remaining.md, no per-case snapshot subdir. Same gap already noted in the ELITEA-2100 session earlier in this batch. Cross-checked coverage against the AFS's own detailed Coverage Map instead; found no gap, but … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "6th recorded occurrence (this repo, this role) of committing straight onto a batch trunk instead of a feature branch cut from it, despite an explicit dispatch instruction and 5 prior memory write-ups of the same mistake (see verify_feature_branch_before_first_commit.md). Self-caught before any push this time — zero external impact — but the pattern itself (reading `git branch --show-current` outpu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot dir .agents/automation/chat-remaining-w02/cases/ (named in the dispatch) does not exist in git history or on disk — fetched ELITEA-2101/2102 live via mcp__onetest-tms__get_test_case instead. Already self-flagged by the implementer in their own memory (verify_feature_branch_before_first_commit.md, 6th-occurrence note); orchestrator may want to fix intake for this batch's remaining uni… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/automation/chat-remaining-w02/cases/"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps for fidelity substitution (mock_/page.route/route.fulfill/monkeypatch/.evaluate) and for raw non-testid locators (get_by_role/get_by_text/page.locator/.locator(/etc.) both returned 0 hits on the diff, reproduced independently — matches the PR's own pasted self-checks.",
+          "ref": "automation/tests/ui/chat/test_conversation_rename_length_boundaries.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-length-boundaries_ELITEA-2101_2102.md",
+      "branch": "tests/2101-2102-chat-conversation-rename-length-boundaries",
+      "pr": 1516
+    },
+    {
+      "id": "ELITEA-2103",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Both ELITEA-2103 and ELITEA-2104 pass end-to-end against the live product exactly as their case text expects — no defects, no case-text drift. Source-confirmed root cause: ConversationItem.jsx's onChangeConversationName does event.target.value.slice(0, MAX_CONVERSATION_LENGTH) (constants.js:74, MAX=50) on every onChange event, and there is no separate onPaste handler, so typing and pasting hit the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reusable paste-testing pattern already exists in-repo at automation/pages/project_context_page.py:90-124 (set_editor_content_via_paste) — real navigator.clipboard.writeText() + real Control+V/Meta+V keypress, platform-detected. Pointed the implementer at it in ELITEA-2104's Automation Hints instead of inventing a new paste idiom or (worse) injecting the value via fill()/page.evaluate(), which woul… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Family-AFS boundary call, documented for the reviewer/implementer/lead: ELITEA-2103 and ELITEA-2104 are NOT written as one parameterized family AFS despite sharing setup, handles, and near-identical expected mechanism, because they differ in the interaction ACTION (type vs paste) rather than only in data, per test-case-analysis § Execute's differ-in-steps rule. Recommended they still land as sibli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatched case-snapshot path .agents/automation/chat-remaining-w02/cases/ELITEA-2103.md and .../ELITEA-2104.md did not exist on disk (directory itself is absent). Worked around by pulling the raw case text live via mcp__onetest-tms__get_test_case for the Phase-1 coverage cross-check instead — both AFS Coverage Maps matched 1:1, no gap found. Flagging in case the batch's case-snapshot capture step… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Self-corrected a branching error: first commit landed directly on the shared batch trunk tests/batch-chat-remaining-w02 instead of a feature branch. Rescued onto tests/2103-2104-chat-rename-overflow and force-pushed the trunk back to its pre-dispatch SHA (c8ad556a) before opening the PR — trunk is unaffected, verify tests/batch-chat-remaining-w02 HEAD is still c8ad556a before merging future units.",
+          "ref": "PR #1517"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation: fetched ELITEA-2103/ELITEA-2104 live via mcp__onetest-tms__get_test_case (the .agents/automation/chat-remaining-w02/cases/ snapshot dir doesn't exist on disk — same gap the implementer's own memory flagged). Both AFS are a faithful 1:1 translation of the raw TMS case (steps, expected results, test data) — no drift."
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map audit (per-case): every original-case step + precondition has a row disposed `asserted`, and every row's expected result maps to a real assertion AT that step in the diff (11 allure.step blocks total across the two new test functions — 5 for ELITEA-2103, 6 for ELITEA-2104). No bare action with an unasserted observable found."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical provenance grep (git diff <trunk>...<branch> -- automation/ | grep -nE substitution-pattern): 2 hits, both in the new ChatPage.paste_conversation_name() — `self.page.evaluate(\"(text) => navigator.clipboard.writeText(text)\", text)` and `self.page.evaluate(\"() => navigator.platform.includes('Mac')\")`. Disposition: TRANSIT-ONLY for both. The clipboard write only stages data a real user wou… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical non-testid-handle grep (git diff ... | grep -nE getby/locator-pattern): 0 hits. All handles (chat-conversation-name-input, chat-conversation-name-confirm-button, CONVERSATION_MENU_ITEM template, toast-alert) are pre-existing testid-only class fields/constants; nothing new added."
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no pytest.skip/xfail/test.fail/expect.soft/weakened assertion anywhere in the diff. Both tests do real strict assertions (exact 50-char value equality, PUT status==200, zero error toasts, zero new console errors excluding the documented pre-existing secrets/secrets/default 403 noise)."
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking nit, file automation/pages/chat_page.py (new methods clear_conversation_name/paste_conversation_name, ~lines 3606/3620 on the branch): each adds self.page.wait_for_timeout(100) for a focus/clear race. This copies the pre-existing, already-merged set_conversation_name()/set_folder_name() idiom in the same file verbatim (declared as such in the new methods' own docstrings) — not the ELI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Informational only, not code-review scope: the implementer's own memory (dispatch_tree_starts_on_trunk_cut_your_own_branch_first.md) discloses a self-caught mistake — an initial commit landed directly on the shared batch trunk tests/batch-chat-remaining-w02, which was then rescued onto this feature branch and the trunk force-with-lease'd back to its pre-dispatch SHA (safe: serialized pipeline, nob… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-cannot-type-beyond-50-chars_ELITEA-2103.md",
+      "branch": "tests/2103-2104-chat-rename-overflow",
+      "pr": 1517
+    },
+    {
+      "id": "ELITEA-2104",
+      "outcome": "blocked",
+      "note": "gate red: AssertionError: [ELITEA-2104] Unexpected console errors during the rename flow: ['Failed to load resource: the server responded with a status of 500 (Internal Server Error)'] — tests/ui/chat/test_conv",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Both ELITEA-2103 and ELITEA-2104 pass end-to-end against the live product exactly as their case text expects — no defects, no case-text drift. Source-confirmed root cause: ConversationItem.jsx's onChangeConversationName does event.target.value.slice(0, MAX_CONVERSATION_LENGTH) (constants.js:74, MAX=50) on every onChange event, and there is no separate onPaste handler, so typing and pasting hit the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reusable paste-testing pattern already exists in-repo at automation/pages/project_context_page.py:90-124 (set_editor_content_via_paste) — real navigator.clipboard.writeText() + real Control+V/Meta+V keypress, platform-detected. Pointed the implementer at it in ELITEA-2104's Automation Hints instead of inventing a new paste idiom or (worse) injecting the value via fill()/page.evaluate(), which woul… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Family-AFS boundary call, documented for the reviewer/implementer/lead: ELITEA-2103 and ELITEA-2104 are NOT written as one parameterized family AFS despite sharing setup, handles, and near-identical expected mechanism, because they differ in the interaction ACTION (type vs paste) rather than only in data, per test-case-analysis § Execute's differ-in-steps rule. Recommended they still land as sibli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatched case-snapshot path .agents/automation/chat-remaining-w02/cases/ELITEA-2103.md and .../ELITEA-2104.md did not exist on disk (directory itself is absent). Worked around by pulling the raw case text live via mcp__onetest-tms__get_test_case for the Phase-1 coverage cross-check instead — both AFS Coverage Maps matched 1:1, no gap found. Flagging in case the batch's case-snapshot capture step… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Self-corrected a branching error: first commit landed directly on the shared batch trunk tests/batch-chat-remaining-w02 instead of a feature branch. Rescued onto tests/2103-2104-chat-rename-overflow and force-pushed the trunk back to its pre-dispatch SHA (c8ad556a) before opening the PR — trunk is unaffected, verify tests/batch-chat-remaining-w02 HEAD is still c8ad556a before merging future units.",
+          "ref": "PR #1517"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation: fetched ELITEA-2103/ELITEA-2104 live via mcp__onetest-tms__get_test_case (the .agents/automation/chat-remaining-w02/cases/ snapshot dir doesn't exist on disk — same gap the implementer's own memory flagged). Both AFS are a faithful 1:1 translation of the raw TMS case (steps, expected results, test data) — no drift."
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map audit (per-case): every original-case step + precondition has a row disposed `asserted`, and every row's expected result maps to a real assertion AT that step in the diff (11 allure.step blocks total across the two new test functions — 5 for ELITEA-2103, 6 for ELITEA-2104). No bare action with an unasserted observable found."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical provenance grep (git diff <trunk>...<branch> -- automation/ | grep -nE substitution-pattern): 2 hits, both in the new ChatPage.paste_conversation_name() — `self.page.evaluate(\"(text) => navigator.clipboard.writeText(text)\", text)` and `self.page.evaluate(\"() => navigator.platform.includes('Mac')\")`. Disposition: TRANSIT-ONLY for both. The clipboard write only stages data a real user wou… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical non-testid-handle grep (git diff ... | grep -nE getby/locator-pattern): 0 hits. All handles (chat-conversation-name-input, chat-conversation-name-confirm-button, CONVERSATION_MENU_ITEM template, toast-alert) are pre-existing testid-only class fields/constants; nothing new added."
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no pytest.skip/xfail/test.fail/expect.soft/weakened assertion anywhere in the diff. Both tests do real strict assertions (exact 50-char value equality, PUT status==200, zero error toasts, zero new console errors excluding the documented pre-existing secrets/secrets/default 403 noise)."
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking nit, file automation/pages/chat_page.py (new methods clear_conversation_name/paste_conversation_name, ~lines 3606/3620 on the branch): each adds self.page.wait_for_timeout(100) for a focus/clear race. This copies the pre-existing, already-merged set_conversation_name()/set_folder_name() idiom in the same file verbatim (declared as such in the new methods' own docstrings) — not the ELI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Informational only, not code-review scope: the implementer's own memory (dispatch_tree_starts_on_trunk_cut_your_own_branch_first.md) discloses a self-caught mistake — an initial commit landed directly on the shared batch trunk tests/batch-chat-remaining-w02, which was then rescued onto this feature branch and the trunk force-with-lease'd back to its pre-dispatch SHA (safe: serialized pipeline, nob… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_conversation-rename-cannot-paste-beyond-50-chars_ELITEA-2104.md",
+      "branch": "tests/2103-2104-chat-rename-overflow",
+      "pr": 1517
+    }
+  ],
+  "totals": {
+    "blocked": 6
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

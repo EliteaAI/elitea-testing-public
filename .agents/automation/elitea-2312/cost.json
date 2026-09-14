@@ -1,0 +1,154 @@
+{
+ "v": 1,
+ "batch": "elitea-2312",
+ "generatedAt": "2026-09-14T12:03:20.188Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-21T10:38:33.042Z",
+   "end": "2026-08-06T10:38:33.042Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 1
+ },
+ "delivered": 1,
+ "gate": {
+  "verdict": "green",
+  "runs": [
+   {
+    "spec": "tests/ui/admin/test_analytics_users_activity_table.py::TestAnalyticsUsersActivityTable::test_users_tab_activity_table_columns_and_pagination",
+    "result": "PASSED",
+    "seconds": 11.58
+   },
+   {
+    "spec": "tests/ui/admin/test_analytics_users_activity_table.py::TestAnalyticsUsersActivityTable::test_users_tab_activity_table_columns_and_pagination",
+    "result": "PASSED",
+    "seconds": 9.69
+   },
+   {
+    "spec": "tests/ui/admin/test_analytics_users_activity_table.py::TestAnalyticsUsersActivityTable::test_users_tab_activity_table_columns_and_pagination",
+    "result": "PASSED",
+    "seconds": 11.12
+   }
+  ],
+  "blast_radius": [
+   {
+    "spec": "tests/ui/admin/test_analytics_default_load.py::TestAnalyticsDefaultLoad::test_analytics_page_default_load",
+    "result": "PASSED",
+    "seconds": 8.22,
+    "reason": "shares automation/pages/analytics_page.py, extended by this batch"
+   }
+  ],
+  "gated_by": "test-automation-engineer (fresh agent, not the implementer)"
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2312",
+   "outcome": "automated",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2312"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

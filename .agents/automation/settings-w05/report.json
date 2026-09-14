@@ -1,0 +1,328 @@
+{
+  "batch": "settings-w05",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w05",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "green_group": {
+      "seconds": [
+        135.06,
+        132.64,
+        132.8
+      ],
+      "tests": 19,
+      "specs": "4 UI specs (ELITEA-2345/2346/2348/2349) + 2 unit invariant specs, together in ONE invocation per run"
+    },
+    "sanctioned_red_group": {
+      "runs": 3,
+      "seconds": [
+        98.5,
+        97.25,
+        null
+      ],
+      "specs": 9,
+      "signature": "All 9: 'Test flow completed and all functional assertions passed, but known-defect soft failures were recorded' \u2014 OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount). ELITEA-2340 additionally carries OPEN #1903 (empty name + filled value leaves Save enabled with no inline error). IDENTICAL 9-failure signature on all 3 runs.",
+      "tickets": [
+        "EliteaAI/elitea-testing-public#1203",
+        "EliteaAI/elitea-testing-public#1903"
+      ]
+    },
+    "note": "LEAD-RUN gate, separate invocations, origin/automation/base merged before each. CORRECTS the workflow's report, which (a) marked cluster A's 5 cases 'blocked' with note 'build failed: subagent completed without calling StructuredOutput' \u2014 a HARNESS failure, while PR #1902 had in fact merged; and (b) omitted ELITEA-2333/2348/2349 entirely because cluster D's PR #1911 was still OPEN when the run ended. #1911 was carried to APPROVED (3 fix rounds: fail-open cleanup guard, duplicate SecretsPage members, false on-main AFS provenance) and merged into the trunk by the lead before this gate.",
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2330",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "OPEN, and much larger than the ledger records. The five automated specs hit 'Maximum update depth exceeded' at 32-41 occurrences EACH, versus the 5 measured on this same project (399) on 2026-08-24 - and across flows that mount the page once or twice then only drive client-side state, so the loop is not confined to mount. Crucially, a live Playwright-MCP walk of the identical flow this session pro\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1203"
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed: ELITEA-2331's case text has the sort directions inverted. The Secrets table arrives already name-ascending (useTableSort defaultField='name'/'asc'), so click 1 sorts DESCENDING and click 2 returns to ascending - confirmed live (row order + the sort arrow's rotate(180deg)/rotate(0deg)) and in source. Product is correct; the case text is stale. Sibling of #1880 (identical drift on Settings ->\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1901"
+        },
+        {
+          "kind": "question",
+          "note": "Possible product quirk, INFERRED FROM SOURCE, not verified live - flagging rather than filing. SecretsContent does not reset pagination when the search text changes (unlike the '+' button, which calls resetPaginationRef). So typing a search term while parked on a high page index should leave usePagination's startIndex beyond the filtered total and render an empty table with a stale range. I design\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The 4 new testids are on automation/testids and pushed - the dev server serves them, but they are NOT on EliteaUI main yet. Standard state: these five specs are green-on-localhost and would be red on any deployed env until a human cherry-picks. Needs the usual promotability row in the closure record.",
+          "ref": "EliteaAI/EliteaUI@249c0186"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha that cost a full debugging detour: Vite kept serving a STALE transform of the edited JSX on this OneDrive-backed checkout - the new testids were absent from the DOM even after a hard reload, and touching the files did not invalidate the cache either. Only restarting `npm run dev` fixed it. One-command discriminator, worth knowing before re-reading correct component source lookin\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "This PR incidentally answers the open canon question about columnTestIdPrefix emitting unreferenced *-sort-icon-* testids, at least for this surface: ELITEA-2330 and ELITEA-2331 both reference the family on their executed path - positively for secret-sort-icon-name, and via absence assertions (to_have_count(0)) for secretValue/actions. Not a blanket-add violation here.",
+          "ref": "EliteaAI/elitea-testing-public#1705"
+        },
+        {
+          "kind": "note",
+          "note": "The surface digest had three stale claims that this session superseded, all now corrected in place: the search input HAS a testid (added this session), the column headers DO have testids (columnTestIdPrefix=\"secret\" was already wired), and the page-size options need no new testid. Also refreshed the data-scale line: project Private/399 now holds 121 secrets (was 120 on 2026-08-24, 103/104 on 2026-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result, all five cases: AFS faithful to the case snapshots, implementation faithful to the AFS. Per-step assertion check passes for ELITEA-2330 (7/7 case steps asserted), ELITEA-2331 (5/5, see the reverse-masking note below), ELITEA-2332 (6/6), ELITEA-2342 (3/3). ELITEA-2334 is 5/5 but with the two blocking caveats above. Axis-2 additions are all grounded (negative column/sort-icon a\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking handled correctly on ELITEA-2331. The case text claims click 1 \u2192 ascending; the product default is already `useTableSort({defaultField:'name', defaultDirection:'asc'})`, so click 1 \u2192 descending. The spec asserts the LIVE contract, both directions the case asks for are still asserted (asc at load + after click 2, desc after click 1), and the drift is filed as #1901 (`question`, OPEN\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_name_column_sorting.py:12-24"
+        },
+        {
+          "kind": "note",
+          "note": "Closure-record warning for the lead: `secret-column-header-{field}` and `secret-sort-icon-{field}` are RUNTIME-COMPOSED in `GridTableHeader.jsx:48,57` (`${columnTestIdPrefix}-...`), so the workflow.md \u00a7 Closure record substring grep returns \"no\" on BOTH refs and looks like the testids don't exist. The real check is the prefix wiring: `columnTestIdPrefix=\"secret\"` is present at `SecretsTable.jsx:56\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Sanctioned-RED signature caveat for the gate: the `pytest.fail()` message embeds `{len(known_defect_errors)} occurrence(s)`, and the run report records 32/34/35/37/41 across the five specs. The failure TEXT will therefore differ run-to-run while the cause is identical \u2014 compare 3/3 on the #1203 signature (assertion site + \"Maximum update depth exceeded\"), not on byte-identical output. This matches\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_page_layout.py:172-178"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit / silent-no-op risk: ELITEA-2342's Axis-2 second-page check is wrapped in `if secrets_page.next_page_button.is_enabled():` with an `else: logger.info(...)`. If the project's secret count ever drops to <= 10 the assertion disappears with only a log line and the test still passes green. It is Axis 2 and the fallback is honest, but a `pytest.skip`-free explicit record (e.g. adding the row count t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_value_reference_format.py:132-152"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2334 mounts `/settings/secrets` twice per run (`collect_all_row_names()` walks the pagination at page size 100, then `navigate()` again to reset to a clean first page). That is correct and the AFS amendment in 56d578e2d documents why, but it doubles the #1203 console-error exposure for this spec and is why it runs ~30 s separately from the other four. Expected, not a defect \u2014 flagging so th\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_search_filter.py:116-131"
+        },
+        {
+          "kind": "note",
+          "note": "Minor: ELITEA-2334 step 4 iterates `(probe.upper(), probe.lower())`. When the derived probe is already lowercase (the common case here \u2014 names like `pgvector_*`), the second variant is byte-identical to step 3's input, so only the upper-case half carries information. Harmless, but combined with blocking item 1 it means the whole step can collapse to a repeat. Fixing blocking item 1 also makes this\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_search_filter.py:150-160"
+        },
+        {
+          "kind": "note",
+          "note": "POM discipline is clean: no locators in any spec file, all new handles are class-level `LocatorDescriptor(testid=...)` fields or UPPER_CASE `[data-testid=` template constants, no `fallback=`/`locator=`, page-object changes are purely additive (no removals), every step is wrapped in `allure.step`, and all markers (`ui`, `admin`, `p1`/`p2`, `regression`, `new`) are registered in `automation/pytest.i\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/secrets_page.py:338-349"
+        },
+        {
+          "kind": "note",
+          "note": "pytest collection hazard worth knowing before the next source-inspection unit test: `from tests.ui.admin.test_x import TestSomeClass` binds a Test* class into the unit module's namespace, and pytest collects it THERE too \u2014 the first draft of test_secrets_search_probe_and_restore_claims.py launched a browser and ran the whole live Settings->Secrets spec a second time under tests/unit/ (0.04s expect\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/unit/test_secrets_search_probe_and_restore_claims.py"
+        },
+        {
+          "kind": "note",
+          "note": "All five specs in this unit carry the #1203 known-defect soft failure and are therefore sanctioned-RED per .agents/testing.md \u00a7 Merge gate (an expect-style soft failure IS a pytest FAILED outcome). The gate signature for each is the single aggregated pytest.fail naming issue #1203; ELITEA-2334's re-run this round showed 34 occurrences, inside the 32-41x range the AFS commit recorded.",
+          "ref": "EliteaAI/elitea-testing-public#1203"
+        },
+        {
+          "kind": "note",
+          "note": "Step 5's strengthened assertion depends on the product NOT resetting the pagination page index on search (usePagination does not, per the AFS's source read) \u2014 the flow stays on page 1 throughout, so the restored slice is comparable. If that behaviour ever changes, the page-1 set assertion is the one that will surface it, which is the intended signal rather than a fragility.",
+          "ref": "test-specs/settings-secrets/l3_secrets-search-filters-by-name_ELITEA-2334.md"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker #1 (case-insensitivity tautology) RESOLVED. _pick_probe now skips caseless prefixes and grows the prefix; step 4 re-asserts _has_cased_character(probe) at the call site before typing probe.upper()/probe.lower(). Non-vacuous: expected_matches is the case-insensitive match set, so a case-sensitive product renders 0 rows for the upper variant and fails. Pinned by tests/unit/test_secre\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_search_filter.py:80"
+        },
+        {
+          "kind": "note",
+          "note": "Round-1 blocker #2 (Coverage-Map row claiming a non-existent assertion) RESOLVED. Step 1 captures page1_names after a fresh navigate(); step 5 asserts set(get_row_names()) == set(page1_names) in addition to value==\"\", total==total_all and row count. AFS Test Data / Test Steps 1,4,5 / Axis-1 rows for steps 4-5 were amended in the same commit (3fbc49eea), so the Coverage Map now matches the shipped \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_search_filter.py:163"
+        },
+        {
+          "kind": "note",
+          "note": "SANCTIONED-RED, all five specs, one signature. Each spec hard-asserts on non-#1203 console errors and records #1203 (OPEN bug, 'Maximum update depth exceeded' on /settings/secrets mount) as a soft failure that ends in pytest.fail(). Per .agents/testing.md \u00a7 Merge gate that IS a pytest FAILED outcome, so all five node ids must be in the gate's expected_red set and the five cases close as blocked-on\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY for the closure record (fresh fetch of ../EliteaUI, output pasted below). The four new testids from EliteaAI/EliteaUI@249c0186 are on automation/testids only: secrets-search-input main:no testids:YES; secrets-pagination-prev-button main:no testids:YES; secrets-pagination-next-button main:no testids:YES; secrets-pagination-page-size-select main:no testids:YES. ADDITIONALLY \u2014 and invis\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-secrets/l3_secrets-page-layout-and-components_ELITEA-2330.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking). ELITEA-2331's Axis-2 row claims 'row count + pagination total unchanged across both clicks'. The row count is asserted after each click, but the pagination total only after click 2 (total_before is captured in step 1). The observable is still proven end-to-end; a per-click total check would match the AFS wording exactly.",
+          "ref": "automation/tests/ui/admin/test_secrets_name_column_sorting.py:120"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking). In _assert_reference_format the leak clause's `or value == name` sub-condition is unreachable: the preceding exact-equality check already guarantees value == '{{secret.' + name + '}}' for every row. Harmless redundancy that reads as a stronger guarantee than it is; the prefix/suffix half of the clause is the part doing work.",
+          "ref": "automation/tests/ui/admin/test_secrets_value_reference_format.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "Known data-shape dependency, correct by design. _pick_probe only considers PREFIXES, capped at MAX_PROBE_LENGTH=12. If the live secret set ever holds no cased prefix of \u226412 chars that filters to a proper non-empty subset of \u226410 rows, the test fails loudly with a named reason rather than degrading \u2014 which is the right behaviour, but it is a hard RED on a data change, not a skip. Worth knowing when \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_search_filter.py:88"
+        },
+        {
+          "kind": "note",
+          "note": "Cost observation, not a defect. Step 1 calls collect_all_row_names() (raises page size to 100, walks the pagination, safety-capped at 20 pages) and then re-navigates, so this spec pays a full dataset walk plus two page loads before the case's own steps start. Justified \u2014 with 121 secrets on 10-row pages a page-1-only comparison would call a broken filter correct \u2014 but it makes ELITEA-2334 the slow\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_secrets_search_filter.py:152"
+        },
+        {
+          "kind": "note",
+          "note": "Durable lesson recorded and committed on the branch (d2136224e): for a runtime-composed testid family the promotability unit is the CALL-SITE PROP (columnTestIdPrefix=\"secret\"), not the composed value \u2014 a value-level grep reports 'nothing new to promote' while the whole family is automation/testids-only. Extends the existing entry with the settings-w05 worked case.",
+          "ref": ".agents/memory/qa-engineer/runtime_composed_testids_invisible_to_grep.md"
+        }
+      ],
+      "afs": "test-specs/settings-secrets/l3_secrets-page-layout-and-components_ELITEA-2330.md",
+      "branch": "tests/settings-w05-secrets-listing",
+      "pr": 1902
+    },
+    {
+      "id": "ELITEA-2331",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l3_secrets-name-column-sortable_ELITEA-2331.md",
+      "branch": "tests/settings-w05-secrets-listing",
+      "pr": 1902
+    },
+    {
+      "id": "ELITEA-2332",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l3_secrets-pagination-navigates-between-pages_ELITEA-2332.md",
+      "branch": "tests/settings-w05-secrets-listing",
+      "pr": 1902
+    },
+    {
+      "id": "ELITEA-2334",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l3_secrets-search-filters-by-name_ELITEA-2334.md",
+      "branch": "tests/settings-w05-secrets-listing",
+      "pr": 1902
+    },
+    {
+      "id": "ELITEA-2342",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l3_secrets-value-column-reference-format_ELITEA-2342.md",
+      "branch": "tests/settings-w05-secrets-listing",
+      "pr": 1902
+    },
+    {
+      "id": "ELITEA-2335",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l3_secret-value-click-copies-to-clipboard_ELITEA-2335.md",
+      "branch": "tests/settings-w05-secrets-validation-copy",
+      "pr": 1904
+    },
+    {
+      "id": "ELITEA-2339",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l2_cancel-deletion-keeps-secret-intact_ELITEA-2339.md",
+      "branch": "tests/settings-w05-secrets-validation-copy",
+      "pr": 1904
+    },
+    {
+      "id": "ELITEA-2340",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l3_secret-name-required-save-disabled-when-empty_ELITEA-2340.md",
+      "branch": "tests/settings-w05-secrets-validation-copy",
+      "pr": 1904
+    },
+    {
+      "id": "ELITEA-2341",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate: 9 sanctioned-RED specs failed IDENTICALLY 3/3 against OPEN #1203 (React 'Maximum update depth exceeded' on /settings/secrets mount); ELITEA-2340 additionally against OPEN #1903. Every functional assertion passes; only the soft_failures aggregation fires pytest.fail(). Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1203 and is NOT back-written execution_type: automated.",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l2_secret-name-must-be-unique-within-project_ELITEA-2341.md",
+      "branch": "tests/settings-w05-secrets-validation-copy",
+      "pr": 1904
+    },
+    {
+      "id": "ELITEA-2345",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (19 tests per run, see report.gate).",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l2_hiding-secret-used-by-credential-does-not-break-it_ELITEA-2345.md",
+      "branch": "tests/2345-2346-hidden-secret-consumers",
+      "pr": 1908,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          231.02,
+          202.26,
+          200.08
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2346",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (19 tests per run, see report.gate).",
+      "findings": [],
+      "afs": "test-specs/settings-secrets/l3_hidden-secret-absent-from-ai-provider-secret-dropdown_ELITEA-2346.md",
+      "branch": "tests/2345-2346-hidden-secret-consumers",
+      "pr": 1908,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          231.02,
+          202.26,
+          200.08
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2333",
+      "outcome": "blocked",
+      "note": "Empty-state precondition unproducible: all 5 selectable projects re-probed live this session (399->121 secrets, 400->4, 406/25/471->403 access_denied). The three 403 projects only LOOK empty because SecretsContent skips the query client-side (bug #1773) \u2014 asserting there would claim 'no data' while the truth is 'no access'. Attached to #1780 (same blocker family as ELITEA-2249/2250/2278).",
+      "findings": []
+    },
+    {
+      "id": "ELITEA-2348",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (19 tests per run, see report.gate).",
+      "findings": []
+    },
+    {
+      "id": "ELITEA-2349",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (19 tests per run, see report.gate).",
+      "findings": []
+    }
+  ],
+  "totals": {
+    "automated": 4,
+    "merged-sanctioned-red": 9,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "case_ids": [
+        "ELITEA-2330",
+        "ELITEA-2331",
+        "ELITEA-2332",
+        "ELITEA-2334",
+        "ELITEA-2335",
+        "ELITEA-2339",
+        "ELITEA-2340",
+        "ELITEA-2341",
+        "ELITEA-2342"
+      ],
+      "tickets": [
+        "EliteaAI/elitea-testing-public#1203",
+        "EliteaAI/elitea-testing-public#1903"
+      ],
+      "why": "React render-loop console errors on every /settings/secrets mount; soft-asserted, aggregated, linked. Deterministic 3/3."
+    }
+  ],
+  "parked": []
+}

@@ -1,0 +1,98 @@
+{
+  "batch": "elitea-2374-context-mgmt-toggle",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2374-context-mgmt-toggle",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      15.83965,
+      13.373578125,
+      12.929535458
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2374",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1238 (label question): case text says 'Navigate to Personalization -> DEFAULT CONTEXT MANAGEMENT' but /settings/personalization 404s -- real location is Settings -> Memory (/settings/memory), section titled plain 'Context Management'. Also case steps 6-7 describe fields becoming 'grayed out and uneditable' / summarization toggle 'grayed out or disabled', but li… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1238"
+        },
+        {
+          "kind": "note",
+          "note": "Added two new data-testid attributes live to EliteaUI (automation/testids, HMR-verified): preserve-recent-messages-input on the Preserve Recent Messages FormInput (MemoryContextManagement.jsx -- the page object already declared this exact testid name but could only reach it via a legacy fallback= before this), and automatic-summarization-toggle on the Automatic Summarization Switch.BaseSwitch (Mem… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@b8155bda"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing OPEN bug EliteaAI/elitea-testing-public#1129 (numeric fields Max Context Tokens/Preserve Recent Messages/Target Summary Tokens don't autosave when typed into directly -- only toggle clicks autosave via PUT /api/v2/social/author/) does NOT block ELITEA-2374 since this case only clicks toggles and reads field values, never types into them. Flagged for the implementer's awareness only.",
+          "ref": "EliteaAI/elitea-testing-public#1129"
+        },
+        {
+          "kind": "question",
+          "note": "Case step 4 hard-codes default values (Max Context Tokens=64000, Preserve Recent Messages=5) that don't match the shared TEST_USER account's actual persisted state (observed 10000/5) -- likely test-data pollution from earlier sessions rather than a product-vs-case disagreement, since we can't verify a pristine-account default without a reset. AFS classifies this Coverage Map row as 'blocked' rathe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "That file's module docstring has a comment noting UserProfileSettingsPage.navigate_to_profile() 'still points at the dead /settings/personalization route' as the reason it avoids using it — that statement is now stale (I fixed the route to /settings/memory as part of this PR). Harmless (it's prose in a different, unrelated case's file, doesn't affect test behavior), left untouched to stay in scope… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_context_auto_summarization.py:75-76"
+        },
+        {
+          "kind": "note",
+          "note": "New durable memory entry: on /settings/memory (and likely other pages sharing the same persistent-WebSocket-blocks-networkidle pattern), wait_for_autosave()'s 1s fallback is not a reliable sync point between two back-to-back state-changing actions — future tests on this page (or similar ones) that fire two toggles/saves in quick succession should wait on the concrete PUT+GET response pair via page… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/settings_memory_autosave_put_get_refetch_race.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text vs live-product divergences (nav path, disable mechanism = conditional unmount not disabled/grayed-out, literal default values unverifiable on the shared account) were already identified and filed by the analyst in #1238 before my dispatch — I did not re-file, just implemented per the AFS's already-corrected dispositions.",
+          "ref": "EliteaAI/elitea-testing-public#1238"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles added in automation/pages/ or automation/tests/: `git diff automation/base...tests/2374-context-mgmt-toggle-enables-disables-fields | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 0 hits. Legacy `fallback=` params on `max_context_tokens_input`/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/user_profile_settings_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean across all three artifacts: case snapshot ELITEA-2374 vs AFS l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md vs implementation test_context_management_toggle.py. Every original-case step (1-8) has a Coverage Map row with a real, traceable assertion in the test (or a documented `clarification`/`blocked` disposition for the two case-text drifts and the unverif… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance independently re-verified against a fresh `git fetch origin` in ../EliteaUI: context-management-section/context-management-toggle/max-context-tokens-input/context-editing-toggle are on main+testids; preserve-recent-messages-input and automatic-summarization-toggle are testids-only (EliteaAI/EliteaUI@b8155bda, `test: [EL-2374] add testids for context management fields`), matching … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Filed clarification issue #1238 (route drift + grayed-out-vs-unmount drift) and referenced pre-existing OPEN bug #1129 were both independently confirmed real via `gh issue view` — bodies match what the AFS/memory claim. No masking (`pytest.skip`/`xfail`/weakened asserts) found in the diff; the `finally` cleanup block only restores the toggle ON as a safety net, matching the AFS Cleanup section, an… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor/non-blocking observation: AFS step 8 asks to assert the Automatic Summarization toggle is restored 'present and interactive again' (at minimum); the test asserts only `to_be_visible()` on `automatic_summarization_toggle`, not `to_be_enabled()`. Low risk in practice — the surface digest documents the toggle's `disabled={!values.context_enabled}` prop is moot once mounted (mounting only happen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/settings/test_context_management_toggle.py"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md",
+      "branch": "tests/2374-context-mgmt-toggle-enables-disables-fields",
+      "pr": 1239,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          15.83965,
+          13.373578125,
+          12.929535458
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

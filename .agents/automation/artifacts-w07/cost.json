@@ -1,0 +1,261 @@
+{
+ "v": 1,
+ "batch": "artifacts-w07",
+ "generatedAt": "2026-09-14T12:03:19.810Z",
+ "sources": {
+  "window": {
+   "start": "2026-08-13T10:44:06.929Z",
+   "end": "2026-08-29T10:44:06.929Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 1,
+  "hosts": [
+   "claude"
+  ],
+  "users": [
+   "alexander-bychinskiy"
+  ],
+  "costSources": [
+   "ccusage-metered"
+  ],
+  "models": [
+   "<synthetic>",
+   "claude-haiku-4-5-20251001",
+   "claude-opus-5"
+  ],
+  "sharedSessions": 1,
+  "note": "session-level figures of shared sessions are split evenly across the batches they served",
+  "foreignDispatchesExcluded": 117
+ },
+ "totals": {
+  "costUsd": 21.02,
+  "tokens": 30006031,
+  "tokensSplit": {
+   "input": 477,
+   "output": 106693,
+   "cacheRead": 29040228,
+   "cacheWrite": 858634
+  },
+  "tokensByModel": {
+   "claude-opus-5": {
+    "input": 250,
+    "output": 88479,
+    "cacheRead": 27022156,
+    "cacheWrite": 591724
+   },
+   "<synthetic>": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "claude-haiku-4-5-20251001": {
+    "input": 227,
+    "output": 18214,
+    "cacheRead": 2018072,
+    "cacheWrite": 266910
+   }
+  },
+  "activeMin": 170,
+  "dispatches": 5,
+  "sessions": 1,
+  "turns": 57,
+  "toolCalls": 165,
+  "toolErrors": 4,
+  "skills": [
+   "memory",
+   "sync-base-branches",
+   "test-automation-workflow"
+  ]
+ },
+ "byRole": {
+  "qa-engineer": {
+   "costUsd": 8.48,
+   "tokens": 11478258,
+   "tok": {
+    "input": 324,
+    "output": 66735,
+    "cacheRead": 10895751,
+    "cacheWrite": 515448
+   },
+   "activeMin": 17,
+   "dispatches": 4,
+   "toolCalls": 105,
+   "toolErrors": 2
+  },
+  "test-automation-engineer": {
+   "costUsd": 0.16,
+   "tokens": 409245,
+   "tok": {
+    "input": 41,
+    "output": 5177,
+    "cacheRead": 320684,
+    "cacheWrite": 83343
+   },
+   "activeMin": 1,
+   "dispatches": 1,
+   "toolCalls": 5,
+   "toolErrors": 1
+  },
+  "test-automation-lead": {
+   "costUsd": 12.38,
+   "tokens": 18118528,
+   "tok": {
+    "input": 112,
+    "output": 34781,
+    "cacheRead": 17823793,
+    "cacheWrite": 259843
+   },
+   "activeMin": 152,
+   "dispatches": 0,
+   "toolCalls": 55,
+   "toolErrors": 1
+  }
+ },
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": 13.01,
+  "sharePct": 62,
+  "lead": {
+   "costUsd": 12.38,
+   "tokens": 18118528,
+   "tok": {
+    "input": 112,
+    "output": 34781,
+    "cacheRead": 17823793,
+    "cacheWrite": 259843
+   },
+   "activeMin": 152,
+   "dispatches": 0,
+   "toolCalls": 55,
+   "toolErrors": 1
+  },
+  "stages": {
+   "costUsd": 0.63,
+   "tokens": 2303423,
+   "tok": {
+    "input": 227,
+    "output": 18214,
+    "cacheRead": 2018072,
+    "cacheWrite": 266910
+   },
+   "activeMin": 4,
+   "dispatches": 3,
+   "toolCalls": 28,
+   "toolErrors": 2
+  },
+  "byStage": {
+   "triage": {
+    "costUsd": 0.46,
+    "tokens": 1894178,
+    "tok": {
+     "input": 186,
+     "output": 13037,
+     "cacheRead": 1697388,
+     "cacheWrite": 183567
+    },
+    "activeMin": 3,
+    "dispatches": 2,
+    "toolCalls": 23,
+    "toolErrors": 1
+   },
+   "report": {
+    "costUsd": 0.16,
+    "tokens": 409245,
+    "tok": {
+     "input": 41,
+     "output": 5177,
+     "cacheRead": 320684,
+     "cacheWrite": 83343
+    },
+    "activeMin": 1,
+    "dispatches": 1,
+    "toolCalls": 5,
+    "toolErrors": 1
+   }
+  }
+ },
+ "outcomes": {
+  "blocked": 1
+ },
+ "delivered": 0,
+ "gate": null,
+ "cases": [
+  {
+   "id": "ELITEA-1865",
+   "outcome": "blocked",
+   "findings": 5,
+   "direct": {
+    "costUsd": 8.02,
+    "tokens": 9584080,
+    "tok": {
+     "input": 138,
+     "output": 53698,
+     "cacheRead": 9198363,
+     "cacheWrite": 331881
+    },
+    "activeMin": 14,
+    "dispatches": 2,
+    "fixRounds": 0,
+    "toolCalls": 82,
+    "toolErrors": 1
+   },
+   "loaded": {
+    "costUsd": 21.03,
+    "tokens": 30006031,
+    "activeMin": 170
+   }
+  }
+ ],
+ "workItemRef": "#1392",
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": {
+   "avg": 8.02,
+   "median": 8.02,
+   "min": 8.02,
+   "max": 8.02,
+   "n": 1
+  },
+  "directTokens": {
+   "avg": 9584080,
+   "median": 9584080,
+   "min": 9584080,
+   "max": 9584080,
+   "n": 1
+  },
+  "directActiveMin": {
+   "avg": 14,
+   "median": 14,
+   "min": 14,
+   "max": 14,
+   "n": 1
+  },
+  "loadedCostUsd": {
+   "avg": 21.03,
+   "median": 21.03,
+   "min": 21.03,
+   "max": 21.03,
+   "n": 1
+  },
+  "loadedActiveMin": {
+   "avg": 170,
+   "median": 170,
+   "min": 170,
+   "max": 170,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": {
+   "costUsd": 8.02,
+   "note": "avg direct spend of an attributed case — excludes batch overhead"
+  }
+ },
+ "coverage": {
+  "casesAttributed": 1,
+  "casesUnattributed": [],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

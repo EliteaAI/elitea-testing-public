@@ -1,0 +1,103 @@
+{
+  "batch": "elitea-2440-test-panel-version-instructions",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2440-test-panel-version-instructions",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      44.388494583,
+      44.740664666,
+      43.554361833
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2440",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "save_as_version(name) snapshots whatever is CURRENTLY in the instructions editor as the new version's content — it does not clone the previously-active version's stored text and takes no instructions parameter. Must call fill_instructions(new_text) BEFORE save_as_version(name), never after, or the new version silently ends up identical to the one it was branched from. Recorded in test-specs/skills… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:483"
+        },
+        {
+          "kind": "note",
+          "note": "save_as_version() auto-navigates to the newly-created version immediately (URL gains the new version's id segment) — confirmed live. A case step that says 'switch to the version you just created' is therefore a confirmed no-op at automation time if it runs right after save_as_version(); harmless to keep for step-fidelity but implementer should know it asserts no state transition."
+        },
+        {
+          "kind": "note",
+          "note": "Skill creation via the UI form produces no separate creation-confirmation toast — navigation to the detail page (POST .../skills/... 201, URL becomes /skills/all/{id}) is itself the confirmation signal, matching the already-merged test_skill_management.py::TestCreateSkill pattern. Reused that same create-flow rather than inventing a second one.",
+          "ref": "automation/tests/ui/skills/test_skill_management.py:60"
+        },
+        {
+          "kind": "defect",
+          "note": "Diagnosed and fixed a live UI-automation race (not a product defect): SkillDetailPage.switch_version() could return before the VERSION selector's rendered text actually reflected the switch, causing a caller to read the pre-switch version. Repro'd deterministically 2/3 times via the actual pytest run (pytest.ini's global --reruns=2 retried the same failure identically both times), and confirmed ma… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1265 / automation/pages/skill_detail_page.py switch_version()"
+        },
+        {
+          "kind": "note",
+          "note": "AFS lists the VERSION dropdown trigger testid as 'skill-version-select-combobox'; the actual LocatorDescriptor field/testid in automation/pages/skill_detail_page.py is 'skill-version-select' (no '-combobox' suffix). Non-blocking — implementation goes through the existing page-object method/field (SkillDetailPage.version_selector), not a raw handle, so nothing needed changing in code. Flagging as a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_test-panel-uses-selected-skill-version-instructions_ELITEA-2440.md § Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage cross-check against the full case snapshot (.agents/automation/elitea-2440-test-panel-version-instructions/cases/ELITEA-2440.md) and AFS Coverage Map: all 6 case steps + Preconditions + Expected Final State have a real 'asserted' disposition with a named assertion location; implementation matches 1:1, including the AFS-recommended explicit switch_version('v1') call in Step 3 for step-fide… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles on the full diff (git diff tests/batch-elitea-2440-test-panel-version-instructions...tests/ELITEA-2440-test-panel-version-instructions | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 0 hits — no new non-testid handles anywhere in the dif… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all 3 artifacts: TMS case (.agents/automation/elitea-2440-test-panel-version-instructions/cases/ELITEA-2440.md, 6 steps + preconditions), AFS (test-specs/skills/l3_test-panel-uses-selected-skill-version-instructions_ELITEA-2440.md), and the PR diff. Every case step + the Expected Final State has an AFS Coverage Map row disposed 'asserted', and every one of those rows has a real assert… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4 ('Run test prompt' on v1, and its mirror inside step 6) has no independent assertion of its own — it only sends the message and calls wait_for_test_response(), which logs a warning and returns silently on timeout rather than raising. The observable is verified indirectly via the following step's response-content assertion. Checked for masking risk: in the worst case (response never streams)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_version_instructions.py:104"
+        },
+        {
+          "kind": "note",
+          "note": "The implementer found and fixed a genuine race in the shared SkillDetailPage.switch_version() (network-idle wait resolving before MUI's onChange re-render lands) by adding a poll-until-selector-text-matches loop that raises RuntimeError on timeout instead of silently returning. Verified via grep that this test is the ONLY current caller of switch_version(), so the behavior change is safe (additive… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:542"
+        },
+        {
+          "kind": "note",
+          "note": "Ruff clean on the new test file. The two ruff hits inside skill_detail_page.py (unsorted import block, legacy super(Class, self) call) are both outside this diff's touched lines (top-of-file imports, and an unrelated line 176) — pre-existing, not introduced here.",
+          "ref": "automation/pages/skill_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Cleanup uses skill_api.delete_skill(int(skill_id)) (API) rather than the UI delete-menu flow the analyst used live — this is explicitly one of the two AFS-sanctioned cleanup options ('via SkillDetailPage.delete_skill_via_menu(skill_name) or SkillAPI.delete_skill(skill_id)'), not a deviation.",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_version_instructions.py:141"
+        },
+        {
+          "kind": "note",
+          "note": "Minor redundancy only: pytest.mark.p2 appears both in the module-level pytestmark list and again as a decorator on the test method. Harmless (pytest dedups), not worth a review round.",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_version_instructions.py:26"
+        }
+      ],
+      "afs": "test-specs/skills/l3_test-panel-uses-selected-skill-version-instructions_ELITEA-2440.md",
+      "branch": "tests/ELITEA-2440-test-panel-version-instructions",
+      "pr": 1265,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          44.388494583,
+          44.740664666,
+          43.554361833
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

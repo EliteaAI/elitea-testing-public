@@ -1,0 +1,286 @@
+{
+  "batch": "settings-w08",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w08",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      426.45,
+      478.13,
+      421.03
+    ],
+    "spec_set": "14 spec files (all the trunk adds vs base EXCEPT the sanctioned-RED voice spec), together in ONE invocation per run (35 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each. CORRECTS the workflow's report, which marked cluster D's 4 cases (2385/2386/2388/2389) 'blocked' with note 'build failed: subagent completed without calling StructuredOutput' \u2014 a HARNESS failure. Verified against git: PR #1968 is MERGED and all 4 specs are on the trunk. Same false-blocked shape as wave 5.",
+    "sanctioned_red": {
+      "spec": "tests/ui/settings/test_voice_personalization_controls.py",
+      "runs": 3,
+      "seconds": [
+        24.11,
+        24.18,
+        24.42
+      ],
+      "ticket": "EliteaAI/elitea-testing-public#1965",
+      "case_ids": [
+        "ELITEA-2385"
+      ],
+      "signature": "AssertionError: Locator expected not to have text '' \u2014 the Voice dropdown renders blank. IDENTICAL 3/3."
+    },
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2371",
+      "outcome": "blocked",
+      "note": "Subject does not exist. Verified live: GET /settings/personalization renders the app's global 'Page not found' view (no Settings drawer, no settings-content); the drawer has 12 settings-nav-item-* nodes and no 'personalization' entry. The case's one page = 3 real pages + 1 section that renders nowhere: profile area -> /settings/profile, GENERAL+VOICE PERSONALIZATION+SOUND NOTIFICATIONS -> /setting\u2026",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1960 \u2014 '[Clarification][ELITEA-2371/2372/2373/2380/2387] There is no consolidated Personalization page'. Covers: /settings/personalization 404s; the per-section route map; LONG-TERM MEMORY is dead code; the avatar-image vs initials-fallback wording in ELITEA-2373 step 2; and a per-case verdict table. Recommends rewriting 2372/2373/2387 against the real routes a\u2026",
+          "ref": "#1960"
+        }
+      ],
+      "afs": "test-specs/settings-user-profile/l3_personalization_page_loads_all_sections_ELITEA-2371.md"
+    },
+    {
+      "id": "ELITEA-2372",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "findings": [],
+      "afs": "test-specs/settings-user-profile/l3_settings_sections_collapse_expand_ELITEA-2372.md",
+      "branch": "tests/ELITEA-2372-2373-2387-settings-personalization",
+      "pr": 1961,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2373",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "findings": [],
+      "afs": "test-specs/settings-user-profile/l3_settings_profile_avatar_name_email_ELITEA-2373.md",
+      "branch": "tests/ELITEA-2372-2373-2387-settings-personalization",
+      "pr": 1961,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2375",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/lextend_disabling-context-management-deactivates-summarization_ELITEA-2375.md",
+      "branch": "tests/settings-w08-context-management-persistence",
+      "pr": 1962,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2376",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l3_context-management-values-persist-after-reload_ELITEA-2376-2379.md",
+      "branch": "tests/settings-w08-context-management-persistence",
+      "pr": 1962,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2379",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l3_context-management-values-persist-after-reload_ELITEA-2376-2379.md",
+      "branch": "tests/settings-w08-context-management-persistence",
+      "pr": 1962,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2380",
+      "outcome": "blocked",
+      "note": "The section is dead code. MemoryLongTermMemory.jsx exists and carries the exact expected copy ('Coming soon - Manage what the AI remembers about you across conversations'), but its only import is commented out at MemoryContextManagement.jsx:13 and grep -rn 'MemoryLongTermMemory' src/ finds no live importer. Confirmed live, not inferred: /settings/memory renders exactly one accordion (CONTEXT MANAG\u2026",
+      "afs": "test-specs/settings-user-profile/l3_long_term_memory_coming_soon_placeholder_ELITEA-2380.md"
+    },
+    {
+      "id": "ELITEA-2387",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l3_personalization_settings_autosave_no_save_button_ELITEA-2387.md",
+      "branch": "tests/ELITEA-2372-2373-2387-settings-personalization",
+      "pr": 1961,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2390",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l1_context-settings-apply-to-new-conversations-only_ELITEA-2390.md",
+      "branch": "tests/settings-w08-context-management-persistence",
+      "pr": 1962,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2381",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l3_default-personality-dropdown-options_ELITEA-2381.md",
+      "branch": "tests/settings-w08-ai-personality-family",
+      "pr": 1964,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2382",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l3_default-user-instructions-persist-after-reload_ELITEA-2382.md",
+      "branch": "tests/settings-w08-ai-personality-family",
+      "pr": 1964,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2383",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l2_general-settings-independent-of-context-management_ELITEA-2383.md",
+      "branch": "tests/settings-w08-ai-personality-family",
+      "pr": 1964,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2384",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l3_personalization-applies-to-new-conversations-only_ELITEA-2384.md",
+      "branch": "tests/settings-w08-ai-personality-family",
+      "pr": 1964,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          447.07,
+          544.87,
+          449.54
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2385",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate 3/3 IDENTICAL red against OPEN bug #1965 (Voice dropdown renders blank \u2014 the alloy default effect is dead, null-vs-undefined guard). expect.soft + '# Known defect: #1965' in-spec. Per .agents/testing.md \u00a7 Merge gate this case stays blocked-on-#1965 and is NOT back-written execution_type: automated.",
+      "afs": "test-specs/settings-user-profile/l3_voice-personalization-controls-interactive_ELITEA-2385.md",
+      "branch": "tests/settings-w08-preferences-controls",
+      "pr": 1968
+    },
+    {
+      "id": "ELITEA-2386",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/l3_sound-notifications-toggle-and-volume-interactive_ELITEA-2386.md",
+      "branch": "tests/settings-w08-preferences-controls",
+      "pr": 1968
+    },
+    {
+      "id": "ELITEA-2388",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/lextend_default-personality-and-instructions-apply-to-new-conversations_ELITEA-2388-2389.md",
+      "branch": "tests/settings-w08-preferences-controls",
+      "pr": 1968
+    },
+    {
+      "id": "ELITEA-2389",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (35 tests per run, 426.45/478.13/421.03s).",
+      "afs": "test-specs/settings-user-profile/lextend_default-personality-and-instructions-apply-to-new-conversations_ELITEA-2388-2389.md",
+      "branch": "tests/settings-w08-preferences-controls",
+      "pr": 1968
+    }
+  ],
+  "totals": {
+    "automated": 14,
+    "merged-sanctioned-red": 1,
+    "blocked": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "tests/ui/settings/test_voice_personalization_controls.py",
+      "runs": 3,
+      "seconds": [
+        24.11,
+        24.18,
+        24.42
+      ],
+      "ticket": "EliteaAI/elitea-testing-public#1965",
+      "case_ids": [
+        "ELITEA-2385"
+      ],
+      "signature": "AssertionError: Locator expected not to have text '' \u2014 the Voice dropdown renders blank. IDENTICAL 3/3."
+    }
+  ],
+  "parked": []
+}

@@ -1,0 +1,54 @@
+{
+  "batch": "credentials-w03",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1394",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-1984",
+      "outcome": "blocked",
+      "note": "Re-dispatch of a case already analysed in credentials-w02 (AFS merged to base at 5360fa31e, status blocked). Re-executed live end-to-end on localhost:5173 rather than copying the prior verdict: two API-seeded SharePoint Delegated credentials (project 399), both deleted after the run. Steps 1-4 reproduce exactly (check_connection 401 opens the dialog; Authorize stays enabled with Invalid.Scope.xyz;… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "question",
+          "note": "ELITEA-1984 needs a HUMAN decision before it can advance, and it is the same decision already parked on OPEN card #1708 (ELITEA-1983 / ELITEA-1985). I commented ELITEA-1984 onto #1708 with fresh evidence rather than opening a second card (dedup per profile.md). The two options, both fully specified there: (a) provide a Microsoft OAuth identity as test data — a registered Entra app whose redirect U… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1708#issuecomment-5430439180"
+        },
+        {
+          "kind": "note",
+          "note": "If the lead gets the descope approved, no third exploration is needed — the AFS specifies the resulting spec completely: ~40 s, p1, one spec. Steps 1-4 (invalid scope carried verbatim into the real authorize URL, exactly one popup, URL asserted field-by-field against the credential's own endpoint) + the graceful-degradation contract (no crash, no console error, dialog alive, Cancel still functiona… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_failed-oauth-completion_ELITEA-1984.md"
+        },
+        {
+          "kind": "defect",
+          "note": "#1713 (already filed, OPEN, unchanged) re-confirmed deterministic on 2026-08-26 across two independently seeded credentials: closing the OAuth popup produces no feedback at all — dialog stays on 'Authorizing…' with Authorize disabled at +5/+20/+45/+75 s; the only message is a generic 5-minute timeout, never a cancellation notice. No new defect filed (nothing new found). Cancel remains functional t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1713"
+        },
+        {
+          "kind": "clarification",
+          "note": "Correction to a claim in the merged credentials-w02 AFS: 'the provider answers a bare HTTP 404 with an empty body and never redirects back' is true only for the placeholder tenant. That statement understated what is reachable — with a real discovery endpoint the popup gets Microsoft's real sign-in page. Anyone reading the old AFS to size this case would conclude the provider surface is entirely un… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/l1_failed-oauth-completion_ELITEA-1984.md"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer gotcha worth knowing before ANY OAuth-popup spec on this surface (now in test-specs/toolkits-credentials/_surface.md and role memory): page.expect_popup() returns a popup whose url is 'about:blank' and whose body is empty, because McpAuthModal.onAuthorize opens about:blank first and assigns location afterwards. Even a sleep(4) read still returned about:blank in this run. Settle with po… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/toolkits-credentials/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Batch trunk tests/batch-credentials-w03 did not exist locally or on the remote; created from origin/automation/base and pushed (now at 52dd88429). Tree left on the trunk, clean. Commit carries the AFS re-verification, the digest update and role memory only — no test code.",
+          "ref": "tests/batch-credentials-w03"
+        }
+      ],
+      "afs": "test-specs/toolkits-credentials/l1_failed-oauth-completion_ELITEA-1984.md"
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

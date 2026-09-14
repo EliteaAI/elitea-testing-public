@@ -1,0 +1,80 @@
+{
+  "batch": "elitea-2392-ai-configuration-page",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2392-ai-configuration-page",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      12.371854167,
+      9.7783975,
+      9.623755209
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2392",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "TMS case ELITEA-2392 directs testers to a nonexistent 'Settings -> AI Configuration' page and describes tabs ('AI Configuration'/'OpenAI Template') that exist on a different page entirely, mislabelled. Filed as EliteaAI/elitea-testing-public#1250 with full repro + recommendation to retitle/rescope the case. Not a product defect - both surfaces work correctly as designed.",
+          "ref": "EliteaAI/elitea-testing-public#1250"
+        },
+        {
+          "kind": "note",
+          "note": "Vector Storage and AI Credentials sections on the AI Providers page render nothing (not even an empty state) when the project has zero configured items for that section - confirmed correct-by-design via ConfigurationSection.jsx source + live network capture (200, items:[]). Any future case touching these two sections needs either seeded test data or an API-response-based conditional assertion, never a bare visibility check."
+        },
+        {
+          "kind": "note",
+          "note": "Entire ai-providers component tree (AIProvidersContent.jsx, ConfigurationsPanel.jsx, ConfigurationSection.jsx, AIProviderAccordion.jsx, ConfigurationCard.jsx) had zero data-testid/testId usage before this case. DrawerPageHeader.jsx's missing titleTestId gap was already flagged by a prior analyst (settings-personal-tokens/_surface.md, ELITEA-2277) which named AIProviders as a pending consumer - still unaddressed for elements outside this test's touched scope."
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed (not newly found) the analyst's case-identity clarification already filed as EliteaAI/elitea-testing-public#1250: the TMS case is titled \"AI Configuration page loads all integration sections without error\" and directs the tester to Settings -> AI Configuration, but no such page/nav-item exists in the live product. The described sections live on the sidebar item labelled \"AI Providers\" (/settings/ai-providers). Case step 12 / Expected Final State (\"AI Configuration\"/\"OpenAI Template\" tabs present at top) refers to a different page entirely (Settings -> General -> \"AI Configurations\" accordion, labelled \"Basic\"/\"OpenAI Template\" there) and is intentionally not automated.",
+          "ref": "EliteaAI/elitea-testing-public#1250"
+        },
+        {
+          "kind": "note",
+          "note": "Select.SingleSelect (src/[fsd]/shared/ui/select/SingleSelect.jsx) already accepts a caller-supplied data-testid prop and forwards it onto the underlying MUI Select plus a `${dataTestId}-combobox` variant via SelectDisplayProps -- no core-component change was needed to wire the Default/High-tier/Low-tier selector testids, only a JSX-side template derived from the already-threaded sectionTestId prop. Worth knowing for any future AI-providers-adjacent or other Select-using surface."
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking scope observation: ConfigurationSection.jsx (EliteaUI@5119ba70/ff547e50) derives a SECOND testid from the same required sectionTestId prop — `${sectionTestId}-default-selector` on the section's Select — gated by the pre-existing `hasDefaultSetting` prop, not by whether this test asserts it. Vector Storage has `hasDefaultSetting={true}`, so once that section ever carries real configured items, its default-selector testid activates whether or not a future case references it — a dormant-but-correctly-scoped derived testid, not an orphan.",
+          "ref": "automation/pages/ai_providers_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "The filed clarification issue #1250 (case names a nonexistent 'AI Configuration' page) carried no labels at filing time — profile.md marks `question` as a load-bearing label for parked-decision issues the factory must never pick up as a task. Flagged for a label sweep so it isn't accidentally worked as a task.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1250"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical self-check (role-overrides.md reviewer grep), run against the full PR diff (base tests/batch-elitea-2392-ai-configuration-page vs head tests/ELITEA-2392-ai-providers-page-sections-load-without-error): one hit, `self.page.locator(self.CONFIGURATION_CARD_SELECTOR)`, where CONFIGURATION_CARD_SELECTOR is an UPPER_CASE class constant containing `[data-testid=\"ai-provider-configuration-card\"]` — compliant per the one-hop check. No other hits.",
+          "ref": "automation/pages/ai_providers_page.py:271"
+        }
+      ],
+      "afs": "test-specs/settings-ai-providers/l3_ai-providers-page-sections-load-without-error_ELITEA-2392.md",
+      "branch": "tests/ELITEA-2392-ai-providers-page-sections-load-without-error",
+      "pr": 1251,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          12.371854167,
+          9.7783975,
+          9.623755209
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": [],
+  "trunk_pr": 1252
+}

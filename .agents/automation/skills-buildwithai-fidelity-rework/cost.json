@@ -1,0 +1,328 @@
+{
+ "v": 1,
+ "batch": "skills-buildwithai-fidelity-rework",
+ "generatedAt": "2026-09-14T12:03:20.433Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-30T15:37:30.000Z",
+   "end": "2026-08-15T15:37:30.000Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 8
+ },
+ "delivered": 8,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   214.93,
+   213.63,
+   213.39
+  ],
+  "run_by": "lead (test-automation-lead), independently, after the workflow's own internal gate agent failed twice (Connection refused, then cut-off-mid-run) and never produced a verdict",
+  "node_ids": [
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormEditableFields::test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections",
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormEditableFields::test_review_form_fields_are_editable_before_creation",
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormEditableFields::test_create_skill_from_unmodified_draft_persists_generated_values",
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAINameFieldValidation::test_name_field_validation_on_invalid_manual_edits",
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormCharacterLimits::test_review_form_field_character_limit_is_enforced[ELITEA-1994-description]",
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormCharacterLimits::test_review_form_field_character_limit_is_enforced[ELITEA-1995-instructions]",
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIBackToPromptFromReviewStep::test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text",
+   "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAICancelFromReviewStep::test_cancel_from_review_step_does_not_create_skill"
+  ],
+  "failures": []
+ },
+ "cases": [
+  {
+   "id": "ELITEA-1989",
+   "outcome": "automated",
+   "findings": 3,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1990",
+   "outcome": "automated",
+   "findings": 1,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1991",
+   "outcome": "automated",
+   "findings": 2,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1993",
+   "outcome": "automated",
+   "findings": 1,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1994",
+   "outcome": "automated",
+   "findings": 1,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1995",
+   "outcome": "automated",
+   "findings": 0,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1996",
+   "outcome": "automated",
+   "findings": 0,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-1998",
+   "outcome": "automated",
+   "findings": 1,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 8
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-1989",
+   "ELITEA-1990",
+   "ELITEA-1991",
+   "ELITEA-1993",
+   "ELITEA-1994",
+   "ELITEA-1995",
+   "ELITEA-1996",
+   "ELITEA-1998"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

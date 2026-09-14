@@ -1,0 +1,170 @@
+{
+  "batch": "elitea-2037",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2037",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      42.135446542,
+      39.086392167,
+      39.938434084
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::TestPipelineFlowEditorAddLlmNodeFromChatCanvas::test_add_llm_node_save_pipeline_and_verify_participant",
+        "signature": "pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — steps 1-10 above passed cleanly). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1039: a bare LLM node (added via + Add Node with zero further config) errors instead of responding when used as a chat participant: AI response did not complete within 60000ms — Copy button never appe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": []
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py::test_hitl_node_runtime_behavior",
+        "signature": "pytest.fail: Soft assertion(s) failed (sanctioned RED — known defect #1103). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1103: Reject should end the pipeline at END with no further processing, but the backend re-emitted ['agent_start', 'start_task'] — the pipeline restarted from the entry point instead.",
+        "case_ids": []
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_llm_node_system_task_chat_history_config.py::test_llm_node_system_task_chat_history_config",
+        "signature": "AssertionError at test_pipeline_llm_node_system_task_chat_history_config.py:154 — 'Save should not introduce console errors: [ConsoleMessage type=error text=Failed to load resource: the server responded with a status of 404 (Not Found)>, <...same...>]'. NOT wrapped in the project's soft-assert/Known-defect aggregation pattern (no ticket reference in the failure) — a raw uncaught assertion, unlike … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": []
+      },
+      {
+        "spec": "tests/ui/pipelines/test_pipeline_router_node_configuration.py::test_router_node_configuration_and_edge_wiring",
+        "signature": "pytest.fail: Soft assertion(s) failed (known isolated product defect, not test/infrastructure — rest of the flow, Condition/Routes/Input/routes-edges/Save/reload, passed cleanly). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036: default-output edge Router 1default_output -> END did not render immediately after selecting Default output = END on a fresh Router node.",
+        "case_ids": []
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2037",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 4 says the attached MCP is 'listed under the MCP sub-tab' -- no such sub-tab exists live; Tools-section attachments (any type) render in one flat list sharing testid agent-toolkit-card. Filed EliteaAI/elitea-testing-public#1149 as a sibling of #530 (same pattern already found on the agent-level Tools section for ELITEA-1950).",
+          "ref": "EliteaAI/elitea-testing-public#1149"
+        },
+        {
+          "kind": "note",
+          "note": "Pipeline-level MCP attach (agent-add-mcp-button popup) does NOT auto-persist the way the agent-level equivalent does (per #530) -- no request fires until the pipeline's own Save. Documented in the AFS and _surface.md so an implementer doesn't wrongly port the agent-level auto-save assumption over."
+        },
+        {
+          "kind": "note",
+          "note": "4 testid gaps found via source read of BaseToolNode.jsx/InputMapping.jsx/CommonInterruptSettings.jsx: MCP node's Interrupt-after toggle, Structured-output toggle, Input-mapping row Type-select, and Input-mapping optional-N heading are wired Toolkit-nodeType-only, not MCP, despite MCP rendering the identical fields. 1-line-per-field fix (widen an existing nodeType===Toolkit ternary) needed via add-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale digest claim: the canvas 'Add node' + menu items previously had zero testids (2026-08-03 session); testids (pipeline-add-node-button, pipeline-add-node-menu-item-{type}) have since been added and are confirmed working live, on automation/testids only, not yet on main."
+        },
+        {
+          "kind": "note",
+          "note": "add-data-testid work: closed 2 of the AFS's 4 flagged gaps on the MCP node (Interrupt-after toggle, Structured-output toggle) by widening BaseToolNode.jsx's interruptAfterTestId/structuredOutputTestId from a Toolkit-only ternary to testIdPrefix truthiness -- now covers Mcp as well as Toolkit. Left the Input-mapping Type-select and optional-heading testids un-added since this test's own steps don't… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@00768a44"
+        },
+        {
+          "kind": "note",
+          "note": "Added the MCP node's first Input/Output tool-agnostic select page-object methods (open_mcp_node_input_select, select_mcp_node_input_variable, get_mcp_node_input_value, and the Output equivalents) -- neither sibling test (ELITEA-1954/1955) had touched these before.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects surfaced -- all 12 case steps behaved exactly as the AFS documented (attach, add-node, static-field presence/absence, Toolkit/Tool select, Input-mapping fill, Input/Output set, save, reload persistence). Test is fully green, no expected_red entries."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS § Network Behavior / Test Steps step 4 (test-specs/pipelines/l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md:38,128) states the pipeline-level 'Tools' MCP-attach 'does not auto-persist — no persistence request fires on attach (only GET .../toolkits/... / GET .../tools/... listing calls)'. This is directly contradicted by the implementation: test Step 3 (automation/tests/ui/pipelin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md:38"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/ scope) — command: git diff origin/tests/batch-elitea-2037...tests/2037-pipeline-mcp-node-fresh-attach -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'. Result: 3 hits (pipeline_detail_page.py new methods at diff lines … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map (Axis 1) ticked against the full original case (.agents/automation/elitea-2037/cases/ELITEA-2037.md): all 12 steps + preconditions + Expected Final State + Pass/Fail rows have a disposition and a real assertion at that step in the test file. Every 'asserted' row's expected result maps to a concrete assert/allure.step in test_pipeline_mcp_node_fresh_attach.py. Axis 2 additions (pre-Too… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid widening (EliteaAI/EliteaUI@00768a44 on automation/testids, verified via `git fetch origin` + `git show` in the EliteaUI sibling clone) exactly matches the PR body's and AFS Implementer Notes' claims: interruptAfterTestId/structuredOutputTestId in BaseToolNode.jsx widened from a Toolkit-only ternary to `testIdPrefix ? ... : undefined`, i.e. resolves for exactly {Mcp, Toolkit} — both now ref… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All page-object methods the test calls that are NOT part of this diff (open_mcp_popper, select_mcp_in_popper, is_toolkit_attached, add_node, wait_for_node_on_canvas, select_mcp_node_toolkit/tool, fill/get_mcp_node_input_mapping_value, is_input_mapping_section_visible, save_and_wait_for_update, wait_for_detail_page_load, navigate, entry_point_trigger_select, configuration_tab, get_node_ids, dismiss… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Diff to automation/pages/pipeline_detail_page.py verified additive-only (git diff ... -- automation/pages/pipeline_detail_page.py | grep -E '^-[^-]' → empty), matching the PR body's own self-check claim."
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed issue EliteaAI/elitea-testing-public#1149 ('no MCP sub-tab' finding) is real, correctly labelled `question`, and well-reasoned as a case-text-drift/reverse-masking clarification — its core claim (flat agent-toolkit-card list, no sub-tab) is independently sound and unaffected by the network-behavior error noted above. No action needed on that part of the ticket; only its network-behavior supp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Posted a correcting follow-up comment on clarification issue #1149: its body repeated the same wrong 'no persistence request fires on pipeline MCP-attach' claim that was in the AFS. Corrected via comment (issue left open, original body kept for audit trail); its separate 'no MCP sub-tab' finding remains valid and untouched.",
+          "ref": "EliteaAI/elitea-testing-public#1149"
+        },
+        {
+          "kind": "note",
+          "note": "Live re-verification method: rather than a fresh manual network capture, ran the case's own spec twice in the foreground — since select_mcp_in_popper() hard-blocks on page.expect_response() for a PATCH 201, a passing run IS conclusive live re-verification that the PATCH fires. Both runs green (40.5s, 38.9s)."
+        },
+        {
+          "kind": "defect",
+          "note": "Prior blocking finding RESOLVED and verified. Fix-round commit 1e0bf501 corrected the AFS (test-specs/pipelines/l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md, Test Steps step 4 + § Network Behavior + Automation Hints + Known Defects) to state the pipeline-level MCP-attach DOES fire an immediate PATCH .../tool/prompt_lib/{project}/ -> 201, matching the pre-existing select_mcp_in_popp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md:38"
+        },
+        {
+          "kind": "defect",
+          "note": "test-specs/pipelines/_surface.md (the 'handle cache' other analysts read BEFORE executing their own live cases, per test-case-analysis skill) was NOT updated in fix round 1 and still asserts the disproven claim: 'Pipeline-level \"+MCP\" attach (agent-add-mcp-button, Tools section) does NOT auto-persist — unlike the AGENT-level Tools section (#530), no request fires on MCP-attach selection (only GET … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md:466"
+        },
+        {
+          "kind": "note",
+          "note": "_surface.md carries its own independently-worded copy of network-behavior facts — correcting the AFS + a linked clarification issue does NOT auto-fix the feature's _surface.md digest. When a live-product-fact correction lands, grep the feature's _surface.md for the same claim too. Logged to test-automation-engineer memory (afs_network_behavior_claims_need_live_reverification.md § Fix round 2).",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "This dispatch directed me (implementer) to edit test-specs/pipelines/_surface.md, which my skill's Hard Rule 11 normally reserves for the analyst (implementer reports drift, never edits). I complied since the dispatch was explicit and the fact was already double-verified live in round 1, and flagged it in both the PR comment and this report. Worth confirming whether fix-round dispatches should kee… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker resolved: test-specs/pipelines/_surface.md's MCP-node section corrected in commit 363f2e18 to match the AFS's fix-round-1 correction (pipeline-level MCP-attach DOES auto-persist via an immediate PATCH .../tool/prompt_lib/{project_id}/ -> 201). Independently verified against automation/pages/pipeline_detail_page.py:2761-2767 (select_mcp_in_popper()'s page.expect_response hard-wait on … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaAI/EliteaUI@00768a44 (on automation/testids) widens BaseToolNode.jsx's interruptAfterTestId/structuredOutputTestId from a Toolkit-only ternary to testIdPrefix truthiness. Read TEST_ID_PREFIX_BY_NODE_TYPE directly: it maps exactly {Mcp, Toolkit} (BaseToolNode.jsx:25-28), so the widening does not leak testids to any untested node type — scope discipline holds.",
+          "ref": "EliteaAI/EliteaUI@00768a44"
+        },
+        {
+          "kind": "note",
+          "note": "Follow-up correction comment on EliteaAI/elitea-testing-public#1149 confirmed actually posted (fetched via gh issue view --comments), correctly scoped to the network-behavior aside only; the issue's original 'no MCP sub-tab' finding is untouched and still valid.",
+          "ref": "EliteaAI/elitea-testing-public#1149"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff produced 3 hits, all pre-existing UPPER_CASE class-level [data-testid=] constants (SELECT_OPTION_PREFIX, NODE_INTERRUPT_BEFORE_TOGGLE), none new/non-testid. Page-object diff to pipeline_detail_page.py is additive-only (no '-' lines besides pure additions). Ruff clean on both changed files."
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md",
+      "branch": "tests/2037-pipeline-mcp-node-fresh-attach",
+      "pr": 1150,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          42.135446542,
+          39.086392167,
+          39.938434084
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

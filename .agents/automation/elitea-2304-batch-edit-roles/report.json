@@ -1,0 +1,104 @@
+{
+  "batch": "elitea-2304-batch-edit-roles",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2304-batch-edit-roles",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      35.14
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/admin/test_users_batch_edit_roles.py",
+        "signature": "AssertionError at line 78 — expect(users_page.user_row).to_have_count(4, timeout=15000): Locator expected to have count '4', actual value: 5. Test navigated to Settings > Users (project 400), invited 2 disposable users, and asserted the table now has exactly 4 rows (2 pre-existing baseline rows 'Levon Dadayan'/'Test Bot' + 2 freshly-invited). Live count was 5 — one row more than the test's hardcod… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2304"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2304",
+      "outcome": "blocked",
+      "note": "gate red: AssertionError at line 78 — expect(users_page.user_row).to_have_count(4, timeout=15000): Locator expected to have count '4', actual value: 5. Test navigated to Settings > Users (project 400), invited 2 disposable users, and asserted the table now has exactly 4 rows (2 pre-existing baseline rows 'Levon Dadayan'/'Test Bot' + 2 freshly-invited). Live count was 5 — one row more than the test's hardcod… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Corrected a stale qa-engineer memory entry (.agents/memory/qa-engineer/analyst_slot_has_no_git_commit_authority.md): it was written against an older workflow.md line ('the implementer commits on the work branch the lead names') that no longer exists in the current file. The batch pipeline now grants the analyst commit authority for the AFS on a named batch trunk -- this dispatch's own instructions… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/analyst_slot_has_no_git_commit_authority.md"
+        },
+        {
+          "kind": "note",
+          "note": "New durable project-topology fact for this surface: the acting TEST_USER (testbot@elitea.ai) holds admin role -- and therefore any Users-page write UI at all -- ONLY in project 400 ('UI Testing'). Every other project reachable from the sidebar (471/406/25) shows Test Bot as viewer or not listed, and the Users page renders NO write UI there at all (permission-gated at render time, not merely disabl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/_surface.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text implies the header batch-Edit button activates specifically at 'two or more' selected rows. Live source (Users.jsx: disabled={!selectedUsers.length}) shows it actually enables on ANY non-empty selection (including exactly 1). Not a defect -- this case's own steps select 2, so the written assertion holds regardless -- but documented in the AFS Axis 2 and the surface digest so the implemen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l2_batch-edit-roles-for-multiple-selected-users_ELITEA-2304.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS drift, amended: the analyst's Concrete Handles table claimed InviteUserDialog's fields were 'reused generic elements only, nothing new added there' — live exploration found the dialog had ZERO testids threaded from its Users.jsx call site (unlike EditUserRolesDialog, which the same analyst pass already threaded correctly). Added 3 new testids (EliteaAI/EliteaUI@ed2ddbb9) to make the seed step'… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l2_batch-edit-roles-for-multiple-selected-users_ELITEA-2304.md § Concrete Handles"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS drift, amended: the analyst assumed an invited (not-yet-logged-in) user's row shows 'Name = the email itself'. Live exploration found the Name cell is actually EMPTY for such rows — the invited email only appears in the Email column. Row lookup for seeded users now matches on email against the whole row's text (user_row.filter(has_text=email)), not the Name cell; AFS's Automation Hints amended… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-users-and-roles/l2_batch-edit-roles-for-multiple-selected-users_ELITEA-2304.md § Test Data"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live the invite-users driving request: POST /api/v2/admin/users/default/400, 200 OK — the analyst's exploration pass hadn't captured it (flagged as unconfirmed). AFS updated with the confirmed endpoint.",
+          "ref": "test-specs/settings-users-and-roles/l2_batch-edit-roles-for-multiple-selected-users_ELITEA-2304.md § Network Behavior"
+        },
+        {
+          "kind": "note",
+          "note": "New durable memory entry filed for future implementers: .agents/memory/test-automation-engineer/styledinputenhancer_data_testid_needs_inputprops_not_bare_prop.md — any StyledInputEnhancer/InputBase-based text field needs its testid threaded via inputProps={{'data-testid': ...}} to land on the real <input>/<textarea>, not as a bare data-testid prop (which lands on MUI TextField's outer wrapper div)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep (`git diff origin/tests/batch-elitea-2304-batch-edit-roles...tests/2304-batch-edit-roles-for-multiple-selected-users -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`) returned 5 hits, all `row.locator(SELF.<UPPER_CASE constant>)` chained off pr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/admin_users_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Verified live against the ../EliteaUI sibling clone (git show, no checkout): commits EliteaAI/EliteaUI@435ff111 and @ed2ddbb9 exist, both thread new testid props through Users.jsx call sites into shared components (EditUserRolesDialog.jsx, InviteUserDialog.jsx under src/components/) rather than hardcoding — compliant with the 'shared components never hardcode feature-scoped testids' rule. Scope di… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@435ff111, EliteaAI/EliteaUI@ed2ddbb9"
+        },
+        {
+          "kind": "note",
+          "note": "Both implementer-discovered AFS drifts (InviteUserDialog had zero pre-existing testids despite the analyst's claim; invited rows render an EMPTY Name cell rather than 'Name = email') are folded back into the AFS in the same PR (Test Data, Concrete Handles, Network Behavior, Automation Hints sections all amended) — satisfies the 'AFS amendments in the same PR' reviewer check.",
+          "ref": "test-specs/settings-users-and-roles/l2_batch-edit-roles-for-multiple-selected-users_ELITEA-2304.md"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map ticked against the full case snapshot: all 9 case steps + the restated Expected Final State map to AFS steps, and every AFS step has a corresponding allure.step + real assertion in the test (row count>0; 4-row + role='editor' check; 2 checkboxes checked; header-edit-button enabled; dialog visible + exact title; Save disabled-then-enabled; PUT 200+body+dialog-closed; 2 invited rows='vi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_users_batch_edit_roles.py"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4 ('Verify the header batch-Edit button is now enabled') only asserts the post-selection enabled state — it does not also assert the button is disabled with 0 rows selected, so the assertion cannot distinguish 'button correctly gated by selection' from a hypothetical 'always-enabled' regression. Step 6's parallel claim (Save disabled→enabled) DOES assert both sides. Non-blocking: the AFS's ow… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_users_batch_edit_roles.py:75-80"
+        },
+        {
+          "kind": "note",
+          "note": "`logger = logging.getLogger(__name__)` is declared but never called in the new test file — dead code, but matches an existing pattern already present in several neighboring test files in the same directory (test_users_page_layout.py, test_personal_token_create_and_verify.py, etc.), so not a new convention violation. ruff check on the new file passes clean either way.",
+          "ref": "automation/tests/ui/admin/test_users_batch_edit_roles.py:15"
+        }
+      ],
+      "afs": "test-specs/settings-users-and-roles/l2_batch-edit-roles-for-multiple-selected-users_ELITEA-2304.md",
+      "branch": "tests/2304-batch-edit-roles-for-multiple-selected-users",
+      "pr": 1181
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

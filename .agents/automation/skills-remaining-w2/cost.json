@@ -1,0 +1,338 @@
+{
+ "v": 1,
+ "batch": "skills-remaining-w2",
+ "generatedAt": "2026-09-14T12:03:20.433Z",
+ "sources": {
+  "window": {
+   "start": "2026-07-29T03:51:32.000Z",
+   "end": "2026-08-14T03:51:32.000Z",
+   "source": "receipt-time (14-day look-back)"
+  },
+  "sessions": 0,
+  "hosts": [],
+  "users": [],
+  "costSources": [],
+  "models": []
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 0,
+  "tokensSplit": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "activeMin": 0,
+  "dispatches": 0,
+  "sessions": 0,
+  "turns": 0,
+  "toolCalls": 0,
+  "toolErrors": 0,
+  "skills": []
+ },
+ "byRole": {},
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 8
+ },
+ "delivered": 0,
+ "gate": {
+  "verdict": "red",
+  "runs": 1,
+  "seconds": [
+   172.2,
+   94.59
+  ],
+  "failures": [
+   {
+    "spec": "automation/tests/ui/skills/test_skill_custom_icon_visibility_across_ui.py::TestSkillCustomIconVisibilityAcrossUI::test_skill_custom_icon_visible_across_ui",
+    "signature": "AssertionError: Not on detail page: http://localhost:5173/agents/create?viewMode=owner — raised in pages/agent_detail_page.py:669 verify_on_detail_page(), called from the test's Step 7 (create the disposable agent) immediately after agent_form_page.save_and_wait_for_navigation(); URL never settled on /agents/all/<id>. Not one of the two sanctioned RED-BY-DESIGN signatures (#570) — new/unclassified… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "ELITEA-2605"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/skills/test_skill_fork_end_to_end.py::TestSkillForkEndToEnd::test_fork_skill_end_to_end",
+    "signature": "SANCTIONED RED-BY-DESIGN (per dispatch). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/570: validateDOMNesting <p>-in-<p> console-error on the shared Fork Complete dialog, soft-asserted via expect.soft; rest of the flow (steps 8-11) passed cleanly. Reproduced 1/1 on this informational (single, not-3x) run — matches the previously-documented signature exactly, nothing new.",
+    "case_ids": [
+     "ELITEA-2602"
+    ]
+   },
+   {
+    "spec": "automation/tests/ui/skills/test_skill_fork_non_base_version.py::TestSkillForkNonBaseVersion::test_fork_non_base_skill_version",
+    "signature": "SANCTIONED RED-BY-DESIGN (per dispatch). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/570: validateDOMNesting <p>-in-<p> console-error on the shared Fork Complete dialog, soft-asserted; rest of the flow (steps 8-9) passed cleanly. Reproduced 1/1 on this informational (single, not-3x) run — matches the previously-documented signature exactly, nothing new.",
+    "case_ids": [
+     "ELITEA-2603"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2439",
+   "outcome": "blocked",
+   "findings": 7,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2441",
+   "outcome": "blocked",
+   "findings": 10,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2442",
+   "outcome": "blocked",
+   "findings": 2,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2602",
+   "outcome": "blocked",
+   "findings": 14,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2603",
+   "outcome": "blocked",
+   "findings": 14,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2604",
+   "outcome": "blocked",
+   "findings": 4,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2605",
+   "outcome": "blocked",
+   "findings": 9,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  },
+  {
+   "id": "ELITEA-2606",
+   "outcome": "blocked",
+   "findings": 7,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 0,
+    "activeMin": 0
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 0,
+   "median": 0,
+   "min": 0,
+   "max": 0,
+   "n": 8
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2439",
+   "ELITEA-2441",
+   "ELITEA-2442",
+   "ELITEA-2602",
+   "ELITEA-2603",
+   "ELITEA-2604",
+   "ELITEA-2605",
+   "ELITEA-2606"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

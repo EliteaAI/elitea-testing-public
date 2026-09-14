@@ -1,0 +1,966 @@
+{
+  "batch": "artifacts-w01",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1392",
+  "integration_branch": "tests/batch-artifacts-w01",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      189.061,
+      186.233,
+      188.288
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1803",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1617 — ELITEA-1805 step 11 says the Retention-Policy / Number-of-files tooltip appears on hovering the bucket name in the LEFT panel. Live, that element carries only a conditional overflow tooltip repeating the name (BucketItem.jsx); the retention/file-count tooltip belongs to a separate info (i) icon in the MAIN-panel toolbar (BucketInfoTooltip.jsx via Artifac… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "1617"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-1806 needs a human decision before it can ever be automated: no project the automation user can reach is bucket-free (759/4/19/13/2 across projects 399/406/25/471/400), the suite has no project create/delete client, and faking the buckets response would be a terminal substitution. Options for the lead's question card: (a) provision and maintain a dedicated bucket-free project, (b) sanction … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift on ELITEA-1806, SOURCE-VERIFIED ONLY (the state was unreachable, so not live-confirmed): step 3 claims the LEFT panel shows 'No buckets created yet' plus a subtitle 'Create your first bucket to get started'. BucketsListContent.jsx's EMPTY branch renders ONE Typography, 'No buckets created yet.' (trailing period), with no subtitle; the only subtitle-like text lives in the MAIN area'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR silently ignored an edit under EliteaUI/src/[fsd]/ (bracketed FSD directory): the dev server kept serving the pre-edit GridTablePagination module while a same-commit edit under src/pages/ HMR'd fine, so two brand-new testids looked 'not rendered'. Diagnose with `curl -s 'http://localhost:5173/src/%5Bfsd%5D/.../<file>.jsx' | grep <new-symbol>` before debugging the JSX; fix is a dev-server … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The Artifacts file table's default order is NOT name-ascending — it lists in modification order and same-second API uploads tie, so a seeded file-01..file-12 set produced page 2 = file-02, file-03. Any future pagination/slice case on this surface must assert partitions, not named slices. In the digest.",
+          "ref": "ELITEA-1804"
+        },
+        {
+          "kind": "note",
+          "note": "The buckets listing is eventually consistent: the left panel rendered 760 buckets while GET /artifacts/buckets/default/399 returned 762, seconds after creating buckets. Cross-checking a UI count against that API is inherently racy; the footer is fed bucketCount={buckets?.length} from the same array the panel renders, so footer-vs-rendered-rows is the race-free product-produced check. In the digest… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1803"
+        },
+        {
+          "kind": "note",
+          "note": "Known bucket-teardown leak #636 reconfirmed: the artifact_bucket fixture's delete 404s on every run; project Private/399 is now at ~762 buckets (555 at the last recorded measurement, 2026-08-03). Still out of scope for any single case's teardown — worth a dedicated cleanup sweep.",
+          "ref": "636"
+        },
+        {
+          "kind": "defect",
+          "note": "Critical-for-docs / Important overall — the `PAGINATION_FILE_COUNT` comment states \"the file table sorts by name ascending, so padding is what makes 'page 1 = 01..10, page 2 = 11..12' deterministic\". This PR's own live finding (AFS 1804 step 13 amendment, _surface.md, and the inline comment at spec step 13) proves the opposite: the listing arrives in modification order and page 2 came back as file… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:107"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — the ELITEA-1804 `@allure.description` claims page 2 is verified as \"'11 - 12 of 12' with the last two files\". The test asserts a partition (disjoint + union == seeded set), never a named slice. This string ships into the Allure report as the test's stated contract, so the report over-claims what was verified.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:181"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — module docstring, two stale claims: (a) ELITEA-1804 covers \"the exact file slice shown on each page\" (it covers the partition); (b) \"The footer's bucket count is cross-checked against the API's own bucket list\" (the Phase-2 amendment replaced the API oracle with the panel's own rendered rows because the API proved racy — 760 rendered vs 762 returned).",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:10"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — `buckets_footer_count`'s LocatorDescriptor description still instructs \"cross-check it against ArtifactAPI.list_buckets()\", while `get_rendered_bucket_names()` 200 lines below documents that exact check as measured-racy and abandoned. Two contradictory instructions in one class; the descriptor is the one a future implementer reads first.",
+          "ref": "automation/pages/artifacts_page.py:757"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — the handle-table row for `artifacts-buckets-footer-count` says \"cross-check against the API's own bucket list instead of a literal\", contradicted by this same file's later section \"Footer 'Buckets: N' — use the rendered list as the oracle, not the API\". The digest is an explicit handle cache for the next analyst, so a self-contradicting row is worse than no row.",
+          "ref": "test-specs/artifacts/_surface.md:112"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — AFS § Expected Results still reads \"Page 2: 2 rows (`file-11.txt`, `file-12.txt`)\", contradicting its own amended step 13 and the implementation. Same class in ELITEA-1803 and ELITEA-1805: Coverage-Map row 10's \"Asserted where\" column still says \"regex + API cross-check\".",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-pagination-more-than-10-files_ELITEA-1804.md:73"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map row 10 is dispositioned `asserted` for \"correct count + size\", but only the COUNT has an oracle; the total SIZE is shape-checked by regex only (`Size:\\s*[\\d.]+\\s*[KMG]?B`) with no value oracle. Defensible (no race-free size oracle exists), but the row should say so — same in ELITEA-1805. Not blocking; recommend qualifying the row rather than adding a flaky size check.",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md:130"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion strength: footer-count == distinct rendered bucket rows is near-tautological (BucketsPanel feeds `bucketCount={buckets?.length}` from the same array the list maps). It still catches a real class (footer wired to a filtered/pinned-only array, stale count), and the alternative was measured flaky, so I accept the amendment — recording it so nobody later reads this as a strong \"actual number… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3546"
+        },
+        {
+          "kind": "note",
+          "note": "`get_rendered_bucket_names()` uses `.evaluate_all(...)` to map data-testid attributes. This is a READ-ONLY DOM read — not a substitution, and it is the right call over N per-element round-trips on a 757-bucket panel — but it sits just outside the project's provenance grep pattern (`\\.evaluate\\(` does not match `evaluate_all(`). Suggest one docstring line declaring it read-only so a future reviewer… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3531"
+        },
+        {
+          "kind": "clarification",
+          "note": "CLARIFICATION #1617 verified and correctly handled: ELITEA-1805 step 11 says the Retention-Policy/file-count tooltip hangs off the left-panel bucket name; live it belongs to the main-panel info (i) icon (BucketInfoTooltip.jsx), while the left-panel name carries only an overflow tooltip. Reverse-masking guard applied correctly — live contract asserted, content (retention value non-empty + `Number o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-empty-bucket_ELITEA-1805.md:106"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps, run on `git diff origin/automation/base...tests/1803-1805-artifacts-landing-page-ui -- automation/`.\nLOCATOR: 7 hits, all COMPLIANT (one-hop verified) — `page.locator(self.FILE_TABLE_COLUMN_HEADER…)`, `FILE_TABLE_COLUMN_HEADER_ANY`, `BUCKET_TREE_EMPTY_LABEL`, `BUCKET_ROW_ANY_SELECTOR`, `ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR`, `ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR`, `ARTIFACTS_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid review — EliteaAI/EliteaUI@6449a5c4, present on origin/automation/testids (verified after `git fetch origin`), none yet on `main` (expected; human cherry-pick pending). Zero-functional-impact greps: hooks 0 hits; `+<Box` 3 hits, all re-indentations of EXISTING Box elements each paired with its own `-` line (BucketFooter ×2, BucketInfoTooltip ×1) — no new DOM node; non-testid remova… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage triangulation is otherwise clean. All 15 ELITEA-1803 steps, all 20 ELITEA-1804 steps and all 11 ELITEA-1805 steps have a Coverage-Map row and a real assertion inside the matching `allure.step(\"Step N — …\")` block; the only action-only steps (1803 s4, 1804 s10/s17, 1805 s4) are the clicks whose case-side expected result is asserted in the immediately following step, as the AFS maps. No Cov… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:70"
+        },
+        {
+          "kind": "note",
+          "note": "Out of my unit but shipped in this diff: ELITEA-1806's AFS is `blocked` (no bucket-free project exists — counts measured per project in _surface.md; faking the buckets response would be terminal substitution). The blocked classification and its refusal to engineer around it are correct. No code for it in the diff, and the test module docstring names the exclusion. Lead needs to route the human dec… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md:1"
+        },
+        {
+          "kind": "note",
+          "note": "The review listed eight stale spots; the keyword sweep found a NINTH the review missed — AFS ELITEA-1803 § 'stable / read-only' still named the API bucket list as the footer oracle. Corrected in the same commit. Worth the lead knowing the reviewer's enumeration was near-complete but not exhaustive; the sweep grep (now in implementer memory + the PR body) is what closes the class.",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md:29"
+        },
+        {
+          "kind": "note",
+          "note": "No runtime regression test exists for a docs-drift blocker. The substitute is the keyword sweep over the whole branch diff, committed to role memory (phase2_amendment_sweep_must_cover_code_and_digest.md, indexed) and pasted into the PR body. Recording this so the 'add the regression test that would have caught it' step is visibly answered rather than silently skipped."
+        },
+        {
+          "kind": "question",
+          "note": "Still needs a human decision routed (unchanged from the review): ELITEA-1806 is blocked because no bucket-free project exists for the automation user and faking the buckets response would be terminal substitution. Options are a dedicated empty project, a project-lifecycle client in the suite, or manual-only.",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md"
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket leak in project 399 is still growing (759 at review time). The footer assertions on this branch are immune to it by construction (footer N is compared to the panel's own rendered rows, never a literal), but it keeps inflating every artifacts-page render."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker RESOLVED. The fix commit corrected 10 statements of the old contract (the 8 named plus AFS 1803 § stable/read-only and the get_rendered_bucket_names read-only-DOM declaration). Independent keyword sweep across all 13 touched files (list_buckets|sorts by name|name.ascending|file-11|file-12|API cross-check|exact.*slice) leaves only correct amendment notes — no surviving stale claim in … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "d910c5403"
+        },
+        {
+          "kind": "note",
+          "note": "Robustness, non-blocking: ELITEA-1804 steps 11/13/18/20 read freshly re-paginated DOM through one-shot helpers (`assert artifacts_page.get_pagination_info_text() == ...`, `set(get_file_names())`) rather than auto-retrying `expect()`. Mitigated by click_pagination_next/prev's wait_for_network (networkidle) and by the retrying to_have_count assertions bracketing them, and it ran 3/3 green — but if t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:333"
+        },
+        {
+          "kind": "note",
+          "note": "All three tests depend on the shared `ArtifactsPage.click_bucket_row` action, which is the exact call recorded as known-flaky in .agents/testing.md § Unconfirmed (raw Locator.wait_for TimeoutError, 1 of 5 live-gate invocations, ELITEA-1835/#260). Not a defect in this PR — flagged so a `broken`-status timeout in the hardening gate is classified against that entry rather than re-investigated.",
+          "ref": ".agents/testing.md § Unconfirmed"
+        },
+        {
+          "kind": "note",
+          "note": "Accepted, documented under-coverage: cases 1803/1805 step 10 say the footer reflects the actual bucket count AND total size; only the COUNT has an oracle (footer N == the panel's DISTINCT rendered bucket rows). Total size is shape-checked only (`Size:\\s*\\d+(\\.\\d+)?\\s*[KMG]?B`) because no race-free total-size oracle exists. Both AFS Coverage-Map rows now state this explicitly — verified as amended,… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md Coverage Map row 10"
+        },
+        {
+          "kind": "note",
+          "note": "The left-tree empty label is a runtime-composed testid (data-testid={`artifacts-bucket-tree-empty-label-${bucket?.name}`}). Per .agents/workflow.md § Closure record, stage-1 bare-substring `git grep` CANNOT see this form — the closure record must diff BucketContent.jsx between origin/main and origin/automation/testids rather than trust a grep, or it will write a false 'not on main' row.",
+          "ref": "EliteaAI/EliteaUI@6449a5c4"
+        },
+        {
+          "kind": "note",
+          "note": "The PR also carries ELITEA-1806's AFS (status `blocked` — no bucket-free project exists for the automation user, no project-lifecycle client, and faking the buckets response would be a terminal substitution). It is outside this unit's ids and outside this review's scope; noting it so the lead routes 1806 rather than assuming it rode along as delivered.",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1805 step 11 case-text drift is handled correctly under the reverse-masking guard: the Retention-Policy / Number-of-files tooltip lives on a main-panel info (i) icon (BucketInfoTooltip.jsx), not on the left-panel bucket name (which carries only a conditional overflow tooltip repeating the name). Live contract asserted, clarification filed, declared in the AFS, the module docstring and the p… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1617"
+        }
+      ],
+      "afs": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md",
+      "branch": "tests/1803-1805-artifacts-landing-page-ui",
+      "pr": 1618,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1804",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1617 — ELITEA-1805 step 11 says the Retention-Policy / Number-of-files tooltip appears on hovering the bucket name in the LEFT panel. Live, that element carries only a conditional overflow tooltip repeating the name (BucketItem.jsx); the retention/file-count tooltip belongs to a separate info (i) icon in the MAIN-panel toolbar (BucketInfoTooltip.jsx via Artifac… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "1617"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-1806 needs a human decision before it can ever be automated: no project the automation user can reach is bucket-free (759/4/19/13/2 across projects 399/406/25/471/400), the suite has no project create/delete client, and faking the buckets response would be a terminal substitution. Options for the lead's question card: (a) provision and maintain a dedicated bucket-free project, (b) sanction … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift on ELITEA-1806, SOURCE-VERIFIED ONLY (the state was unreachable, so not live-confirmed): step 3 claims the LEFT panel shows 'No buckets created yet' plus a subtitle 'Create your first bucket to get started'. BucketsListContent.jsx's EMPTY branch renders ONE Typography, 'No buckets created yet.' (trailing period), with no subtitle; the only subtitle-like text lives in the MAIN area'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR silently ignored an edit under EliteaUI/src/[fsd]/ (bracketed FSD directory): the dev server kept serving the pre-edit GridTablePagination module while a same-commit edit under src/pages/ HMR'd fine, so two brand-new testids looked 'not rendered'. Diagnose with `curl -s 'http://localhost:5173/src/%5Bfsd%5D/.../<file>.jsx' | grep <new-symbol>` before debugging the JSX; fix is a dev-server … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The Artifacts file table's default order is NOT name-ascending — it lists in modification order and same-second API uploads tie, so a seeded file-01..file-12 set produced page 2 = file-02, file-03. Any future pagination/slice case on this surface must assert partitions, not named slices. In the digest.",
+          "ref": "ELITEA-1804"
+        },
+        {
+          "kind": "note",
+          "note": "The buckets listing is eventually consistent: the left panel rendered 760 buckets while GET /artifacts/buckets/default/399 returned 762, seconds after creating buckets. Cross-checking a UI count against that API is inherently racy; the footer is fed bucketCount={buckets?.length} from the same array the panel renders, so footer-vs-rendered-rows is the race-free product-produced check. In the digest… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1803"
+        },
+        {
+          "kind": "note",
+          "note": "Known bucket-teardown leak #636 reconfirmed: the artifact_bucket fixture's delete 404s on every run; project Private/399 is now at ~762 buckets (555 at the last recorded measurement, 2026-08-03). Still out of scope for any single case's teardown — worth a dedicated cleanup sweep.",
+          "ref": "636"
+        },
+        {
+          "kind": "defect",
+          "note": "Critical-for-docs / Important overall — the `PAGINATION_FILE_COUNT` comment states \"the file table sorts by name ascending, so padding is what makes 'page 1 = 01..10, page 2 = 11..12' deterministic\". This PR's own live finding (AFS 1804 step 13 amendment, _surface.md, and the inline comment at spec step 13) proves the opposite: the listing arrives in modification order and page 2 came back as file… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:107"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — the ELITEA-1804 `@allure.description` claims page 2 is verified as \"'11 - 12 of 12' with the last two files\". The test asserts a partition (disjoint + union == seeded set), never a named slice. This string ships into the Allure report as the test's stated contract, so the report over-claims what was verified.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:181"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — module docstring, two stale claims: (a) ELITEA-1804 covers \"the exact file slice shown on each page\" (it covers the partition); (b) \"The footer's bucket count is cross-checked against the API's own bucket list\" (the Phase-2 amendment replaced the API oracle with the panel's own rendered rows because the API proved racy — 760 rendered vs 762 returned).",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:10"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — `buckets_footer_count`'s LocatorDescriptor description still instructs \"cross-check it against ArtifactAPI.list_buckets()\", while `get_rendered_bucket_names()` 200 lines below documents that exact check as measured-racy and abandoned. Two contradictory instructions in one class; the descriptor is the one a future implementer reads first.",
+          "ref": "automation/pages/artifacts_page.py:757"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — the handle-table row for `artifacts-buckets-footer-count` says \"cross-check against the API's own bucket list instead of a literal\", contradicted by this same file's later section \"Footer 'Buckets: N' — use the rendered list as the oracle, not the API\". The digest is an explicit handle cache for the next analyst, so a self-contradicting row is worse than no row.",
+          "ref": "test-specs/artifacts/_surface.md:112"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — AFS § Expected Results still reads \"Page 2: 2 rows (`file-11.txt`, `file-12.txt`)\", contradicting its own amended step 13 and the implementation. Same class in ELITEA-1803 and ELITEA-1805: Coverage-Map row 10's \"Asserted where\" column still says \"regex + API cross-check\".",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-pagination-more-than-10-files_ELITEA-1804.md:73"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map row 10 is dispositioned `asserted` for \"correct count + size\", but only the COUNT has an oracle; the total SIZE is shape-checked by regex only (`Size:\\s*[\\d.]+\\s*[KMG]?B`) with no value oracle. Defensible (no race-free size oracle exists), but the row should say so — same in ELITEA-1805. Not blocking; recommend qualifying the row rather than adding a flaky size check.",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md:130"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion strength: footer-count == distinct rendered bucket rows is near-tautological (BucketsPanel feeds `bucketCount={buckets?.length}` from the same array the list maps). It still catches a real class (footer wired to a filtered/pinned-only array, stale count), and the alternative was measured flaky, so I accept the amendment — recording it so nobody later reads this as a strong \"actual number… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3546"
+        },
+        {
+          "kind": "note",
+          "note": "`get_rendered_bucket_names()` uses `.evaluate_all(...)` to map data-testid attributes. This is a READ-ONLY DOM read — not a substitution, and it is the right call over N per-element round-trips on a 757-bucket panel — but it sits just outside the project's provenance grep pattern (`\\.evaluate\\(` does not match `evaluate_all(`). Suggest one docstring line declaring it read-only so a future reviewer… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3531"
+        },
+        {
+          "kind": "clarification",
+          "note": "CLARIFICATION #1617 verified and correctly handled: ELITEA-1805 step 11 says the Retention-Policy/file-count tooltip hangs off the left-panel bucket name; live it belongs to the main-panel info (i) icon (BucketInfoTooltip.jsx), while the left-panel name carries only an overflow tooltip. Reverse-masking guard applied correctly — live contract asserted, content (retention value non-empty + `Number o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-empty-bucket_ELITEA-1805.md:106"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps, run on `git diff origin/automation/base...tests/1803-1805-artifacts-landing-page-ui -- automation/`.\nLOCATOR: 7 hits, all COMPLIANT (one-hop verified) — `page.locator(self.FILE_TABLE_COLUMN_HEADER…)`, `FILE_TABLE_COLUMN_HEADER_ANY`, `BUCKET_TREE_EMPTY_LABEL`, `BUCKET_ROW_ANY_SELECTOR`, `ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR`, `ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR`, `ARTIFACTS_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid review — EliteaAI/EliteaUI@6449a5c4, present on origin/automation/testids (verified after `git fetch origin`), none yet on `main` (expected; human cherry-pick pending). Zero-functional-impact greps: hooks 0 hits; `+<Box` 3 hits, all re-indentations of EXISTING Box elements each paired with its own `-` line (BucketFooter ×2, BucketInfoTooltip ×1) — no new DOM node; non-testid remova… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage triangulation is otherwise clean. All 15 ELITEA-1803 steps, all 20 ELITEA-1804 steps and all 11 ELITEA-1805 steps have a Coverage-Map row and a real assertion inside the matching `allure.step(\"Step N — …\")` block; the only action-only steps (1803 s4, 1804 s10/s17, 1805 s4) are the clicks whose case-side expected result is asserted in the immediately following step, as the AFS maps. No Cov… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:70"
+        },
+        {
+          "kind": "note",
+          "note": "Out of my unit but shipped in this diff: ELITEA-1806's AFS is `blocked` (no bucket-free project exists — counts measured per project in _surface.md; faking the buckets response would be terminal substitution). The blocked classification and its refusal to engineer around it are correct. No code for it in the diff, and the test module docstring names the exclusion. Lead needs to route the human dec… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md:1"
+        },
+        {
+          "kind": "note",
+          "note": "The review listed eight stale spots; the keyword sweep found a NINTH the review missed — AFS ELITEA-1803 § 'stable / read-only' still named the API bucket list as the footer oracle. Corrected in the same commit. Worth the lead knowing the reviewer's enumeration was near-complete but not exhaustive; the sweep grep (now in implementer memory + the PR body) is what closes the class.",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md:29"
+        },
+        {
+          "kind": "note",
+          "note": "No runtime regression test exists for a docs-drift blocker. The substitute is the keyword sweep over the whole branch diff, committed to role memory (phase2_amendment_sweep_must_cover_code_and_digest.md, indexed) and pasted into the PR body. Recording this so the 'add the regression test that would have caught it' step is visibly answered rather than silently skipped."
+        },
+        {
+          "kind": "question",
+          "note": "Still needs a human decision routed (unchanged from the review): ELITEA-1806 is blocked because no bucket-free project exists for the automation user and faking the buckets response would be terminal substitution. Options are a dedicated empty project, a project-lifecycle client in the suite, or manual-only.",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md"
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket leak in project 399 is still growing (759 at review time). The footer assertions on this branch are immune to it by construction (footer N is compared to the panel's own rendered rows, never a literal), but it keeps inflating every artifacts-page render."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker RESOLVED. The fix commit corrected 10 statements of the old contract (the 8 named plus AFS 1803 § stable/read-only and the get_rendered_bucket_names read-only-DOM declaration). Independent keyword sweep across all 13 touched files (list_buckets|sorts by name|name.ascending|file-11|file-12|API cross-check|exact.*slice) leaves only correct amendment notes — no surviving stale claim in … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "d910c5403"
+        },
+        {
+          "kind": "note",
+          "note": "Robustness, non-blocking: ELITEA-1804 steps 11/13/18/20 read freshly re-paginated DOM through one-shot helpers (`assert artifacts_page.get_pagination_info_text() == ...`, `set(get_file_names())`) rather than auto-retrying `expect()`. Mitigated by click_pagination_next/prev's wait_for_network (networkidle) and by the retrying to_have_count assertions bracketing them, and it ran 3/3 green — but if t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:333"
+        },
+        {
+          "kind": "note",
+          "note": "All three tests depend on the shared `ArtifactsPage.click_bucket_row` action, which is the exact call recorded as known-flaky in .agents/testing.md § Unconfirmed (raw Locator.wait_for TimeoutError, 1 of 5 live-gate invocations, ELITEA-1835/#260). Not a defect in this PR — flagged so a `broken`-status timeout in the hardening gate is classified against that entry rather than re-investigated.",
+          "ref": ".agents/testing.md § Unconfirmed"
+        },
+        {
+          "kind": "note",
+          "note": "Accepted, documented under-coverage: cases 1803/1805 step 10 say the footer reflects the actual bucket count AND total size; only the COUNT has an oracle (footer N == the panel's DISTINCT rendered bucket rows). Total size is shape-checked only (`Size:\\s*\\d+(\\.\\d+)?\\s*[KMG]?B`) because no race-free total-size oracle exists. Both AFS Coverage-Map rows now state this explicitly — verified as amended,… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md Coverage Map row 10"
+        },
+        {
+          "kind": "note",
+          "note": "The left-tree empty label is a runtime-composed testid (data-testid={`artifacts-bucket-tree-empty-label-${bucket?.name}`}). Per .agents/workflow.md § Closure record, stage-1 bare-substring `git grep` CANNOT see this form — the closure record must diff BucketContent.jsx between origin/main and origin/automation/testids rather than trust a grep, or it will write a false 'not on main' row.",
+          "ref": "EliteaAI/EliteaUI@6449a5c4"
+        },
+        {
+          "kind": "note",
+          "note": "The PR also carries ELITEA-1806's AFS (status `blocked` — no bucket-free project exists for the automation user, no project-lifecycle client, and faking the buckets response would be a terminal substitution). It is outside this unit's ids and outside this review's scope; noting it so the lead routes 1806 rather than assuming it rode along as delivered.",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1805 step 11 case-text drift is handled correctly under the reverse-masking guard: the Retention-Policy / Number-of-files tooltip lives on a main-panel info (i) icon (BucketInfoTooltip.jsx), not on the left-panel bucket name (which carries only a conditional overflow tooltip repeating the name). Live contract asserted, clarification filed, declared in the AFS, the module docstring and the p… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1617"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_artifacts-landing-page-pagination-more-than-10-files_ELITEA-1804.md",
+      "branch": "tests/1803-1805-artifacts-landing-page-ui",
+      "pr": 1618,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1805",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1617 — ELITEA-1805 step 11 says the Retention-Policy / Number-of-files tooltip appears on hovering the bucket name in the LEFT panel. Live, that element carries only a conditional overflow tooltip repeating the name (BucketItem.jsx); the retention/file-count tooltip belongs to a separate info (i) icon in the MAIN-panel toolbar (BucketInfoTooltip.jsx via Artifac… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "1617"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-1806 needs a human decision before it can ever be automated: no project the automation user can reach is bucket-free (759/4/19/13/2 across projects 399/406/25/471/400), the suite has no project create/delete client, and faking the buckets response would be a terminal substitution. Options for the lead's question card: (a) provision and maintain a dedicated bucket-free project, (b) sanction … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift on ELITEA-1806, SOURCE-VERIFIED ONLY (the state was unreachable, so not live-confirmed): step 3 claims the LEFT panel shows 'No buckets created yet' plus a subtitle 'Create your first bucket to get started'. BucketsListContent.jsx's EMPTY branch renders ONE Typography, 'No buckets created yet.' (trailing period), with no subtitle; the only subtitle-like text lives in the MAIN area'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR silently ignored an edit under EliteaUI/src/[fsd]/ (bracketed FSD directory): the dev server kept serving the pre-edit GridTablePagination module while a same-commit edit under src/pages/ HMR'd fine, so two brand-new testids looked 'not rendered'. Diagnose with `curl -s 'http://localhost:5173/src/%5Bfsd%5D/.../<file>.jsx' | grep <new-symbol>` before debugging the JSX; fix is a dev-server … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The Artifacts file table's default order is NOT name-ascending — it lists in modification order and same-second API uploads tie, so a seeded file-01..file-12 set produced page 2 = file-02, file-03. Any future pagination/slice case on this surface must assert partitions, not named slices. In the digest.",
+          "ref": "ELITEA-1804"
+        },
+        {
+          "kind": "note",
+          "note": "The buckets listing is eventually consistent: the left panel rendered 760 buckets while GET /artifacts/buckets/default/399 returned 762, seconds after creating buckets. Cross-checking a UI count against that API is inherently racy; the footer is fed bucketCount={buckets?.length} from the same array the panel renders, so footer-vs-rendered-rows is the race-free product-produced check. In the digest… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1803"
+        },
+        {
+          "kind": "note",
+          "note": "Known bucket-teardown leak #636 reconfirmed: the artifact_bucket fixture's delete 404s on every run; project Private/399 is now at ~762 buckets (555 at the last recorded measurement, 2026-08-03). Still out of scope for any single case's teardown — worth a dedicated cleanup sweep.",
+          "ref": "636"
+        },
+        {
+          "kind": "defect",
+          "note": "Critical-for-docs / Important overall — the `PAGINATION_FILE_COUNT` comment states \"the file table sorts by name ascending, so padding is what makes 'page 1 = 01..10, page 2 = 11..12' deterministic\". This PR's own live finding (AFS 1804 step 13 amendment, _surface.md, and the inline comment at spec step 13) proves the opposite: the listing arrives in modification order and page 2 came back as file… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:107"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — the ELITEA-1804 `@allure.description` claims page 2 is verified as \"'11 - 12 of 12' with the last two files\". The test asserts a partition (disjoint + union == seeded set), never a named slice. This string ships into the Allure report as the test's stated contract, so the report over-claims what was verified.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:181"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — module docstring, two stale claims: (a) ELITEA-1804 covers \"the exact file slice shown on each page\" (it covers the partition); (b) \"The footer's bucket count is cross-checked against the API's own bucket list\" (the Phase-2 amendment replaced the API oracle with the panel's own rendered rows because the API proved racy — 760 rendered vs 762 returned).",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:10"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — `buckets_footer_count`'s LocatorDescriptor description still instructs \"cross-check it against ArtifactAPI.list_buckets()\", while `get_rendered_bucket_names()` 200 lines below documents that exact check as measured-racy and abandoned. Two contradictory instructions in one class; the descriptor is the one a future implementer reads first.",
+          "ref": "automation/pages/artifacts_page.py:757"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — the handle-table row for `artifacts-buckets-footer-count` says \"cross-check against the API's own bucket list instead of a literal\", contradicted by this same file's later section \"Footer 'Buckets: N' — use the rendered list as the oracle, not the API\". The digest is an explicit handle cache for the next analyst, so a self-contradicting row is worse than no row.",
+          "ref": "test-specs/artifacts/_surface.md:112"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — AFS § Expected Results still reads \"Page 2: 2 rows (`file-11.txt`, `file-12.txt`)\", contradicting its own amended step 13 and the implementation. Same class in ELITEA-1803 and ELITEA-1805: Coverage-Map row 10's \"Asserted where\" column still says \"regex + API cross-check\".",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-pagination-more-than-10-files_ELITEA-1804.md:73"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map row 10 is dispositioned `asserted` for \"correct count + size\", but only the COUNT has an oracle; the total SIZE is shape-checked by regex only (`Size:\\s*[\\d.]+\\s*[KMG]?B`) with no value oracle. Defensible (no race-free size oracle exists), but the row should say so — same in ELITEA-1805. Not blocking; recommend qualifying the row rather than adding a flaky size check.",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md:130"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion strength: footer-count == distinct rendered bucket rows is near-tautological (BucketsPanel feeds `bucketCount={buckets?.length}` from the same array the list maps). It still catches a real class (footer wired to a filtered/pinned-only array, stale count), and the alternative was measured flaky, so I accept the amendment — recording it so nobody later reads this as a strong \"actual number… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3546"
+        },
+        {
+          "kind": "note",
+          "note": "`get_rendered_bucket_names()` uses `.evaluate_all(...)` to map data-testid attributes. This is a READ-ONLY DOM read — not a substitution, and it is the right call over N per-element round-trips on a 757-bucket panel — but it sits just outside the project's provenance grep pattern (`\\.evaluate\\(` does not match `evaluate_all(`). Suggest one docstring line declaring it read-only so a future reviewer… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3531"
+        },
+        {
+          "kind": "clarification",
+          "note": "CLARIFICATION #1617 verified and correctly handled: ELITEA-1805 step 11 says the Retention-Policy/file-count tooltip hangs off the left-panel bucket name; live it belongs to the main-panel info (i) icon (BucketInfoTooltip.jsx), while the left-panel name carries only an overflow tooltip. Reverse-masking guard applied correctly — live contract asserted, content (retention value non-empty + `Number o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-empty-bucket_ELITEA-1805.md:106"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps, run on `git diff origin/automation/base...tests/1803-1805-artifacts-landing-page-ui -- automation/`.\nLOCATOR: 7 hits, all COMPLIANT (one-hop verified) — `page.locator(self.FILE_TABLE_COLUMN_HEADER…)`, `FILE_TABLE_COLUMN_HEADER_ANY`, `BUCKET_TREE_EMPTY_LABEL`, `BUCKET_ROW_ANY_SELECTOR`, `ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR`, `ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR`, `ARTIFACTS_… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI testid review — EliteaAI/EliteaUI@6449a5c4, present on origin/automation/testids (verified after `git fetch origin`), none yet on `main` (expected; human cherry-pick pending). Zero-functional-impact greps: hooks 0 hits; `+<Box` 3 hits, all re-indentations of EXISTING Box elements each paired with its own `-` line (BucketFooter ×2, BucketInfoTooltip ×1) — no new DOM node; non-testid remova… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage triangulation is otherwise clean. All 15 ELITEA-1803 steps, all 20 ELITEA-1804 steps and all 11 ELITEA-1805 steps have a Coverage-Map row and a real assertion inside the matching `allure.step(\"Step N — …\")` block; the only action-only steps (1803 s4, 1804 s10/s17, 1805 s4) are the clicks whose case-side expected result is asserted in the immediately following step, as the AFS maps. No Cov… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:70"
+        },
+        {
+          "kind": "note",
+          "note": "Out of my unit but shipped in this diff: ELITEA-1806's AFS is `blocked` (no bucket-free project exists — counts measured per project in _surface.md; faking the buckets response would be terminal substitution). The blocked classification and its refusal to engineer around it are correct. No code for it in the diff, and the test module docstring names the exclusion. Lead needs to route the human dec… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md:1"
+        },
+        {
+          "kind": "note",
+          "note": "The review listed eight stale spots; the keyword sweep found a NINTH the review missed — AFS ELITEA-1803 § 'stable / read-only' still named the API bucket list as the footer oracle. Corrected in the same commit. Worth the lead knowing the reviewer's enumeration was near-complete but not exhaustive; the sweep grep (now in implementer memory + the PR body) is what closes the class.",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md:29"
+        },
+        {
+          "kind": "note",
+          "note": "No runtime regression test exists for a docs-drift blocker. The substitute is the keyword sweep over the whole branch diff, committed to role memory (phase2_amendment_sweep_must_cover_code_and_digest.md, indexed) and pasted into the PR body. Recording this so the 'add the regression test that would have caught it' step is visibly answered rather than silently skipped."
+        },
+        {
+          "kind": "question",
+          "note": "Still needs a human decision routed (unchanged from the review): ELITEA-1806 is blocked because no bucket-free project exists for the automation user and faking the buckets response would be terminal substitution. Options are a dedicated empty project, a project-lifecycle client in the suite, or manual-only.",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md"
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket leak in project 399 is still growing (759 at review time). The footer assertions on this branch are immune to it by construction (footer N is compared to the panel's own rendered rows, never a literal), but it keeps inflating every artifacts-page render."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker RESOLVED. The fix commit corrected 10 statements of the old contract (the 8 named plus AFS 1803 § stable/read-only and the get_rendered_bucket_names read-only-DOM declaration). Independent keyword sweep across all 13 touched files (list_buckets|sorts by name|name.ascending|file-11|file-12|API cross-check|exact.*slice) leaves only correct amendment notes — no surviving stale claim in … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "d910c5403"
+        },
+        {
+          "kind": "note",
+          "note": "Robustness, non-blocking: ELITEA-1804 steps 11/13/18/20 read freshly re-paginated DOM through one-shot helpers (`assert artifacts_page.get_pagination_info_text() == ...`, `set(get_file_names())`) rather than auto-retrying `expect()`. Mitigated by click_pagination_next/prev's wait_for_network (networkidle) and by the retrying to_have_count assertions bracketing them, and it ran 3/3 green — but if t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_ui.py:333"
+        },
+        {
+          "kind": "note",
+          "note": "All three tests depend on the shared `ArtifactsPage.click_bucket_row` action, which is the exact call recorded as known-flaky in .agents/testing.md § Unconfirmed (raw Locator.wait_for TimeoutError, 1 of 5 live-gate invocations, ELITEA-1835/#260). Not a defect in this PR — flagged so a `broken`-status timeout in the hardening gate is classified against that entry rather than re-investigated.",
+          "ref": ".agents/testing.md § Unconfirmed"
+        },
+        {
+          "kind": "note",
+          "note": "Accepted, documented under-coverage: cases 1803/1805 step 10 say the footer reflects the actual bucket count AND total size; only the COUNT has an oracle (footer N == the panel's DISTINCT rendered bucket rows). Total size is shape-checked only (`Size:\\s*\\d+(\\.\\d+)?\\s*[KMG]?B`) because no race-free total-size oracle exists. Both AFS Coverage-Map rows now state this explicitly — verified as amended,… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md Coverage Map row 10"
+        },
+        {
+          "kind": "note",
+          "note": "The left-tree empty label is a runtime-composed testid (data-testid={`artifacts-bucket-tree-empty-label-${bucket?.name}`}). Per .agents/workflow.md § Closure record, stage-1 bare-substring `git grep` CANNOT see this form — the closure record must diff BucketContent.jsx between origin/main and origin/automation/testids rather than trust a grep, or it will write a false 'not on main' row.",
+          "ref": "EliteaAI/EliteaUI@6449a5c4"
+        },
+        {
+          "kind": "note",
+          "note": "The PR also carries ELITEA-1806's AFS (status `blocked` — no bucket-free project exists for the automation user, no project-lifecycle client, and faking the buckets response would be a terminal substitution). It is outside this unit's ids and outside this review's scope; noting it so the lead routes 1806 rather than assuming it rode along as delivered.",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1805 step 11 case-text drift is handled correctly under the reverse-masking guard: the Retention-Policy / Number-of-files tooltip lives on a main-panel info (i) icon (BucketInfoTooltip.jsx), not on the left-panel bucket name (which carries only a conditional overflow tooltip repeating the name). Live contract asserted, clarification filed, declared in the AFS, the module docstring and the p… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/elitea-testing-public#1617"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_artifacts-landing-page-empty-bucket_ELITEA-1805.md",
+      "branch": "tests/1803-1805-artifacts-landing-page-ui",
+      "pr": 1618,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1806",
+      "outcome": "blocked",
+      "note": "Precondition 'the project has no buckets' cannot be produced. Measured live via GET /artifacts/buckets/default/{pid} for every project the selector offers: 399 Private 759, 406 Bugs & Features 4, 25 Elitea Development 19, 471 Elitea Testing Team 13, 400 UI Testing 2 — none empty. Emptying a shared project is destructive; the suite has no project create/delete client; and intercepting the buckets r… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1617 — ELITEA-1805 step 11 says the Retention-Policy / Number-of-files tooltip appears on hovering the bucket name in the LEFT panel. Live, that element carries only a conditional overflow tooltip repeating the name (BucketItem.jsx); the retention/file-count tooltip belongs to a separate info (i) icon in the MAIN-panel toolbar (BucketInfoTooltip.jsx via Artifac… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "1617"
+        },
+        {
+          "kind": "question",
+          "note": "ELITEA-1806 needs a human decision before it can ever be automated: no project the automation user can reach is bucket-free (759/4/19/13/2 across projects 399/406/25/471/400), the suite has no project create/delete client, and faking the buckets response would be a terminal substitution. Options for the lead's question card: (a) provision and maintain a dedicated bucket-free project, (b) sanction … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift on ELITEA-1806, SOURCE-VERIFIED ONLY (the state was unreachable, so not live-confirmed): step 3 claims the LEFT panel shows 'No buckets created yet' plus a subtitle 'Create your first bucket to get started'. BucketsListContent.jsx's EMPTY branch renders ONE Typography, 'No buckets created yet.' (trailing period), with no subtitle; the only subtitle-like text lives in the MAIN area'… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1806"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR silently ignored an edit under EliteaUI/src/[fsd]/ (bracketed FSD directory): the dev server kept serving the pre-edit GridTablePagination module while a same-commit edit under src/pages/ HMR'd fine, so two brand-new testids looked 'not rendered'. Diagnose with `curl -s 'http://localhost:5173/src/%5Bfsd%5D/.../<file>.jsx' | grep <new-symbol>` before debugging the JSX; fix is a dev-server … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The Artifacts file table's default order is NOT name-ascending — it lists in modification order and same-second API uploads tie, so a seeded file-01..file-12 set produced page 2 = file-02, file-03. Any future pagination/slice case on this surface must assert partitions, not named slices. In the digest.",
+          "ref": "ELITEA-1804"
+        },
+        {
+          "kind": "note",
+          "note": "The buckets listing is eventually consistent: the left panel rendered 760 buckets while GET /artifacts/buckets/default/399 returned 762, seconds after creating buckets. Cross-checking a UI count against that API is inherently racy; the footer is fed bucketCount={buckets?.length} from the same array the panel renders, so footer-vs-rendered-rows is the race-free product-produced check. In the digest… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1803"
+        },
+        {
+          "kind": "note",
+          "note": "Known bucket-teardown leak #636 reconfirmed: the artifact_bucket fixture's delete 404s on every run; project Private/399 is now at ~762 buckets (555 at the last recorded measurement, 2026-08-03). Still out of scope for any single case's teardown — worth a dedicated cleanup sweep.",
+          "ref": "636"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md"
+    },
+    {
+      "id": "ELITEA-1807",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1619 — ELITEA-1807's sidebar label list is stale: live labels are 'Toolkits & Indexes' (SidebarBody.jsx) and 'Catalog' (AgentHubButton.jsx), not 'Toolkits' and 'Agent HUB'. The other nine match. Nothing is broken, so the test asserts the live labels (reverse-masking guard) and the case text is filed for correction. Sibling of #1208 (same rename, Catalog page he… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1619"
+        },
+        {
+          "kind": "note",
+          "note": "src/[fsd]/ HMR gap reconfirmed (2nd occurrence, now in the artifacts digest): edits to Sidebar.jsx / SidebarButton.jsx did not reach the dev server until `npm run dev` was restarted, while the src/pages/Artifacts/ edit in the same commit was live instantly. Verified with `curl -s 'http://localhost:5173/src/%5Bfsd%5D/...' | grep <testid>` before and after. Any future dispatch touching bracketed-FSD… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The artifacts digest's 2026-08-02 row asserting that sidebar nav entries carry NO data-testid was WRONG as of today — SidebarBody.jsx passes testId={`sidebar-menu-item-${value}`} to every item. Two earlier analyses (ELITEA-1809 and ELITEA-1811/1814) independently 'confirmed' the absent-testid claim, so it had double false authority. Corrected in place. Worth a glance at any AFS that routed around … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Sidebar collapse state is redux + localStorage['sideBarCollapsed'], but write-only: settings.js initialises sideBarCollapsed to '' (expanded) on load, so a collapsed sidebar cannot leak into a later test via a page load. It does persist across SPA navigation within one page session — relevant to any future test that collapses it and then navigates."
+        },
+        {
+          "kind": "note",
+          "note": "The project's Private/399 bucket leak (#636) is now at ~766 rendered buckets (was 759 at the ELITEA-1803 run earlier today). This case adds none — it seeds nothing — but the trend is still upward and still unowned.",
+          "ref": "#636"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY (for the closure record, verified by me after `git fetch origin` in ../EliteaUI, not copied from the AFS): 5 of the 6 testids this test uses are NOT on EliteaUI main. Output:\nartifacts-buckets-panel-toggle-button  main:no  testids:YES\nsidebar-collapse-toggle-button         main:no  testids:YES\nsidebar-settings-button                main:no  testids:YES\nsidebar-agent-hub-button       … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-collapse-expand-panels_ELITEA-1807.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Provenance nit: the `sidebar-menu-item-{value}` row says 'pre-existing ... on-main status inherited from that commit' — an unverified hedge rather than a fact. Verified truth is main:no / automation/testids:YES. Not a false claim (it asserts nothing about main), so not blocking, but the closure record must state the verified value, not inherit this phrasing.",
+          "ref": "test-specs/artifacts/l3_artifacts-landing-page-collapse-expand-panels_ELITEA-1807.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment coupling (accepted, worth recording): SIDEBAR_NAV_ENTRIES hardcodes all 9 nav entries and asserts each visible. EliteaUI SidebarBody.jsx:184-203 filters entries at render time — `mcps` is dropped when the isMcpVisible flag is false, `skills` is dropped on a public project without PERMISSIONS.skills.publish, and every entry is gated on PERMISSION_GROUPS. So a red here on another project… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_collapse_expand_panels.py:120"
+        },
+        {
+          "kind": "note",
+          "note": "The case precondition 'at least one bucket is present' is satisfied by whatever buckets already exist in the project — the test neither seeds nor skips, so on an empty project `expect(any_bucket_row()).to_be_visible()` in _assert_buckets_panel_expanded is a false red. This is the correct trade under Hard Rule 10 (read-only beats seeding for a chrome-only case, and it adds nothing to the #636 bucke… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_collapse_expand_panels.py:213"
+        },
+        {
+          "kind": "clarification",
+          "note": "Reverse-masking guard applied correctly and verified against source: the case text's 'Toolkits' and 'Agent HUB' are stale — live labels are 'Toolkits & Indexes' (SidebarBody.jsx) and 'Catalog' (AgentHubButton.jsx). The test asserts the LIVE contract, the drift is filed as clarification #1619 (sibling of #1208), and both the AFS and the test docstring name it. No hidden assertion weakening anywhere… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_landing_page_collapse_expand_panels.py:126"
+        },
+        {
+          "kind": "note",
+          "note": "POM discipline confirmed on the shared file: base_page.py changes are strictly additive (3 LocatorDescriptor fields, 1 class constant, 2 methods, plus widening the playwright import to `Locator, expect`) — no existing behaviour touched, so no shared-caller blast radius. No duplicate testid definitions: grep across pages/ tests/ components/ shows each of the 4 new sidebar testids defined in exactly… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/base_page.py:108"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer memory committed on the branch under review as dfe30794a (docs(memory), .agents/memory/qa-engineer/ only) — the automation/ diff I judged is unchanged by it."
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_artifacts-landing-page-collapse-expand-panels_ELITEA-1807.md",
+      "branch": "tests/1807-artifacts-collapse-expand-panels",
+      "pr": 1620,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1820",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Probable root cause of the long-standing #636 bucket leak found: ArtifactAPI.delete_bucket deletes via the PATH form /artifacts/buckets/default/{pid}/{bucket} (plus a p--{pid}.{bucket} fallback), and both 404. The UI deletes via the QUERY form /artifacts/buckets/default/{pid}?name={bucket} — I deleted 10 leaked buckets with it live, all 200. Not fixed here (shared API client, many callers, out of … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The Artifacts bucket list is alphanumeric BY ACCIDENT: SimpleBucketList.jsx calls sortBucketsByRecent, but the listing payload carries no usable updated_at/created_at, so every comparison is NaN, the sort is a no-op and the backend's alphanumeric order survives (verified: 766 rendered names exactly == sorted(names)). The case text's 'alphanumeric order' is therefore correct today, but a payload ch… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_pin-artifact-bucket-to-top_ELITEA-1820.md"
+        },
+        {
+          "kind": "note",
+          "note": "The bucket list re-renders ~8-10s AFTER the pin PATCH returns 200 (10s pin, 8s unpin, measured by 2s polling; no intervening buckets GET seen on the wire). While the list is stale the dot-menu is stale too — it still reads 'Pin to top' for an already-pinned bucket and clicking it re-sends is_pinned:true instead of unpinning. Not filed as a defect (the state does arrive and no case sets a timing ex… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both cases list the bucket dot-menu's second item as 'Edit'; the product labels it 'Rename'. Already tracked as #666 (sibling #650) — commented the new occurrences there rather than filing a duplicate. Drift now spans four cases: ELITEA-1817, ELITEA-1824, ELITEA-1820, ELITEA-1821.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/666"
+        },
+        {
+          "kind": "defect",
+          "note": "Corrected a stale, load-bearing docstring claim (also present in _surface.md) that a PINNED bucket is rendered twice. BucketsPanel.jsx splits pinnedBuckets/unpinnedBuckets and BucketsListContent.jsx renders the pinned list ABOVE the unpinned one, so each bucket renders exactly ONCE. The de-duplication in the method is harmless and was kept as a guard, but any future reasoning built on 'rendered tw… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:get_rendered_bucket_names"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR gap is wider than the digest recorded: an edit under src/pages/Artifacts/Components/BucketItem.jsx was NOT picked up (the dev server kept serving the pre-edit module for ~15 minutes) and required a full `npm run dev` restart. The prior digest entry blamed only bracketed src/[fsd]/ paths. Verify with `curl -s 'http://localhost:5173/src/<path>' | grep <testid>` before concluding a testid do… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (pre-existing docstring, now more wrong): open_bucket_menu's docstring still says \"'Rename' / 'Pin to top' / 'Delete' have no testid added, out of scope for this case\". 'Delete' already had bucket-menu-delete-menuitem (line 159) and 'Pin to top' now has bucket-menu-pin-menuitem (line 172). Not in this diff's added lines, so not blocking, but worth a one-line correction next time this file is t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1480"
+        },
+        {
+          "kind": "note",
+          "note": "Fragility (accepted, faithful to the case): `assert baseline == sorted(baseline)` asserts alphanumeric order over the shared project's ~766 existing buckets, so it couples to the backend's collation and to every name other runs leave behind. Live-verified 766/766 byte-sorted today; a bucket name with uppercase or unusual punctuation appearing in project 399 would false-fail both tests. The case's … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_pin_unpin.py:198"
+        },
+        {
+          "kind": "note",
+          "note": "Shared-state dependency (documented in both AFS): `expect(any_bucket_pin_indicator()).to_have_count(0)` hard-fails if ANY bucket in project 399 is pinned when the test starts — e.g. a human pinning one, or a run whose teardown unpin PATCH failed. Correct as a precondition guard (the case's ordering claim only holds with nothing pinned) and the failure would be self-explanatory, but it is an enviro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_pin_unpin.py:196"
+        },
+        {
+          "kind": "defect",
+          "note": "Pre-existing, out of scope for this branch but worth routing: ArtifactAPI.delete_bucket tries only path-segment URL forms (/artifacts/buckets/default/{pid}/{bucket}, then the p--{pid}.{bucket} id form), both of which 404 — the endpoint takes the query form ?name={bucket}, as the newly added set_bucket_pinned correctly does. Every run of these two tests therefore leaks its seeded bucket (teardown c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/api/client.py:1320"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: `artifacts_page = None` is a dead pre-assignment — it is unconditionally reassigned inside Step 1's allure.step block on the next line. Harmless; the 1821 test does not do this.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_pin_unpin.py:188"
+        },
+        {
+          "kind": "clarification",
+          "note": "Triangulation mechanics worth knowing for the next reviewer on this batch: both AFS were committed on the batch TRUNK by the analyst (commit 70c4933ea), so `git diff trunk...branch -- test-specs/` shows only the Phase-2 amendment hunks (+8 / +3). The amendments themselves are correct — they record exactly the two assertions the implementation strengthened beyond the original AFS (hover-reveal asse… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_pin-artifact-bucket-to-top_ELITEA-1820.md"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_pin-artifact-bucket-to-top_ELITEA-1820.md",
+      "branch": "tests/1820-1821-bucket-pin-unpin",
+      "pr": 1621,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1821",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Probable root cause of the long-standing #636 bucket leak found: ArtifactAPI.delete_bucket deletes via the PATH form /artifacts/buckets/default/{pid}/{bucket} (plus a p--{pid}.{bucket} fallback), and both 404. The UI deletes via the QUERY form /artifacts/buckets/default/{pid}?name={bucket} — I deleted 10 leaked buckets with it live, all 200. Not fixed here (shared API client, many callers, out of … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The Artifacts bucket list is alphanumeric BY ACCIDENT: SimpleBucketList.jsx calls sortBucketsByRecent, but the listing payload carries no usable updated_at/created_at, so every comparison is NaN, the sort is a no-op and the backend's alphanumeric order survives (verified: 766 rendered names exactly == sorted(names)). The case text's 'alphanumeric order' is therefore correct today, but a payload ch… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_pin-artifact-bucket-to-top_ELITEA-1820.md"
+        },
+        {
+          "kind": "note",
+          "note": "The bucket list re-renders ~8-10s AFTER the pin PATCH returns 200 (10s pin, 8s unpin, measured by 2s polling; no intervening buckets GET seen on the wire). While the list is stale the dot-menu is stale too — it still reads 'Pin to top' for an already-pinned bucket and clicking it re-sends is_pinned:true instead of unpinning. Not filed as a defect (the state does arrive and no case sets a timing ex… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both cases list the bucket dot-menu's second item as 'Edit'; the product labels it 'Rename'. Already tracked as #666 (sibling #650) — commented the new occurrences there rather than filing a duplicate. Drift now spans four cases: ELITEA-1817, ELITEA-1824, ELITEA-1820, ELITEA-1821.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/666"
+        },
+        {
+          "kind": "defect",
+          "note": "Corrected a stale, load-bearing docstring claim (also present in _surface.md) that a PINNED bucket is rendered twice. BucketsPanel.jsx splits pinnedBuckets/unpinnedBuckets and BucketsListContent.jsx renders the pinned list ABOVE the unpinned one, so each bucket renders exactly ONCE. The de-duplication in the method is harmless and was kept as a guard, but any future reasoning built on 'rendered tw… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:get_rendered_bucket_names"
+        },
+        {
+          "kind": "note",
+          "note": "Vite HMR gap is wider than the digest recorded: an edit under src/pages/Artifacts/Components/BucketItem.jsx was NOT picked up (the dev server kept serving the pre-edit module for ~15 minutes) and required a full `npm run dev` restart. The prior digest entry blamed only bracketed src/[fsd]/ paths. Verify with `curl -s 'http://localhost:5173/src/<path>' | grep <testid>` before concluding a testid do… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (pre-existing docstring, now more wrong): open_bucket_menu's docstring still says \"'Rename' / 'Pin to top' / 'Delete' have no testid added, out of scope for this case\". 'Delete' already had bucket-menu-delete-menuitem (line 159) and 'Pin to top' now has bucket-menu-pin-menuitem (line 172). Not in this diff's added lines, so not blocking, but worth a one-line correction next time this file is t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:1480"
+        },
+        {
+          "kind": "note",
+          "note": "Fragility (accepted, faithful to the case): `assert baseline == sorted(baseline)` asserts alphanumeric order over the shared project's ~766 existing buckets, so it couples to the backend's collation and to every name other runs leave behind. Live-verified 766/766 byte-sorted today; a bucket name with uppercase or unusual punctuation appearing in project 399 would false-fail both tests. The case's … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_pin_unpin.py:198"
+        },
+        {
+          "kind": "note",
+          "note": "Shared-state dependency (documented in both AFS): `expect(any_bucket_pin_indicator()).to_have_count(0)` hard-fails if ANY bucket in project 399 is pinned when the test starts — e.g. a human pinning one, or a run whose teardown unpin PATCH failed. Correct as a precondition guard (the case's ordering claim only holds with nothing pinned) and the failure would be self-explanatory, but it is an enviro… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_pin_unpin.py:196"
+        },
+        {
+          "kind": "defect",
+          "note": "Pre-existing, out of scope for this branch but worth routing: ArtifactAPI.delete_bucket tries only path-segment URL forms (/artifacts/buckets/default/{pid}/{bucket}, then the p--{pid}.{bucket} id form), both of which 404 — the endpoint takes the query form ?name={bucket}, as the newly added set_bucket_pinned correctly does. Every run of these two tests therefore leaks its seeded bucket (teardown c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/api/client.py:1320"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: `artifacts_page = None` is a dead pre-assignment — it is unconditionally reassigned inside Step 1's allure.step block on the next line. Harmless; the 1821 test does not do this.",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_pin_unpin.py:188"
+        },
+        {
+          "kind": "clarification",
+          "note": "Triangulation mechanics worth knowing for the next reviewer on this batch: both AFS were committed on the batch TRUNK by the analyst (commit 70c4933ea), so `git diff trunk...branch -- test-specs/` shows only the Phase-2 amendment hunks (+8 / +3). The amendments themselves are correct — they record exactly the two assertions the implementation strengthened beyond the original AFS (hover-reveal asse… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_pin-artifact-bucket-to-top_ELITEA-1820.md"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_unpin-artifact-bucket-from-top_ELITEA-1821.md",
+      "branch": "tests/1820-1821-bucket-pin-unpin",
+      "pr": 1621,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1822",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Vite HMR did not pick up the testid edit to src/pages/Artifacts/Components/BucketsPanel.jsx — the dev server kept serving the pre-edit module (curl of the served file showed 0 hits) until `npm run dev` was restarted. The digest's existing gotcha limited this to src/[fsd]/ edits and explicitly said src/pages/ edits HMR'd fine; that is no longer reliable. Always curl the served module and grep for t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI's commitlint hook rejects the [ELITEA-1822] ticket form in a commit subject — it requires the short [EL-XXXX] shape (error: 'subject must container ticket number - [EL-XXXX]'). Use `test: [EL-1822] ... (ELITEA-1822)` so both the hook and the case id are satisfied."
+        },
+        {
+          "kind": "note",
+          "note": "Do not infer 'keyboard scrolling is unsupported' from the source: the BUCKETS scroll container has no tabIndex and no onKeyDown, and document.activeElement stays BODY after clicking it, yet Chromium still scrolls it ~38.7px per ArrowDown/ArrowUp. Filing this as a product bug from a source read alone would have been a false red (role-overrides § interaction-discovery ladder)."
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket leak in project Private/399 keeps growing: 768 buckets rendered on 2026-08-21 (was 757 on 2026-08-21 morning, 555 on 2026-08-03). It now makes the left panel a ~30000px DOM list, which slows every artifacts test that enumerates rows. Still a suite-health item for a dedicated cleanup sweep, not something a single case's teardown can fix."
+        },
+        {
+          "kind": "defect",
+          "note": "Important — missing priority marker. `.agents/testing.md` § Markers & selection requires new tests to carry priority + feature + regression; this spec ships `pytestmark = [ui, regression, new]` with no p2/p3, so `-m p2` / `-m p3` selection silently misses it (the AFS calls it l3 while the TMS case says `priority: medium`, which pytest.ini maps to p2 — decide which, then add it). NOT blocked here b… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_list_scrolling.py:59"
+        },
+        {
+          "kind": "note",
+          "note": "Environment-coupled precondition, declared and accepted. The case says \"if fewer than 20 buckets exist, create bucket-1…bucket-20\"; the spec instead ASSERTS `len(bucket_names) >= 20` and never seeds. That is the right call here (Hard Rule 10 read-only; the project holds 768 buckets and the #636 leak makes seeding 20 permanent rows pure cost) and it is declared in both the AFS § Preconditions and t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_list_scrolling.py:127"
+        },
+        {
+          "kind": "note",
+          "note": "Flake-watch for the hardening gate: Steps 9-10 depend on Chromium keeping the CLICKED scroll container as the arrow-key scroll target even though `document.activeElement` stays BODY (the panel has no tabIndex and no onKeyDown — the implementer live-measured ~38.7 px/press). This is browser behaviour, not product code, so it is the one part of the spec that could legitimately diverge headless or on… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3920"
+        },
+        {
+          "kind": "clarification",
+          "note": "Nit — AFS slightly overstates the implementation in two places (no action needed unless the AFS is amended for other reasons). (1) § Expected Results and Axis 2 say the gutter click asserts \"no bucket is selected AND no navigation\"; the code asserts only `page.url == url_before_click` (a fair proxy, since selecting a bucket navigates, but it is one assertion, not two). (2) Axis 2 argues the top-al… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_scroll-bucket-list-20-or-more-buckets_ELITEA-1822.md:96"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — `BUCKETS_PANEL_GUTTER_CLICK_X` is documented as a HORIZONTAL offset (\"6px from its left edge is always empty gutter\") but `click_into_buckets_panel()` reuses it for the vertical offset too (`box[\"y\"] + box[\"height\"] - 6`). Behaviourally fine — only the x matters (rows are inset by the container's 16 px left padding, so x+6 hits no row at any scroll position; y is irrelevant) — but a reader w… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:3886"
+        },
+        {
+          "kind": "note",
+          "note": "Process observation for the lead, not a code issue: the AFS metadata records `Analyst: test-automation-engineer (combined analyst+implementer slot)`. Analysis and implementation were done by the same agent, so the fidelity/coverage independence axis collapses onto this static review alone — the usual \"AFS drifted from the case\" triangulation cannot be caught by two artifacts disagreeing, because o… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_scroll-bucket-list-20-or-more-buckets_ELITEA-1822.md:8"
+        },
+        {
+          "kind": "note",
+          "note": "Promotability, verified fresh (`cd ../EliteaUI && git fetch origin`): `artifacts-buckets-scroll-container` is on `origin/automation/testids` but NOT on `origin/main` — `artifacts-buckets-scroll-container   main:no   testids:YES`. Introduced by EliteaAI/EliteaUI@3c96bc4b (\"test: [EL-1822] add data-testid for the buckets list scroll container\"). The closure record must cite that SHA and state the ca… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_scroll-bucket-list-20-or-more-buckets_ELITEA-1822.md:34"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_scroll-bucket-list-20-or-more-buckets_ELITEA-1822.md",
+      "branch": "tests/ELITEA-1822-scroll-bucket-list",
+      "pr": 1622,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1823",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text trap, filed as EliteaAI/elitea-testing-public#1623 (label: question). ELITEA-1823 Step 4 says \"move the cursor over the first bucket in the list\", but /artifacts auto-selects a bucket when the URL carries no ?bucket= param — on a fresh load that IS the first row — and BucketItem.jsx's getBackgroundColor() returns conversation.selected BEFORE it looks at isHovering. Live-measured: selecte… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1623"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing lint debt, NOT introduced by this PR: `ruff check automation/pages/artifacts_page.py` reports I001 (unsorted import block — `from utils.actions import action` after the relative imports) on the file as it stands on the trunk. Verified by running ruff against the unmodified HEAD copy of the file, which reports the identical single error. My diff does not touch the import block, and I d… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:18"
+        },
+        {
+          "kind": "note",
+          "note": "Reusable technique now recorded in the digest and role memory: a visual/CSS state can be asserted honestly WITHOUT evaluate() by using expect(locator).to_have_css / not_to_have_css on a testid-anchored page-object accessor — it retries until the style settles and leaves the reviewer's `\\.evaluate\\(` fidelity grep clean. Pair it with the default-vs-not-default framing whenever the neutral value is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The #636 bucket leak keeps growing: 768 buckets rendered in Private/399 this session (759 at ELITEA-1803's run, 766 at ELITEA-1820/1821, 768 at ELITEA-1822). This case adds none — it is fully read-only — but the digest's earlier root-cause finding stands: ArtifactAPI.delete_bucket uses the path form (404s) while the UI uses the query form (200s). Still a suite-health item, still out of scope for a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/636"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (batch-wide, not this unit's alone): pytestmark is [ui, regression, new] with NO priority marker, so `.agents/testing.md` § Markers (\"priority marker + feature marker + regression\") is unmet and `-m p3` selection misses the spec. This is now 5 of 5 new specs in artifacts-w01 and 19 of 20 in tests/ui/artifacts/ overall (there is also no `artifacts` marker registered in pytest.ini). Right shape … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_hover_highlight.py:64"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion-strength check, verified deliberate: `_assert_highlighted` uses `not_to_have_css(\"background-color\", \"rgba(0, 0, 0, 0)\")` rather than the live-measured hover literal `rgba(255, 255, 255, 0.06)`. That is correct here, not a demoted expect — `conversation.normal` is the literal 'transparent' in BOTH palettes (darkPalette.js:352 / lightPalette.js:350) so default is theme-independent, while … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_hover_highlight.py:88"
+        },
+        {
+          "kind": "note",
+          "note": "Robustness, non-blocking: hover targets are discovered by scanning only the first 25 rendered rows (CANDIDATE_SCAN_LIMIT) for `data-selected=\"false\"` + in-panel-band. If /artifacts ever auto-scrolls the panel to a selected bucket deep in the 768-row list, none of the top 25 would be in-band and Step 2 fails loudly with an explicit message (\"found N in the first 25 rendered rows\") rather than flaki… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/artifacts/test_artifacts_bucket_hover_highlight.py:129"
+        },
+        {
+          "kind": "defect",
+          "note": "Pre-existing, NOT introduced by this diff: `ruff check automation/pages/artifacts_page.py` reports I001 (import block un-sorted — `from playwright.sync_api import ...` inside the stdlib block) at the top of the file, which this branch never touches (confirmed identical on tests/batch-artifacts-w01). The new spec file is ruff-clean. Consequence: the conventions.md pre-PR gate `ruff check .` is red … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/artifacts_page.py:18"
+        },
+        {
+          "kind": "clarification",
+          "note": "Reverse-masking guard handled correctly. The case's literal \"the first bucket in the list\" is a trap: /artifacts auto-selects a bucket, and `BucketItem.jsx` `getBackgroundColor()` returns the `conversation.selected` colour BEFORE it looks at `isHovering`, so hovering the selected row produces no background change (live-measured: row `aa` stayed rgba(41, 184, 245, 0.15)). The product is correct and… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1623"
+        },
+        {
+          "kind": "question",
+          "note": "For the lead's weighting of this APPROVED: the AFS metadata names the analyst as \"test-automation-engineer (combined analyst+implementer slot, artifacts-w01)\" — the same agent authored the AFS and the implementation, so the pipeline's independence on fidelity and coverage rests on this review alone rather than on the usual two-artifact separation. Nothing in this unit shows drift from it (the AFS … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/artifacts/l3_bucket-highlights-on-mouse-hover_ELITEA-1823.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS/digest amendment shipped in the same PR and verified accurate: the digest row for `ArtifactsPage.bucket_row(name)` was corrected from \"added this run\" to \"pre-existing (ELITEA-1820/1821)\". Confirmed against the trunk — artifacts_page.py's diff adds only `move_mouse_off_bucket_list()`; `bucket_row()` at line 3714 is untouched. This is the amendment discipline working, not drift.",
+          "ref": "test-specs/artifacts/_surface.md:330"
+        },
+        {
+          "kind": "note",
+          "note": "Canon inconsistency worth a scout ticket (affects every role, not this PR): CLAUDE.md § Agent memory states `.agents/memory/<role>/` is \"Local only (gitignored, never shared between machines)\", but the path is NOT in .gitignore and 896 files under it are already tracked — and the batch-pipeline memory rule (memory skill § Committing memory) instructs agents to commit memory by exact path. This uni… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/memory/qa-engineer/daily/2026-08-21.md"
+        }
+      ],
+      "afs": "test-specs/artifacts/l3_bucket-highlights-on-mouse-hover_ELITEA-1823.md",
+      "branch": "tests/1823-bucket-hover-highlight",
+      "pr": 1624,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          189.061,
+          186.233,
+          188.288
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 8,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

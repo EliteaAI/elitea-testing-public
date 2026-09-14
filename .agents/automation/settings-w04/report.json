@@ -1,0 +1,486 @@
+{
+  "batch": "settings-w04",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w04",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      104.16,
+      106.12,
+      104.22
+    ],
+    "spec_set": "green group = 7 spec files + the ELITEA-2290-jetbrains param, node-id scoped, together in ONE invocation per run (10 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each. CORRECTS the workflow's own gate, which returned verdict=red and cascaded outcome=blocked onto ALL 11 cases: its expected_red[] was empty, so it treated the two PRE-DECLARED sanctioned-RED specs as plain reds. Its own per-case note admitted the cascade verbatim ('gate red for the batch \u2014 this spec did not itself fail'). Verified against ground truth before correcting: both defects OPEN and filed (#1884, #1885), both specs carry '# Known defect: #N' + soft_failures aggregation + trailing pytest.fail(), all three unit PRs (#1881/#1883/#1887) MERGED.",
+    "sanctioned_red": {
+      "runs": 3,
+      "seconds": [
+        16.36,
+        16.45,
+        16.29
+      ],
+      "members": [
+        {
+          "node_id": "tests/ui/admin/test_personal_token_ide_config_download.py::TestPersonalTokenIdeConfigDownload::test_ide_download_icon_generates_config_file[ELITEA-2289-vscode]",
+          "ticket": "EliteaAI/elitea-testing-public#1884",
+          "case_ids": [
+            "ELITEA-2289"
+          ],
+          "signature": "eliteacode.authToken / eliteacode.LLMAuthToken carry the MASKED token, not the 226-char value the generation dialog showed \u2014 Known defect: #1884"
+        },
+        {
+          "node_id": "tests/ui/admin/test_personal_token_settings_preview.py::TestPersonalTokenSettingsPreview::test_eye_icon_opens_ide_settings_preview_panel",
+          "ticket": "EliteaAI/elitea-testing-public#1885",
+          "case_ids": [
+            "ELITEA-2291"
+          ],
+          "signature": "eliteacode.integrationUid is empty in the Settings Preview while the row-level VSCode download writes the real configuration_uid for the same token \u2014 Known defect: #1885"
+        }
+      ],
+      "determinism_note": "3/3 IDENTICAL signatures. The token suffix printed in the #1884 message differs per run because each run creates a fresh token \u2014 that is the observed VALUE, not the failure cause; the cause (masked instead of full) is byte-identical every run."
+    },
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2278",
+      "outcome": "blocked",
+      "note": "Near-duplicate of ELITEA-2250 (same title, objective and steps), which was parked blocked 2026-08-24 for the identical reason. NOT already-covered: that verdict needs a spec merged to base and ELITEA-2250 produced an AFS, never a test. Re-verified live today rather than assumed: tokens are user-scoped not project-scoped (useTokenListQuery takes no project id), and the shared TEST_USER still owns t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2279 case-text drift, FILED as #1880 (question + case-text-drift). The Personal Tokens table loads ALREADY sorted name-ascending, so the first Token-name header click yields DESCENDING and the second ascending \u2014 case steps 3 and 5 assert the opposite pair. Source: useTableSort({defaultField:'name', defaultDirection:'asc'}) plus the toggle `prev.field===field && prev.direction==='asc' ? 'des\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1880"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2278 and ELITEA-2250 are the SAME case (same title, objective, steps modulo wording) and both hit the identical blocker. Recommend merging them in the TMS so one human decision covers both \u2014 right now the block has to be re-analysed and re-decided per case. Recorded as an ask on #1780 rather than a new issue.",
+          "ref": "#1780"
+        },
+        {
+          "kind": "note",
+          "note": "Ruled out a tempting shortcut that a future analyst or implementer will otherwise re-derive: Settings list pages have TWO distinct empty states. (1) Zero entities exist -> the shared EmptyStatePage ('No tokens yet' + illustration + Create button) returns BEFORE DrawerPage, so the page header, search box, table, column headers and rows all cease to exist. (2) A search matches nothing -> header and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Data point for the OPEN canon question #1705 ('columnTestIdPrefix emits unreferenced *-sort-icon-* testids \u2014 mandatory plumbing or blanket-add violation?'): ELITEA-2279 is the first case whose subject IS sortability, so it references personal-token-sort-icon-name/-expires on the executed path and asserts to_have_count(0) on the two non-sortable columns \u2014 the orphan is gone for this table (not for \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1705"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha that cost a false-alarm investigation and would have blamed the product: an ad-hoc in-page fetch to the API during exploration \u2014 page.evaluate(() => fetch('/api/v2/auth/token/')) \u2014 does NOT carry the app's RTK-Query auth headers on localhost. The dev proxy redirects it to dev.elitea.ai/forward-auth/auth_oidc/login, which CORS-blocks, emitting two console errors (CORS + net::ERR_FAILED) that\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Both ready cases are specced with RELATIONAL rather than literal expectations, deliberately: the 5 personal tokens are shared, mutable, real leftover data (other people's fixtures by name). Sorting asserts `observed == sorted(observed, key=str.lower)` and a null-partition invariant; search derives its probe from the observed names at runtime. A literal name list would break the day anyone adds a t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed on the batch trunk tests/batch-settings-w04 (created from origin/automation/base, pushed) as 8e5587822 \u2014 three AFS files, the extended surface digest, and three role-memory entries. Note for the workflow's own doctrine: this project TRACKS .agents/memory/ (473 files already committed), which contradicts the dispatch preamble's generic 'memory is LOCAL and gitignored \u2014 never git add it'. \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_personal-tokens-empty-state-no-tokens_ELITEA-2278.md"
+    },
+    {
+      "id": "ELITEA-2279",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2279 case-text drift, FILED as #1880 (question + case-text-drift). The Personal Tokens table loads ALREADY sorted name-ascending, so the first Token-name header click yields DESCENDING and the second ascending \u2014 case steps 3 and 5 assert the opposite pair. Source: useTableSort({defaultField:'name', defaultDirection:'asc'}) plus the toggle `prev.field===field && prev.direction==='asc' ? 'des\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1880"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2278 and ELITEA-2250 are the SAME case (same title, objective, steps modulo wording) and both hit the identical blocker. Recommend merging them in the TMS so one human decision covers both \u2014 right now the block has to be re-analysed and re-decided per case. Recorded as an ask on #1780 rather than a new issue.",
+          "ref": "#1780"
+        },
+        {
+          "kind": "note",
+          "note": "Ruled out a tempting shortcut that a future analyst or implementer will otherwise re-derive: Settings list pages have TWO distinct empty states. (1) Zero entities exist -> the shared EmptyStatePage ('No tokens yet' + illustration + Create button) returns BEFORE DrawerPage, so the page header, search box, table, column headers and rows all cease to exist. (2) A search matches nothing -> header and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Data point for the OPEN canon question #1705 ('columnTestIdPrefix emits unreferenced *-sort-icon-* testids \u2014 mandatory plumbing or blanket-add violation?'): ELITEA-2279 is the first case whose subject IS sortability, so it references personal-token-sort-icon-name/-expires on the executed path and asserts to_have_count(0) on the two non-sortable columns \u2014 the orphan is gone for this table (not for \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1705"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha that cost a false-alarm investigation and would have blamed the product: an ad-hoc in-page fetch to the API during exploration \u2014 page.evaluate(() => fetch('/api/v2/auth/token/')) \u2014 does NOT carry the app's RTK-Query auth headers on localhost. The dev proxy redirects it to dev.elitea.ai/forward-auth/auth_oidc/login, which CORS-blocks, emitting two console errors (CORS + net::ERR_FAILED) that\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Both ready cases are specced with RELATIONAL rather than literal expectations, deliberately: the 5 personal tokens are shared, mutable, real leftover data (other people's fixtures by name). Sorting asserts `observed == sorted(observed, key=str.lower)` and a null-partition invariant; search derives its probe from the observed names at runtime. A literal name list would break the day anyone adds a t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed on the batch trunk tests/batch-settings-w04 (created from origin/automation/base, pushed) as 8e5587822 \u2014 three AFS files, the extended surface digest, and three role-memory entries. Note for the workflow's own doctrine: this project TRACKS .agents/memory/ (473 files already committed), which contradicts the dispatch preamble's generic 'memory is LOCAL and gitignored \u2014 never git add it'. \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "One rerun cost, worth knowing project-wide: a testid committed to ../EliteaUI did NOT reach localhost:5173 \u2014 Vite kept serving the pre-edit transform because OneDrive's filesystem does not deliver reliable fs-watch events, so HMR never fired. `touch`-ing the files did not help; only restarting the dev server did. The failure looks exactly like 'the testid was never added' (element(s) not found, ar\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "GridTableContainer now accepts an `emptyMessageTestId` caller-supplied prop (EliteaAI/EliteaUI@531fd77a). Any other grid-table consumer app-wide can reuse it for its own empty-state message \u2014 no further shared-component change needed. Same 'thread an existing-shape prop' family as columnTestIdPrefix / nameCellTestId.",
+          "ref": "EliteaAI/EliteaUI@531fd77a"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2279's case text is stale in the direction the analyst filed (#1880): the product's default sort is already name-ascending, so the FIRST Token-name click yields descending. Confirmed again live during implementation \u2014 the spec asserts the live contract and the test would go red if the product ever matched the case text. The TMS case still needs its steps 2-5 corrected by a human; the automa\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1880"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1705 (columnTestIdPrefix emits unreferenced *-sort-icon-* testids) is now resolved for this table: ELITEA-2279's spec references personal-token-sort-icon-name/-expires on its executed path (presence) and personal-token-sort-icon-token/-actions via to_have_count(0) absence assertions. It does not settle the canon question for the other grid tables.",
+          "ref": "#1705"
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-blocking, flake risk only). Step 4's anchor wait `expect(get_first_row_expiration_status('never')).to_have_count(0)` is only a real wait when the first row in the *name-ascending* order is a `never` row. Under the current live set it is (`for_ui_tests`, Never, sorts first), but if anyone adds a dated token that sorts first alphabetically, the expectation is satisfied by the PRE-clic\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_tokens_column_sorting.py:129"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor. `_pick_probe()` accepts the first 3-char prefix yielding a proper non-empty subset, without requiring the prefix to contain a cased character. If the live data ever produced a probe of digits/underscores only, Step 4's case-insensitivity check (`probe.upper()` vs `probe.lower()`) becomes vacuous \u2014 it would assert two identical strings give identical results and still pass on a case-SENSITIV\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_tokens_search_filter.py:44"
+        },
+        {
+          "kind": "defect",
+          "note": "Doc accuracy, in a SHARED knowledge artifact. Both `_surface.md` and the AFS's Implementation-outcome section state the exact expiration order is not derivable because 'group-internal order is the untouched API order'. That reason is false: `useTableSort.hooks.js` compares `a[field] < b[field]` for non-null values, so dated rows ARE ordered among themselves by their `expires` value. The conclusion\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/_surface.md:352"
+        },
+        {
+          "kind": "note",
+          "note": "Nit. Three non-retrying `is_visible()` asserts (sorting Step 1 sort icons; search Steps 1 and 5 search box) where `expect(...).to_be_visible()` would auto-retry. All three sit after a settled wait, so the risk is low \u2014 flagging as style/robustness only, not worth a round on its own.",
+          "ref": "automation/tests/ui/admin/test_personal_tokens_column_sorting.py:88"
+        },
+        {
+          "kind": "note",
+          "note": "For the lead's closure record \u2014 do NOT let the bare-substring grep write a false 'not on main' row. `personal-token-sort-icon-name` / `-expires` are RUNTIME-COMPOSED (`${columnTestIdPrefix}-sort-icon-${column.field}`), so `git grep 'personal-token-sort-icon'` returns nothing on EITHER ref \u2014 the documented stage-1 blind spot in workflow.md. Verified after `git fetch origin`: `columnTestIdPrefix=\"pe\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI src/[fsd]/entities/grid-table/ui/GridTableHeader.jsx:57"
+        },
+        {
+          "kind": "clarification",
+          "note": "Canon nuance surfaced by this review (recorded in role memory, not blocking here). The reviewer's mechanical rule says a `page.locator` hit is compliant only if the line contains a literal `[data-testid=` or references an UPPER_CASE constant defined as one. A PREFIX constant \u2014 `SORT_ICON_PREFIX_SELECTOR = '[data-testid^=\"personal-token-sort-icon-\"]'` \u2014 fails that wording literally while being 100%\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/role-overrides.md"
+        },
+        {
+          "kind": "note",
+          "note": "Process note: I committed two `docs(memory):` commits (b61848b6d + 953613c54) on the branch under review \u2014 `.agents/memory/qa-engineer/` only, zero touch to `automation/`, so the code diff judged above is unchanged. The second was amended once and force-pushed to this case branch (not a shared org branch) seconds after its first push.",
+          "ref": "tests/ELITEA-2279-2287-token-sort-and-search"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_token-name-and-expiration-columns-are-sortable_ELITEA-2279.md",
+      "branch": "tests/ELITEA-2279-2287-token-sort-and-search",
+      "pr": 1881
+    },
+    {
+      "id": "ELITEA-2287",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2279 case-text drift, FILED as #1880 (question + case-text-drift). The Personal Tokens table loads ALREADY sorted name-ascending, so the first Token-name header click yields DESCENDING and the second ascending \u2014 case steps 3 and 5 assert the opposite pair. Source: useTableSort({defaultField:'name', defaultDirection:'asc'}) plus the toggle `prev.field===field && prev.direction==='asc' ? 'des\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1880"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2278 and ELITEA-2250 are the SAME case (same title, objective, steps modulo wording) and both hit the identical blocker. Recommend merging them in the TMS so one human decision covers both \u2014 right now the block has to be re-analysed and re-decided per case. Recorded as an ask on #1780 rather than a new issue.",
+          "ref": "#1780"
+        },
+        {
+          "kind": "note",
+          "note": "Ruled out a tempting shortcut that a future analyst or implementer will otherwise re-derive: Settings list pages have TWO distinct empty states. (1) Zero entities exist -> the shared EmptyStatePage ('No tokens yet' + illustration + Create button) returns BEFORE DrawerPage, so the page header, search box, table, column headers and rows all cease to exist. (2) A search matches nothing -> header and \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Data point for the OPEN canon question #1705 ('columnTestIdPrefix emits unreferenced *-sort-icon-* testids \u2014 mandatory plumbing or blanket-add violation?'): ELITEA-2279 is the first case whose subject IS sortability, so it references personal-token-sort-icon-name/-expires on the executed path and asserts to_have_count(0) on the two non-sortable columns \u2014 the orphan is gone for this table (not for \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1705"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha that cost a false-alarm investigation and would have blamed the product: an ad-hoc in-page fetch to the API during exploration \u2014 page.evaluate(() => fetch('/api/v2/auth/token/')) \u2014 does NOT carry the app's RTK-Query auth headers on localhost. The dev proxy redirects it to dev.elitea.ai/forward-auth/auth_oidc/login, which CORS-blocks, emitting two console errors (CORS + net::ERR_FAILED) that\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Both ready cases are specced with RELATIONAL rather than literal expectations, deliberately: the 5 personal tokens are shared, mutable, real leftover data (other people's fixtures by name). Sorting asserts `observed == sorted(observed, key=str.lower)` and a null-partition invariant; search derives its probe from the observed names at runtime. A literal name list would break the day anyone adds a t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed on the batch trunk tests/batch-settings-w04 (created from origin/automation/base, pushed) as 8e5587822 \u2014 three AFS files, the extended surface digest, and three role-memory entries. Note for the workflow's own doctrine: this project TRACKS .agents/memory/ (473 files already committed), which contradicts the dispatch preamble's generic 'memory is LOCAL and gitignored \u2014 never git add it'. \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "One rerun cost, worth knowing project-wide: a testid committed to ../EliteaUI did NOT reach localhost:5173 \u2014 Vite kept serving the pre-edit transform because OneDrive's filesystem does not deliver reliable fs-watch events, so HMR never fired. `touch`-ing the files did not help; only restarting the dev server did. The failure looks exactly like 'the testid was never added' (element(s) not found, ar\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "GridTableContainer now accepts an `emptyMessageTestId` caller-supplied prop (EliteaAI/EliteaUI@531fd77a). Any other grid-table consumer app-wide can reuse it for its own empty-state message \u2014 no further shared-component change needed. Same 'thread an existing-shape prop' family as columnTestIdPrefix / nameCellTestId.",
+          "ref": "EliteaAI/EliteaUI@531fd77a"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2279's case text is stale in the direction the analyst filed (#1880): the product's default sort is already name-ascending, so the FIRST Token-name click yields descending. Confirmed again live during implementation \u2014 the spec asserts the live contract and the test would go red if the product ever matched the case text. The TMS case still needs its steps 2-5 corrected by a human; the automa\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1880"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1705 (columnTestIdPrefix emits unreferenced *-sort-icon-* testids) is now resolved for this table: ELITEA-2279's spec references personal-token-sort-icon-name/-expires on its executed path (presence) and personal-token-sort-icon-token/-actions via to_have_count(0) absence assertions. It does not settle the canon question for the other grid tables.",
+          "ref": "#1705"
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-blocking, flake risk only). Step 4's anchor wait `expect(get_first_row_expiration_status('never')).to_have_count(0)` is only a real wait when the first row in the *name-ascending* order is a `never` row. Under the current live set it is (`for_ui_tests`, Never, sorts first), but if anyone adds a dated token that sorts first alphabetically, the expectation is satisfied by the PRE-clic\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_tokens_column_sorting.py:129"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor. `_pick_probe()` accepts the first 3-char prefix yielding a proper non-empty subset, without requiring the prefix to contain a cased character. If the live data ever produced a probe of digits/underscores only, Step 4's case-insensitivity check (`probe.upper()` vs `probe.lower()`) becomes vacuous \u2014 it would assert two identical strings give identical results and still pass on a case-SENSITIV\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_tokens_search_filter.py:44"
+        },
+        {
+          "kind": "defect",
+          "note": "Doc accuracy, in a SHARED knowledge artifact. Both `_surface.md` and the AFS's Implementation-outcome section state the exact expiration order is not derivable because 'group-internal order is the untouched API order'. That reason is false: `useTableSort.hooks.js` compares `a[field] < b[field]` for non-null values, so dated rows ARE ordered among themselves by their `expires` value. The conclusion\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/_surface.md:352"
+        },
+        {
+          "kind": "note",
+          "note": "Nit. Three non-retrying `is_visible()` asserts (sorting Step 1 sort icons; search Steps 1 and 5 search box) where `expect(...).to_be_visible()` would auto-retry. All three sit after a settled wait, so the risk is low \u2014 flagging as style/robustness only, not worth a round on its own.",
+          "ref": "automation/tests/ui/admin/test_personal_tokens_column_sorting.py:88"
+        },
+        {
+          "kind": "note",
+          "note": "For the lead's closure record \u2014 do NOT let the bare-substring grep write a false 'not on main' row. `personal-token-sort-icon-name` / `-expires` are RUNTIME-COMPOSED (`${columnTestIdPrefix}-sort-icon-${column.field}`), so `git grep 'personal-token-sort-icon'` returns nothing on EITHER ref \u2014 the documented stage-1 blind spot in workflow.md. Verified after `git fetch origin`: `columnTestIdPrefix=\"pe\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI src/[fsd]/entities/grid-table/ui/GridTableHeader.jsx:57"
+        },
+        {
+          "kind": "clarification",
+          "note": "Canon nuance surfaced by this review (recorded in role memory, not blocking here). The reviewer's mechanical rule says a `page.locator` hit is compliant only if the line contains a literal `[data-testid=` or references an UPPER_CASE constant defined as one. A PREFIX constant \u2014 `SORT_ICON_PREFIX_SELECTOR = '[data-testid^=\"personal-token-sort-icon-\"]'` \u2014 fails that wording literally while being 100%\u2026 [clipped; full text in the unit's receipt under .agents/role-overrides.md"
+        },
+        {
+          "kind": "note",
+          "note": "Process note: I committed two `docs(memory):` commits (b61848b6d + 953613c54) on the branch under review \u2014 `.agents/memory/qa-engineer/` only, zero touch to `automation/`, so the code diff judged above is unchanged. The second was amended once and force-pushed to this case branch (not a shared org branch) seconds after its first push.",
+          "ref": "tests/ELITEA-2279-2287-token-sort-and-search"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_search-field-filters-tokens-by-name-in-real-time_ELITEA-2287.md",
+      "branch": "tests/ELITEA-2279-2287-token-sort-and-search",
+      "pr": 1881
+    },
+    {
+      "id": "ELITEA-2281",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2282's expected result is stale: it demands a green icon for a 7-day token, but ExpiryInDays.jsx uses a strict `expiryInDays > 7` for the green/active branch, so exactly 7 days correctly renders the amber 'warning' icon (#E97912) with the label 'in 7 days'. Confirmed live and by source; the API returned expires = now+7d, so the value itself is right. Filed as issue #1882; the AFS asserts th\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1882"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion-quality trap worth broadcasting beyond this surface: any grid-table consumer renders `!isFetching ? <table> : <spinner>`, so after a create or delete the ENTIRE table unmounts and every row locator reads 0 for a moment (measured twice live). An `expect(row).to_have_count(0)` absence assertion therefore passes vacuously \u2014 it would pass against a delete that never happened. Both the ELITEA\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance gotcha that could have caused pointless EliteaUI work: the expiration-unit option testids (select-option-days etc.) are composed at runtime by the shared SingleSelectMenuItem.jsx (`data-testid={option.testId ?? `select-option-${option.value}`}`), so a literal `git grep 'select-option-days'` finds NOTHING even though the testid has been on main all along. Verified the template line on bo\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "question",
+          "note": "Pre-existing, unrelated to this cluster: `test_create_personal_token_and_verify_in_table` (ELITEA-2280) carries `@pytest.mark.blocked` at test_personal_token_create_and_verify.py:62 with NO `# Known defect: #N` comment and no linked issue anywhere in the file. Per .agents/testing.md \u00a7 Merge gate a sanctioned-RED/blocked spec owes a linked open defect. Either the marker is stale (the flow ran clean\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py:62"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/settings-personal-tokens/_surface.md is now ~28KB / 439 lines, past the comfortable-single-read mark. I appended rather than split to stay inside this dispatch's budget, and left an explicit note at the end of the digest asking the next analyst on this surface to split it into an index + per-subarea files (create-flow / table / search+sort / delete) per the skill's guidance.",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift is real and is asserted the honest way: the case demands a green icon at exactly 7 days, but ExpiryInDays.jsx branches on a strict expiryInDays > 7, so Days/7 is AMBER by design. The spec asserts the live contract (data-expiration-state=\"warning\" + label \"in 7 days\") and pins the boundary with an absence assertion that the active/green state is NOT present. Nothing soft-asserted, n\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2282 / #1882"
+        },
+        {
+          "kind": "note",
+          "note": "App-wide locator gotcha worth broadcasting: counting the options of ANY SingleSelect by the [data-testid^=\"select-option-\"] prefix overcounts by one, because the SELECTED option renders a select-option-selected-icon check mark sharing that prefix (PopoverSelect.jsx:109 composes the same option testid, so it applies there too). Compliant count selector: '[data-testid^=\"select-option-\"]:not([data-te\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "SingleSelectMenuItem.jsx:141"
+        },
+        {
+          "kind": "clarification",
+          "note": "The dispatch says role memory is \"LOCAL and gitignored \u2014 never git add it\", but in this repo .agents/memory/ is NOT gitignored and already has 1251 tracked files (my daily log showed as a modification to a tracked file). Leaving it unstaged would have handed the merge step a dirty tree and lost two entries to any sweep. I followed the implementation skill's Rule 11 + the repo's own established pra\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "dispatch preamble vs repo reality"
+        },
+        {
+          "kind": "note",
+          "note": "The digest carries the analyst's own note that it is past the comfortable-single-read mark (~25 KB) and should be SPLIT into an index + per-subarea files by the next analyst on this surface. I appended my implementation facts as a further section rather than splitting (splitting the analyst's document is not the implementer's call), so the file is now ~28 KB. The split is still owed.",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing and untouched by me: the merged ELITEA-2280 test test_create_personal_token_and_verify_in_table carries @pytest.mark.blocked. If the batch gate selects by marker, that spec's state is unrelated to this unit \u2014 my four specs carry ui/admin/p2/regression/new and no blocked marker.",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Important (non-blocking, hygiene not verification): the `finally:` cleanup in all four specs reads `tokens_page.get_row_by_name(name).count()` while the browser may not be on /settings/tokens at all. Failure scenario: ELITEA-2283 Step 3's `assert body.get('expires') is None` fails -> the test raises with the success dialog still open on /settings/create-personal-token -> the tokens table is not re\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_token_never_expiration.py:118"
+        },
+        {
+          "kind": "note",
+          "note": "Nit \u2014 ELITEA-2288 Step 4's 'without error' proof, `expect(create_page.toast_message).to_have_count(0)`, is weaker than it reads: `to_have_count(0)` auto-retries, so a transient error toast merely delays the assertion and then passes. It cannot catch a short-lived error toast. The step is still adequately covered by the POST-200 assertions, the row-count non-vacuity check and the console-error axis\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_token_duplicate_names.py:120"
+        },
+        {
+          "kind": "note",
+          "note": "Nit \u2014 ELITEA-2282 Step 4 clicks `select-option-days` when `Days` is already the default, so `expect(combobox).to_have_text('Days')` is trivially satisfied and proves nothing about the unit being *configured*. This faithfully follows the case text (which specifies Days/7), and the real configuration proof is present (value '7' round-tripped through the input plus the backend `expires` ~+7d window),\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_token_expiration_config.py:128"
+        },
+        {
+          "kind": "note",
+          "note": "Nit \u2014 ELITEA-2281 Step 7 asserts `len(payload) == rows_before - 1`, coupling a DOM row count to the token-list API payload length. It is grounded today (the surface digest records `GET /auth/token/` as a bare JSON array with no envelope, src/api/auth.js:51-56, and the isinstance guard fails loudly if that changes), but it would become a false red if the endpoint ever paginates or returns tokens th\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/admin/test_personal_token_delete.py:160"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2282's Axis-1 step 6 / Expected Final State is dispositioned `clarification` rather than `asserted-as-written`, and that is correct: the case demands a green icon at exactly 7 days, while `ExpiryInDays.jsx` uses a strict `expiryInDays > 7` for the green `active` branch, so a Days/7 token is amber `warning` by design. The test asserts the live contract (`warning` count 1, label 'in 7 days') \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/l3_token-expiration-period-unit-and-value_ELITEA-2282.md"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulation: every Axis-1 row of all four cases maps to a real assertion at the claimed step (2281: 7 steps + final state; 2282: 6 + final; 2283: 5 + final; 2288: 5 + final). No row is dispositioned `already-covered`/`extend`, so no covering-spec verification was owed \u2014 and the 'Why this is NOT already covered' claims check out: `test_personal_token_create_and_verify.py` deletes onl\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS-amendment rule satisfied: the implementation-time discovery (a bare `[data-testid^=\"select-option-\"]` prefix counts 6 for a 5-option select because the SELECTED option carries a `select-option-selected-icon` child from the shared SingleSelectMenuItem.jsx:141) was written back into the ELITEA-2282 AFS and the surface digest in the same PR (commit 3a34ed82d). This is app-wide and will bite any f\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_delete-personal-token-removed-from-table_ELITEA-2281.md",
+      "branch": "tests/ELITEA-2281-personal-tokens-delete-expiration-duplicates",
+      "pr": 1883
+    },
+    {
+      "id": "ELITEA-2282",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2282's expected result is stale: it demands a green icon for a 7-day token, but ExpiryInDays.jsx uses a strict `expiryInDays > 7` for the green/active branch, so exactly 7 days correctly renders the amber 'warning' icon (#E97912) with the label 'in 7 days'. Confirmed live and by source; the API returned expires = now+7d, so the value itself is right. Filed as issue #1882; the AFS asserts th\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1882"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_token-expiration-period-unit-and-value_ELITEA-2282.md",
+      "branch": "tests/ELITEA-2281-personal-tokens-delete-expiration-duplicates",
+      "pr": 1883
+    },
+    {
+      "id": "ELITEA-2283",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [],
+      "afs": "test-specs/settings-personal-tokens/l3_token-created-without-expiration-never_ELITEA-2283.md",
+      "branch": "tests/ELITEA-2281-personal-tokens-delete-expiration-duplicates",
+      "pr": 1883
+    },
+    {
+      "id": "ELITEA-2288",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [],
+      "afs": "test-specs/settings-personal-tokens/l3_duplicate-token-names-allowed_ELITEA-2288.md",
+      "branch": "tests/ELITEA-2281-personal-tokens-delete-expiration-duplicates",
+      "pr": 1883
+    },
+    {
+      "id": "ELITEA-2285",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "FILED #1884 (bug) \u2014 VSCode IDE settings download embeds the MASKED token, so the generated settings.json cannot authenticate. Both onIdeSettingsDownload (PersonalTokens.jsx:192-241) and SettingsPreview.getVSCodeSettings pass row.token \u2014 which the list API already returns masked \u2014 straight into eliteacode.authToken/LLMAuthToken. The `|| 'Your_Personal_Token'` fallback in SettingsPreview proves the \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1884"
+        },
+        {
+          "kind": "defect",
+          "note": "FILED #1885 (bug) \u2014 Settings Preview panel reads modelData.integration_uid while the model object built in PersonalTokens.jsx carries configuration_uid, so the previewed VSCode config always shows \"eliteacode.integrationUid\": \"\" while the row-level download writes the real value (1_eu.anthropic.claude-sonnet-4-5-20250929-v1:0) for the same token/project/model. Every other field in the two outputs \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1885"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/lextend_token-value-shown-only-once-in-generation-dialog_ELITEA-2285.md",
+      "branch": "tests/2285-2291-ide-config-preview",
+      "pr": 1887
+    },
+    {
+      "id": "ELITEA-2289",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate 3/3 IDENTICAL red against OPEN defect #1884. Sanctioned-RED per .agents/testing.md \u00a7 Merge gate \u2014 stays red until #1884 ships.",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "FILED #1884 (bug) \u2014 VSCode IDE settings download embeds the MASKED token, so the generated settings.json cannot authenticate.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1884"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_ide-config-download-icons-vscode-jetbrains_ELITEA-2289-2290.md",
+      "branch": "tests/2285-2291-ide-config-preview",
+      "pr": 1887
+    },
+    {
+      "id": "ELITEA-2290",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (see report.gate). Corrected from the workflow's cascaded 'blocked'.",
+      "findings": [],
+      "afs": "test-specs/settings-personal-tokens/l3_ide-config-download-icons-vscode-jetbrains_ELITEA-2289-2290.md",
+      "branch": "tests/2285-2291-ide-config-preview",
+      "pr": 1887
+    },
+    {
+      "id": "ELITEA-2291",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate 3/3 IDENTICAL red against OPEN defect #1885. Sanctioned-RED per .agents/testing.md \u00a7 Merge gate \u2014 stays red until #1885 ships.",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "FILED #1885 (bug) \u2014 Settings Preview panel reads modelData.integration_uid while the model object built in PersonalTokens.jsx carries configuration_uid, so the previewed VSCode config always shows \"eliteacode.integrationUid\": \"\" while the row-level download writes the real value.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1885"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/l3_eye-icon-ide-settings-preview-panel_ELITEA-2291.md",
+      "branch": "tests/2285-2291-ide-config-preview",
+      "pr": 1887
+    }
+  ],
+  "totals": {
+    "automated": 8,
+    "merged-sanctioned-red": 2,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "node_id": "tests/ui/admin/test_personal_token_ide_config_download.py::TestPersonalTokenIdeConfigDownload::test_ide_download_icon_generates_config_file[ELITEA-2289-vscode]",
+      "ticket": "EliteaAI/elitea-testing-public#1884",
+      "case_ids": [
+        "ELITEA-2289"
+      ],
+      "signature": "eliteacode.authToken / eliteacode.LLMAuthToken carry the MASKED token, not the 226-char value the generation dialog showed \u2014 Known defect: #1884"
+    },
+    {
+      "node_id": "tests/ui/admin/test_personal_token_settings_preview.py::TestPersonalTokenSettingsPreview::test_eye_icon_opens_ide_settings_preview_panel",
+      "ticket": "EliteaAI/elitea-testing-public#1885",
+      "case_ids": [
+        "ELITEA-2291"
+      ],
+      "signature": "eliteacode.integrationUid is empty in the Settings Preview while the row-level VSCode download writes the real configuration_uid for the same token \u2014 Known defect: #1885"
+    }
+  ],
+  "parked": []
+}

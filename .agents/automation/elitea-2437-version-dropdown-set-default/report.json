@@ -1,0 +1,66 @@
+{
+  "batch": "elitea-2437-version-dropdown-set-default",
+  "base": "automation/base",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-2437",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Two testid gaps found in EliteaUI, both documented in the AFS's Concrete Handles section as implementer work orders (not filed as bugs, per role-overrides.md 'do not soften a testid demand into a MINOR defect or a note'): (1) src/[fsd]/entities/version/lib/helpers/version.helpers.jsx's per-row hover 'set as default' icon-button (Box wrapping PinIcon, onClick={() => handleSetDefaultVersion(id)}) ha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale memory entry: .agents/memory/qa-engineer/agent_version_selector_sort_and_pin_gaps.md (2026-08-02) claimed version-option-pin-icon and the Agent confirm-button testid were both still missing — both are now landed in current source (confirmed via live code read). Updated the entry in place (not appended) with the current state and the newly-found third gap (the per-row clickable se… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "During exploration, reused an orphaned pre-existing skill (elitea-1889-versioned-skill, id 1287) found live on the DEV backend with only a base version — apparently a leftover from an incomplete run of automation/tests/ui/agents/test_agent_save_as_version_preserves_skills.py whose `finally: skill_api.delete_skill(skill_id)` cleanup didn't complete. Fully deleted it (both versions) via the UI's typ… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Landed both AFS-flagged testid gaps on EliteaUI automation/testids (EliteaAI/EliteaUI@4a8c979f): version.helpers.jsx's hover-revealed set-default control had zero locator before this case (only a non-unique CSS #show-on-hover id used for the :hover CSS reveal), and EditSkill.jsx never wired the already-existing confirmButtonTestId prop on SetDefaultVersionDialog (Agent flow already did). Both fixe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@4a8c979f"
+        },
+        {
+          "kind": "note",
+          "note": "No product defect found — the set-default-version flow works correctly end-to-end (dialog opens, PATCH returns 200, toast text matches, pin-icon relocation + dropdown reorder both persist across a re-open). Test is unconditionally green, nothing sanctioned-RED to declare."
+        },
+        {
+          "kind": "note",
+          "note": "SkillDetailPage's new VERSION-option scoping mirrors AgentDetailPage's already-shipped ELITEA-1891 pattern almost exactly (same buildVersionOption() shared helper, same SingleSelectMenuItem descendant structure) — confirmed structurally via source reading, not guessed, so both the pin-icon and set-default-control locators scope safely under VERSION_OPTION.format(name).",
+          "ref": "automation/pages/skill_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "AFS step 5's narrative claims 'Dialog closes' as part of confirming the version-default, but no step in the test asserts the dialog is hidden/gone at that point — only implicit via the toast-wait (confirm_set_default_version) and the later dropdown re-open succeeding. This detail is prose only, not its own Coverage-Map Axis-1/Axis-2 row, so it is not a blocking gap under the reviewer contract's pe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_version_set_default.py (Step 5 allure.step block); test-specs/skills/l3_skill-version-dropdown-set-default_ELITEA-2437.md (AFS step 5)"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS's 'Concrete Handles' table uses columns Element | Recommended Locator | Fallback, not the structured PROVENANCE column (on-main check / on-testids-only / needs-adding) role-overrides.md requires — provenance is embedded inline in prose per-cell instead. This predates the reviewed PR (AFS was committed by the analyst in an earlier commit on the trunk, not touched by this diff), so it is not… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-version-dropdown-set-default_ELITEA-2437.md section Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "ruff check on the PR-head content of skill_detail_page.py surfaces 2 findings (I001 unsorted import block at the top of the file; UP008 legacy super(SkillDetailPage, self) call in the pre-existing navigate() method) — both traced to line ranges outside this PR's two diff hunks, i.e. pre-existing tech debt not introduced by this PR. Not blocking.",
+          "ref": "automation/pages/skill_detail_page.py:9-19,176"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-version-dropdown-set-default_ELITEA-2437.md",
+      "branch": "tests/2437-skill-version-set-default",
+      "pr": 1260
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

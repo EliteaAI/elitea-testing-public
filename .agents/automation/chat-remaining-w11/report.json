@@ -1,0 +1,321 @@
+{
+  "batch": "chat-remaining-w11",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w11",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      159.81
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/chat/test_team_users_mention_and_remove_participants.py",
+        "signature": "playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 10000ms exceeded. Call log: waiting for locator(\"[data-testid^=\\\"add-users-option-\\\"]\").filter(has_text=\"Daniyar Chambylov\").first to be visible — raised at test_team_users_mention_and_remove_participants.py:352, inside chat.search_and_select_add_user_verified() (Setup block, seeding SETUP_USER_1_NAME). pytest.ini's own --reruns=2 --… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2168",
+          "ELITEA-2193"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2188",
+      "outcome": "blocked",
+      "note": "not resolvable on this branch: Step 7's participants-popover assertion is vacuous (only checks the static 'Users' heading text, never that participants are actually listed) after 1 fix round(s): Step 3's confirm-dialog visibility assertion uses a bare, non-polling Locator.is_visible() as the FIRST observation of the dialog-opening transition — swap to expect(chat.make_public_confirm_dialog).t",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Testid gap: the 'Make public' conversation confirm dialog (ConversationItem.jsx's menuItems 'chat-conversation-menu-make-public' item, rendered via DotMenu.jsx's plain Modal.BaseModal branch, lines ~535-545) carries ZERO testids -- confirmed live via direct DOM read of the open dialog (title, body, Cancel, Make-public buttons all untagged). BaseModal.jsx itself supports data-testid/titleTestId/clo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "../EliteaUI/src/components/DotMenu.jsx:535-545"
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap: conversation-multi-user-icon's existing data-has-icon attribute (added for ELITEA-2167) is presence-only -- true for BOTH private_with_users and public conversation types. The case's actual GREEN-vs-default signal lives only in the child <svg>'s raw fill attribute (theme.palette.status.published vs theme.palette.icon.fill.default), which is not a testid-policy-compliant handle. AFS spe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "../EliteaUI/src/[fsd]/features/chat/conversation-list/ui/conversations/ConversationItem.jsx:419-434"
+        },
+        {
+          "kind": "note",
+          "note": "Analysis-time side effect: conversation id 420 ('Review attached documents', Team project 471) was made permanently public during live exploration to confirm the green-icon behavior. The product exposes NO 'Make private' UI action once a conversation is public (menuItems filters the 'Make public' item out entirely with no inverse ever added), and a bare browser-console fetch() attempt to revert vi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Add-users modal close-transition race (previously undocumented): send_button.click(force=True) fired immediately after click_add_users_confirm() can fire mid-MUI-Dialog-close-transition and be silently lost (message typed, never sent, no navigation). Confirmed 2/2 in a clean --reruns=0 run; a manual Playwright-MCP repro of the identical sequence did NOT reproduce it (MCP's natural round-trip laten… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed the already-documented sidebar staleness defect (EliteaAI/elitea-testing-public#989, same class as ELITEA-2167's Step 10 finding) extends beyond data-has-icon/Invite-Users: the new data-conversation-type attribute also stays stale after both a participant-add AND a make-public mutation, requiring page.reload() in two separate places in this one test. Recommend treating this as a general … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#989"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed the #1082-class stale-conversation race (SPA silently restoring the last-viewed conversation on a +Chat click) fires within a SINGLE test run when it opens two fresh conversations back-to-back, not only on reruns as the existing memory entry's title implied. Any test creating 2+ fresh conversations should use the genuinely-blank settle-and-retry guard on every +Chat click, not just tests… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1082"
+        },
+        {
+          "kind": "note",
+          "note": "Re-confirmed already-filed, isolated defect #719 (Add-users picker's checkmark-icon sx-on-raw-svg React console warning) also fires on this case's own conversation-B setup, not just ELITEA-2167/2168's flows. Filtered per the established _is_known_checkicon_sx_svg_warning_719 idiom, not re-filed.",
+          "ref": "#719"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (Important, correctness). automation/tests/ui/chat/test_public_conversation_green_icon.py:426-430 — `assert \"Users\" in popper_text` is a vacuous assertion: the 'Users' string comes from a static, unconditional `<Typography>` heading in `UsersParticipantDropdown/index.jsx`, rendered regardless of whether the `users` list (fed separately to `<UserMenu>`) is empty or populated. It cannot det… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_public_conversation_green_icon.py:426"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates cleanly. Fidelity: mechanical grep for `.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(` on the diff -> 0 hits (`git diff origin/tests/batch-chat-remaining-w11...origin/tests/ELITEA-2188-public-conversation-green-icon -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` -> no matches). Locator policy: grep for ad… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid work verified against real EliteaUI source (EliteaAI/EliteaUI@7292e18f on automation/testids, fetched fresh): both AFS-identified gaps (make-public confirm dialog zero-testid gap; icon color/publicness state-attribute gap) are correctly closed. dialogTestId/confirmButtonTestId/cancelButtonTestId are threaded caller-supplied props through DotMenu.jsx's shared ActionWithDialog -> Modal.BaseMo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map (Axis 1) triangulates cleanly against the TMS case snapshot for all 5 case steps except the participants-list clause of step 5 (the blocking finding above). No defect masking found (no pytest.skip/xfail/expect.soft/soft_failures in the diff). Cleanup teardown wraps deletion assertions in try/except so a cleanup failure logs rather than masking the real test outcome — sound pattern."
+        },
+        {
+          "kind": "note",
+          "note": "Recorded a durable reviewer-memory entry (committed to the reviewed branch, additive docs(memory) commit ce4eaa06, pushed): .agents/memory/qa-engineer/static_section_heading_text_independent_of_list_content.md — the general pattern of a static section-title Typography sitting above a separately-fed dynamic list, and why substring-matching the static label is vacuous.",
+          "ref": ".agents/memory/qa-engineer/static_section_heading_text_independent_of_list_content.md"
+        },
+        {
+          "kind": "note",
+          "note": "Fix technique for owner-only participants popovers (no known participant display name to assert): assert popper.locator(chat.PARTICIPANT_ROW_PREFIX).count() >= 1 cross-checked against chat.get_participants_badge_count(section=\"users\") — two independently-rendered signals (DOM row list vs CSS ::after generated-content badge) must agree. Recorded in .agents/memory/test-automation-engineer/participan… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2188"
+        },
+        {
+          "kind": "note",
+          "note": "Prior round-1 blocking finding (vacuous 'Users' heading-only assertion at Step 7) is genuinely fixed: PARTICIPANT_ROW_PREFIX row-count and get_participants_badge_count() are now cross-checked (row_count >= 1 AND str(row_count) == badge_count) — two independently-rendered signals must agree. Marked 'external' in blocking_detail above only because the status enum has no 'resolved' value; it is not s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_public_conversation_green_icon.py:552-560"
+        },
+        {
+          "kind": "defect",
+          "note": "NEW blocking finding, first raised this round. `assert chat.make_public_confirm_dialog.is_visible()` runs immediately after `chat.click_conversation_menu_item(\"make-public\", ...)`, whose own implementation (chat_page.py:3834) only waits for the MENU ITEM to be clickable, never for the resulting dialog. Locator.is_visible() is a one-shot, non-polling read (its timeout= kwarg is ignored — confirmed … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_public_conversation_green_icon.py:368"
+        },
+        {
+          "kind": "note",
+          "note": "Considered and dismissed as a gap: case step 4's 'Full history shown; all messages with senders and timestamps' — the test only asserts message_count==2 + body content via _extract_message_body, never sender name or timestamp per message. Verified this is genuine established suite convention, not a hole unique to this PR: the AFS's own cited precedent test_open_conversation_today_section.py uses t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_public_conversation_green_icon.py:411-420"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified directly (not trusted from the docstring claim): EliteaAI/EliteaUI@7292e18f exists on automation/testids (fetched fresh), git show'd — 2 files, 30 insertions, matches the AFS's gap #1 (dialogTestId/confirmButtonTestId/cancelButtonTestId threaded through DotMenu.jsx's shared Modal.BaseModal branch, wired only at ConversationItem.jsx's make-public item) and gap #2 (data-co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@7292e18f"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps on the elitea-testing-public diff, pasted for record. Fidelity/substitution grep (git diff automation/base...tests/ELITEA-2188-public-conversation-green-icon -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'): 0 hits. Non-testid-handle grep (same diff | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_public-conversation-green-icon-in-chat-list_ELITEA-2188.md",
+      "branch": "tests/ELITEA-2188-public-conversation-green-icon",
+      "pr": 1562
+    },
+    {
+      "id": "ELITEA-2189",
+      "outcome": "blocked",
+      "note": "Precondition unsatisfiable: no second user identity exists on localhost. Confirmed live (GET /api/v2/elitea_core/folder/prompt_lib/471) every conversation in the Team project is author_id 659 (the only credential, ${TEST_USER}). Owner-side baseline handles documented (context-menu, delete-confirm dialog — already testid-complete). Filed question #1563.",
+      "findings": [
+        {
+          "kind": "question",
+          "note": "Filed EliteaAI/elitea-testing-public#1563 — no second real-user test credential exists on localhost (only ${TEST_USER}/VITE_DEV_TOKEN, a single fixed identity) to represent a 'non-owner' viewing another user's conversation. Blocks ELITEA-2189/2190/2191 outright and will block any future 'user B cannot see/edit/delete user A's X' case on this surface (or any other). Precedent-matched to the existin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1563"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2190 (edit messages): the user-message pencil/edit icon (accessible name 'Edit the message and regenerate answer') has no confirmed data-testid in chat_page.py or (per an existing in-file comment) in EliteaUI source — distinct from click_table_edit_icon/click_diagram_edit_icon which target AI-generated table/diagram edits, not user-message editing. add-data-testid work needed here in additi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2191 (regenerate): live owner-side baseline shows the AI response action row has 4 icons (Read out / Copy / Regenerate / Delete), but the case's step 4 only names 2 (speaker + copy) as what a non-owner should see. Whether Delete is also hidden for a non-owner (consistent with the cluster's 'limited options' theme) or is a case-text gap can only be confirmed once a second identity exists — f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed pre-existing tech debt while documenting handles for ELITEA-2190: chat_page.py's copy_message_button/regenerate_button (testid=\"message-copy-button\"/\"message-regenerate-button\") point at testids that do not exist in EliteaUI source and are kept alive only via forbidden fallback= role/aria-label lookups (already flagged in-file by a prior pass). Not filed as a new issue — just noted since… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_non-owner-cannot-delete-public-conversation_ELITEA-2189.md"
+    },
+    {
+      "id": "ELITEA-2190",
+      "outcome": "blocked",
+      "note": "Same shared root cause as ELITEA-2189. Additionally flagged: the user-message edit-pencil icon has no confirmed data-testid (accessible name only, 'Edit the message and regenerate answer') — add-data-testid work needed alongside the credential fix when unblocked. Filed together in question #1563.",
+      "findings": [
+        {
+          "kind": "question",
+          "note": "Filed EliteaAI/elitea-testing-public#1563 — no second real-user test credential exists on localhost (only ${TEST_USER}/VITE_DEV_TOKEN, a single fixed identity) to represent a 'non-owner' viewing another user's conversation. Blocks ELITEA-2189/2190/2191 outright and will block any future 'user B cannot see/edit/delete user A's X' case on this surface (or any other). Precedent-matched to the existin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1563"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2190 (edit messages): the user-message pencil/edit icon (accessible name 'Edit the message and regenerate answer') has no confirmed data-testid in chat_page.py or (per an existing in-file comment) in EliteaUI source — distinct from click_table_edit_icon/click_diagram_edit_icon which target AI-generated table/diagram edits, not user-message editing. add-data-testid work needed here in additi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2191 (regenerate): live owner-side baseline shows the AI response action row has 4 icons (Read out / Copy / Regenerate / Delete), but the case's step 4 only names 2 (speaker + copy) as what a non-owner should see. Whether Delete is also hidden for a non-owner (consistent with the cluster's 'limited options' theme) or is a case-text gap can only be confirmed once a second identity exists — f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed pre-existing tech debt while documenting handles for ELITEA-2190: chat_page.py's copy_message_button/regenerate_button (testid=\"message-copy-button\"/\"message-regenerate-button\") point at testids that do not exist in EliteaUI source and are kept alive only via forbidden fallback= role/aria-label lookups (already flagged in-file by a prior pass). Not filed as a new issue — just noted since… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_non-owner-cannot-edit-messages-public-conversation_ELITEA-2190.md"
+    },
+    {
+      "id": "ELITEA-2191",
+      "outcome": "blocked",
+      "note": "Same shared root cause as ELITEA-2189/2190. Owner-side baseline confirmed live: AI response shows 4 action icons (Read out/Copy/Regenerate/Delete), but case text only names 2 (speaker+copy) for the non-owner — flagged as a question for the implementer to also verify Delete's visibility once unblocked, not just the two named. Filed together in question #1563.",
+      "findings": [
+        {
+          "kind": "question",
+          "note": "Filed EliteaAI/elitea-testing-public#1563 — no second real-user test credential exists on localhost (only ${TEST_USER}/VITE_DEV_TOKEN, a single fixed identity) to represent a 'non-owner' viewing another user's conversation. Blocks ELITEA-2189/2190/2191 outright and will block any future 'user B cannot see/edit/delete user A's X' case on this surface (or any other). Precedent-matched to the existin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1563"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2190 (edit messages): the user-message pencil/edit icon (accessible name 'Edit the message and regenerate answer') has no confirmed data-testid in chat_page.py or (per an existing in-file comment) in EliteaUI source — distinct from click_table_edit_icon/click_diagram_edit_icon which target AI-generated table/diagram edits, not user-message editing. add-data-testid work needed here in additi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2191 (regenerate): live owner-side baseline shows the AI response action row has 4 icons (Read out / Copy / Regenerate / Delete), but the case's step 4 only names 2 (speaker + copy) as what a non-owner should see. Whether Delete is also hidden for a non-owner (consistent with the cluster's 'limited options' theme) or is a case-text gap can only be confirmed once a second identity exists — f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed pre-existing tech debt while documenting handles for ELITEA-2190: chat_page.py's copy_message_button/regenerate_button (testid=\"message-copy-button\"/\"message-regenerate-button\") point at testids that do not exist in EliteaUI source and are kept alive only via forbidden fallback= role/aria-label lookups (already flagged in-file by a prior pass). Not filed as a new issue — just noted since… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_non-owner-cannot-regenerate-response-public-conversation_ELITEA-2191.md"
+    },
+    {
+      "id": "ELITEA-2192",
+      "outcome": "already-covered",
+      "note": "Dedup target: automation/tests/ui/chat/test_owner_has_no_remove_control_in_users_dropdown.py (ELITEA-2172, merged origin/automation/base commit 84651741, PR #1561). Steps 1,2,3,5 all covered 1:1. Step 4 ('attempt delete on owner row -> red error toast Cannot delete author of the conversation') is UNREACHABLE via any real UI interaction: live DOM inspection (getComputedStyle) shows the owner row's … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2192 step 4 ('Attempt to trigger a delete action on the owner row -> Red error toast: Cannot delete author of the conversation') describes a UX with no live equivalent: the owner-row delete control is CSS visibility:hidden at all times (never flips visible on hover), which removes it from browser hit-testing entirely — no real user interaction (click, force-click, keyboard) can ever trigger… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1564"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered a genuinely durable CSS/testing gotcha worth reusing on any future case that describes 'attempt an action on a control that appears hidden/disabled': visibility:hidden (unlike opacity:0) removes an element from real browser hit-testing, so such a step can be structurally unreachable rather than a defect. Recorded in qa-engineer memory (visibility_hidden_blocks_real_hit_testing_unreachab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2193's covering test (ELITEA-2168's Step 8/9) never asserted the delete-icon tooltip text or the confirm-dialog's warning icon — both existed and worked correctly live, just untested. This is the kind of gap that only surfaces from reading the covering test's actual assertions line-by-line rather than trusting its AFS prose summary; worth the extra minute on every extend-existing classifica… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_conversation-owner-cannot-be-removed-attempted-delete-toast_ELITEA-2192.md"
+    },
+    {
+      "id": "ELITEA-2193",
+      "outcome": "blocked",
+      "note": "gate red: playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 10000ms exceeded. Call log: waiting for locator(\"[data-testid^=\\\"add-users-option-\\\"]\").filter(has_text=\"Daniyar Chambylov\").first to b",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2192 step 4 ('Attempt to trigger a delete action on the owner row -> Red error toast: Cannot delete author of the conversation') describes a UX with no live equivalent: the owner-row delete control is CSS visibility:hidden at all times (never flips visible on hover), which removes it from browser hit-testing entirely — no real user interaction (click, force-click, keyboard) can ever trigger… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1564"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered a genuinely durable CSS/testing gotcha worth reusing on any future case that describes 'attempt an action on a control that appears hidden/disabled': visibility:hidden (unlike opacity:0) removes an element from real browser hit-testing, so such a step can be structurally unreachable rather than a defect. Recorded in qa-engineer memory (visibility_hidden_blocks_real_hit_testing_unreachab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2193's covering test (ELITEA-2168's Step 8/9) never asserted the delete-icon tooltip text or the confirm-dialog's warning icon — both existed and worked correctly live, just untested. This is the kind of gap that only surfaces from reading the covering test's actual assertions line-by-line rather than trusting its AFS prose summary; worth the extra minute on every extend-existing classifica… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Now 100% reproducible (3/3 full invocations, 9 total attempts) on test_team_users_mention_and_remove_participants.py's Setup — _open_blank_conversation() keeps landing back on stale /chat/566 or /chat/564 (both referenced by this wave's own AFS files as live-analysis targets) instead of a genuinely blank conversation, causing either the initial_count==0 assertion to fail or the seed-user search to… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1082"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2193's own 2 new assertions (tooltip accessible-name = \"Remove user\"; warning-icon fill = rgb(233, 121, 18)) were independently verified GREEN against the live product via a throwaway pytest script driving /chat/566 directly, bypassing the blocked Setup entirely. Script was never committed (deleted after use). This is why the implementer-local verdict is BLOCKED (full spec) rather than GREE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The mechanical locator-policy grep on the page-object diff has one hit: self.delete_confirm_title.locator(self.DELETE_CONFIRM_TITLE_ICON). This is the #579-shape-1 sanctioned raw-handle exception (DELETE_CONFIRM_TITLE_ICON = \"svg\", scoped off the real app testid field delete_confirm_title, same shape as the already-merged DELETE_DIALOG_BACKDROP/is_delete_dialog_backdrop_visible()) — documented in … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL — illegitimate #579 exception. `DELETE_CONFIRM_TITLE_ICON = \"svg\"` is a bare non-testid tag selector (mechanical non-testid-handle grep hits it: `git diff origin/tests/batch-chat-remaining-w11...origin/tests/2193-owner-removes-non-owner-tooltip-warning-icon -- automation/pages/ automation/tests/ | grep -nE '...'` -> 1 hit at chat_page.py:4299 `icon = self.delete_confirm_title.locator(self… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:4281,4299 + memory .agents/memory/test-automation-engineer/delete_confirm_warning_icon_579_shape1_pattern.md"
+        },
+        {
+          "kind": "defect",
+          "note": "IMPORTANT/blocking — unverified interaction-ordering risk. The new Step 3 calls `hover_participant_user_row()`, which opens the 'users' participants popover and returns WITHOUT closing it. The immediately-following existing Step 8 calls `open_remove_user_dialog()`, whose only close-if-already-open path is `dismiss_participants_popover()` (a page-level Escape keypress, chat_page.py:6222-6225). But … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_team_users_mention_and_remove_participants.py:547-556 (new Step 3) chained into existing Step 8 at :557; automation/pages/chat_page.py:6371-6433 (hover_participant_user_row) vs :6275-6368 (open_remove_user_dialog) vs :6222-6225 (dismiss_participants_popover)"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation performed: TMS case ELITEA-2193 (.agents/automation/chat-remaining-w11/cases/ELITEA-2193.md) <-> AFS (test-specs/chat-interface/lextend_owner-removes-non-owner-tooltip-and-warning-icon_ELITEA-2193.md) <-> PR diff. Merged-target rule verified: covering spec commits 6ef5ef7b/fda5de19/37dbd948 confirmed ancestors of origin/automation/base (checked via `git merge-base --is-ancestor` afte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory reviewer greps run against the full diff (origin/tests/batch-chat-remaining-w11...origin/tests/2193-owner-removes-non-owner-tooltip-warning-icon): fidelity/provenance substitution grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) -> 0 hits, clean. Non-testid-handle grep on automation/pages/ + automation/tests/ -> 1 hit (chat_page.py:4299, see blocking finding above… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Pre-existing, already-tracked GitHub issue #1082 (test-isolation: stale-conversation reuse) is now consistently reproducing on this covering spec's own weaker _open_blank_conversation() guard — 100% this session too (screenshot: Add-users-modal search stuck on stale 'HI Chat' conversation, no candidates found). Out of scope for this fix round (4 callers of _open_blank_conversation, ticket is 2 ass… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1082"
+        },
+        {
+          "kind": "note",
+          "note": "Could not re-confirm the popper-close fix (finding 2) via a live end-to-end run this round — a live isolation attempt against a substitute conversation hit a different environment mismatch (Users badge absent) before reaching the popper stage. The fix is grounded in direct code/docstring evidence (an already-verified technique reused for the same popper instance), but is not independently re-verif… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round-1 finding #1 (RESOLVED) — the #579-shape-1 misclassification for the delete-confirm dialog's warning icon was genuinely fixed, not just re-argued. BaseModal.jsx gained a caller-supplied `titleIconTestId` prop (same channel/shape as the existing `titleTestId`/`closeButtonTestId`/`confirmButtonTestId`/`cancelButtonTestId`), wired `data-testid={titleIconTestId}` on the icon element; DeleteE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:1113,4284"
+        },
+        {
+          "kind": "note",
+          "note": "Fix-round-1 finding #2 (RESOLVED on static review, residual live-verification gap noted) — `open_remove_user_dialog()`'s close-if-already-open branch now reuses the exact real-outside-click technique (`chat_messages_scroll_container.click(position={\"x\":10,\"y\":10})` + `wait_for(state=\"hidden\")`) that `hover_participant_user_row()`'s own docstring documents as 100% reproducible (3/3) for closing thi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, non-blocking: the two new allure.step labels use ELITEA-2193's OWN case step numbers (\"Step 3 (ELITEA-2193 gap)\", \"Step 4 (ELITEA-2193 gap)\") which collide textually with the covering test's own pre-existing \"Step 3\" (deselect a chip) and \"Step 4\" (click Add) labels earlier in the same Allure report. The \"(ELITEA-2193 gap)\" suffix disambiguates on read, so this isn't a correctness issue — jus… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_team_users_mention_and_remove_participants.py:574,599"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_owner-removes-non-owner-tooltip-and-warning-icon_ELITEA-2193.md",
+      "branch": "tests/2193-owner-removes-non-owner-tooltip-warning-icon",
+      "pr": 1565
+    },
+    {
+      "id": "ELITEA-2194",
+      "outcome": "already-covered",
+      "note": "Dedup target: same test_team_users_mention_and_remove_participants.py Step 10 (lines 560-576) that ELITEA-2171's own already-covered AFS already targets — ELITEA-2194 is a second near-duplicate TMS case of ELITEA-2171 (identical 3-step Cancel-preserves-user flow, different TMS ID). Live-reconfirmed a second time this session on a different conversation/participant pair (/chat/566, Hrach Sargsyan) … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2192 step 4 ('Attempt to trigger a delete action on the owner row -> Red error toast: Cannot delete author of the conversation') describes a UX with no live equivalent: the owner-row delete control is CSS visibility:hidden at all times (never flips visible on hover), which removes it from browser hit-testing entirely — no real user interaction (click, force-click, keyboard) can ever trigger… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1564"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered a genuinely durable CSS/testing gotcha worth reusing on any future case that describes 'attempt an action on a control that appears hidden/disabled': visibility:hidden (unlike opacity:0) removes an element from real browser hit-testing, so such a step can be structurally unreachable rather than a defect. Recorded in qa-engineer memory (visibility_hidden_blocks_real_hit_testing_unreachab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2193's covering test (ELITEA-2168's Step 8/9) never asserted the delete-icon tooltip text or the confirm-dialog's warning icon — both existed and worked correctly live, just untested. This is the kind of gap that only surfaces from reading the covering test's actual assertions line-by-line rather than trusting its AFS prose summary; worth the extra minute on every extend-existing classifica… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_cancel-remove-participant-dialog-keeps-user-in-list_ELITEA-2194.md"
+    }
+  ],
+  "totals": {
+    "blocked": 5,
+    "already-covered": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

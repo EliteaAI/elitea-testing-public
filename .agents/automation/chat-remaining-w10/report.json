@@ -1,0 +1,373 @@
+{
+  "batch": "chat-remaining-w10",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w10",
+  "gate": {
+    "verdict": "incomplete",
+    "runs": 0,
+    "seconds": [],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2169",
+      "outcome": "already-covered",
+      "note": "ELITEA-2169's 5 steps (open + Invite Users modal, select 2 users, verify chips, click Add, verify PARTICIPANTS USERS) are a strict subset of merged ELITEA-2167's test_invite_users_add_persists_cancel_and_close_discard (automation/tests/ui/chat/test_invite_users_add_cancel_close.py, on origin/automation/base). Live-reconfirmed by re-running the covering test 3x: run 1 passed every overlapping step … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed MINOR issue #1556: React 'Cannot update a component while rendering a different component' setState-in-render warning (UsersParticipantDropdown/index.jsx:30 setting state on CollapsedPerticapantsList mid-render of the Participants panel). Discovered live re-running the merged ELITEA-2167 covering test for ELITEA-2169's already-covered reconfirmation - fired at the test's own final side-chann… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1556"
+        },
+        {
+          "kind": "note",
+          "note": "Back-to-back re-runs of test_invite_users_add_cancel_close.py (no cleanup pause between) reliably self-trigger the already-tracked #1082 stale-conversation flake: a failed run's just-created blank conversation never gets torn down (conv_id is only set once a message is actually sent), so the next run's retry-guarded open helper can pick it up instead of a genuinely fresh one, and its stale partici… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1082"
+        },
+        {
+          "kind": "note",
+          "note": "This session's runs 2-3 (which failed before their own cleanup step could fire) may have left 1-2 orphaned zero-message conversations in Team project 471 (id 471). Not swept this session - flagged in the AFS Cleanup section for whoever next touches that project's conversation list."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_team-invite-users-add-two-users-persist-participants_ELITEA-2169.md"
+    },
+    {
+      "id": "ELITEA-2171",
+      "outcome": "already-covered",
+      "note": "Verbatim ELITEA-2168's own merged Step 10 (automation/tests/ui/chat/test_team_users_mention_and_remove_participants.py::TestTeamUsersMentionAndRemoveParticipants::test_team_users_mention_and_remove_participants, lines 560-576, merged to origin/automation/base). Dedup proof + Coverage Map cite the exact lines. Live-reconfirmed the exact 3-step flow (open dropdown -> hover non-owner row -> click del… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2171 is a verbatim duplicate of ELITEA-2168's own merged Step 10 (test_team_users_mention_and_remove_participants.py lines 560-576) - already-covered, no implementation needed.",
+          "ref": "test-specs/chat-interface/lcovered_cancel-remove-user-dialog-keeps-user-in-participants_ELITEA-2171.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2172's case text says 'conversation owner' but the product mechanism is actually a self-removal guard (currentUserId check in UserMenu.jsx), not an explicit owner role/flag. They coincide only because this is a single-account testing environment where the dev-token account always creates the conversations it opens. Flagged in the AFS as a mechanism clarification (not a defect, not case-text… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md"
+        },
+        {
+          "kind": "note",
+          "note": "Running a live pytest re-run against localhost while a manual Playwright-MCP exploration session is also open on the same dev server risks the two contaminating each other's conversations (server-side 'most recent conversation' contention, not a shared browser context) - both attempted pytest re-runs this session failed at their own Setup stage, and one appears to have added participants to the sh… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/concurrent_pytest_and_mcp_exploration_contaminate_shared_conversations.md"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found for either case - live behavior matches the case text's expected results exactly for both ELITEA-2171 and ELITEA-2172. All testids needed by both cases already exist on origin/main (added by the earlier merged ELITEA-2168 implementation) - both are fully promotable with zero new UI work."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_cancel-remove-user-dialog-keeps-user-in-participants_ELITEA-2171.md"
+    },
+    {
+      "id": "ELITEA-2172",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w10, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2171 is a verbatim duplicate of ELITEA-2168's own merged Step 10 (test_team_users_mention_and_remove_participants.py lines 560-576) - already-covered, no implementation needed.",
+          "ref": "test-specs/chat-interface/lcovered_cancel-remove-user-dialog-keeps-user-in-participants_ELITEA-2171.md"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2172's case text says 'conversation owner' but the product mechanism is actually a self-removal guard (currentUserId check in UserMenu.jsx), not an explicit owner role/flag. They coincide only because this is a single-account testing environment where the dev-token account always creates the conversations it opens. Flagged in the AFS as a mechanism clarification (not a defect, not case-text… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md"
+        },
+        {
+          "kind": "note",
+          "note": "Running a live pytest re-run against localhost while a manual Playwright-MCP exploration session is also open on the same dev server risks the two contaminating each other's conversations (server-side 'most recent conversation' contention, not a shared browser context) - both attempted pytest re-runs this session failed at their own Setup stage, and one appears to have added participants to the sh… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/concurrent_pytest_and_mcp_exploration_contaminate_shared_conversations.md"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found for either case - live behavior matches the case text's expected results exactly for both ELITEA-2171 and ELITEA-2172. All testids needed by both cases already exist on origin/main (added by the earlier merged ELITEA-2168 implementation) - both are fully promotable with zero new UI work."
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed the #1082-class stale-conversation flake (already documented in .agents/testing.md and role memory) is materially worse right now under today's heavy multi-agent load on the shared dev backend — ChatPage's existing get_message_count()!=0 retry-guard in _open_blank_conversation() can transiently read 0 on a landed stale/reused conversation before its message list finishes its async fetch,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New, deterministic (100% reproducible, not environmental) finding: ChatPage's chat-participants-popper (Users participants dropdown) does not close on Escape at all — only a real click outside its DOM subtree (MUI ClickAwayListener) does. The existing shared dismiss_participants_popover() helper (Escape-only) is silently a no-op for this popper in every current merged caller, because none of them … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical substitution grep (fidelity check) — `git diff origin/tests/batch-chat-remaining-w10...origin/tests/ELITEA-2172-owner-no-remove-control -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` → 0 hits. All assertions (hover-visibility, network status codes, console errors) are read off the real system."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator-policy grep — pages/chat_page.py: 2 hits, both `row.locator(self.PARTICIPANT_ROW...)`/`row.locator(self.PARTICIPANT_REMOVE_BUTTON)` chained off pre-existing class-level `[data-testid=...]` template constants → compliant. tests/test_owner_has_no_remove_control_in_users_dropdown.py: 0 hits (no raw handles in the spec file). No testid was added; all 3 reused handles (`chat-particip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on chat_page.py — `git diff ... -- automation/pages/chat_page.py | grep -E '^-[^-]'` → 0 hits; `hover_participant_user_row()` is a pure addition, no existing method touched."
+        },
+        {
+          "kind": "note",
+          "note": "Spot-verified the AFS's source-code claim against ../EliteaUI (fresh fetch): UserMenu.jsx line 34 `isSelectable = selectable && user.entity_meta?.id !== currentUserId`, userItemStyles' `'&:hover #DeleteButton': { visibility: selectable ? 'visible' : 'hidden' }`, and `currentUserId={user.id}` wired from `state.user` in the two dropdown callers — the AFS's 'always in DOM, visibility toggled on hover… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map ticked against the case snapshot (.agents/automation/chat-remaining-w10/cases/ELITEA-2172.md): all 5 case steps + both preconditions + the Pass/Fail criteria have a corresponding real assertion in the test (owner-row `not_to_be_visible()`, non-owner-row `to_be_visible()` in the SAME conversation, console side-channel check). Confirmed via grep that the cited 'not already covered by EL… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Minor AFS/implementation drift, non-blocking: the AFS's step-2 mechanism note says the owner is resolved by matching `meta.user_name` against `${TEST_USER}`'s display name, but the shipped test resolves it via `conv_data.get('author_id')` matching `entity_meta.id` instead (an established pattern already used identically in test_invite_users_add_cancel_close.py and test_open_conversation_today_sect… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "The test's own step-5 allure.step text and module docstring say the non-owner row is hovered 'in the same dropdown instance' as the owner row, framed (per the AFS's Axis-2 addition) as ruling out a stale-popover artifact. But `hover_participant_user_row()`'s own docstring says it closes the popper first if already visible and reopens a fresh one — so each hover call in steps 3-4 and 5 actually ope… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_owner_has_no_remove_control_in_users_dropdown.py"
+        },
+        {
+          "kind": "note",
+          "note": "New infra finding surfaced during implementation (documented in .agents/memory/test-automation-engineer/participants_popper_escape_does_not_close_it.md, additive/docs-only): the 'Users' participants popper (chat-participants-popper) does not close on Escape at all — 100% reproducible, only a real outside click via MUI's ClickAwayListener works. This could be a genuine keyboard-accessibility defect… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md",
+      "branch": "tests/ELITEA-2172-owner-no-remove-control",
+      "pr": 1557
+    },
+    {
+      "id": "ELITEA-2173",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w10, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2173 case text step 3 ('Verify mention is highlighted/formatted') does not match live product behavior — the inserted @mention renders as plain, unstyled text (same mechanism as the composer's own typed-@ mention path, which ELITEA-2168's AFS also documents as plain text). Classified as reverse-masking case-text drift, filed as issue #1558. AFS asserts the composer's exact text content inst… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1558"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered live (not previously documented for this mechanism): appending text to the composer via Playwright's fill() REPLACES the entire value, silently destroying an in-progress dropdown-inserted mention. Implementer must use click() + press('End') + press_sequentially() instead, whenever a mention is already present. Recorded in AFS § Automation Hints and a new qa-engineer memory entry (partic… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero new testids required for this family — entire flow reuses handles ELITEA-2167/2168 already added to both origin/main and origin/automation/testids (verified via fresh git fetch + git grep this session). Only one new page-object method is needed (mention_user_via_participants_dropdown), no EliteaUI JSX changes."
+        },
+        {
+          "kind": "note",
+          "note": "Coverage cross-check against both ELITEA-2173 and ELITEA-2174 original case files passed cleanly — no dropped steps or under-delivered expected results. The only case-text deviation (ELITEA-2173 step 3, 'mention is highlighted/formatted' — the live product inserts plain unstyled text) was already correctly identified and filed by the analyst as CLARIFICATION #1558 before this dispatch; I implement… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1558"
+        },
+        {
+          "kind": "note",
+          "note": "Zero new testids required for this whole family — confirmed live and via the AFS's own provenance table that every element (chat-participants-badge-button, chat-participant-row-user_{id}_, chat-message-input, chat-send-button, sidebar-create-button, add-users-* modal handles) is already present on both origin/main and origin/automation/testids from ELITEA-2167/2168."
+        },
+        {
+          "kind": "note",
+          "note": "Scoping note for future audits: `git diff origin/automation/base...tests/ELITEA-2173-2174-mention-via-participants-dropdown` shows 15 files / 2078 insertions because the branch is cut from the batch trunk `tests/batch-chat-remaining-w10` AFTER ELITEA-2169/2171/2172 already merged onto it — those are prior units' work, not this PR's own diff. The PR's actual scope (confirmed via `gh pr view 1559 --… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result: TMS case snapshots (ELITEA-2173/2174) <-> family AFS (test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md) <-> diff all agree. Per-row triangulation confirmed: the parametrize table's two rows (target_users, badge_count_after_setup) drive genuinely distinct assertions per case -- ELITEA-2173 asserts composer text == '@Hrach Sargsyan ';… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_participants_dropdown_click_name_inserts_mention.py:242-265"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2173's own step 3 ('mention is highlighted/formatted') is correctly NOT asserted -- classified case-text drift under the reverse-masking guard and filed as clarification issue #1558 (verified open, labelled `question`, body names the case + quotes the live-observed plain-text behavior + embeds the evidence screenshot via the release-asset convention). Composer exact-text assertion substitut… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1558"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity + locator mechanical greps re-run independently (not trusted from the PR body): fidelity grep 0 hits; locator-policy grep 1 hit (`popper.locator(self.PARTICIPANT_ROW.format(unique_id))`) which is compliant -- PARTICIPANT_ROW is a pre-existing UPPER_CASE class-level `[data-testid=...]` template constant (chat_page.py:893), reused verbatim (not newly added) by this unit's sole new method. N… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6399-6449"
+        },
+        {
+          "kind": "note",
+          "note": "Recipient-notification half of both cases' expected results ('user_1 receives notification' / 'both users notified') is documented as not independently assertable in this single-account localhost environment, with the structural 'message count +1, no LLM reply' proxy asserted instead -- consistent with the same scope note already established by the merged ELITEA-2168 test. No masking: this is a de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md:118-121"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md",
+      "branch": "tests/ELITEA-2173-2174-mention-via-participants-dropdown",
+      "pr": 1559
+    },
+    {
+      "id": "ELITEA-2174",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w10, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2173 case text step 3 ('Verify mention is highlighted/formatted') does not match live product behavior — the inserted @mention renders as plain, unstyled text (same mechanism as the composer's own typed-@ mention path, which ELITEA-2168's AFS also documents as plain text). Classified as reverse-masking case-text drift, filed as issue #1558. AFS asserts the composer's exact text content inst… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1558"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered live (not previously documented for this mechanism): appending text to the composer via Playwright's fill() REPLACES the entire value, silently destroying an in-progress dropdown-inserted mention. Implementer must use click() + press('End') + press_sequentially() instead, whenever a mention is already present. Recorded in AFS § Automation Hints and a new qa-engineer memory entry (partic… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero new testids required for this family — entire flow reuses handles ELITEA-2167/2168 already added to both origin/main and origin/automation/testids (verified via fresh git fetch + git grep this session). Only one new page-object method is needed (mention_user_via_participants_dropdown), no EliteaUI JSX changes."
+        },
+        {
+          "kind": "note",
+          "note": "Coverage cross-check against both ELITEA-2173 and ELITEA-2174 original case files passed cleanly — no dropped steps or under-delivered expected results. The only case-text deviation (ELITEA-2173 step 3, 'mention is highlighted/formatted' — the live product inserts plain unstyled text) was already correctly identified and filed by the analyst as CLARIFICATION #1558 before this dispatch; I implement… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1558"
+        },
+        {
+          "kind": "note",
+          "note": "Zero new testids required for this whole family — confirmed live and via the AFS's own provenance table that every element (chat-participants-badge-button, chat-participant-row-user_{id}_, chat-message-input, chat-send-button, sidebar-create-button, add-users-* modal handles) is already present on both origin/main and origin/automation/testids from ELITEA-2167/2168."
+        },
+        {
+          "kind": "note",
+          "note": "Scoping note for future audits: `git diff origin/automation/base...tests/ELITEA-2173-2174-mention-via-participants-dropdown` shows 15 files / 2078 insertions because the branch is cut from the batch trunk `tests/batch-chat-remaining-w10` AFTER ELITEA-2169/2171/2172 already merged onto it — those are prior units' work, not this PR's own diff. The PR's actual scope (confirmed via `gh pr view 1559 --… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation result: TMS case snapshots (ELITEA-2173/2174) <-> family AFS (test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md) <-> diff all agree. Per-row triangulation confirmed: the parametrize table's two rows (target_users, badge_count_after_setup) drive genuinely distinct assertions per case -- ELITEA-2173 asserts composer text == '@Hrach Sargsyan ';… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_participants_dropdown_click_name_inserts_mention.py:242-265"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2173's own step 3 ('mention is highlighted/formatted') is correctly NOT asserted -- classified case-text drift under the reverse-masking guard and filed as clarification issue #1558 (verified open, labelled `question`, body names the case + quotes the live-observed plain-text behavior + embeds the evidence screenshot via the release-asset convention). Composer exact-text assertion substitut… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1558"
+        },
+        {
+          "kind": "note",
+          "note": "Fidelity + locator mechanical greps re-run independently (not trusted from the PR body): fidelity grep 0 hits; locator-policy grep 1 hit (`popper.locator(self.PARTICIPANT_ROW.format(unique_id))`) which is compliant -- PARTICIPANT_ROW is a pre-existing UPPER_CASE class-level `[data-testid=...]` template constant (chat_page.py:893), reused verbatim (not newly added) by this unit's sole new method. N… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6399-6449"
+        },
+        {
+          "kind": "note",
+          "note": "Recipient-notification half of both cases' expected results ('user_1 receives notification' / 'both users notified') is documented as not independently assertable in this single-account localhost environment, with the structural 'message count +1, no LLM reply' proxy asserted instead -- consistent with the same scope note already established by the merged ELITEA-2168 test. No masking: this is a de… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md:118-121"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md",
+      "branch": "tests/ELITEA-2173-2174-mention-via-participants-dropdown",
+      "pr": 1559
+    },
+    {
+      "id": "ELITEA-2175",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w10, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Infrastructure fix (additive, does not touch the shared original helper or its existing ELITEA-2167 caller): _open_blank_conversation()'s single check (new-conversation greeting visible) is insufficient — ChatPage.navigate_to_chat()'s own docstring documents that the SPA may redirect to the last-viewed conversation stored in browser session, and this fires as a DELAYED effect after the greeting + … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Related but NOT fixed in this PR (out of scope — shared-caller helper with an existing merged caller, additive-only rule): re-running the ORIGINAL, untouched TestInviteUsersAddCancelClose test (ELITEA-2167) against the current live environment now fails consistently (2/2) on this exact stale-conversation race — its own Step 1 assertion fails because it lands on a restored conversation with partici… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "This same stale-conversation-restore race was independently hit and worked around by a sibling dispatch today (ELITEA-2172, chat-remaining-w10, 18:55 daily-log entry) which described it as 'worse than documented under today's heavy multi-agent load' on the shared dev backend. Three independent occurrences today (ELITEA-2172, and this PR's two cases) suggest this is a currently-active environmental… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING. `chat.page.wait_for_timeout(1500)` is a raw arbitrary sleep used as a 'settle window' before rechecking message-count + URL. This is not a canon gap the declared-improvisation protocol can cover — the canon already has an explicit, matching rule: `.claude/rules/ui-tests.md` § Wait Patterns shows `page.wait_for_timeout(5000)` verbatim as the ❌ WRONG example ('Hope it's enough?'), and `.ag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py:262 (new helper _open_genuinely_blank_conversation)"
+        },
+        {
+          "kind": "note",
+          "note": "Not blocking this PR, but worth loud visibility for the orchestrator before the batch hardening gate runs: the AFS (ELITEA-2175 AFS § Automation Hints) and the implementer's own memory entries disclose that the ORIGINAL, already-merged `TestInviteUsersAddCancelClose` test in this SAME file now fails consistently (2/2) against the live environment on the identical delayed last-viewed-conversation r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py (TestInviteUsersAddCancelClose, unmodified in this diff)"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean: both extension-target commits verified as real ancestors of origin/automation/base (298d1120 for ELITEA-2167's covering file, 6ef5ef7b for ELITEA-2168's remove_add_users_chip origin); zero page-object changes in the diff, all page-object methods used (remove_add_users_chip, get_add_users_chip_names, is_add_users_confirm_enabled, wait_for_participants_badge_count,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Pre-existing, unrelated to this fix round: TestInviteUsersAddCancelClose::test_invite_users_add_persists_cancel_and_close_discard (ELITEA-2167, merged PR #988) fails deterministically (2/2 runs today) on `assert not chat.is_participants_badge_visible(section=\"users\", timeout=3000)` — a brand-new conversation renders a participants badge it shouldn't. Uses the unmodified `_open_blank_conversation()… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py:405"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: the raw `chat.page.wait_for_timeout(1500)` sleep in `_open_genuinely_blank_conversation()` (automation/tests/ui/chat/test_invite_users_add_cancel_close.py) is replaced by a new poll-based helper `_poll_blank_state_holds()` — polls message-count + URL every 250ms across the 1500ms settle window, exits the instant either signal flips, rather than sleeping the whole w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation this round (case snapshot <-> AFS <-> diff) for both ELITEA-2175 and ELITEA-2176: every Coverage-Map row's claimed assertion verified present at its own claimed step in the actual test code (3-chip order, middle-chip removal keeping order, Add-enabled guard, badge+popover post-Add for 2175; baseline note, 2-chip selection, Cancel-closes, badge-unchanged, popover-excludes-both… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory mechanical greps re-run on the correctly-scoped diff (origin/tests/batch-chat-remaining-w10...origin/tests/2175-2176-add-users-modal-chip-x-cancel, NOT automation/base which would include unrelated already-merged wave content): fidelity/substitution grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) = 0 hits; non-testid-handle grep (`get_by_role|get_by_label|get_by_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer correctly flagged (not fixed, not masked) a pre-existing regression discovered incidentally: TestInviteUsersAddCancelClose::test_invite_users_add_persists_cancel_and_close_discard (ELITEA-2167, merged PR #988, untouched by this diff) now fails deterministically 2/2 on `is_participants_badge_visible` in the current live environment, on the same underlying #1082-class stale-conversation-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_remove-preselected-user-via-chip-x_ELITEA-2175.md",
+      "branch": "tests/2175-2176-add-users-modal-chip-x-cancel",
+      "pr": 1560
+    },
+    {
+      "id": "ELITEA-2176",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-chat-remaining-w10, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Infrastructure fix (additive, does not touch the shared original helper or its existing ELITEA-2167 caller): _open_blank_conversation()'s single check (new-conversation greeting visible) is insufficient — ChatPage.navigate_to_chat()'s own docstring documents that the SPA may redirect to the last-viewed conversation stored in browser session, and this fires as a DELAYED effect after the greeting + … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Related but NOT fixed in this PR (out of scope — shared-caller helper with an existing merged caller, additive-only rule): re-running the ORIGINAL, untouched TestInviteUsersAddCancelClose test (ELITEA-2167) against the current live environment now fails consistently (2/2) on this exact stale-conversation race — its own Step 1 assertion fails because it lands on a restored conversation with partici… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "This same stale-conversation-restore race was independently hit and worked around by a sibling dispatch today (ELITEA-2172, chat-remaining-w10, 18:55 daily-log entry) which described it as 'worse than documented under today's heavy multi-agent load' on the shared dev backend. Three independent occurrences today (ELITEA-2172, and this PR's two cases) suggest this is a currently-active environmental… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING. `chat.page.wait_for_timeout(1500)` is a raw arbitrary sleep used as a 'settle window' before rechecking message-count + URL. This is not a canon gap the declared-improvisation protocol can cover — the canon already has an explicit, matching rule: `.claude/rules/ui-tests.md` § Wait Patterns shows `page.wait_for_timeout(5000)` verbatim as the ❌ WRONG example ('Hope it's enough?'), and `.ag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py:262 (new helper _open_genuinely_blank_conversation)"
+        },
+        {
+          "kind": "note",
+          "note": "Not blocking this PR, but worth loud visibility for the orchestrator before the batch hardening gate runs: the AFS (ELITEA-2175 AFS § Automation Hints) and the implementer's own memory entries disclose that the ORIGINAL, already-merged `TestInviteUsersAddCancelClose` test in this SAME file now fails consistently (2/2) against the live environment on the identical delayed last-viewed-conversation r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py (TestInviteUsersAddCancelClose, unmodified in this diff)"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean: both extension-target commits verified as real ancestors of origin/automation/base (298d1120 for ELITEA-2167's covering file, 6ef5ef7b for ELITEA-2168's remove_add_users_chip origin); zero page-object changes in the diff, all page-object methods used (remove_add_users_chip, get_add_users_chip_names, is_add_users_confirm_enabled, wait_for_participants_badge_count,… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Pre-existing, unrelated to this fix round: TestInviteUsersAddCancelClose::test_invite_users_add_persists_cancel_and_close_discard (ELITEA-2167, merged PR #988) fails deterministically (2/2 runs today) on `assert not chat.is_participants_badge_visible(section=\"users\", timeout=3000)` — a brand-new conversation renders a participants badge it shouldn't. Uses the unmodified `_open_blank_conversation()… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py:405"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: the raw `chat.page.wait_for_timeout(1500)` sleep in `_open_genuinely_blank_conversation()` (automation/tests/ui/chat/test_invite_users_add_cancel_close.py) is replaced by a new poll-based helper `_poll_blank_state_holds()` — polls message-count + URL every 250ms across the 1500ms settle window, exits the instant either signal flips, rather than sleeping the whole w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation this round (case snapshot <-> AFS <-> diff) for both ELITEA-2175 and ELITEA-2176: every Coverage-Map row's claimed assertion verified present at its own claimed step in the actual test code (3-chip order, middle-chip removal keeping order, Add-enabled guard, badge+popover post-Add for 2175; baseline note, 2-chip selection, Cancel-closes, badge-unchanged, popover-excludes-both… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory mechanical greps re-run on the correctly-scoped diff (origin/tests/batch-chat-remaining-w10...origin/tests/2175-2176-add-users-modal-chip-x-cancel, NOT automation/base which would include unrelated already-merged wave content): fidelity/substitution grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) = 0 hits; non-testid-handle grep (`get_by_role|get_by_label|get_by_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer correctly flagged (not fixed, not masked) a pre-existing regression discovered incidentally: TestInviteUsersAddCancelClose::test_invite_users_add_persists_cancel_and_close_discard (ELITEA-2167, merged PR #988, untouched by this diff) now fails deterministically 2/2 on `is_participants_badge_visible` in the current live environment, on the same underlying #1082-class stale-conversation-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_invite_users_add_cancel_close.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_cancel-add-users-modal-after-preselecting-users_ELITEA-2176.md",
+      "branch": "tests/2175-2176-add-users-modal-chip-x-cancel",
+      "pr": 1560
+    }
+  ],
+  "totals": {
+    "already-covered": 2,
+    "merged-ungated": 5
+  },
+  "quality_flags": [
+    "extend-rate 4/7 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

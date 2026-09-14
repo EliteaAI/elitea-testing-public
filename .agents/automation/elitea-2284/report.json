@@ -1,0 +1,72 @@
+{
+  "batch": "elitea-2284",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2284",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      22.63,
+      21.38,
+      21.21
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2284",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2284's TMS case frontmatter says priority: high, but its natural covering spec/module (test_personal_token_create_and_verify.py, from ELITEA-2280) carries a shared module-level pytestmark of p2 (medium), matching that spec's own medium-labelled case. Since the new test is appended into the same module/class (extend-existing mechanics, one shared pytestmark list per file), I reused the exist… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-personal-tokens/lextend_expired-and-active-token-expiration-icons_ELITEA-2284.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live data gotcha worth keeping visible: as of 2026-08-05 no persistent token in project 399 (Private) sits in the 'active, N days remaining' expiration state -- all non-expired persistent tokens are 'Never' (no expiry). Any future case needing a stable 'active/in-X-days' read-only fixture will have to create one (mutation), it can't be found read-only. Recorded in _surface.md and role memory.",
+          "ref": "test-specs/settings-personal-tokens/_surface.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Priority marker drift (CI-relevant, matches a previously-caught pattern — .agents/memory/qa-engineer/priority_marker_drift_afs_vs_pytest_mark.md). ELITEA-2284's TMS case frontmatter says `priority: high`; per this project's established convention (pytest.ini: p1 = 'Priority 1 (high)'; every other l2/'high'-labelled sibling case — ELITEA-2114, ELITEA-1866, ELITEA-2166, ELITEA-2168, ELITEA-2075 — co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py:227-255 (new test_expired_token_shows_expired_icon_and_label)"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking Nit: the new test's `@allure.issue` URL uses the wrong TMS-repo path segment — `settings-personal-tokens/` (single hyphenated folder) — but the real onetest-ai-tm-Elitea structure (confirmed by listing the sibling clone) is `settings/personal-tokens/` (two-level directory), so the link 404s. Pre-existing: the already-merged ELITEA-2280 decorator in the same file (line 44-47) has the i… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_personal_token_create_and_verify.py:227-230"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulated clean: all 5 original case elements have Coverage-Map rows; steps 1-3 get real per-step assertions in the new test (row count==1, status visible, exact-text=='Expired'); steps 4-5 disposed already-covered against the covering spec's actual Step 12 code (verified the assertion — `state=\"active\"`, asserts text=='in 30 days' — genuinely exists at that step, not just spec … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-personal-tokens/lextend_expired-and-active-token-expiration-icons_ELITEA-2284.md:8-13"
+        },
+        {
+          "kind": "note",
+          "note": "Priority-marker drift on extend-existing AFS has now recurred twice (ELITEA-1846/#678, ELITEA-2284/#1175) -- once as an explicitly-wrong marker, once as a silently-inherited module-level one. Neither is caught by any green run, additive-only diff check, or locator grep -- only a deliberate AFS-Priority-vs-@pytest.mark.pN comparison catches it, and that comparison needs to happen BEFORE writing the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md"
+        }
+      ],
+      "afs": "test-specs/settings-personal-tokens/lextend_expired-and-active-token-expiration-icons_ELITEA-2284.md",
+      "branch": "tests/ELITEA-2284-expired-active-token-icons",
+      "pr": 1175,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          22.63,
+          21.38,
+          21.21
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

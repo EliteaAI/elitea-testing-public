@@ -1,0 +1,4 @@
+{"at":"2026-08-24T11:21:25.756Z","branch":"tests/batch-onboarding-w2","base":"automation/base","baseRef":"origin/automation/base","n":1,"verdict":"red","consecutiveGreen":0,"seconds":[38.994175]}
+{"at":"2026-08-24T11:23:23.422Z","branch":"tests/batch-onboarding-w2","base":"automation/base","baseRef":"origin/automation/base","n":1,"verdict":"green","consecutiveGreen":1,"seconds":[53.047501458]}
+{"at":"2026-08-24T11:24:25.254Z","branch":"tests/batch-onboarding-w2","base":"automation/base","baseRef":"origin/automation/base","n":1,"verdict":"green","consecutiveGreen":1,"seconds":[52.996612042]}
+{"at":"2026-08-24T11:25:21.991Z","branch":"tests/batch-onboarding-w2","base":"automation/base","baseRef":"origin/automation/base","n":1,"verdict":"green","consecutiveGreen":1,"seconds":[51.148702208]}

@@ -1,0 +1,119 @@
+{
+  "batch": "elitea-2453",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-elitea-2453",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      48.81,
+      52.9,
+      50.73
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2453",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED + FILED EliteaAI/elitea-testing-public#1274: an LLM pipeline node with structured_output=true fails at execution with a raw backend error surfaced directly in the chat response ('Error: sequence item 0: expected str instance, dict found') whenever its `output` mapping combines the built-in `messages` variable together with list/dict-typed custom state variables. Isolated via a live A/B (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1274"
+        },
+        {
+          "kind": "note",
+          "note": "Case step 5's 'displayed uppercase' is a CSS text-transform:uppercase on BasicAccordion's title Typography, NOT the DOM text content (which is the raw lowercase variable name, e.g. 'custom_json'). Confirmed via getComputedStyle. Automation must assert via testid/raw text or the CSS property, never to_have_text('CUSTOM_JSON') — that would fail against real DOM despite matching what a human sees."
+        },
+        {
+          "kind": "note",
+          "note": "Informational, not filed as a defect: a single-node structured-output pipeline's Run Details timeline shows 2 entries both labeled with the same node id (~2s apart), not 1. Not investigated further (no case step requires an exact timeline-entry count); flagged for whoever next touches structured-output + Run Details timeline semantics."
+        },
+        {
+          "kind": "note",
+          "note": "PipelineAPI.create_pipeline() (generic, pre-existing) already accepts a raw `state:` block in its instructions YAML alongside entry_point/nodes — confirmed live, no new API client method needed for fixtures seeding custom typed state variables. create_pipeline_with_nodes() does NOT support this (entry_point+nodes only)."
+        },
+        {
+          "kind": "note",
+          "note": "PipelineDetailPage.expand_run_details_state_row()'s docstring claims 'a no-op if already expanded' -- that's incorrect for a MUI accordion (click toggles, so clicking an already-expanded row COLLAPSES it). Caught during this implementation via a red-then-fixed local run; did not fix the docstring/method itself since it's a shared page-object method with other callers (ELITEA-2452) that only ever e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:3824"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — Coverage Map row for case step 8 (\"MESSAGES: shows list representation in Before/After\", test-specs/pipelines/l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md:216) is disposed `already-covered-elsewhere`, citing `test_pipeline_run_details_state_before_after.py` (ELITEA-2452) steps 6/8 (automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py:1… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md:216"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking nit — Coverage Map row for case step 2 (\"LLM node populates all custom variables with structured output enabled\", AFS line 210, \"Asserted where: Step 2\") reads as if the implementation independently re-verifies the Output multi-select chips and the structured-output toggle's checked state via UI. It doesn't: automation/tests/ui/pipelines/test_pipeline_run_details_multiple_state_variab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md:210"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator-policy grep on the full diff (git diff origin/tests/batch-elitea-2453...origin/tests/ELITEA-2453-run-details-multiple-state-variables | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 0 hits — confirms the PR body's self-check claim. All page-object methods t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_multiple_state_variables.py"
+        },
+        {
+          "kind": "note",
+          "note": "Steps 5, 6/13, 9-12 verified faithful three-way (TMS case snapshot -> AFS -> implementation): step 5's raw-lowercase-text assertion correctly avoids asserting the visual uppercase CSS transform as DOM text (per AFS clarification); steps 9-12's shape assertions (JSON-quoted string / bare number / JSON array / JSON object) exactly match the AFS's per-type claims and each has a real per-step assertio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_multiple_state_variables.py"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live (2026-08-06): Run Details STATES panel renders `messages`' After value as a genuine JSON array of stringified LangChain message objects (each element is a str repr, not a nested JSON object), e.g. [\"content='...' ...\", \"content='...' ...\"]. Recorded in memory (run_details_messages_after_value_json_array_shape.md) as the citation target for any future case needing to prove `messages`… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py:Step 8"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding resolved: test_pipeline_run_details_state_before_after.py's allure.step(\"Step 8 — Modified variable (messages @ LLM1): After differs from Before\") block now contains a real shape assertion — json.loads(messages_after), isinstance(parsed, list), and len(parsed)>0 — landed immediately after the pre-existing Before!=After / non-empty checks, at the exact step the AFS cites (ver… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py"
+        },
+        {
+          "kind": "note",
+          "note": "AFS disposition text and Coverage Map row for case step 8 amended in the same PR to cite the new shape assertion instead of the old, inaccurate \"steps 6/8 already prove this\" claim.",
+          "ref": "test-specs/pipelines/l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation of all 13 case steps against the AFS and test_pipeline_run_details_multiple_state_variables.py: every asserted row (5,6,9,10,11,12,13) has a real per-step assertion in code, not just presence/end-state (step 9 checks JSON-string quoting; step 10 checks unquoted + isinstance(number); step 11/12 check isinstance(list)/isinstance(dict) with non-empty).",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_multiple_state_variables.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/) for get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator(: 0 hits. No new page-object diff — all handles reuse pre-existing testid-backed PipelineDetailPage methods from ELITEA-2450/2452, matching the AFS's 'zero new testids needed' claim.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "No defect masking found (no pytest.skip/xfail/test.fail/weakened asserts anywhere in the diff).",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_run_details_multiple_state_variables.py"
+        },
+        {
+          "kind": "note",
+          "note": "New fixture pipeline_with_typed_state_vars_id follows the established create/yield/delete pattern (mirrors pipeline_with_two_llm_nodes_id) and deliberately excludes 'messages' from the structured-output node's output list to route around confirmed product defect #1274 — declared, not masked.",
+          "ref": "automation/fixtures/data_fixtures.py"
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md",
+      "branch": "tests/ELITEA-2453-run-details-multiple-state-variables",
+      "pr": 1275,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          48.81,
+          52.9,
+          50.73
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

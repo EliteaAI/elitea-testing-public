@@ -1,0 +1,91 @@
+{
+  "batch": "elitea-2257-notification-text-content",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2257-notification-text-content",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      10.362545375,
+      9.680557375,
+      10.733635666
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2257",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No product defect found — all 4 named notification types (chat mention, chat participant added, index success, bucket retention warning) render exactly per the case's literal templates on live DEV data, with no raw JSON leak, broken HTML, or 'undefined' text across 67 real notifications inspected.",
+          "ref": "ELITEA-2257"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case's step 7/objective ('no notification row shows raw json') must NOT be read to flag the Index-success type's embedded {\"indexed\": N} JSON fragment — that fragment is literal, correct backend copy and is explicitly part of the case's OWN step 5 expected template. Documented this disambiguation directly in the AFS (step 5's Verify note) so the implementer doesn't write an overly-strict asser… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-notifications/l2_notification-text-content-renders-correctly_ELITEA-2257.md"
+        },
+        {
+          "kind": "note",
+          "note": "GridTableRow and GridTableBody (shared entities/grid-table components, used beyond just notifications) already accept and render a 'data-testid' prop — it's simply unwired at NotificationTable.jsx's call sites. Worth checking this pattern before assuming any grid-table-based surface needs a full component-level add-data-testid pass; it may already be half-wired. Recorded in qa-engineer memory for … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/../EliteaUI/src/[fsd]/entities/grid-table/ui/GridTableRow.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Test-data strategy risk flagged explicitly in the AFS: this case's coverage of bucket_expiration_warning and index_data_changed relies on pre-existing, real (not seeded) DEV notification history, because neither type is triggerable on-demand within a test's lifetime (cron-only / slow re-index respectively). If DEV's notification history is ever purged, the resulting test will correctly go red for … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-notifications/l2_notification-text-content-renders-correctly_ELITEA-2257.md"
+        },
+        {
+          "kind": "note",
+          "note": "Self-flagged process slip (not a product/AFS defect): committed the implementation directly onto the batch trunk tests/batch-elitea-2257-notification-text-content instead of cutting the feature branch first (3rd recurrence of a known pattern in .agents/memory/test-automation-engineer/verify_feature_branch_before_first_commit.md). Caught and corrected BEFORE pushing the trunk, so no force-push or d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS ELITEA-2257 verified accurate against the live product on first pass — testid provenance table (GridTableBody/GridTableRow prop already existed, GridTablePagination did not), network behavior (sort_by=created_at vs only_new=true predicate distinction), and all 4 notification-template examples matched live DEV data exactly. No amendment needed.",
+          "ref": "test-specs/settings-notifications/l2_notification-text-content-renders-correctly_ELITEA-2257.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical non-testid-handle grep run on the full diff (automation/pages + automation/tests): `git diff tests/batch-elitea-2257-notification-text-content...tests/2257-notification-text-content-renders-correctly -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.lo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/notification_center_page.py:52-67"
+        },
+        {
+          "kind": "note",
+          "note": "Verified all 4 testids live on EliteaUI's `automation/testids` (fresh `git fetch origin` first): notification-table-body, notification-row, notification-message-text at NotificationTable.jsx:254/258/195, and notifications-pagination-next-button wired via a NEW `nextButtonTestId` prop on the shared GridTablePagination.jsx, scoped to the Next IconButton only (Prev untouched, per locator-scope discip… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@3b8e55ff"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated TMS case ↔ AFS ↔ implementation for all 7 case steps + the umbrella acceptance criterion: every Coverage-Map row is disposed 'asserted' (no already-covered/extend-existing rows in this AFS, so the covered-by-verification-against-actual-assertions check has nothing to triangulate here — noted explicitly per the reviewer contract). Each case step maps 1:1 to an allure.step in the test w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/admin/test_notification_text_content.py:53-137"
+        },
+        {
+          "kind": "note",
+          "note": "Minor non-blocking flakiness consideration (not confirmed as a defect, informational only): `click_next_page()` and the pagination loop wait on `notification_message_text.first.wait_for(state=\"visible\")` after the network response resolves. Since rows are keyed by `row.id` (React unmounts/remounts on page change), this should correctly wait for fresh DOM, but there's a theoretical narrow window be… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/notification_center_page.py:99-135"
+        }
+      ],
+      "afs": "test-specs/settings-notifications/l2_notification-text-content-renders-correctly_ELITEA-2257.md",
+      "branch": "tests/2257-notification-text-content-renders-correctly",
+      "pr": 1164,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          10.362545375,
+          9.680557375,
+          10.733635666
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

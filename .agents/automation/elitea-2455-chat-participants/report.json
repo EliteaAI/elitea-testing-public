@@ -1,0 +1,53 @@
+{
+  "batch": "elitea-2455-chat-participants",
+  "base": "origin/automation/base",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-2455",
+      "outcome": "blocked",
+      "note": "defect-found / blocked on EliteaAI/elitea-testing-public#1279 — re-confirmed live over 16 fresh repetitions (real pytest + page objects, fresh agent_id + pipeline_with_llm_id + fresh UI-created conversation per rep, localhost:5173 / DEV backend). The re-attempt directive's open question is now settled empirically, and the answer corrects the prior record: the second Agent-or-Pipeline participant a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "EliteaAI/elitea-testing-public#1279 re-confirmed and materially re-characterised (evidence commented on the issue, not re-filed). It is NOT order-dependent: whichever of Agent/Pipeline is added second to a conversation is silently dropped, in both orders, 13 of 16 live repetitions. The issue body's claim that the reverse order is 'a viable workaround for test automation' is retired. Consequence fo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1279#issuecomment-5429716888"
+        },
+        {
+          "kind": "defect",
+          "note": "No product-observable settle condition exists for the participant add — the first participant's row becoming visible, chat-switch-participant-button becoming visible, and networkidle all resolve together at ~1.7-2.2s, and the measured gap between them and the failing second add was 0.00s in 6/6 runs. Client-side participant state settles AFTER every DOM and network signal has gone quiet. This is t… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "#1279"
+        },
+        {
+          "kind": "note",
+          "note": "A console-error assertion cannot detect the #1279 drop. Every silent-drop run had a completely clean console; the version/prompt_lib 400 + icon_meta TypeError documented on #1279 fires only on the runs that SUCCEED — it is a symptom of the working path, not of the failure. Any future test or investigation on this surface must not use console errors as the guard for participant-add success.",
+          "ref": "#1279"
+        },
+        {
+          "kind": "note",
+          "note": "Salvage opportunity for the lead, not actioned here (out of ELITEA-2455's scope): this case's headline objective — step 20, 'misconfigured entities display a yellow warning indicator' (chat-participant-warning-icon) — is independently automatable TODAY. It needs only a misconfigured toolkit (the existing github_toolkit_with_invalid_credential fixture) plus the Toolkit/MCP add path, neither of whic… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2455"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift carried forward from the prior pass and re-confirmed by source this pass: step 5 lists 'Invite Users' as a plus-menu option, but PlusChatButton.jsx's !isPrivateProject guard means it is ABSENT (not disabled) for this suite's Private project; and step 18's 'owner icon is added in the PARTICIPANTS panel' never renders for a P… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2455 steps 5, 18"
+        },
+        {
+          "kind": "note",
+          "note": "Live-confirmed environment behaviour, added to the chat-interface digest: a brand-new UNSENT conversation is not persisted (URL stays /chat with no conversation id) and a page reload clears every participant — observed 4/4. Any reload/persistence assertion on this surface must come after the first Send.",
+          "ref": "test-specs/chat-interface/_surface.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_chat-create-conversation-add-all-participant-types_ELITEA-2455.md"
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

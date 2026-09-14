@@ -1,0 +1,514 @@
+{
+  "batch": "chat-remaining-w16",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w16",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      208.39,
+      202.75,
+      194.24
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2073",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2074's own Test Data table gives illustrative starter texts ('Echo this: Hello, world!' / 'Repeat this 3 times: test') and literal 'echoes back exactly'/'exactly 3 times' wording that is not reproducible: Build-with-AI's conversation starters are AI-generated (confirmed on two independent live generations this session, neither producing the case's literal text), and the generated Echo Agent… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_save-close-and-use-generated-echo-agent-starters_ELITEA-2074.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2074 step 4 ('Click Save... Agent is saved successfully') does not literally apply to a Build-with-AI-generated agent: the Create-Agent POST already persists the FULL generated config (name/instructions/welcome message/starters), so agent-save-button and agent-discard-button are correctly DISABLED immediately after — nothing left dirty. Asserted directly rather than force-clicking a disable… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_save-close-and-use-generated-echo-agent-starters_ELITEA-2074.md"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation gotcha for any future Build-with-AI-post-create disabled-state check: the disabled state settles ASYNCHRONOUSLY right after the create POST resolves — a one-shot Locator.is_disabled() read is flaky (caught False once in a real pytest run despite two clean MCP-exploration reads); use the web-first expect(locator).to_be_disabled(timeout=...) instead. Recorded in role memory and the su… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/build_with_ai_post_create_save_discard_disabled_state_settles_async.md"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2074 Step 1 case text is \"Canvas shows generated config with LLM model displayed\"; AFS Coverage Map row 1 explicitly commits to \"Asserted where: canvas title + model selector text\" (AFS captured 'Anthropic Claude 4.5 Sonnet' live). The code only asserts `agent_canvas.title` — no assertion touches `chat.model_selector_name` (which exists and is used elsewhere in chat_page.py) or any model te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_generated_echo_agent_save_close_and_starters.py:153-156"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2074 Step 2 case text + AFS both say the sections must be visible AND populated (AFS: 'Welcome Message textbox non-empty, 4 Starter textboxes populated'). The code only checks `agent_canvas.get_section_header(\"welcome-message\")` / `(\"chat-starters\")` are visible — that's the accordion HEADER, not the content. `AgentFormPage.welcome_message_input` and `.conversation_starter_inputs` exist (co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_generated_echo_agent_save_close_and_starters.py:159-166"
+        },
+        {
+          "kind": "defect",
+          "note": "Step 10 does `chat.click_chat_starter_tile(starter_texts[1], ...)` — unconditionally indexes the SECOND starter. But Step 3's own bound (MIN_STARTER_COUNT=1, MAX_STARTER_COUNT=4) explicitly allows a live run to generate only 1 starter (the AFS's stated reason for not hardcoding ==4: \"so the test does not false-fail on a future generation that happens to produce fewer\"). If a future run generates e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_generated_echo_agent_save_close_and_starters.py:247-249"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2073's own AFS 'Expected Results' explicitly claims 'zero console errors beyond the pre-existing, already-documented disableUnderline baseline noise' was verified — but the test file has no `page.on(\"console\", ...)` listener or console-message assertion anywhere (confirmed via grep — zero matches for 'console' in the whole file). The sibling test in the SAME PR (ELITEA-2074, test_generated_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_build_with_ai_cancel_then_generate_echo_agent.py"
+        },
+        {
+          "kind": "note",
+          "note": "AFS-amendment gap (standing check): AFS 2073's Coverage Map row 14 commits to a literal assertion `agent-canvas-title === \"Echo Agent\"`, but the shipped code asserts `agent_canvas.title` equals the dynamically-captured `created_agent_name` from the create response instead (same pattern repeats in 2074 at line 156). This is arguably the BETTER choice — it follows `.agents/testing.md`'s 'assert agai… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_build_with_ai_cancel_then_generate_echo_agent.py:217"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: Step 13's URL check (`\"/agents/all/\" not in page.url`) is a weak negative proxy for the AFS's captured claim ('URL stays on /chat'/'edited_participant_id'). It would pass even if the page ended up somewhere unexpected that merely isn't /agents/all/. Low risk in practice since Step 14's canvas-title assertion immediately after implicitly re-confirms the canvas/chat page is still rendered. Not … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_build_with_ai_cancel_then_generate_echo_agent.py:208"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run clean on the full diff (tests/batch-chat-remaining-w16...tests/2073-2074-build-with-ai-cancel-generate-echo-agent, scoped to automation/): fidelity/provenance grep `git diff ... -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` -> 0 hits. Non-testid-handle grep `git diff ... -- automation/pages/ automation/tests/ | grep -nE '… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Did not check out tests/2073-2074-build-with-ai-cancel-generate-echo-agent per this dispatch's explicit instruction (shared tree, a build may follow) — reviewed via `git diff <base>...<branch>` and `git show <branch>:<path>` only, per role-overrides.md's 'no worktree' guidance table. As a result I did not commit a memory entry onto that branch (the reviewer-contract's default expectation) since do… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Live product finding (not a defect): the agent canvas's own Welcome Message / Conversation Starter form-field VALUES hydrate asynchronously after a Build-with-AI Create-Agent POST resolves — distinct from the chat-area starter tiles, which are already populated at the same instant off a different data path. This is the same class of race as the already-known Save/Discard-disabled-state async settl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2074"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance grep (git diff origin/tests/batch-chat-remaining-w16...tests/2073-2074-build-with-ai-cancel-generate-echo-agent -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') — 0 hits. No substitutions of any kind added."
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep (same diff range | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') — 0 hits. Both test files are 100% reuse of existing testid-only page-object LocatorDescriptor fields (ChatPage, AgentCanvasPage, GenerateAgentModalPage, AgentFormPage) — zero new locators of any kind."
+        },
+        {
+          "kind": "note",
+          "note": "All 5 prior blocking findings verified fixed in fix-round-1 (commit dee880458): ELITEA-2074 Step 1 now asserts chat.model_selector_name visible+non-empty; Step 2 now asserts welcome_message_input and every conversation_starter_inputs[i] non-empty via web-first expect(); Steps 10-11 now guard with an explicit `assert starter_count >= 2` (clear attributed message) before indexing starter_texts[1]; E… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation of both AFS Coverage Maps (Axis 1, every row) against the case snapshots (.agents/automation/chat-remaining-w16/cases/ELITEA-2073.md, ELITEA-2074.md) and the diff's actual assertions confirms every row's claimed assertion exists at the claimed step, including the case-text-drift dispositions (nondeterministic agent name, starter count bound 1-4, disabled-Save clarification, e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Durable memory entry (build_with_ai_post_create_save_discard_disabled_state_settles_async.md) and _surface.md digest update both properly committed by exact path alongside the code fix, documenting the async-settle gotcha (web-first expect() required, not a one-shot .is_disabled()/.input_value() read) for future analysts/implementers on this surface."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_build-with-ai-cancel-then-generate-echo-agent-from-chat-canvas_ELITEA-2073.md",
+      "branch": "tests/2073-2074-build-with-ai-cancel-generate-echo-agent",
+      "pr": 1609,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.39,
+          202.75,
+          194.24
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2074",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2074's own Test Data table gives illustrative starter texts ('Echo this: Hello, world!' / 'Repeat this 3 times: test') and literal 'echoes back exactly'/'exactly 3 times' wording that is not reproducible: Build-with-AI's conversation starters are AI-generated (confirmed on two independent live generations this session, neither producing the case's literal text), and the generated Echo Agent… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_save-close-and-use-generated-echo-agent-starters_ELITEA-2074.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2074 step 4 ('Click Save... Agent is saved successfully') does not literally apply to a Build-with-AI-generated agent: the Create-Agent POST already persists the FULL generated config (name/instructions/welcome message/starters), so agent-save-button and agent-discard-button are correctly DISABLED immediately after — nothing left dirty. Asserted directly rather than force-clicking a disable… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_save-close-and-use-generated-echo-agent-starters_ELITEA-2074.md"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation gotcha for any future Build-with-AI-post-create disabled-state check: the disabled state settles ASYNCHRONOUSLY right after the create POST resolves — a one-shot Locator.is_disabled() read is flaky (caught False once in a real pytest run despite two clean MCP-exploration reads); use the web-first expect(locator).to_be_disabled(timeout=...) instead. Recorded in role memory and the su… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/build_with_ai_post_create_save_discard_disabled_state_settles_async.md"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2074 Step 1 case text is \"Canvas shows generated config with LLM model displayed\"; AFS Coverage Map row 1 explicitly commits to \"Asserted where: canvas title + model selector text\" (AFS captured 'Anthropic Claude 4.5 Sonnet' live). The code only asserts `agent_canvas.title` — no assertion touches `chat.model_selector_name` (which exists and is used elsewhere in chat_page.py) or any model te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_generated_echo_agent_save_close_and_starters.py:153-156"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2074 Step 2 case text + AFS both say the sections must be visible AND populated (AFS: 'Welcome Message textbox non-empty, 4 Starter textboxes populated'). The code only checks `agent_canvas.get_section_header(\"welcome-message\")` / `(\"chat-starters\")` are visible — that's the accordion HEADER, not the content. `AgentFormPage.welcome_message_input` and `.conversation_starter_inputs` exist (co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_generated_echo_agent_save_close_and_starters.py:159-166"
+        },
+        {
+          "kind": "defect",
+          "note": "Step 10 does `chat.click_chat_starter_tile(starter_texts[1], ...)` — unconditionally indexes the SECOND starter. But Step 3's own bound (MIN_STARTER_COUNT=1, MAX_STARTER_COUNT=4) explicitly allows a live run to generate only 1 starter (the AFS's stated reason for not hardcoding ==4: \"so the test does not false-fail on a future generation that happens to produce fewer\"). If a future run generates e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_generated_echo_agent_save_close_and_starters.py:247-249"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2073's own AFS 'Expected Results' explicitly claims 'zero console errors beyond the pre-existing, already-documented disableUnderline baseline noise' was verified — but the test file has no `page.on(\"console\", ...)` listener or console-message assertion anywhere (confirmed via grep — zero matches for 'console' in the whole file). The sibling test in the SAME PR (ELITEA-2074, test_generated_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_build_with_ai_cancel_then_generate_echo_agent.py"
+        },
+        {
+          "kind": "note",
+          "note": "AFS-amendment gap (standing check): AFS 2073's Coverage Map row 14 commits to a literal assertion `agent-canvas-title === \"Echo Agent\"`, but the shipped code asserts `agent_canvas.title` equals the dynamically-captured `created_agent_name` from the create response instead (same pattern repeats in 2074 at line 156). This is arguably the BETTER choice — it follows `.agents/testing.md`'s 'assert agai… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_build_with_ai_cancel_then_generate_echo_agent.py:217"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: Step 13's URL check (`\"/agents/all/\" not in page.url`) is a weak negative proxy for the AFS's captured claim ('URL stays on /chat'/'edited_participant_id'). It would pass even if the page ended up somewhere unexpected that merely isn't /agents/all/. Low risk in practice since Step 14's canvas-title assertion immediately after implicitly re-confirms the canvas/chat page is still rendered. Not … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_build_with_ai_cancel_then_generate_echo_agent.py:208"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run clean on the full diff (tests/batch-chat-remaining-w16...tests/2073-2074-build-with-ai-cancel-generate-echo-agent, scoped to automation/): fidelity/provenance grep `git diff ... -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` -> 0 hits. Non-testid-handle grep `git diff ... -- automation/pages/ automation/tests/ | grep -nE '… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Did not check out tests/2073-2074-build-with-ai-cancel-generate-echo-agent per this dispatch's explicit instruction (shared tree, a build may follow) — reviewed via `git diff <base>...<branch>` and `git show <branch>:<path>` only, per role-overrides.md's 'no worktree' guidance table. As a result I did not commit a memory entry onto that branch (the reviewer-contract's default expectation) since do… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Live product finding (not a defect): the agent canvas's own Welcome Message / Conversation Starter form-field VALUES hydrate asynchronously after a Build-with-AI Create-Agent POST resolves — distinct from the chat-area starter tiles, which are already populated at the same instant off a different data path. This is the same class of race as the already-known Save/Discard-disabled-state async settl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2074"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance grep (git diff origin/tests/batch-chat-remaining-w16...tests/2073-2074-build-with-ai-cancel-generate-echo-agent -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') — 0 hits. No substitutions of any kind added."
+        },
+        {
+          "kind": "note",
+          "note": "Locator grep (same diff range | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') — 0 hits. Both test files are 100% reuse of existing testid-only page-object LocatorDescriptor fields (ChatPage, AgentCanvasPage, GenerateAgentModalPage, AgentFormPage) — zero new locators of any kind."
+        },
+        {
+          "kind": "note",
+          "note": "All 5 prior blocking findings verified fixed in fix-round-1 (commit dee880458): ELITEA-2074 Step 1 now asserts chat.model_selector_name visible+non-empty; Step 2 now asserts welcome_message_input and every conversation_starter_inputs[i] non-empty via web-first expect(); Steps 10-11 now guard with an explicit `assert starter_count >= 2` (clear attributed message) before indexing starter_texts[1]; E… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation of both AFS Coverage Maps (Axis 1, every row) against the case snapshots (.agents/automation/chat-remaining-w16/cases/ELITEA-2073.md, ELITEA-2074.md) and the diff's actual assertions confirms every row's claimed assertion exists at the claimed step, including the case-text-drift dispositions (nondeterministic agent name, starter count bound 1-4, disabled-Save clarification, e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Durable memory entry (build_with_ai_post_create_save_discard_disabled_state_settles_async.md) and _surface.md digest update both properly committed by exact path alongside the code fix, documenting the async-settle gotcha (web-first expect() required, not a one-shot .is_disabled()/.input_value() read) for future analysts/implementers on this surface."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_save-close-and-use-generated-echo-agent-starters_ELITEA-2074.md",
+      "branch": "tests/2073-2074-build-with-ai-cancel-generate-echo-agent",
+      "pr": 1609,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.39,
+          202.75,
+          194.24
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2076",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Re-running the UNMODIFIED sibling automation/tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py (ELITEA-2079) on this same environment now fails deterministically (2/2, including with pipeline_canvas_page.py stashed back to its pre-PR-#1610 state to rule out a regression from this change) at its own Step 1 — pipeline_detail.get_node_count() reads 0 instead of the expected 1. … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1610 / automation/tests/ui/chat/test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — Coverage Map / per-step assertion gap. AFS Coverage Map row for case Step 4 (\"Verify canvas header shows 'Create New Pipeline' with X, Discard, Save\") is disposed `asserted`, citing \"heading text + 3 header controls present, Discard/Save start disabled.\" The AFS's own Step 4 prose repeats: \"confirmed live: heading text exactly 'Create New Pipeline'.\" Grepped the shipped test (`automati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pipeline_discard_changes_clears_canvas.py:136-143"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — Step-reporting convention violation. The final side-channel assertion `assert not console_messages` (end of the test, after the Step 10 `allure.step` block closes) sits OUTSIDE any `with allure.step(...)` block. `.agents/testing.md` § Step reporting and `.agents/conventions.md` Hard Don'ts are explicit: \"Every test's steps must be wrapped in `with allure.step(...)`\" / \"Never ship a tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pipeline_discard_changes_clears_canvas.py:195-198"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — dead code. `PipelineCanvasPage.is_discard_enabled()` (new method, `automation/pages/pipeline_canvas_page.py:133-136`) is never called by this test (the test asserts enabled/disabled state directly via `expect(pipeline_canvas.discard_button)...` instead) and a repo-wide grep found no other caller referencing `PipelineCanvasPage`'s instance of this method (the identically-named method IS used … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_canvas_page.py:133"
+        },
+        {
+          "kind": "note",
+          "note": "Nit — duplication vs. the AFS's own instruction. Steps 2-3 of the test manually re-derive `ChatPage.open_create_new_pipeline_canvas()`'s exact click/hover/click sequence (plus_menu_button click -> wait pipelines_menuitem -> hover -> wait pipelines_create_new_button -> click) instead of calling that pre-existing composed method, even though the AFS's own Step 2 note says explicitly: \"the implemente… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pipeline_discard_changes_clears_canvas.py:130-135"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks run independently on `git diff tests/batch-chat-remaining-w16...tests/2076-pipeline-discard-clears-canvas -- automation/`: fidelity-substitution grep `'^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` -> 0 hits; non-testid-locator grep `'^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_select… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance independently verified live on EliteaUI (fresh `git fetch origin` this session): commit `d4edc6e5` on `origin/automation/testids` adds exactly the three claimed props (`discardModalTestId`/`discardConfirmButtonTestId` new, `discardButtonTestId` pre-existing per ELITEA-2089) threaded `PipelineEditor.jsx` -> `BaseEditor.jsx` -> `EditorHeader.jsx` -> `DiscardButton.jsx`'s pre-existi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All other 9 Coverage Map rows (steps 1,2,3,5,6,7,8,9,10 + preconditions + Expected Final State) were verified against the shipped code and hold: locators (`agent-name-input`/`agent-description-input`/`pipeline-canvas-close-button`/`chat-participants-badge-pipelines`/etc.) all confirmed pre-existing via grep of `automation/pages/*.py`; network-absence assertion (step 8) correctly registers its `pag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Transient HMR-propagation lag on the very first navigation right after pushing a new testid to automation/testids (a long-running npm run dev process can briefly serve stale-transform bundles even though curl-ing the raw JS already shows the new string). One re-run resolved it; same class already logged in project memory for ELITEA-2467/PR #1592 and ELITEA-2207. Not a product defect — informationa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@93dc5667"
+        },
+        {
+          "kind": "note",
+          "note": "automation/pages/pipeline_canvas_page.py carries a pre-existing ruff I001 (import-order) warning unrelated to this round's diff, confirmed present on HEAD before my edit. Left untouched as out-of-scope for this fix round; worth a cheap standalone cleanup pass sometime."
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 verified: Coverage Map step-4 row now backed by a real assertion — expect(pipeline_canvas.title).to_have_text(\"Create New Pipeline\") in the test (test_pipeline_discard_changes_clears_canvas.py:159), a new pipeline-canvas-title testid (LocatorDescriptor at pipeline_canvas_page.py, threaded via EliteaUI's existing optional titleTestId prop, EliteaAI/EliteaUI@93dc5667), and the AFS Concre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pipeline_discard_changes_clears_canvas.py:159"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 verified: the trailing console-error side-channel assertion is now its own allure.step(\"Side-channel check — no unexpected console errors across the full flow\") block, matching the mandatory step-reporting convention used elsewhere in the suite (e.g. test_invite_users_add_cancel_close.py).",
+          "ref": "automation/tests/ui/chat/test_pipeline_discard_changes_clears_canvas.py:209"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks re-run independently on the full diff (git diff origin/tests/batch-chat-remaining-w16...origin/tests/2076-pipeline-discard-clears-canvas -- automation/): substitution grep (mock_|page.route(|route.fulfill(|monkeypatch|.evaluate() → 0 hits; non-testid handle grep (get_by_role|get_by_label|get_by_text|...|page.locator|.locator() → 0 hits. Both confirm the PR body's self-reported 0-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "pipeline_canvas_page.py diff is additive-only — the only two removed lines are docstring prose reworded to describe the new Discard/title chrome (no code removed); the three new LocatorDescriptor fields (discard_button, discard_confirm_modal, discard_confirm_button, title) and two new methods (click_discard, confirm_discard) are pure additions, all testid-only, all referenced on the test's execute… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_canvas_page.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_pipeline-discard-changes-clears-canvas_ELITEA-2076.md",
+      "branch": "tests/2076-pipeline-discard-clears-canvas",
+      "pr": 1610,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.39,
+          202.75,
+          194.24
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2077",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Discovered a NEW dev-server failure mode distinct from the 3 previously-logged 'first-run-after-push HMR settling lag' incidents: after pushing the pipeline-canvas-subtitle testid, 3 consecutive full create-pipeline flows (fresh navigations each time) kept serving the OLD build — confirmed via curl against the dev server's own served source (also stale), i.e. the file-watcher had genuinely stopped… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The composer's post-save chip is genuinely a THREE-way DOM split, not two: chat-switch-participant-button (name), chat-version-selector-trigger (version), and a THIRD sibling button chat-participant-settings-button that carries the 'Editing...' status text (confirmed via a full DOM text-node walk — the text lives nowhere else). Any future case asserting the 'Editing...' status should read chat-par… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "pipeline-canvas-subtitle is pushed to automation/testids (EliteaAI/EliteaUI@7b1e2c5a) but NOT yet on EliteaUI main — relevant for the batch's closure record: this case's test is green on localhost but not yet deployed-env-promotable until a human cherry-picks the testid."
+        },
+        {
+          "kind": "note",
+          "note": "3 debris pipelines (ids 9418-9420, named test-pipeline / testid-verify-2077 / testid-verify-2077b) were created during live-verification exploration in the shared local DEV environment and were cleaned up via pipeline_api.delete_pipeline() before handoff — no leftover state from this session."
+        },
+        {
+          "kind": "note",
+          "note": "Model-chip disambiguation (step 5, test_pipeline_create_save_basic_configuration.py:170) uses positional `chat.model_selector_name.last` rather than a dedicated canvas-scoped field. Not a defect: canvas mounts at step 2, well before step 5's assertion (no render-order race), and `.last`-on-testid-locator is an established idiom elsewhere in tests/ui/chat/ (e.g. test_chat_agent_starters_add_remove.… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pipeline_create_save_basic_configuration.py:170"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_pipeline-create-save-basic-configuration_ELITEA-2077.md",
+      "branch": "tests/2077-pipeline-create-save-basic-config",
+      "pr": 1611,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.39,
+          202.75,
+          194.24
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2078",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Manual cleanup of the exploration pipeline (id 9423, 'test-pipeline') via an in-page fetch() DELETE call failed with a generic 'Failed to fetch' during the live-execution pass; not investigated further (low priority — several other undeleted 'test-pipeline' debris entities already exist in this shared dev project from prior sessions' explorations). Left behind, harmless to the automated test itsel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Step 9's Coverage-Map/Axis-2/Pass-Fail rows claim a 'zero POST/PUT network call' side-channel assertion is implemented ('asserted', 'asserted as a side-channel check') but the diff has no network-capture logic anywhere in the test — only a console-error listener. grep confirms: no `request`/`response`/`on(\"request` handling outside the Setup's single expect_response for the create call.",
+          "ref": "automation/tests/ui/chat/test_pipeline_flow_editor_discard_llm_node.py:243-247 (Step 9 block) vs test-specs/chat-interface/l2_pipeline-flow-editor-add-llm-node-discard-changes_ELITEA-2078.md (Test Steps step 9, Coverage Map row 9, Axis 2 bullet 3, Pass/Fail row)"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps clean: fidelity/substitution grep 0 hits; raw-handle grep 1 hit at test file line 230 but compliant — references the pre-existing class-level constant RF_NODE_TESTID_PREFIX ('[data-testid^=\"rf__node-{}\"]', pipeline_detail_page.py:3200), no new testids or page-object work in this diff."
+        },
+        {
+          "kind": "note",
+          "note": "All other 9 Coverage-Map rows verified against actual code assertions and hold up — title/subtitle/tabs, canvas wrapper, node count/ids at start and end, menu item set equality, node-add + visibility, discard-enabled gating + confirm-dialog text, post-discard discard-disabled. No defect masking, additive-only diff (no shared page-object/fixture files touched), cleanup present in try/finally, allur… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root-caused a real async timing race while implementing the reviewer's requested Step 9 zero-network-call assertion: EliteaUI's in-chat pipeline creation (usePipelineCreation.js onPipelineCreated) fires a second POST (addParticipantIntoConversation, adds the pipeline as a PIPELINES chat participant) synchronously alongside the create-mode Save, whose response can resolve after the create-response … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2078"
+        },
+        {
+          "kind": "note",
+          "note": "A pre-existing uncommitted change to .agents/testing.md (a 2026-08-20 suite-health pointer about #1082 test-user rotation) was present in the working tree at dispatch start, not authored by this session. Left untouched/unstaged per commit-only-your-own-paths discipline; flagging so it isn't lost if the tree gets swept."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED — verified against fix-round-1 commit 522171312. Diff adds a real `page.on(\"response\", ...)` listener collecting POST/PUT into `write_requests`, cleared right after Setup's two Save-triggered POSTs (create + the newly-discovered synchronous participant-add POST from `usePipelineCreation.js`'s `onPipelineCreated`) are BOTH explicitly awaited via nested `page.expect_r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pipeline_flow_editor_discard_llm_node.py:131-140,156-194,272-279"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amended in the same PR to match: Coverage Map row 9 now says `assert not write_requests` (response-listener log, cleared after Setup's two awaited POSTs) instead of the unimplemented 'no network call' prose; § Network Behavior gained a paragraph documenting the discovered participant-add-POST race and the awaited-nested-response fix pattern.",
+          "ref": "test-specs/chat-interface/l2_pipeline-flow-editor-add-llm-node-discard-changes_ELITEA-2078.md:69,110,112"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation (case -> AFS -> diff) passed: all 10 case steps + both preconditions have a Coverage Map row and a real assertion at that step in the code (verified line-by-line against automation/tests/ui/chat/test_pipeline_flow_editor_discard_llm_node.py:196-298); no dropped elements, no masking (no test.fail/xit/skip/weakened asserts), no known-defect soft-asserts needed (none found). Con… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory mechanical greps run on the full diff (base 44aacf2c6...HEAD, -- automation/): fidelity/substitution grep (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) = 0 hits. Non-testid-locator-addition grep (`get_by_role|get_by_label|...|page\\.locator|\\.locator\\(`) = 1 hit at line 263: `pipeline_detail.canvas_wrapper.locator(pipeline_detail.RF_NODE_TESTID_PREFIX.format(\"LLM\"))`… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pipeline_flow_editor_discard_llm_node.py:263"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_pipeline-flow-editor-add-llm-node-discard-changes_ELITEA-2078.md",
+      "branch": "tests/ELITEA-2078-pipeline-flow-editor-discard-llm-node",
+      "pr": 1612,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.39,
+          202.75,
+          194.24
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2081",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Pre-existing MUI console warning ('out-of-range value text-embedding-3-small' on the Toolkit form's Embedding Model select) fires on every re-render whenever ANY Toolkit-type form is open in this local/DEV environment (no embedding-model config exists here) — confirmed independent of Discard/close. Filtered in the new test with a 4th documented pattern (same idiom as the existing 3 filters in test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid commit EliteaAI/EliteaUI@bc08563f pushed to automation/testids (dev server serves it live) — awaiting human cherry-pick to main, per standing policy. Not yet promotable to a deployed env."
+        },
+        {
+          "kind": "defect",
+          "note": "CRITICAL — Locator constructed directly in a spec file: `github_type_card = page.locator(toolkit_form.TOOLKIT_TYPE_CARD.format(\"github\"))`. Violates `.agents/testing.md` § Locator policy (\"Locators live ONLY as page-object class fields — never construct a locator inside a method body … and never in spec files\") and `.claude/rules/page-objects.md`'s sign-off checklist (\"Tests don't contain direct p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_close_toolkit_canvas_without_saving.py:213"
+        },
+        {
+          "kind": "defect",
+          "note": "IMPORTANT — AFS Coverage Map (Step 2 and Step 3 rows) commits to asserting canvas chrome absence via BOTH `toolkit-canvas-close-button` and `toolkit-canvas-title` ('canvas chrome (`toolkit-canvas-close-button`, `toolkit-canvas-title`) absent from the DOM'), but the implementation only asserts `expect(toolkit_canvas.title).to_be_hidden(...)` — `toolkit_canvas.close_button` absence is never checked … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_close_toolkit_canvas_without_saving.py:219-227"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulated clean across case (.agents/automation/chat-remaining-w16/cases/ELITEA-2081.md) -> AFS (test-specs/chat-interface/l2_create-toolkit-from-conversation-close-canvas-without-saving_ELITEA-2081.md) -> diff: Steps 1, 4, 5 each have real assertions at the claimed step; the transit-setup precondition (AFS steps 0a-0f) is honestly live-driven (fresh Discard flow through the rea… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Unrelated pre-existing hit in the reviewer's non-testid-handle grep: automation/tests/ui/chat/test_pipeline_flow_editor_discard_llm_node.py has a `pipeline_detail.canvas_wrapper.locator(` call chained off a page-object field. Out of scope for this ELITEA-2081 fix round (different, already-merged case on this batch trunk) — flagging in case a future review sweep of that file wants to check it's a c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 verified: automation/tests/ui/chat/test_close_toolkit_canvas_without_saving.py:213 now uses toolkit_form.get_type_card(\"github\") — construction-site violation resolved, wrapper is a pre-existing class-level TOOLKIT_TYPE_CARD constant in toolkit_creation_page.py.",
+          "ref": "automation/tests/ui/chat/test_close_toolkit_canvas_without_saving.py:213"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 verified: Step 3 now asserts expect(toolkit_canvas.close_button).to_be_hidden(...) alongside the pre-existing Step 2 title-hidden check — the missing close_button absence assertion the AFS Coverage Map committed to is now present (split across steps 2/3, which is a defensible per-step placement: title unmounts immediately on close-click, full chrome absence + conversation view confirme… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_close_toolkit_canvas_without_saving.py:229"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical provenance grep (git diff decbac7db...tests/ELITEA-2081-close-toolkit-canvas-without-saving -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') returned exactly 1 hit, which is prose inside the module docstring (\"No page.route / route.fulfill / page.evaluate / monkeypatch anywhere in this test.\") — not executable code. No real substitutio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator-identity grep (git diff decbac7db...tests/ELITEA-2081-close-toolkit-canvas-without-saving -- automation/pages/ automation/tests/ | grep -nE non-testid-handle-pattern) returned 0 hits — all added locators are class-level LocatorDescriptor(testid=...) fields; no raw get_by_*/page.locator construction added."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_create-toolkit-from-conversation-close-canvas-without-saving_ELITEA-2081.md",
+      "branch": "tests/ELITEA-2081-close-toolkit-canvas-without-saving",
+      "pr": 1613,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.39,
+          202.75,
+          194.24
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2084",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "mcp-canvas-discard-button/-confirm-modal/-confirm-button already existed on automation/testids before this case started — they were added as a side effect of ELITEA-2081's Toolkit-canvas Discard fix (ToolkitEditor.jsx serves both Toolkit and MCP via one isMcpTestIdScope-conditional call site). Confirmed live via DOM probe before writing the AFS, so zero add-data-testid work was needed for this cas… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Self-caught infra issue during build: a hand-rolled plus-menu click chain (chat.plus_menu_button.click() + hover + create-button click) hit the documented MUI-overlay-intercept gotcha and needed pytest-rerunfailures' auto-rerun to pass once. Fixed by switching to the already-proven ChatPage.open_create_new_mcp_canvas() helper (the same one ELITEA-2085's merged test uses for the identical sequence)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (TMS case ELITEA-2084 ↔ AFS ↔ PR #1614 diff) is clean. All 12 case steps map to Coverage Map rows, every `asserted` row has a real assertion in the test at the corresponding step. Mechanical greps run on the full diff (`git diff tests/batch-chat-remaining-w16...tests/ELITEA-2084-mcp-discard-changes -- automation/`): fidelity/substitution pattern (`\\.mock_|page\\.route\\(|route\\.fulfill… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance verified independently against fresh `origin/automation/testids` (git fetch run this session): `mcp-canvas-discard-button` matches a direct single-line grep; `mcp-canvas-discard-confirm-modal`/`mcp-canvas-discard-confirm-button` require reading ToolkitEditor.jsx directly (the naive bare-substring + `testid[:=]` filter false-negatives on these because the prop name `discardModalTestId=`/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object surface on McpCanvasPage (discard_button/discard_confirm_modal/discard_confirm_button + click_discard()/confirm_discard()/is_discard_enabled()) is a verified 1:1 mirror of the existing, already-merged ToolkitCanvasPage (ELITEA-2081) — same LocatorDescriptor shape, same wait_for(state=...) idiom, no new raw handles, no fallback= params. Confirmed by direct comparison of both page-ob… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Steps 2–3 are compressed into a single allure.step ('Step 2-3') around the pre-existing, unchanged `ChatPage.open_create_new_mcp_canvas()` helper — this is literal reuse of the identical idiom already reviewed and merged for the sibling ELITEA-2085 test (same helper, same UI flow), not a new deviation invented by this PR. Case step 2's own expected result ('MCPs submenu opens') is implicitly asser… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "test-specs/.../ELITEA-2084.md Step 10 narrative names three fields confirmed absent from the DOM (name/url/client_secret inputs), but the test's Step 10 block only asserts `name_input`/`url_input` to_be_hidden — the client_secret field's absence is not separately re-checked. Nit-level only: the Coverage Map row 10's 'Asserted where' cell uses generic plural phrasing ('form-field testids absent fro… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_create_mcp_from_conversation_discard_changes.py:~180"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt: no pytest.skip/xfail/xit/test.fail()/weakened asserts anywhere in the diff. Console-noise filters (#656 key-prop warning, secrets-403, Vite stream-externalization) are all pre-existing, previously-tracked, and match the sibling ELITEA-2085/2081 tests' established filter set — no new undeclared filter introduced."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_create-mcp-from-conversation-discard-changes_ELITEA-2084.md",
+      "branch": "tests/ELITEA-2084-mcp-discard-changes",
+      "pr": 1614,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          208.39,
+          202.75,
+          194.24
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 7
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

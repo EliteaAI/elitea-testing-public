@@ -1,0 +1,329 @@
+{
+  "batch": "chat-remaining-w09",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w09",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      329.67,
+      230.41,
+      228.12
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2157",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Implementation-time testid gap found and fixed: the 'Duplicate' context-menu item (ConversationItem.jsx) had NO `key` prop at all — the only item in the 7-item menuItems array missing one — so DotMenu.jsx's `testId: item.key` mapping left it with no data-testid, making it invisible to any testid-prefix-based menu-item count even though it renders and works fine. Added `key: 'chat-conversation-menu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@a53b9d4b"
+        },
+        {
+          "kind": "note",
+          "note": "New MUI interaction gotcha confirmed live: a forced click on a DISABLED MUI MenuItem never closes the parent Menu (MUI's ButtonBase guards its onClick handler internally when disabled, so the item's own close-on-select trigger never fires either) — distinct root cause from the already-documented 'no auto-close wired' pattern. Symptom: the next hover/click on anything outside the Menu's Paper (incl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero product defects found — both cases' mechanisms (disabled-in-folder, enabled-after-move-out) work exactly as cased, end to end, live-confirmed with 0 console errors across every repro and the final green pytest run."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS/diff drift (blocking — see blocking_detail): the AFS's Concrete Handles table claims zero new testids while the shipped test depends on one added mid-implementation (chat-conversation-menu-duplicate-menuitem, EliteaAI/EliteaUI@a53b9d4b). The testid addition itself is legitimate, correctly zero-functional-impact (verified: `git show a53b9d4b` in ../EliteaUI is a single `key: 'chat-conversation-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md:178"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep (git diff origin/automation/base...origin/tests/ELITEA-2157-2158-pin-disabled-in-folder -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') → 0 hits. Locator-policy grep (same diff, get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\() → … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full per-ROW triangulation done for both TMS cases against the family AFS's Coverage Map: every ELITEA-2157 row (context menu visible/6-item count, disabled aria-disabled=\"true\", no-op click with no network side-effect, still-in-folder+unpinned) and every ELITEA-2158 row (Back-to-the-list PUT 200 + folder_id null + toast, Today group membership, re-enabled aria-disabled/label check, pin click -> d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All page-object methods/constants the test calls (expand_folder, is_folder_expanded, is_conversation_in_folder, open_conversation_context_menu, get_open_conversation_menu_item_count, get_conversation_menu_item, open_move_to_submenu, move_to_back_to_list_menuitem, select_move_to_back_to_list, is_conversation_in_group, is_conversation_pinned, get_pin_icon, click_conversation_menu_item, get_conversat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the test seeds a second conversation (conv_sibling) to keep the 'Today' heading visible for the Step 9 Y-position assertion. This datum is not listed in the AFS § Test Data inventory (only folder and conv_target are). Reasoning is well-documented in the test's own docstring and matches precedent (ELITEA-2149/2114), cleanup is proper, and it doesn't weaken or change any asserte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed a memory update (qa-engineer role) documenting this exact drift pattern as a new occurrence of an existing recurring lesson, on the branch under review: .agents/memory/qa-engineer/afs_claims_need_full_sweep_and_grep.md, commit 4ced4180, pushed to origin/tests/ELITEA-2157-2158-pin-disabled-in-folder. Touches nothing under automation/."
+        },
+        {
+          "kind": "note",
+          "note": "Pattern lesson (now folded into the existing indexed memory entry declared_improvisation_needs_afs_sweep_not_just_pr_narration.md): a same-PR docs(afs): commit that narrates a mid-implementation testid addition can touch ONLY the feature's _surface.md digest without ever amending the AFS file's own Concrete Handles table — the commit message alone is not evidence the AFS was amended. Verify with g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1553 / EliteaAI/EliteaUI@a53b9d4b"
+        },
+        {
+          "kind": "note",
+          "note": "Re-review of PR #1553 (ELITEA-2157/2158, branch tests/ELITEA-2157-2158-pin-disabled-in-folder vs trunk tests/batch-chat-remaining-w09). The prior blocking finding — AFS Concrete Handles table falsely claiming 'No new testids needed for either case' while the shipped test's Step 2 assertion (get_open_conversation_menu_item_count()==6) depends on the new chat-conversation-menu-duplicate-menuitem tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation performed (case snapshots ELITEA-2157.md/ELITEA-2158.md vs AFS Coverage Map vs diff): every ELITEA-2157 step (1-4) and ELITEA-2158 step (1-5) maps to a distinct AFS step with a real assertion in the shipped test (aria-disabled check, network no-op check via page.expect_response+TimeoutError, PUT 200 + folder_id null, aria-disabled!=true + label check, is_conversation_pinned +… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_conversation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps re-run on the full diff (trunk...branch): fidelity/substitution grep (mock_/page.route/route.fulfill/monkeypatch/.evaluate() on automation/) = 0 hits. Non-testid-locator grep on automation/pages+tests = 2 hits, both page.locator(chat.FOLDER_CONTEXT_MENU_POPOVER) — a pre-existing class-level LocatorDescriptor-adjacent constant (chat_page.py:1355) resolving to '[data-testid=\"convers… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_conversation.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md",
+      "branch": "tests/ELITEA-2157-2158-pin-disabled-in-folder",
+      "pr": 1553,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          329.67,
+          230.41,
+          228.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2158",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Implementation-time testid gap found and fixed: the 'Duplicate' context-menu item (ConversationItem.jsx) had NO `key` prop at all — the only item in the 7-item menuItems array missing one — so DotMenu.jsx's `testId: item.key` mapping left it with no data-testid, making it invisible to any testid-prefix-based menu-item count even though it renders and works fine. Added `key: 'chat-conversation-menu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@a53b9d4b"
+        },
+        {
+          "kind": "note",
+          "note": "New MUI interaction gotcha confirmed live: a forced click on a DISABLED MUI MenuItem never closes the parent Menu (MUI's ButtonBase guards its onClick handler internally when disabled, so the item's own close-on-select trigger never fires either) — distinct root cause from the already-documented 'no auto-close wired' pattern. Symptom: the next hover/click on anything outside the Menu's Paper (incl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero product defects found — both cases' mechanisms (disabled-in-folder, enabled-after-move-out) work exactly as cased, end to end, live-confirmed with 0 console errors across every repro and the final green pytest run."
+        },
+        {
+          "kind": "defect",
+          "note": "AFS/diff drift (blocking — see blocking_detail): the AFS's Concrete Handles table claims zero new testids while the shipped test depends on one added mid-implementation (chat-conversation-menu-duplicate-menuitem, EliteaAI/EliteaUI@a53b9d4b). The testid addition itself is legitimate, correctly zero-functional-impact (verified: `git show a53b9d4b` in ../EliteaUI is a single `key: 'chat-conversation-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md:178"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep (git diff origin/automation/base...origin/tests/ELITEA-2157-2158-pin-disabled-in-folder -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') → 0 hits. Locator-policy grep (same diff, get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\() → … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Full per-ROW triangulation done for both TMS cases against the family AFS's Coverage Map: every ELITEA-2157 row (context menu visible/6-item count, disabled aria-disabled=\"true\", no-op click with no network side-effect, still-in-folder+unpinned) and every ELITEA-2158 row (Back-to-the-list PUT 200 + folder_id null + toast, Today group membership, re-enabled aria-disabled/label check, pin click -> d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All page-object methods/constants the test calls (expand_folder, is_folder_expanded, is_conversation_in_folder, open_conversation_context_menu, get_open_conversation_menu_item_count, get_conversation_menu_item, open_move_to_submenu, move_to_back_to_list_menuitem, select_move_to_back_to_list, is_conversation_in_group, is_conversation_pinned, get_pin_icon, click_conversation_menu_item, get_conversat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: the test seeds a second conversation (conv_sibling) to keep the 'Today' heading visible for the Step 9 Y-position assertion. This datum is not listed in the AFS § Test Data inventory (only folder and conv_target are). Reasoning is well-documented in the test's own docstring and matches precedent (ELITEA-2149/2114), cleanup is proper, and it doesn't weaken or change any asserte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Committed a memory update (qa-engineer role) documenting this exact drift pattern as a new occurrence of an existing recurring lesson, on the branch under review: .agents/memory/qa-engineer/afs_claims_need_full_sweep_and_grep.md, commit 4ced4180, pushed to origin/tests/ELITEA-2157-2158-pin-disabled-in-folder. Touches nothing under automation/."
+        },
+        {
+          "kind": "note",
+          "note": "Pattern lesson (now folded into the existing indexed memory entry declared_improvisation_needs_afs_sweep_not_just_pr_narration.md): a same-PR docs(afs): commit that narrates a mid-implementation testid addition can touch ONLY the feature's _surface.md digest without ever amending the AFS file's own Concrete Handles table — the commit message alone is not evidence the AFS was amended. Verify with g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1553 / EliteaAI/EliteaUI@a53b9d4b"
+        },
+        {
+          "kind": "note",
+          "note": "Re-review of PR #1553 (ELITEA-2157/2158, branch tests/ELITEA-2157-2158-pin-disabled-in-folder vs trunk tests/batch-chat-remaining-w09). The prior blocking finding — AFS Concrete Handles table falsely claiming 'No new testids needed for either case' while the shipped test's Step 2 assertion (get_open_conversation_menu_item_count()==6) depends on the new chat-conversation-menu-duplicate-menuitem tes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation performed (case snapshots ELITEA-2157.md/ELITEA-2158.md vs AFS Coverage Map vs diff): every ELITEA-2157 step (1-4) and ELITEA-2158 step (1-5) maps to a distinct AFS step with a real assertion in the shipped test (aria-disabled check, network no-op check via page.expect_response+TimeoutError, PUT 200 + folder_id null, aria-disabled!=true + label check, is_conversation_pinned +… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_conversation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical greps re-run on the full diff (trunk...branch): fidelity/substitution grep (mock_/page.route/route.fulfill/monkeypatch/.evaluate() on automation/) = 0 hits. Non-testid-locator grep on automation/pages+tests = 2 hits, both page.locator(chat.FOLDER_CONTEXT_MENU_POPOVER) — a pre-existing class-level LocatorDescriptor-adjacent constant (chat_page.py:1355) resolving to '[data-testid=\"convers… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_conversation.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md",
+      "branch": "tests/ELITEA-2157-2158-pin-disabled-in-folder",
+      "pr": 1553,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          329.67,
+          230.41,
+          228.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2159",
+      "outcome": "already-covered",
+      "note": "Near-total duplicate of ELITEA-2151. All 5 case steps (pin folder, pin conversation not in a folder, 4-tier panel order, no-unpinned-above-same-type-pinned, folders-before-conversations-in-pinned-area) are already directly asserted by TestChatPanelOrderingPinnedFoldersAndConversations::test_pinned_folder_and_conversation_render_above_unpinned_panel_order in automation/tests/ui/chat/test_pin_conver… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2159 is the latest in a recurring pattern on this TMS module (chat-interface) of near-duplicate case IDs testing the same flow with slightly reworded steps (prior examples: ELITEA-2123/2127 vs ELITEA-2459, ELITEA-2133/2134 vs ELITEA-2119/2120, ELITEA-2457 vs ELITEA-2119/2133 — already documented in .agents/memory/test-automation-engineer/chat_module_carries_near_duplicate_case_id_pairs.md).… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2151"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_left-panel-order-after-multiple-pin-actions_ELITEA-2159.md"
+    },
+    {
+      "id": "ELITEA-2160",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2160's case text asks to pin a second conversation 'from This Week' — this environment (project 399, Private) currently has zero non-today conversations and the API cannot backdate created_at/updated_at (ConversationCreate/Update OpenAPI schemas carry no timestamp field), a fact already documented in test-specs/chat-interface/_surface.md behind ELITEA-2096/2097's blocked status and live-rec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_multiple-conversations-pinned-independently_ELITEA-2160.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep (git diff origin/tests/batch-chat-remaining-w09...origin/tests/ELITEA-2160-2161-multi-pin-independent -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') → 0 hits."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep (same diff range, automation/pages/ + automation/tests/) → 2 hits, both `page.locator(chat.FOLDER_MENU_PIN_ITEM)` at test_pin_folder.py:286,307. One-hop check: `FOLDER_MENU_PIN_ITEM = '[data-testid=\"chat-folder-menu-pin-menuitem\"]'` is a class-level constant on ChatPage (chat_page.py:1349) — COMPLIANT per the reviewer-contract's own compliance test. Not new: the identical p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py:286"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation complete for both cases: every Coverage-Map Axis-1 row (ELITEA-2160 and ELITEA-2161, including the negative 'only one X can be pinned at a time' Fail-criterion rows) maps 1:1 onto a real assertion at the claimed step in the diff — verified by reading both AFS files against both test bodies line-by-line. All referenced page-object methods (open_conversation_context_menu, click_convers… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "extend-existing merged-target rule satisfied: both AFS files target test_pin_conversation.py / test_pin_folder.py at commit fb306056, confirmed an ancestor of origin/automation/base (`git merge-base --is-ancestor fb306056 origin/automation/base` → true). Both PRs are purely additive (git diff shows only insertions, 0 deletions) — new classes appended, no existing method bodies touched."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2160's AFS documents a case-text drift (case asks for a second conversation 'from This Week'; this environment has zero non-today conversations and no API way to backdate one) and proceeds anyway on the reasoning that the case's actual subject (independent multi-pin) doesn't require different origin date groups — a judgment call distinct from the precedent set by ELITEA-2096/2097, which wen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_multiple-conversations-pinned-independently_ELITEA-2160.md:20"
+        },
+        {
+          "kind": "note",
+          "note": "No masking found (0 hits for pytest.skip/pytest.fail/xfail/expect.soft/@pytest.mark.skip in the added lines). Both tests wrap every AFS step in `with allure.step(...)`, register a console-error listener excluding the known secrets/403 noise, and clean up all seeded data in a try/finally — consistent with the file's existing idiom."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_multiple-conversations-pinned-independently_ELITEA-2160.md",
+      "branch": "tests/ELITEA-2160-2161-multi-pin-independent",
+      "pr": 1554,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          329.67,
+          230.41,
+          228.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2161",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2160's case text asks to pin a second conversation 'from This Week' — this environment (project 399, Private) currently has zero non-today conversations and the API cannot backdate created_at/updated_at (ConversationCreate/Update OpenAPI schemas carry no timestamp field), a fact already documented in test-specs/chat-interface/_surface.md behind ELITEA-2096/2097's blocked status and live-rec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_multiple-conversations-pinned-independently_ELITEA-2160.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical fidelity grep (git diff origin/tests/batch-chat-remaining-w09...origin/tests/ELITEA-2160-2161-multi-pin-independent -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()') → 0 hits."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep (same diff range, automation/pages/ + automation/tests/) → 2 hits, both `page.locator(chat.FOLDER_MENU_PIN_ITEM)` at test_pin_folder.py:286,307. One-hop check: `FOLDER_MENU_PIN_ITEM = '[data-testid=\"chat-folder-menu-pin-menuitem\"]'` is a class-level constant on ChatPage (chat_page.py:1349) — COMPLIANT per the reviewer-contract's own compliance test. Not new: the identical p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_pin_folder.py:286"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation complete for both cases: every Coverage-Map Axis-1 row (ELITEA-2160 and ELITEA-2161, including the negative 'only one X can be pinned at a time' Fail-criterion rows) maps 1:1 onto a real assertion at the claimed step in the diff — verified by reading both AFS files against both test bodies line-by-line. All referenced page-object methods (open_conversation_context_menu, click_convers… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "extend-existing merged-target rule satisfied: both AFS files target test_pin_conversation.py / test_pin_folder.py at commit fb306056, confirmed an ancestor of origin/automation/base (`git merge-base --is-ancestor fb306056 origin/automation/base` → true). Both PRs are purely additive (git diff shows only insertions, 0 deletions) — new classes appended, no existing method bodies touched."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2160's AFS documents a case-text drift (case asks for a second conversation 'from This Week'; this environment has zero non-today conversations and no API way to backdate one) and proceeds anyway on the reasoning that the case's actual subject (independent multi-pin) doesn't require different origin date groups — a judgment call distinct from the precedent set by ELITEA-2096/2097, which wen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_multiple-conversations-pinned-independently_ELITEA-2160.md:20"
+        },
+        {
+          "kind": "note",
+          "note": "No masking found (0 hits for pytest.skip/pytest.fail/xfail/expect.soft/@pytest.mark.skip in the added lines). Both tests wrap every AFS step in `with allure.step(...)`, register a console-error listener excluding the known secrets/403 noise, and clean up all seeded data in a try/finally — consistent with the file's existing idiom."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_multiple-folders-pinned-independently_ELITEA-2161.md",
+      "branch": "tests/ELITEA-2160-2161-multi-pin-independent",
+      "pr": 1554,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          329.67,
+          230.41,
+          228.12
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2461",
+      "outcome": "already-covered",
+      "note": "Zero new code. Case's 5 steps decompose into two disjoint halves, both already proven by merged specs on origin/automation/base: steps 1-4 (hover a Today/This Week/Older conversation -> 3-dot -> Pin on top -> moves out of its date group into pinned section -> pin icon renders) = test_pin_conversation_via_pin_on_top (ELITEA-2149, class TestPinConversationViaPinOnTop); step 5 (full 4-tier panel orde… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2461 required combining TWO covering specs (ELITEA-2149 + ELITEA-2151) to close, the first case in this digest needing that -- worth watching for future chat-pin-surface cases that may similarly decompose across more than one existing test rather than mapping to a single covering spec.",
+          "ref": "test-specs/chat-interface/lcovered_pin-conversation-appears-above-folders-and-date-groups_ELITEA-2461.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_pin-conversation-appears-above-folders-and-date-groups_ELITEA-2461.md"
+    },
+    {
+      "id": "ELITEA-2462",
+      "outcome": "already-covered",
+      "note": "Word-for-word duplicate of ELITEA-2152's case text (same title, objective, and 6-step sequence, same order). Covering test automation/tests/ui/chat/test_pin_folder.py::TestPinFolderViaPinOnTop::test_pin_folder_via_pin_on_top is merged to origin/automation/base (PR #1552, commit fb306056) and asserts every one of the 6 steps 1:1 (fresh git fetch + git show confirmed presence this session). Live-rec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2462 and ELITEA-2152 are the same test case authored twice under two different TMS ids (identical title 'Chat – Pin a folder...', identical objective, identical 6 numbered steps in the same order). No case-text drift, no defect — purely a TMS-side duplicate-authoring artifact. Flagging so the TMS backwrite/linkage step doesn't miss it and so a future intake sweep dedups by content, not just… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2462 / ELITEA-2152"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_pin-a-folder-and-verify-it-appears-at-top-of-left-panel_ELITEA-2462.md"
+    },
+    {
+      "id": "ELITEA-2460",
+      "outcome": "already-covered",
+      "note": "5 granular steps (expand folder-w-conversations -> listed; collapse -> hidden; expand empty folder -> 'No conversations added') decompose 1:1 onto the 3 compound observables test_folder_displays_conversations_or_empty_state (ELITEA-2148) already asserts. Covering test merged to origin/automation/base (commit d2b5d1aa, PR #1545, wave-07) -- confirmed ancestor via fresh git fetch + git merge-base --… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No product defects, no case-text drift found for ELITEA-2460 -- the case's title/steps match live behavior exactly. This is another instance of the already-documented chat-interface module pattern where near-duplicate case IDs (spread across the whole numeric range, not just adjacent) target flows already automated by an earlier case in this same digest -- grep the surface digest by BEHAVIOUR befo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/_surface.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_folder-displays-conversations-when-expanded-and-empty-state_ELITEA-2460.md"
+    }
+  ],
+  "totals": {
+    "automated": 4,
+    "already-covered": 4
+  },
+  "quality_flags": [
+    "extend-rate 6/8 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

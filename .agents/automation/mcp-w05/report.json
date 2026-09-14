@@ -1,0 +1,273 @@
+{
+  "batch": "mcp-w05",
+  "base": "origin/automation/base",
+  "work_item_ref": "#1396",
+  "integration_branch": "tests/batch-mcp-w05",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      107.58,
+      103.63,
+      131
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1952",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1952 step 18 says 'Connect nodes: START -> MCP 1 -> END'. There is NO START node in this product — a fresh pipeline's canvas holds only END, and 'start' is expressed as the node's Trigger/entry-point property (pipeline-entry-point-trigger-select, value 'Chat Message', which the sole node auto-acquires). The MCP 1 -> END edge is auto-created from the node's default `transition` and does not … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1952 step 18"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both cases describe a node configuration panel that 'opens on the right' when you click the node (1952 step 12, 1953 step 1). No node type in this product has a click-to-open right-hand config panel — every node's config is always-expanded INLINE on the node card. Already documented for every node type in test-specs/pipelines/_surface.md and already handled correctly by the merged ELITEA-2037 spec… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1952 step 12 / ELITEA-1953 step 1"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1953 steps 9/10 say the Interrupt before/after and Structured output toggles are 'present (disabled by default)'. Live, all three are UNCHECKED (off) by default — that is the intent. Two additionally carry disabled=true, but for structural reasons rather than 'by default': Interrupt-before because the node is the entry point, Interrupt-after because transition == END. Structured output is N… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1953 steps 9-10"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1953 step 4 asks for parameters 'listed with their names and types'. The UI shows the parameter name plus a MAPPING-type select (Fixed / Variable / F-String) — it never displays the parameter's JSON-schema data type (string). Also, the section heading text is 'Input mapping (required 2)' (sentence case, with the count), not the uppercase 'INPUT MAPPING (REQUIRED)' the case writes — CSS uppe… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1953 steps 3-4"
+        },
+        {
+          "kind": "note",
+          "note": "Enter does NOT send in the pipeline embedded-chat composer. Filling chat-message-input and pressing Enter leaves the text in the field and posts nothing; chat-send-button must be clicked. PipelineDetailPage.send_message_in_embedded_chat() already does this correctly — flagged so nobody 'simplifies' it to a keypress. Cost me two turns to discover. Recorded in the pipelines surface digest and in rol… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The pipeline CREATE form requires Description as well as Name — agent-save-button stays disabled until BOTH are filled. Only bites when a case drives creation through the UI (specs normally use the pipeline_id API fixture), but it is what made ELITEA-1952 step 1 take two attempts. Recorded in the digest."
+        },
+        {
+          "kind": "note",
+          "note": "id='simple-select-[object Object]' on the Variable-branch input-mapping Value select is a real (cosmetic) id-computation slip in the shared InputMappingItem component — the object is stringified into the id. Not a functional defect and no assertion should depend on it; not filed as a bug (zero user impact, and the fix that matters is the testid widening the AFS already specifies). Flagged here so … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The pipelines exploration digest test-specs/pipelines/_surface.md is now 3582 lines / ~60 top-level sections — far past the ~150-line 'time to split into an index' smell in the test-case-analysis skill. I appended in place rather than splitting: a split of a digest this central mid-campaign is a refactor with real disruption risk for concurrent units, and it is not this dispatch's scope. Worth sch… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "question",
+          "note": "Recommended-extension-shape declarations in both AFS (gap 3 of ELITEA-1952 and all of ELITEA-1953 as SEPARATE test functions in the covering spec's file, rather than more steps on the existing test) are declared improvisations per .agents/role-overrides.md § Declared-improvisation protocol — the canon has no rule for when an extend-existing extension should be a new sibling test vs appended steps.… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/role-overrides.md § Declared-improvisation protocol"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS ELITEA-1953 pointed the Variable-branch value testid at InputMappingItem.jsx's FINAL Select.SingleSelect. Wrong branch: FlowEditorHelpers.getEnumList('variable', ...) returns the state-variable list (flowEditor.helpers.js:162), so enumList is non-empty and the row renders the FIRST enum branch (dataType !== 'array' || type === 'variable'). The first testid placement never appeared in the DOM —… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS ELITEA-1952 proposed tagging the TOOLS card's 'Log in' button as the connection-status control. McpLogInButton returns null once the MCP is authorized, so that testid's PRESENCE would flip with state — outlawed by the PR #581 ruling. Placed toolkit-card-connection-status on the always-rendered Online/Offline indicator Box with state in data-connected instead (the ruling's prescribed shape), as… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-in-pipeline-add-to-tools-configure-and-execute_ELITEA-1952.md"
+        },
+        {
+          "kind": "note",
+          "note": "New live-product gotcha, now in _surface.md and role memory: ReactFlow's bottom-left rf__controls panel intercepts clicks on a node's LOWER inline-config rows. A freshly-added node spawns just above it and grows down over it once the Input-mapping section renders, so the panel's 'Fit View' button steals the pointer from the Type select. Remedy is move_node(node_id, dx=450, dy=0) right after wait_f… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The MCP-node Input-mapping row's Value control now carries ONE testid across two widget shapes (Fixed/F-String text input vs Variable state-variable select). This VOIDS the AFS's assertion 4 (an absence assertion, to_have_count(0) after switching to Variable) — landing the testid gap is precisely what makes it false. Replaced with a strictly stronger check: a text_content() read of that testid ret… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Live MCP execution through the pipeline's embedded chat is stable and cheap enough to gate on: ~39s for the whole ELITEA-1952 test including a real DeepWiki MCP + LLM round trip, zero console errors, green first try. The execution proof is the chat-answer-tool-chip in the last chat-message-item; its text renders as '{toolkit}: ask_question (MCP1)' — note the node-id segment drops its space (node i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py"
+        },
+        {
+          "kind": "question",
+          "note": "No tracker comment was posted (.agents/profile.md § Status reporting asks for a PR link on the originating card). The dispatch named no tracking issue number for ELITEA-1952/1953, and closure records/back-writes are the orchestrator's step in this pipeline — flagging rather than guessing a card."
+        },
+        {
+          "kind": "defect",
+          "note": "Stale Axis-2 row: still claims 'The Fixed-branch Value testid has count 0 after switching to Variable' as an asserted extra observable, with a #511 rationale. Gap assertion 4 was correctly AMENDED in the same docs commit to replace that absence assertion with a text_content() read (because EliteaAI/EliteaUI@7a5fce32 gives both widget shapes the same testid, making to_have_count(0) false by constru… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md § Coverage Map, Axis 2 row 2"
+        },
+        {
+          "kind": "defect",
+          "note": "Stale testid names: § Known Defects still lists the pre-amendment 'pipeline-tools-card-name' / 'pipeline-tools-card-connection-status'. The testids actually added (EliteaAI/EliteaUI@5c24ed30) are 'toolkit-card-name' / 'toolkit-card-connection-status' — the § Handles Reference and § Gap assertions rows were amended, this one was missed. Cosmetic doc drift, same one-line class as the row above.",
+          "ref": "test-specs/pipelines/lextend_mcp-in-pipeline-add-to-tools-configure-and-execute_ELITEA-1952.md § Known Defects (last 2 lines)"
+        },
+        {
+          "kind": "note",
+          "note": "select_mcp_node_input_mapping_type('repoName', 'Variable') is the only state change in this test with no assertion that it took effect — and repoName's Fixed value is never filled, so if the switch silently no-opped the tool would execute with an empty repoName while the tool-chip + answer-length assertions could still pass. Risk is genuinely low (an intercepted/failed Playwright click raises rath… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py — test_mcp_node_executes_selected_tool, Step 17 block"
+        },
+        {
+          "kind": "note",
+          "note": "Mild over-claim in the disposition. Case step 11 expects 'MCP node labeled \"MCP 1\" is added with Input/Output ports'; the row is disposed already-covered by the covering spec's Step 5. Verified against the covering spec's ACTUAL assertions: Step 5 asserts only that wait_for_node_on_canvas('mcp') returned a non-empty data-id — neither the 'MCP 1' label nor the ports are asserted anywhere (the ports… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-in-pipeline-add-to-tools-configure-and-execute_ELITEA-1952.md § Coverage Map, Axis 1 row 'Step 11'"
+        },
+        {
+          "kind": "question",
+          "note": "Both AFS carry an explicitly DECLARED improvisation (new sibling test in the covering file rather than appending to the merged covering test). The implementer additionally overruled 1952's variant with a Hard-Rule-3 justification, documented in both the AFS and the test docstring — all correctly declared. Per .agents/role-overrides.md § Declared-improvisation protocol limit 2, a declaration is an … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_*_ELITEA-1952.md / _ELITEA-1953.md § Recommended extension shape"
+        },
+        {
+          "kind": "note",
+          "note": "Gate-flake heads-up, not a change request: this is the first spec on this suite to assert `not console_errors` across a live MCP+LLM WebSocket execution (~40 s). .agents/testing.md § Known issues documents a confirmed recurring pattern of unrelated-background-resource 500/404 console errors on long chat flows (4+ occurrences, never reproducing on re-run). If the hardening gate shows a non-reproduc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py:~640 (test_mcp_node_executes_selected_tool, Step 21)"
+        },
+        {
+          "kind": "note",
+          "note": "Testid-side checks all pass. Provenance verified after `git fetch origin`: toolkit-card-name and toolkit-card-connection-status are on origin/automation/testids, NOT on origin/main (human cherry-pick pending — closure record must say NOT promotable yet). No state-switched testid: connection state rides `data-connected` on a stable testid (PR #581 shape), and the implementer correctly moved it off … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@5c24ed30, EliteaAI/EliteaUI@7a5fce32"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_mcp-in-pipeline-add-to-tools-configure-and-execute_ELITEA-1952.md",
+      "branch": "tests/1952-1953-mcp-pipeline-execute-and-input-mapping",
+      "pr": 1750,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          107.58,
+          103.63,
+          131
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-1953",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1952 step 18 says 'Connect nodes: START -> MCP 1 -> END'. There is NO START node in this product — a fresh pipeline's canvas holds only END, and 'start' is expressed as the node's Trigger/entry-point property (pipeline-entry-point-trigger-select, value 'Chat Message', which the sole node auto-acquires). The MCP 1 -> END edge is auto-created from the node's default `transition` and does not … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1952 step 18"
+        },
+        {
+          "kind": "clarification",
+          "note": "Both cases describe a node configuration panel that 'opens on the right' when you click the node (1952 step 12, 1953 step 1). No node type in this product has a click-to-open right-hand config panel — every node's config is always-expanded INLINE on the node card. Already documented for every node type in test-specs/pipelines/_surface.md and already handled correctly by the merged ELITEA-2037 spec… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1952 step 12 / ELITEA-1953 step 1"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1953 steps 9/10 say the Interrupt before/after and Structured output toggles are 'present (disabled by default)'. Live, all three are UNCHECKED (off) by default — that is the intent. Two additionally carry disabled=true, but for structural reasons rather than 'by default': Interrupt-before because the node is the entry point, Interrupt-after because transition == END. Structured output is N… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1953 steps 9-10"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1953 step 4 asks for parameters 'listed with their names and types'. The UI shows the parameter name plus a MAPPING-type select (Fixed / Variable / F-String) — it never displays the parameter's JSON-schema data type (string). Also, the section heading text is 'Input mapping (required 2)' (sentence case, with the count), not the uppercase 'INPUT MAPPING (REQUIRED)' the case writes — CSS uppe… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-1953 steps 3-4"
+        },
+        {
+          "kind": "note",
+          "note": "Enter does NOT send in the pipeline embedded-chat composer. Filling chat-message-input and pressing Enter leaves the text in the field and posts nothing; chat-send-button must be clicked. PipelineDetailPage.send_message_in_embedded_chat() already does this correctly — flagged so nobody 'simplifies' it to a keypress. Cost me two turns to discover. Recorded in the pipelines surface digest and in rol… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The pipeline CREATE form requires Description as well as Name — agent-save-button stays disabled until BOTH are filled. Only bites when a case drives creation through the UI (specs normally use the pipeline_id API fixture), but it is what made ELITEA-1952 step 1 take two attempts. Recorded in the digest."
+        },
+        {
+          "kind": "note",
+          "note": "id='simple-select-[object Object]' on the Variable-branch input-mapping Value select is a real (cosmetic) id-computation slip in the shared InputMappingItem component — the object is stringified into the id. Not a functional defect and no assertion should depend on it; not filed as a bug (zero user impact, and the fix that matters is the testid widening the AFS already specifies). Flagged here so … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "The pipelines exploration digest test-specs/pipelines/_surface.md is now 3582 lines / ~60 top-level sections — far past the ~150-line 'time to split into an index' smell in the test-case-analysis skill. I appended in place rather than splitting: a split of a digest this central mid-campaign is a refactor with real disruption risk for concurrent units, and it is not this dispatch's scope. Worth sch… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "question",
+          "note": "Recommended-extension-shape declarations in both AFS (gap 3 of ELITEA-1952 and all of ELITEA-1953 as SEPARATE test functions in the covering spec's file, rather than more steps on the existing test) are declared improvisations per .agents/role-overrides.md § Declared-improvisation protocol — the canon has no rule for when an extend-existing extension should be a new sibling test vs appended steps.… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": ".agents/role-overrides.md § Declared-improvisation protocol"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS ELITEA-1953 pointed the Variable-branch value testid at InputMappingItem.jsx's FINAL Select.SingleSelect. Wrong branch: FlowEditorHelpers.getEnumList('variable', ...) returns the state-variable list (flowEditor.helpers.js:162), so enumList is non-empty and the row renders the FIRST enum branch (dataType !== 'array' || type === 'variable'). The first testid placement never appeared in the DOM —… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS ELITEA-1952 proposed tagging the TOOLS card's 'Log in' button as the connection-status control. McpLogInButton returns null once the MCP is authorized, so that testid's PRESENCE would flip with state — outlawed by the PR #581 ruling. Placed toolkit-card-connection-status on the always-rendered Online/Offline indicator Box with state in data-connected instead (the ruling's prescribed shape), as… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-in-pipeline-add-to-tools-configure-and-execute_ELITEA-1952.md"
+        },
+        {
+          "kind": "note",
+          "note": "New live-product gotcha, now in _surface.md and role memory: ReactFlow's bottom-left rf__controls panel intercepts clicks on a node's LOWER inline-config rows. A freshly-added node spawns just above it and grows down over it once the Input-mapping section renders, so the panel's 'Fit View' button steals the pointer from the Type select. Remedy is move_node(node_id, dx=450, dy=0) right after wait_f… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "The MCP-node Input-mapping row's Value control now carries ONE testid across two widget shapes (Fixed/F-String text input vs Variable state-variable select). This VOIDS the AFS's assertion 4 (an absence assertion, to_have_count(0) after switching to Variable) — landing the testid gap is precisely what makes it false. Replaced with a strictly stronger check: a text_content() read of that testid ret… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Live MCP execution through the pipeline's embedded chat is stable and cheap enough to gate on: ~39s for the whole ELITEA-1952 test including a real DeepWiki MCP + LLM round trip, zero console errors, green first try. The execution proof is the chat-answer-tool-chip in the last chat-message-item; its text renders as '{toolkit}: ask_question (MCP1)' — note the node-id segment drops its space (node i… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py"
+        },
+        {
+          "kind": "question",
+          "note": "No tracker comment was posted (.agents/profile.md § Status reporting asks for a PR link on the originating card). The dispatch named no tracking issue number for ELITEA-1952/1953, and closure records/back-writes are the orchestrator's step in this pipeline — flagging rather than guessing a card."
+        },
+        {
+          "kind": "defect",
+          "note": "Stale Axis-2 row: still claims 'The Fixed-branch Value testid has count 0 after switching to Variable' as an asserted extra observable, with a #511 rationale. Gap assertion 4 was correctly AMENDED in the same docs commit to replace that absence assertion with a text_content() read (because EliteaAI/EliteaUI@7a5fce32 gives both widget shapes the same testid, making to_have_count(0) false by constru… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md § Coverage Map, Axis 2 row 2"
+        },
+        {
+          "kind": "defect",
+          "note": "Stale testid names: § Known Defects still lists the pre-amendment 'pipeline-tools-card-name' / 'pipeline-tools-card-connection-status'. The testids actually added (EliteaAI/EliteaUI@5c24ed30) are 'toolkit-card-name' / 'toolkit-card-connection-status' — the § Handles Reference and § Gap assertions rows were amended, this one was missed. Cosmetic doc drift, same one-line class as the row above.",
+          "ref": "test-specs/pipelines/lextend_mcp-in-pipeline-add-to-tools-configure-and-execute_ELITEA-1952.md § Known Defects (last 2 lines)"
+        },
+        {
+          "kind": "note",
+          "note": "select_mcp_node_input_mapping_type('repoName', 'Variable') is the only state change in this test with no assertion that it took effect — and repoName's Fixed value is never filled, so if the switch silently no-opped the tool would execute with an empty repoName while the tool-chip + answer-length assertions could still pass. Risk is genuinely low (an intercepted/failed Playwright click raises rath… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py — test_mcp_node_executes_selected_tool, Step 17 block"
+        },
+        {
+          "kind": "note",
+          "note": "Mild over-claim in the disposition. Case step 11 expects 'MCP node labeled \"MCP 1\" is added with Input/Output ports'; the row is disposed already-covered by the covering spec's Step 5. Verified against the covering spec's ACTUAL assertions: Step 5 asserts only that wait_for_node_on_canvas('mcp') returned a non-empty data-id — neither the 'MCP 1' label nor the ports are asserted anywhere (the ports… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_mcp-in-pipeline-add-to-tools-configure-and-execute_ELITEA-1952.md § Coverage Map, Axis 1 row 'Step 11'"
+        },
+        {
+          "kind": "question",
+          "note": "Both AFS carry an explicitly DECLARED improvisation (new sibling test in the covering file rather than appending to the merged covering test). The implementer additionally overruled 1952's variant with a Hard-Rule-3 justification, documented in both the AFS and the test docstring — all correctly declared. Per .agents/role-overrides.md § Declared-improvisation protocol limit 2, a declaration is an … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/pipelines/lextend_*_ELITEA-1952.md / _ELITEA-1953.md § Recommended extension shape"
+        },
+        {
+          "kind": "note",
+          "note": "Gate-flake heads-up, not a change request: this is the first spec on this suite to assert `not console_errors` across a live MCP+LLM WebSocket execution (~40 s). .agents/testing.md § Known issues documents a confirmed recurring pattern of unrelated-background-resource 500/404 console errors on long chat flows (4+ occurrences, never reproducing on re-run). If the hardening gate shows a non-reproduc… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py:~640 (test_mcp_node_executes_selected_tool, Step 21)"
+        },
+        {
+          "kind": "note",
+          "note": "Testid-side checks all pass. Provenance verified after `git fetch origin`: toolkit-card-name and toolkit-card-connection-status are on origin/automation/testids, NOT on origin/main (human cherry-pick pending — closure record must say NOT promotable yet). No state-switched testid: connection state rides `data-connected` on a stable testid (PR #581 shape), and the implementer correctly moved it off … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "EliteaAI/EliteaUI@5c24ed30, EliteaAI/EliteaUI@7a5fce32"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md",
+      "branch": "tests/1952-1953-mcp-pipeline-execute-and-input-mapping",
+      "pr": 1750,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          107.58,
+          103.63,
+          131
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
