@@ -36,6 +36,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 ENV_URLS = {
+    "STAGE": "https://stage.elitea.ai",
+    "STAGE1": "https://stage.elitea.ai",
     "STAGE2": "https://stage2.elitea.ai",
     "STAGE3": "https://stage3.elitea.ai",
     "DEV": "https://dev.elitea.ai",
