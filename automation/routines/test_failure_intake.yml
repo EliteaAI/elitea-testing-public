@@ -195,13 +195,10 @@ nodes:
             should_process = (
                 action == 'completed' and
                 matches_pattern and
-                actor_login == 'breilian' and
-                conclusion == 'failure'
+                conclusion in ('failure', 'success')
             )
 
             head_commit = workflow_run.get('head_commit') or {}
-            if not isinstance(head_commit, dict):
-                head_commit = {}
 
             workflow_name_short = workflow_path.replace('.github/workflows/', '').replace('.yml', '') if workflow_path else 'unknown'
 
@@ -265,11 +262,14 @@ nodes:
     condition: |
       {% if conclusion == 'failure' %}
       FetchWorkflowDetails
+      {% elif conclusion == 'success' %}
+      HandleSuccessRun
       {% else %}
       SkipNonFailure
       {% endif %}
     routes:
       - FetchWorkflowDetails
+      - HandleSuccessRun
       - SkipNonFailure
     default_output: SkipNonFailure
 
@@ -292,6 +292,32 @@ nodes:
       - skip_reason
     structured_output: true
     transition: END
+
+  - id: HandleSuccessRun
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        # For success runs, create empty tests array and skip to file commit
+        out = {
+            'classified_tests': '[]',
+            'maintenance_json': '{"tests": []}',
+            'issue_groups': '[]',
+            'total_groups': '0',
+            'created_issues': '[]'
+        }
+        out
+    input: []
+    output:
+      - classified_tests
+      - maintenance_json
+      - issue_groups
+      - total_groups
+      - created_issues
+    structured_output: true
+    transition: BuildFullFilePath
 
   - id: FetchWorkflowDetails
     type: toolkit
