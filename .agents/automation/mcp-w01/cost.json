@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "mcp-w01",
- "generatedAt": "2026-09-14T12:11:52.131Z",
+ "generatedAt": "2026-09-14T12:23:43.209Z",
  "sources": {
   "window": {
    "start": "2026-08-23T00:28:36.152Z",
@@ -9,6 +9,9 @@
    "source": "gate-runs"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:3efa4d19-83fd-4e02-a3e8-5250be00d0f3"
+  ],
   "hosts": [
    "claude"
   ],

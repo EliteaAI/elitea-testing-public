@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "artifacts-w06",
- "generatedAt": "2026-09-14T12:11:51.705Z",
+ "generatedAt": "2026-09-14T12:23:42.795Z",
  "sources": {
   "window": {
    "start": "2026-08-08T19:46:59.231Z",
@@ -9,6 +9,9 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:d58b6a22-9b13-47c9-ac9a-e218f408facf"
+  ],
   "hosts": [
    "claude"
   ],

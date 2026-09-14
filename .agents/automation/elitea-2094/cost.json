@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "elitea-2094",
- "generatedAt": "2026-09-14T12:11:52.110Z",
+ "generatedAt": "2026-09-14T12:23:43.189Z",
  "sources": {
   "window": {
    "start": "2026-08-11T21:00:38.850Z",
@@ -9,6 +9,10 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 2,
+  "sessionIds": [
+   "claude:41cbdb1f-e579-49e7-a1ad-04df98d7c56b",
+   "claude:e0fa9686-3d5b-425d-a3eb-24612b0b20c0"
+  ],
   "hosts": [
    "claude"
   ],

@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "elitea-2440-test-panel-version-instructions",
- "generatedAt": "2026-09-14T12:11:52.120Z",
+ "generatedAt": "2026-09-14T12:23:43.199Z",
  "sources": {
   "window": {
    "start": "2026-07-22T15:28:25.648Z",
@@ -9,6 +9,7 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 0,
+  "sessionIds": [],
   "hosts": [],
   "users": [],
   "costSources": [],

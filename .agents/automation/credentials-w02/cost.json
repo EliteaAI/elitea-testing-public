@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "credentials-w02",
- "generatedAt": "2026-09-14T12:11:52.101Z",
+ "generatedAt": "2026-09-14T12:23:43.179Z",
  "sources": {
   "window": {
    "start": "2026-08-22T21:49:09.731Z",
@@ -9,6 +9,9 @@
    "source": "gate-runs"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:a0e9fa42-49fe-4866-a4bb-00ecce9612cf"
+  ],
   "hosts": [
    "claude"
   ],

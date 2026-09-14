@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "settings-w07",
- "generatedAt": "2026-09-14T12:11:52.303Z",
+ "generatedAt": "2026-09-14T12:23:43.372Z",
  "sources": {
   "window": {
    "start": "2026-08-27T19:25:44.148Z",
@@ -9,6 +9,9 @@
    "source": "gate-runs"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:8cd0be0a-b367-448f-a201-b3730c867622"
+  ],
   "hosts": [
    "claude"
   ],

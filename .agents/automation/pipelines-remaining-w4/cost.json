@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "pipelines-remaining-w4",
- "generatedAt": "2026-09-14T12:11:52.169Z",
+ "generatedAt": "2026-09-14T12:23:43.244Z",
  "sources": {
   "window": {
    "start": "2026-07-25T01:40:47.000Z",
@@ -9,6 +9,7 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 0,
+  "sessionIds": [],
   "hosts": [],
   "users": [],
   "costSources": [],

@@ -320,6 +320,15 @@ export function renderMarkdown(rep, { window, label } = {}) {
     }
     out.push('');
   }
+  if (rep.outside) {
+    out.push('## Outside batches — by case id (no receipt claimed these sessions)', '');
+    out.push(`- ${rep.outside.sessions} session(s)  ·  ${usd(rep.outside.costUsd)}  ·  ${hours(rep.outside.activeMin)} active — FIX/repair cards, investigations, framework work, and batches whose sessions predate capture. Per id: each session split evenly across the ids it named (allocation, mined ids).`, '');
+    out.push('| case id | sessions | cost (allocated) | active |', '|---|---|---|---|');
+    for (const b of rep.outside.byCase.slice(0, 60)) out.push(`| ${b.id} | ${b.sessions} | ${usd(b.costUsd)} | ${b.activeMin}m |`);
+    if (rep.outside.byCase.length > 60) out.push(`| … ${rep.outside.byCase.length - 60} more ids | | | |`);
+    if (rep.outside.noCase.sessions) out.push(`| (no case id named) | ${rep.outside.noCase.sessions} | ${usd(rep.outside.noCase.costUsd)} | ${rep.outside.noCase.activeMin}m |`);
+    out.push('');
+  }
   const table = (title, entries, unitHeader = 'sessions') => {
     out.push(`## ${title}`, '', `| ${title.toLowerCase().replace('by ', '')} | cost | ${unitHeader} | tokens (in/out) | active | tools (err) |`, '|---|---|---|---|---|---|');
     for (const [k, b] of entries) {
@@ -814,10 +823,13 @@ export function renderTeamHtml(rep, { window, label } = {}) {
   ${rep.perCaseStats?.loadedCostUsd ? `<p class="panel-sub">Delivered-case loaded cost: avg ${usd(rep.perCaseStats.loadedCostUsd.avg)} · median ${usd(rep.perCaseStats.loadedCostUsd.median)} · min ${usd(rep.perCaseStats.loadedCostUsd.min)} · max ${usd(rep.perCaseStats.loadedCostUsd.max)} (n=${rep.perCaseStats.loadedCostUsd.n}). Loaded = direct + even overhead share — allocation, not measurement.</p>` : ''}
   <table><tr><th>case</th><th>batch</th><th>outcome</th><th>direct</th><th>loaded</th><th>active (loaded)</th></tr>
   ${rep.perCase.map((r) => `<tr><td>${esc(r.id)}</td><td>${esc(r.batch)}</td><td>${esc(r.outcome ?? '—')}</td><td>${usd(r.direct.costUsd)}</td><td>${usd(r.loaded?.costUsd)}</td><td>${r.loaded?.activeMin ?? '—'}m</td></tr>`).join('')}</table></section>` : ''}
+  ${rep.outside ? `<section class="panel"><h2>Outside batches — by case id</h2><p class="panel-sub">${rep.outside.sessions} session(s) no batch receipt claimed · ${usd(rep.outside.costUsd)} · ${hours(rep.outside.activeMin)} active — FIX/repair cards, investigations, framework work, batches whose sessions predate capture. Per id: each session split evenly across the ids it named (allocation, mined ids).</p>
+  <table><tr><th>case id</th><th>sessions</th><th>cost (allocated)</th><th>active</th></tr>
+  ${rep.outside.byCase.slice(0, 60).map((b) => `<tr><td>${esc(b.id)}</td><td>${b.sessions}</td><td>${usd(b.costUsd)}</td><td>${b.activeMin}m</td></tr>`).join('')}${rep.outside.byCase.length > 60 ? `<tr><td colspan="4">… ${rep.outside.byCase.length - 60} more ids</td></tr>` : ''}${rep.outside.noCase.sessions ? `<tr><td>(no case id named)</td><td>${rep.outside.noCase.sessions}</td><td>${usd(rep.outside.noCase.costUsd)}</td><td>${rep.outside.noCase.activeMin}m</td></tr>` : ''}</table></section>` : ''}
   <section class="panel"><h2>By person</h2>${tbl(Object.entries(rep.byPerson).sort((a, z) => (z[1].costUsd || 0) - (a[1].costUsd || 0)), ['person', 'cost', 'sessions', 'out tokens', 'active', 'tools (err)'], bucketRow)}</section>
-  <section class="panel"><h2>By role</h2><p class="panel-sub">Dollars are session-grain, so roles report tokens/time — sub-agent roles included.</p>
-  ${tbl(Object.entries(rep.byRole).sort((a, z) => z[1].tokens.output - a[1].tokens.output), ['role', 'units', 'out tokens', 'active', 'tools (err)'],
-    ([k, b]) => `<tr><td>${esc(k)}</td><td>${b.units}</td><td>${b.tokens.output.toLocaleString()}</td><td>${hours(b.activeMin)}</td><td>${b.toolCalls} (${b.toolErrors})</td></tr>`)}</section>
+  <section class="panel"><h2>By role</h2><p class="panel-sub">Each dispatch's own metered figure; a parent role = its sessions minus their dispatches. Roles without metered dispatches show n/a.</p>
+  ${tbl(Object.entries(rep.byRole).sort((a, z) => (z[1].costUsd || 0) - (a[1].costUsd || 0) || z[1].tokens.output - a[1].tokens.output), ['role', 'cost', 'units', 'out tokens', 'active', 'tools (err)'],
+    ([k, b]) => `<tr><td>${esc(k)}</td><td>${b.priced ? usd(b.costUsd) : 'n/a'}</td><td>${b.units}</td><td>${b.tokens.output.toLocaleString()}</td><td>${hours(b.activeMin)}</td><td>${b.toolCalls} (${b.toolErrors})</td></tr>`)}</section>
   <section class="panel"><h2>By week</h2>${tbl(Object.entries(rep.byWeek).sort(([a], [z]) => a.localeCompare(z)), ['week', 'cost', 'sessions', 'out tokens', 'active', 'tools (err)'], bucketRow)}</section>`;
 }
 
@@ -890,6 +902,35 @@ export function main(argv = process.argv.slice(2)) {
         note: 'over DELIVERED cases; loaded = direct + even batch-overhead share (allocation)',
         loadedCostUsd: st(vals(delivered, (r) => r.loaded?.costUsd)),
         loadedActiveMin: st(vals(delivered, (r) => r.loaded?.activeMin)),
+      };
+    }
+    // OUTSIDE BATCHES — every session no receipt claimed (FIX/repair cards,
+    // investigations, framework work, sessions whose batch predates capture).
+    // Shown per mined case id, the session's figures split EVENLY across the
+    // ids it named — an allocation, labelled — so "$1k in September, no batch"
+    // has a breakdown instead of vanishing into the totals.
+    const joined = new Set(batchCosts.flatMap((c) => c.sources?.sessionIds ?? []));
+    const outside = lines.filter((l) => !joined.has(`${l.host}:${l.id}`));
+    if (outside.length) {
+      const byId = new Map(); const noCase = { sessions: 0, costUsd: 0, activeMin: 0, priced: false };
+      let costUsd = 0; let priced = false; let activeMin = 0;
+      for (const l of outside) {
+        const ids = [...new Set([...(l.scope?.cases ?? []), ...(l.cases ?? [])])];
+        activeMin += num(l.activeMin);
+        if (typeof l.costUsd === 'number') { costUsd += l.costUsd; priced = true; }
+        if (!ids.length) { noCase.sessions++; noCase.activeMin += num(l.activeMin); if (typeof l.costUsd === 'number') { noCase.costUsd += l.costUsd; noCase.priced = true; } continue; }
+        for (const id of ids) {
+          const b = byId.get(id) ?? { id, sessions: 0, costUsd: 0, activeMin: 0, priced: false };
+          b.sessions++; b.activeMin += num(l.activeMin) / ids.length;
+          if (typeof l.costUsd === 'number') { b.costUsd += l.costUsd / ids.length; b.priced = true; }
+          byId.set(id, b);
+        }
+      }
+      rep.outside = {
+        sessions: outside.length, costUsd: priced ? costUsd : null, activeMin,
+        note: 'sessions no batch receipt claimed; per-id figures split each session evenly across the ids it named (allocation)',
+        byCase: [...byId.values()].sort((a, z) => z.costUsd - a.costUsd).map((b) => ({ ...b, costUsd: b.priced ? Math.round(b.costUsd * 100) / 100 : null, activeMin: Math.round(b.activeMin) })),
+        noCase: { ...noCase, costUsd: noCase.priced ? Math.round(noCase.costUsd * 100) / 100 : null, activeMin: Math.round(noCase.activeMin) },
       };
     }
   } catch { /* receipts absent or malformed — the report stands without the case list */ }

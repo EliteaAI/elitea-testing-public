@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "artifacts-w01",
- "generatedAt": "2026-09-14T12:11:51.650Z",
+ "generatedAt": "2026-09-14T12:23:42.740Z",
  "sources": {
   "window": {
    "start": "2026-08-20T16:45:45.132Z",
@@ -9,6 +9,9 @@
    "source": "gate-runs"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:d58b6a22-9b13-47c9-ac9a-e218f408facf"
+  ],
   "hosts": [
    "claude"
   ],

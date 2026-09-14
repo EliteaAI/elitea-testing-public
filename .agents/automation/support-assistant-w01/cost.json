@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "support-assistant-w01",
- "generatedAt": "2026-09-14T12:11:52.379Z",
+ "generatedAt": "2026-09-14T12:23:43.449Z",
  "sources": {
   "window": {
    "start": "2026-08-21T02:12:49.309Z",
@@ -9,6 +9,9 @@
    "source": "gate-runs"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:b71355d8-aa09-4c66-a3bb-1aacb80367c5"
+  ],
   "hosts": [
    "claude"
   ],

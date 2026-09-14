@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "onboarding-w3",
- "generatedAt": "2026-09-14T12:11:52.164Z",
+ "generatedAt": "2026-09-14T12:23:43.239Z",
  "sources": {
   "window": {
    "start": "2026-08-23T12:21:03.604Z",
@@ -9,6 +9,9 @@
    "source": "gate-runs"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:d8daa96a-8fb7-4207-a0c0-08c32dc0e77d"
+  ],
   "hosts": [
    "claude"
   ],

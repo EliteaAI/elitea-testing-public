@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "chat-remaining-w14",
- "generatedAt": "2026-09-14T12:11:52.047Z",
+ "generatedAt": "2026-09-14T12:23:43.125Z",
  "sources": {
   "window": {
    "start": "2026-08-04T12:05:19.539Z",
@@ -9,6 +9,9 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 1,
+  "sessionIds": [
+   "claude:8efc46b8-d5b1-4ee6-aa03-0b5438ca68bf"
+  ],
   "hosts": [
    "claude"
   ],

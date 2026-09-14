@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "elitea-2002",
- "generatedAt": "2026-09-14T12:11:52.106Z",
+ "generatedAt": "2026-09-14T12:23:43.185Z",
  "sources": {
   "window": {
    "start": "2026-07-23T20:35:26.659Z",
@@ -9,6 +9,7 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 0,
+  "sessionIds": [],
   "hosts": [],
   "users": [],
   "costSources": [],

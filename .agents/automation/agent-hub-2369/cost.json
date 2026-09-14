@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "agent-hub-2369",
- "generatedAt": "2026-09-14T12:11:51.636Z",
+ "generatedAt": "2026-09-14T12:23:42.727Z",
  "sources": {
   "window": {
    "start": "2026-07-22T06:13:17.581Z",
@@ -9,6 +9,7 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 0,
+  "sessionIds": [],
   "hosts": [],
   "users": [],
   "costSources": [],

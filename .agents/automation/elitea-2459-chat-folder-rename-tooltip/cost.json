@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "elitea-2459-chat-folder-rename-tooltip",
- "generatedAt": "2026-09-14T12:11:52.123Z",
+ "generatedAt": "2026-09-14T12:23:43.202Z",
  "sources": {
   "window": {
    "start": "2026-07-23T22:25:05.121Z",
@@ -9,6 +9,7 @@
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 0,
+  "sessionIds": [],
   "hosts": [],
   "users": [],
   "costSources": [],

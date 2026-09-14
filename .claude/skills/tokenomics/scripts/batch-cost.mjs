@@ -698,7 +698,7 @@ export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [
     v: COST_VERSION, batch: slug, generatedAt: new Date().toISOString(),
     sources: {
       window: win ? { start: new Date(win.start).toISOString(), end: new Date(win.end).toISOString(), source: win.source } : null,
-      sessions: lines.length, hosts: [...hosts].sort(), users: [...users].sort(), costSources: [...costSources].sort(), models: [...models].sort(),
+      sessions: lines.length, sessionIds: lines.map((l) => `${l.host}:${l.id}`).sort(), hosts: [...hosts].sort(), users: [...users].sort(), costSources: [...costSources].sort(), models: [...models].sort(),
       ...(lines.some((l) => l.live) ? {
         liveSessions: lines.filter((l) => l.live).length,
         liveNote: 'PROVISIONAL — a session is still running: its finished dispatches are counted, its own lead thread is not yet measured, so these totals are a floor. Re-run once it ends.',
