@@ -206,7 +206,7 @@ function timeStats(stampsMs) {
 // another dash-digit segment.
 const CASE_ID_RE = /\b[A-Z][A-Z0-9]{1,9}-[A-Z]?\d{1,6}\b(?!-\d)/g;
 const CASE_ID_STOP = new Set(['ISO', 'SHA', 'UTF', 'GPT', 'RFC', 'HTTP', 'HTTPS', 'TLS', 'SSL', 'AES', 'MD', 'CVE', 'OAUTH', 'IPV', 'ERR']);
-const CASE_ID_MAX = 50;
+const CASE_ID_MAX = 500; // was 50 — a 200-dispatch campaign session names ~140 ids; the join survived via per-dispatch ids, byCase/outside-batches did not (measured 2026-09-14)
 export function extractCaseIds(...texts) {
   const out = new Set();
   for (const t of texts) {

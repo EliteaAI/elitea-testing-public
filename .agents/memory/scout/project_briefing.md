@@ -119,3 +119,13 @@ both, so your profile is his single source of project truth.
   stamp "today"); `team-report.mjs` by-role now shows real dollars (dispatch-metered; parent
   role = session − dispatches; sums to the ledger total). `CASE_ID_MAX = 50` in capture caps
   a session's mined ids — campaign sessions hit it; batch join still sees `subagents[].cases`.
+- **INCIDENT 2026-09-14 16:37 — the telemetry submodule was wiped on disk** (`.agents/telemetry/*`
+  AND its store `.git/modules/.agents/telemetry`, both created that session). Not the capture
+  script (sandbox-reproduced the exact mis-fired call: deletes nothing), not git. Prime suspect:
+  OneDrive syncing fresh trees under `.git/`. Nothing was lost — origin `telemetry` had it all.
+  **Recovery recipe:** `mv .agents/telemetry aside && git submodule update --init --depth 1 --
+  .agents/telemetry`, then `git -C .agents/telemetry checkout -B telemetry`. Check
+  `ls .git/modules/.agents/telemetry` exists before trusting `git -C .agents/telemetry` output —
+  without the gitfile, git silently answers for the PARENT repo.
+- Re-capturing an unchanged session is skipped by design (`thisEnd > prevEnd`); to re-mine, capture
+  into a sandbox `--cwd` and append the line (dedup: same endedAt → later capturedAt wins).
