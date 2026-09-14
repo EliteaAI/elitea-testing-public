@@ -7476,9 +7476,10 @@ class ChatPage(BasePage):
         logger.info("Removing %s participant id=%s from chat", entity_type, agent_id)
         popper = self.open_participants_popover(timeout=timeout, section=section)
 
-        project_id = agent_project_id if agent_project_id is not None else settings.elitea_project_id
-        unique_id = f"{entity_type}_{agent_id}_{project_id}"
-        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        # Use simplified testid format matching EliteaUI main (b4d00fcc+)
+        # Changed from composite application_{id}_{project_id} to bare {id}
+        # Collision-safety concern tracked in elitea_issues#6621
+        row = popper.locator(self.PARTICIPANT_ROW.format(agent_id))
         row.wait_for(state="visible", timeout=timeout)
         row.scroll_into_view_if_needed()
         row.hover()
