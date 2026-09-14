@@ -13,14 +13,14 @@
 
 ## Test Results Matrix
 
-| Test Case | #124 | #130 | #132 | #133 |
-|-----------|--------|--------|--------|--------|
-| ELITEA-1793 | 🟠 | 🟠 | 🟠 | 🔴 |
-| ELITEA-2367 | 🔴 | 🔴 | 🔴 | 🔴 |
+| Test Case | #124 | #130 | #132 | #133 | #146 |
+|-----------|--------|--------|--------|--------|--------|
+| ELITEA-1793 | 🟠 | 🟠 | 🟠 | 🔴 | 🟢 |
+| ELITEA-2367 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢 |
 
 ## Summary
 
-- **Runs Shown:** 4 (max 10)
+- **Runs Shown:** 5 (max 10)
 - **Total Test Cases:** 2
 
 *Generated automatically from maintenance files*
