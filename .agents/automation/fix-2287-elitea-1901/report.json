@@ -1,0 +1,28 @@
+{
+  "batch": "fix-2287-elitea-1901",
+  "base": "main",
+  "integration_branch": "AI_AQA/fix-ELITEA-1901-import-model-from-catalog",
+  "gate": {
+    "verdict": "green",
+    "runs": 9,
+    "seconds": [30.86, 30.08, 43.19, 36.14, 29.27, 43.26, 30.72, 67.86, 57.24],
+    "failures": [],
+    "target": "https://dev.elitea.ai/app",
+    "note": "Lead-run, -p devenv plugin, 3 rounds x 3 invocations; 9/9 invocations passed; 14 attempts: 9 passed, 5 broken at the Page.goto precondition (#2124 ERR_ABORTED x4, #2156 lifecycle wait x1); case signature 0/14."
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1901",
+      "outcome": "automated",
+      "note": "[FIX] re-detection 14 of 14 — promotion gap. Repair 76cc6fa1f (PR #2125) cherry-picked onto main as PR #2288, squash d89cb6018; main merged back into automation/base (f96149bc0). Zero authored test code; two fix-only engineer dispatches for automation/api/client.py conflicts. Closure record: EliteaAI/elitea-testing-public#2287.",
+      "findings": [
+        {"kind": "promotion-gap", "note": "14th [FIX] card for one node id; closed by per-spec cherry-pick to main under the da663ef intake template. Gap itself unchanged (511 commits).", "ref": "EliteaAI/elitea-testing-public#2157"}
+      ]
+    }
+  ],
+  "totals": {"automated": 1},
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
