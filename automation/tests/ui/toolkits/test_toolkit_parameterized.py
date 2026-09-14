@@ -393,14 +393,30 @@ class TestToolkitTestSettings:
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
 
-        with allure.step("Step 2 — Open the Tool select on the Test-Tools empty state"):
-            # ORDER CHANGE (EliteaUI EL-5947). The toolkit detail page no longer
-            # opens on the Test Settings panel: TestTools.jsx now early-returns
-            # `<TestToolsEmptyState/>` while `!selectedTool`, and the panel — with
-            # its 'Test Settings' heading and Tool dropdown — only mounts AFTER a
-            # tool is chosen. Waiting for the panel first (the old Step 2) is
-            # therefore unsatisfiable: the panel cannot appear until this select
-            # is used. Selecting first, asserting the panel second.
+        with allure.step("Step 2 — Open the dedicated Test Toolkit route"):
+            # ROUTE CHANGE (caught via ELITEA-1140/#1898 live DEV reproduction
+            # 2026-08-28). The toolkit detail page no longer hosts the Test
+            # Settings panel / empty state inline at all — a 'Test' button
+            # (ToolkitForm.jsx, testid `toolkit-test-button`) now navigates to
+            # a DEDICATED route, `/toolkits/all/{id}/test`, and only THAT route
+            # renders the empty state Step 3 waits on. Confirmed live for
+            # github, jira and confluence alike (jira/confluence credentials
+            # independently verified valid via direct API calls — this is a
+            # route change, not a credential problem): navigating straight to
+            # `/toolkits/all/{id}` (Step 1) and waiting there for the empty
+            # state times out every time, because the element is simply never
+            # on that page anymore.
+            test_settings.open_test_tab(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step("Step 3 — Open the Tool select on the Test-Tools empty state"):
+            # ORDER CHANGE (EliteaUI EL-5947). Even on the dedicated Test
+            # route, the Test Settings panel is gated behind tool selection:
+            # TestTools.jsx early-returns `<TestToolsEmptyState/>` while
+            # `!selectedTool`, and the panel — with its 'Test Settings' heading
+            # and Tool dropdown — only mounts AFTER a tool is chosen. Waiting
+            # for the panel first is therefore unsatisfiable: the panel cannot
+            # appear until this select is used. Selecting first, asserting the
+            # panel second.
             #
             # This also retires the old raw-handle hunt — a visible-text probe and
             # a role-based combobox scan, both filtered by horizontal position,
@@ -408,7 +424,7 @@ class TestToolkitTestSettings:
             # `.agents/testing.md` § Locator policy.
             test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step(f"Step 3 — Select tool: {cfg.test_tool_name}"):
+        with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
             visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
             visible_search.fill(cfg.test_tool_name)
             page.wait_for_timeout(500)
@@ -419,17 +435,17 @@ class TestToolkitTestSettings:
             )
             assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
 
-        with allure.step("Step 4 — Verify the Test Settings panel is now shown"):
+        with allure.step("Step 5 — Verify the Test Settings panel is now shown"):
             # Anchored on the panel's Tool dropdown testid rather than the
             # 'Test Settings' heading text (raw-text handles are policy-forbidden).
             test_settings.wait_for_panel(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step("Step 5 — Fill tool-specific parameters"):
+        with allure.step("Step 6 — Fill tool-specific parameters"):
             if cfg.test_tool_params:
                 for field_label, value in cfg.test_tool_params.items():
                     _fill_test_settings_param(page, field_label, value)
 
-        with allure.step("Step 6 — Click the Run Test button"):
+        with allure.step("Step 7 — Click the Run Test button"):
             # Dismiss any popups (NPS survey, banners) that may block the button
             BasePage(page).dismiss_popups()
 
@@ -448,7 +464,7 @@ class TestToolkitTestSettings:
             # previous force-click, will not fire while the form is invalid.
             test_settings.run_tool(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step("Step 7 — Wait for tool execution result"):
+        with allure.step("Step 8 — Wait for tool execution result"):
             success_locator = page.locator(f'text="{cfg.test_tool_result_indicator}"')
             error_locator = page.locator('text="Error debugging info"')
 
@@ -466,7 +482,7 @@ class TestToolkitTestSettings:
 
             page.wait_for_timeout(2000)
 
-        with allure.step("Step 8 — Verify tool execution success"):
+        with allure.step("Step 9 — Verify tool execution success"):
             if error_locator.is_visible():
                 error_locator.click()
                 page.wait_for_timeout(500)
