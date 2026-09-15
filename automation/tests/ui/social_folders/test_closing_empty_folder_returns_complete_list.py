@@ -21,6 +21,10 @@ every assertion). Clarification #2302: the case text says
 ``No items in this folder yet.`` (trailing period); the product renders
 ``No items in this folder yet`` on all five list components — the product
 string is asserted.
+
+Transit guard for product bug #2305 (first-render empty-list redirect): a
+landing on the create route is treated as a retryable navigation outcome
+(``binding.open_list``); the case's own observables are unchanged.
 """
 
 import logging
@@ -69,8 +73,7 @@ class TestClosingEmptyFolderReturnsCompleteList:
         create_disposable_entities(binding, social_folder_cleanup, "3208", 1)
 
         with allure.step(f"Step 0 — Open the {binding.key} list and capture the page-1 baseline"):
-            list_page.navigate()  # the type's own list page object; the app adds viewMode itself
-            folders.create_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            binding.open_list(list_page, folders)  # the type's own navigate() + #2305 transit guard
             cards = binding.cards(list_page)
             cards.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             baseline_cards = cards.count()

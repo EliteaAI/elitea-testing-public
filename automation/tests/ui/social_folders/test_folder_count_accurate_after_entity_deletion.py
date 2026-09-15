@@ -29,6 +29,10 @@ Known defect (console only): the post-delete stale
 ``GET /configurations/configuration/{pid}/{id}`` → 404 (#1666, credentials)
 is excluded by exact URL via ``exclude_known_defect_urls`` — never by
 status code.
+
+Transit guard for product bug #2305 (first-render empty-list redirect): a
+landing on the create route is treated as a retryable navigation outcome
+(``binding.open_list``); the case's own observables are unchanged.
 """
 
 import logging
@@ -75,8 +79,7 @@ class TestFolderCountAccurateAfterEntityDeletion:
         e1, e2, e3, e4 = create_disposable_entities(binding, social_folder_cleanup, "3210", 4)
 
         with allure.step(f"Step 0 — Open the {binding.key} list; all four entities present"):
-            list_page.navigate()
-            folders.create_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            binding.open_list(list_page, folders)  # the type's own navigate() + #2305 transit guard
             for entity in (e1, e2, e3, e4):
                 folders.move_to_folder_button(entity["id"]).wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
             assert folders.url_folder_param() is None, f"no folder should be open yet: {page.url}"

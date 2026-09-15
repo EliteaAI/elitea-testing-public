@@ -15,6 +15,10 @@ GET, the URL ``folder`` param, the unfiltered list, the entities' unfiled
 state) is produced by the product. Teardown deletes the entities via the
 API (the folder is already gone — 404 tolerated). No dialog/toast copy is
 asserted (EliteaAI/elitea_issues#6480 is open).
+
+Transit guard for product bug #2305 (first-render empty-list redirect): a
+landing on the create route is treated as a retryable navigation outcome
+(``binding.open_list``); the case's own observables are unchanged.
 """
 
 import logging
@@ -72,8 +76,7 @@ class TestDeletingOpenFolderReturnsCompleteList:
         e1, e2 = create_disposable_entities(binding, social_folder_cleanup, "3209", 2)
 
         with allure.step(f"Step 0 — Open the {binding.key} list; both entities present; capture the baseline"):
-            list_page.navigate()
-            folders.create_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            binding.open_list(list_page, folders)  # the type's own navigate() + #2305 transit guard
             for entity in (e1, e2):
                 folders.move_to_folder_button(entity["id"]).wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
             cards = binding.cards(list_page)
