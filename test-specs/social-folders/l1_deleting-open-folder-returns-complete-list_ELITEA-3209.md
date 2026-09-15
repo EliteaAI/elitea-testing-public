@@ -148,3 +148,4 @@ none.
   step 3 the URL `folder` param clears BEFORE the DELETE 204 arrives (the product calls
   `closeFolder()` optimistically) — the spec waits on the 204, the param and the unfiltered GET
   together. Verified green on skills, agents, pipelines, toolkits_and_indexes, mcps, credentials.
+- Step 0 transit guard for product bug #2305 (first-render empty-list redirect): `binding.open_list` (fixtures) re-navigates a create-route landing and drops ONLY that redirected attempt's console messages; Axis 2 excludes the #1971 project-id-less toolkitTypes 404 by exact URL (`exclude_known_defect_urls`), never by status code.
