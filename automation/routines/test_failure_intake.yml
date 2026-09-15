@@ -123,6 +123,9 @@ state:
   issue_status:
     type: str
     value: ''
+  label_result:
+    type: str
+    value: ''
   skip_reason:
     type: str
     value: ''
@@ -1388,7 +1391,6 @@ nodes:
     input:
       - issue_title
       - issue_body
-      - issue_label
     input_mapping:
       board_repo:
         type: fixed
@@ -1402,9 +1404,6 @@ nodes:
       body:
         type: variable
         value: issue_body
-      labels:
-        type: template
-        value: '["{{ issue_label | default("aqa:mapping") }}"]'
       fields:
         type: fixed
         value:
@@ -1424,7 +1423,6 @@ nodes:
     input:
       - issue_title
       - issue_body
-      - issue_label
     input_mapping:
       board_repo:
         type: fixed
@@ -1438,9 +1436,6 @@ nodes:
       body:
         type: variable
         value: issue_body
-      labels:
-        type: template
-        value: '["{{ issue_label | default("aqa:maintenance") }}"]'
       fields:
         type: fixed
         value:
@@ -1476,6 +1471,28 @@ nodes:
       - issue_result
     output:
       - issue_number
+    structured_output: true
+    transition: AddLabelsToIssue
+
+  - id: AddLabelsToIssue
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: update_issue
+    input:
+      - issue_number
+      - issue_label
+    input_mapping:
+      issue_id:
+        type: variable
+        value: issue_number
+      labels:
+        type: template
+        value: '["{{ issue_label | default("aqa:maintenance") }}"]'
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+    output:
+      - label_result
     structured_output: true
     transition: StoreIssueAndNext
 
