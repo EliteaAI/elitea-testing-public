@@ -23,7 +23,9 @@ substituted). Handles + traffic: ``test-specs/social-folders/_surface.md``.
 Transit guard for product bug #2305 (first-render empty-list redirect): a
 landing on the create route is treated as a retryable navigation outcome
 (:meth:`EntityTypeBinding.open_list`, bounded); the case's own observables
-are unchanged.
+are unchanged. Console messages logged by the create picker during a #2305
+redirected attempt are cleared inside the guard's re-navigation branch —
+exactly the redirected attempt, nothing else (see the method docstring).
 """
 
 import logging
@@ -88,7 +90,9 @@ class EntityTypeBinding:
     known_defect_ref: str = ""
     _extra_cleanup: list[Callable[[], None]] = field(default_factory=list)
 
-    def open_list(self, list_page: BasePage, folders: FolderSection) -> None:
+    def open_list(
+        self, list_page: BasePage, folders: FolderSection, console_errors: list[str] | None = None
+    ) -> None:
         """Open the drawn type's list route and wait for the FOLDERS panel to mount.
 
         Transit guard for product bug #2305 (first-render empty-list redirect):
@@ -104,9 +108,20 @@ class EntityTypeBinding:
         so triage keeps its ``broken`` shape). No sleeps, no ``networkidle``
         beyond what ``navigate()`` already does.
 
+        Console axis (declared improvisation — canon gap, lead ruling on #2301
+        fix round 3): when the spec passes its live ``console_errors`` list
+        (armed at test start, as every spec does), the messages logged by the
+        create picker during a #2305 REDIRECTED attempt (#656 React key
+        warning, #1971 404) are cleared inside the re-navigation branch only —
+        exactly the redirected attempt, nothing else. The list's own successful
+        mount and every case step stay under Axis 2; on the majority of runs
+        where #2305 never fires, nothing is cleared at all.
+
         Args:
             list_page: the type's list page object (``binding.list_page_cls(page)``).
             folders: the :class:`FolderSection` bound to the same page.
+            console_errors: the spec's live ``collect_console_errors(page)`` list;
+                cleared ONLY when a #2305 landing is being re-navigated.
         """
         # Known defect: #2305
         page = list_page.page
@@ -127,9 +142,17 @@ class EntityTypeBinding:
         if try_open():
             return
         for n in range(1, OPEN_LIST_MAX_RENAVIGATIONS + 1):
-            title = f"#2305 first-render empty-redirect hit, re-navigating (attempt {n})"
+            dropped = len(console_errors) if console_errors is not None else 0
+            title = (
+                f"#2305 first-render empty-redirect hit — dropping {dropped} console message(s) logged by "
+                f"the create picker, re-navigating (attempt {n})"
+            )
             logger.warning("social-folders open_list [%s]: %s — landed on %s", self.key, title, page.url)
             with allure.step(title):
+                if console_errors is not None:
+                    # Exactly the redirected attempt's messages (#656 key warning, #1971 404) — the
+                    # successful mount that follows, and every case step, stay under Axis 2.
+                    console_errors.clear()
                 if try_open():
                     return
         raise AssertionError(
