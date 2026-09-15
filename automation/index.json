@@ -3655,6 +3655,37 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_api_maintenance_error_triggerable",
+      "markers": [
+        "api",
+        "maintenance",
+        "p1"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_banner_dismissed_automatically",
+      "markers": [
+        "maintenance",
+        "p2",
+        "ui"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_detection_captures_screenshot",
+      "markers": [
+        "maintenance",
+        "p2",
+        "ui"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_state_boolean_check",
+      "markers": [
+        "maintenance",
+        "p2"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.toolkits.test_credential_create.TestCredentialCreate.test_create_github_credential_via_sidebar_button",
       "markers": [
         "credentials",
