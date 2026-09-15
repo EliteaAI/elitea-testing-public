@@ -19,6 +19,17 @@ asserted (EliteaAI/elitea_issues#6480 is open).
 Transit guard for product bug #2305 (first-render empty-list redirect): a
 landing on the create route is treated as a retryable navigation outcome
 (``binding.open_list``); the case's own observables are unchanged.
+
+Console axis scope (declared improvisation — canon gap, lead ruling on
+#2301 fix round 2): Axis 2 (no unexpected console errors) is an ADDED
+assertion scoped to the case's own steps; the transit precondition (#2305
+redirect → create picker, where #656 logs a React key warning) is outside
+the case and must not decide its verdict. The collector is therefore armed
+the moment ``binding.open_list`` has settled on the real list page — before
+the baseline reads and before Step 1 — so every case step is covered, and
+nothing is dropped, windowed or text-filtered once it is armed. The one
+exclusion is the exact project-id-less toolkitTypes URL (#1971), never a
+status code.
 """
 
 import logging
@@ -29,7 +40,11 @@ import pytest
 from components.folder_section import FolderSection
 from fixtures.social_folder_fixtures import EntityTypeBinding, create_disposable_entities, disposable_folder_name
 from playwright.sync_api import Page, expect
-from utils.console_errors import collect_console_errors
+from utils.console_errors import (
+    TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL,
+    collect_console_errors,
+    exclude_known_defect_urls,
+)
 
 logger = logging.getLogger("elitea.tests.social_folders")
 
@@ -68,7 +83,6 @@ class TestDeletingOpenFolderReturnsCompleteList:
         binding = social_folder_binding
         list_page = binding.list_page_cls(page)
         folders = FolderSection(page, binding.folder_entity_type)
-        console_errors = collect_console_errors(page)
         folder_name = disposable_folder_name("3209", binding)
 
         # Transit: two disposable entities via the API, seeded BEFORE the list mounts
@@ -77,6 +91,9 @@ class TestDeletingOpenFolderReturnsCompleteList:
 
         with allure.step(f"Step 0 — Open the {binding.key} list; both entities present; capture the baseline"):
             binding.open_list(list_page, folders)  # the type's own navigate() + #2305 transit guard
+            # Console axis armed HERE: the list page has settled, the #2305 transit is over,
+            # and no case step (baseline reads included) has started yet — see the docstring.
+            console_errors = collect_console_errors(page)
             for entity in (e1, e2):
                 folders.move_to_folder_button(entity["id"]).wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
             cards = binding.cards(list_page)
@@ -138,4 +155,7 @@ class TestDeletingOpenFolderReturnsCompleteList:
                 )
 
         with allure.step("Axis 2 — No unexpected console errors"):
-            assert not console_errors, f"Unexpected console errors: {console_errors}"
+            # Known defect: #1971 — the project-id-less toolkitTypes 404 fires on
+            # project-scope transitions; excluded by its exact URL only (never by status code).
+            unexpected = exclude_known_defect_urls(console_errors, TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL)
+            assert not unexpected, f"Unexpected console errors: {unexpected}"
