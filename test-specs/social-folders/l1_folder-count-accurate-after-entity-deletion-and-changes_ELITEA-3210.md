@@ -174,3 +174,4 @@ none.
     lands after the URL param cleared but before React re-rendered is treated as "same folder →
     toggle closed" (reproduced once). `close_folder()` waits for the header to unmount before
     returning.
+- Step 0 transit guard for product bug #2305 (first-render empty-list redirect): `binding.open_list` (fixtures) re-navigates a create-route landing and drops ONLY that redirected attempt's console messages; Axis 2 excludes the #1971 project-id-less toolkitTypes 404 by exact URL (`exclude_known_defect_urls`), never by status code.

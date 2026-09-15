@@ -29,6 +29,23 @@ Known defect (console only): the post-delete stale
 ``GET /configurations/configuration/{pid}/{id}`` → 404 (#1666, credentials)
 is excluded by exact URL via ``exclude_known_defect_urls`` — never by
 status code.
+
+Transit guard for product bug #2305 (first-render empty-list redirect): a
+landing on the create route is treated as a retryable navigation outcome
+(``binding.open_list``); the case's own observables are unchanged.
+
+Console axis scope (declared improvisation — canon gap, lead ruling on
+#2301 fix round 3): Axis 2 (no unexpected console errors) is an ADDED
+assertion scoped to the case's own steps; the transit precondition (#2305
+redirect → create picker, where #656 logs a React key warning and #1971
+its 404) is outside the case and must not decide its verdict. The collector
+is armed at test start (as on the trunk) and passed into
+``binding.open_list``; console messages logged by the create picker during
+a #2305 REDIRECTED attempt are cleared inside the guard's re-navigation
+branch — exactly the redirected attempt, nothing else. The list's own mount
+and every case step remain under Axis 2; when #2305 does not fire, nothing
+is cleared. The one standing exclusion is the exact project-id-less
+toolkitTypes URL (#1971), never a status code.
 """
 
 import logging
@@ -38,7 +55,11 @@ import pytest
 from components.folder_section import FolderSection
 from fixtures.social_folder_fixtures import EntityTypeBinding, create_disposable_entities, disposable_folder_name
 from playwright.sync_api import Page, expect
-from utils.console_errors import collect_console_errors, exclude_known_defect_urls
+from utils.console_errors import (
+    TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL,
+    collect_console_errors,
+    exclude_known_defect_urls,
+)
 
 logger = logging.getLogger("elitea.tests.social_folders")
 
@@ -75,8 +96,9 @@ class TestFolderCountAccurateAfterEntityDeletion:
         e1, e2, e3, e4 = create_disposable_entities(binding, social_folder_cleanup, "3210", 4)
 
         with allure.step(f"Step 0 — Open the {binding.key} list; all four entities present"):
-            list_page.navigate()
-            folders.create_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            # The type's own navigate() + #2305 transit guard; the live console list is passed so the
+            # guard drops ONLY a redirected attempt's create-picker messages — see the docstring.
+            binding.open_list(list_page, folders, console_errors=console_errors)
             for entity in (e1, e2, e3, e4):
                 folders.move_to_folder_button(entity["id"]).wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
             assert folders.url_folder_param() is None, f"no folder should be open yet: {page.url}"
@@ -141,7 +163,9 @@ class TestFolderCountAccurateAfterEntityDeletion:
             expect(folders.move_to_folder_button(e4["id"])).to_have_count(0)
 
         with allure.step("Axis 2 — No unexpected console errors"):
-            unexpected = list(console_errors)
+            # Known defect: #1971 — the project-id-less toolkitTypes 404 fires on
+            # project-scope transitions; excluded by its exact URL only (never by status code).
+            unexpected = exclude_known_defect_urls(console_errors, TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL)
             if binding.known_defect_url_fragment is not None:
                 # Known defect: #2303 (skills) / #1666 (credentials) — the stale post-delete GET → 404,
                 # excluded by its exact URL only (never by status code).

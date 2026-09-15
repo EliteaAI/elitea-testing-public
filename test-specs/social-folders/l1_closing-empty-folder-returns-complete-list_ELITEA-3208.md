@@ -153,3 +153,4 @@ none.
   `expect(locator).to_have_text("(0)")` auto-retries — never sleep.
 - The `folder-item-count-{id}` testid must be added on the Typography, not on the row (the row
   already has `folder-item-{id}`; its text includes the name).
+- Step 0 transit guard for product bug #2305 (first-render empty-list redirect): `binding.open_list` (fixtures) re-navigates a create-route landing and drops ONLY that redirected attempt's console messages; Axis 2 excludes the #1971 project-id-less toolkitTypes 404 by exact URL (`exclude_known_defect_urls`), never by status code.

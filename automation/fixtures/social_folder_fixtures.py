@@ -19,6 +19,13 @@ locators, the disposable-entity factory/cleanup (API — **transit** per the
 AFS § Fidelity Declaration; every folder observable is UI-produced), and
 the type's own UI delete path (ELITEA-3210 step 2 — a CASE action, never
 substituted). Handles + traffic: ``test-specs/social-folders/_surface.md``.
+
+Transit guard for product bug #2305 (first-render empty-list redirect): a
+landing on the create route is treated as a retryable navigation outcome
+(:meth:`EntityTypeBinding.open_list`, bounded); the case's own observables
+are unchanged. Console messages logged by the create picker during a #2305
+redirected attempt are cleared inside the guard's re-navigation branch —
+exactly the redirected attempt, nothing else (see the method docstring).
 """
 
 import logging
@@ -31,6 +38,7 @@ from dataclasses import dataclass, field
 import allure
 import pytest
 from api import AgentAPI, ArtifactAPI, CredentialAPI, PipelineAPI, SkillAPI, SocialFolderAPI, ToolkitAPI
+from components.folder_section import FolderSection
 from config import settings
 from pages.agent_detail_page import AgentDetailPage
 from pages.agents_list_page import AgentsListPage
@@ -46,6 +54,7 @@ from pages.skills_list_page import SkillsListPage
 from pages.toolkit_detail_page import ToolkitDetailPage
 from pages.toolkits_list_page import ToolkitsListPage
 from playwright.sync_api import Locator, Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 logger = logging.getLogger("elitea.fixtures.social_folders")
 
@@ -53,6 +62,11 @@ logger = logging.getLogger("elitea.fixtures.social_folders")
 ENTITY_TYPE_POOL = ("agents", "skills", "pipelines", "toolkits_and_indexes", "mcps", "credentials")
 
 _MCP_REMOTE_URL = "https://mcp.deepwiki.com/mcp"  # same as data_fixtures._MCP_DEEPWIKI_URL
+
+# #2305 guard: how many EXTRA navigations open_list() may spend when the list
+# route lands on the type's create route instead of mounting the list.
+OPEN_LIST_MAX_RENAVIGATIONS = 2
+FOLDERS_PANEL_TIMEOUT = 10000
 
 
 @dataclass
@@ -64,6 +78,7 @@ class EntityTypeBinding:
     folder_entity_type: str  # the folders API `entity_type`
     list_path_fragment: str  # substring of the entity list GET the folder view filters with `ids=`
     list_url_pattern: re.Pattern  # the list route URL (any query), for post-delete landing waits
+    create_url_pattern: re.Pattern  # the type's create route (src/routes.js) — the #2305 redirect landing
     name_code: str  # short code for disposable names
     list_page_cls: type[BasePage]
     cards: Callable[[BasePage], Locator]  # the page-1 card collection
@@ -74,6 +89,76 @@ class EntityTypeBinding:
     known_defect_url_fragment: Callable[[dict], str] | None = None  # stale post-delete GET (console 404)
     known_defect_ref: str = ""
     _extra_cleanup: list[Callable[[], None]] = field(default_factory=list)
+
+    def open_list(
+        self, list_page: BasePage, folders: FolderSection, console_errors: list[str] | None = None
+    ) -> None:
+        """Open the drawn type's list route and wait for the FOLDERS panel to mount.
+
+        Transit guard for product bug #2305 (first-render empty-list redirect):
+        a landing on the create route is treated as a retryable navigation
+        outcome; the case's own observables are unchanged. ``ToolkitsList.jsx``
+        / ``CredentialsList.jsx`` redirect a NON-EMPTY list to the type's create
+        route when the empty-redirect effect runs before the list query has
+        been issued (``totalCount === 0`` is also the pre-query initial state).
+        The type's own ``navigate()`` (with its readiness waits) is kept; only a
+        landing that matches :attr:`create_url_pattern` is re-navigated, at most
+        :data:`OPEN_LIST_MAX_RENAVIGATIONS` times, then this fails loudly naming
+        #2305. Any other outcome propagates unchanged (a raw timeout stays raw,
+        so triage keeps its ``broken`` shape). No sleeps, no ``networkidle``
+        beyond what ``navigate()`` already does.
+
+        Console axis (declared improvisation — canon gap, lead ruling on #2301
+        fix round 3): when the spec passes its live ``console_errors`` list
+        (armed at test start, as every spec does), the messages logged by the
+        create picker during a #2305 REDIRECTED attempt (#656 React key
+        warning, #1971 404) are cleared inside the re-navigation branch only —
+        exactly the redirected attempt, nothing else. The list's own successful
+        mount and every case step stay under Axis 2; on the majority of runs
+        where #2305 never fires, nothing is cleared at all.
+
+        Args:
+            list_page: the type's list page object (``binding.list_page_cls(page)``).
+            folders: the :class:`FolderSection` bound to the same page.
+            console_errors: the spec's live ``collect_console_errors(page)`` list;
+                cleared ONLY when a #2305 landing is being re-navigated.
+        """
+        # Known defect: #2305
+        page = list_page.page
+
+        def try_open() -> bool:
+            """True when the list mounted on the list route; False on the #2305 create-route landing."""
+            try:
+                list_page.navigate()
+                if self.create_url_pattern.match(page.url):
+                    return False
+                folders.create_button.wait_for(state="visible", timeout=FOLDERS_PANEL_TIMEOUT)
+                return True
+            except PlaywrightTimeoutError:
+                if self.create_url_pattern.match(page.url):
+                    return False  # navigate()'s own readiness wait (or the panel wait) timed out ON the create route
+                raise  # not the #2305 landing — propagate the real timeout unchanged
+
+        if try_open():
+            return
+        for n in range(1, OPEN_LIST_MAX_RENAVIGATIONS + 1):
+            dropped = len(console_errors) if console_errors is not None else 0
+            title = (
+                f"#2305 first-render empty-redirect hit — dropping {dropped} console message(s) logged by "
+                f"the create picker, re-navigating (attempt {n})"
+            )
+            logger.warning("social-folders open_list [%s]: %s — landed on %s", self.key, title, page.url)
+            with allure.step(title):
+                if console_errors is not None:
+                    # Exactly the redirected attempt's messages (#656 key warning, #1971 404) — the
+                    # successful mount that follows, and every case step, stay under Axis 2.
+                    console_errors.clear()
+                if try_open():
+                    return
+        raise AssertionError(
+            f"Known defect #2305: the {self.key} list route redirected to the create route ({page.url}) "
+            f"on all {OPEN_LIST_MAX_RENAVIGATIONS + 1} navigations — the FOLDERS panel never mounted"
+        )
 
 
 # ----------------------------------------------------------------------
@@ -150,6 +235,7 @@ def social_folder_binding(
             folder_entity_type="skill",
             list_path_fragment=f"/skills/prompt_lib/{pid}",
             list_url_pattern=re.compile(r".*/skills/all/?(\?.*)?$"),
+            create_url_pattern=re.compile(r".*/skills/create(/.*)?(\?.*)?$"),
             name_code="sk",
             list_page_cls=SkillsListPage,
             cards=lambda lp: lp.skill_card,
@@ -176,6 +262,7 @@ def social_folder_binding(
             folder_entity_type="agent",
             list_path_fragment=f"/applications/prompt_lib/{pid}",
             list_url_pattern=re.compile(r".*/agents/all/?(\?.*)?$"),
+            create_url_pattern=re.compile(r".*/agents/create(/.*)?(\?.*)?$"),
             name_code="ag",
             list_page_cls=AgentsListPage,
             cards=lambda lp: lp.entity_card,
@@ -201,6 +288,7 @@ def social_folder_binding(
             folder_entity_type="pipeline",
             list_path_fragment=f"/applications/prompt_lib/{pid}",
             list_url_pattern=re.compile(r".*/pipelines/all/?(\?.*)?$"),
+            create_url_pattern=re.compile(r".*/pipelines/create(/.*)?(\?.*)?$"),
             name_code="pl",
             list_page_cls=PipelinesListPage,
             cards=lambda lp: lp.entity_card,
@@ -238,6 +326,7 @@ def social_folder_binding(
             folder_entity_type="mcp",
             list_path_fragment=f"/tools/prompt_lib/{pid}",
             list_url_pattern=re.compile(r".*/mcps/all/?(\?.*)?$"),
+            create_url_pattern=re.compile(r".*/mcps/create(/.*)?(\?.*)?$"),
             name_code="mc",
             list_page_cls=McpListPage,
             cards=lambda lp: lp.mcp_card,
@@ -278,6 +367,7 @@ def social_folder_binding(
             folder_entity_type="toolkit",
             list_path_fragment=f"/tools/prompt_lib/{pid}",
             list_url_pattern=re.compile(r".*/toolkits/all/?(\?.*)?$"),
+            create_url_pattern=re.compile(r".*/toolkits/create(/.*)?(\?.*)?$"),
             name_code="tk",
             list_page_cls=ToolkitsListPage,
             cards=lambda lp: lp.entity_card,
@@ -323,6 +413,7 @@ def social_folder_binding(
             folder_entity_type="configuration",
             list_path_fragment="/configurations/configurations/",
             list_url_pattern=re.compile(r".*/credentials/all/?(\?.*)?$"),
+            create_url_pattern=re.compile(r".*/credentials/create-credential(/.*)?(\?.*)?$"),
             name_code="cr",
             list_page_cls=CredentialsListPage,
             cards=lambda lp: lp.entity_card,

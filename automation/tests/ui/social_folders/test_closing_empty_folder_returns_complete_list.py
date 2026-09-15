@@ -21,6 +21,23 @@ every assertion). Clarification #2302: the case text says
 ``No items in this folder yet.`` (trailing period); the product renders
 ``No items in this folder yet`` on all five list components — the product
 string is asserted.
+
+Transit guard for product bug #2305 (first-render empty-list redirect): a
+landing on the create route is treated as a retryable navigation outcome
+(``binding.open_list``); the case's own observables are unchanged.
+
+Console axis scope (declared improvisation — canon gap, lead ruling on
+#2301 fix round 3): Axis 2 (no unexpected console errors) is an ADDED
+assertion scoped to the case's own steps; the transit precondition (#2305
+redirect → create picker, where #656 logs a React key warning and #1971
+its 404) is outside the case and must not decide its verdict. The collector
+is armed at test start (as on the trunk) and passed into
+``binding.open_list``; console messages logged by the create picker during
+a #2305 REDIRECTED attempt are cleared inside the guard's re-navigation
+branch — exactly the redirected attempt, nothing else. The list's own mount
+and every case step remain under Axis 2; when #2305 does not fire, nothing
+is cleared. The one standing exclusion is the exact project-id-less
+toolkitTypes URL (#1971), never a status code.
 """
 
 import logging
@@ -30,7 +47,11 @@ import pytest
 from components.folder_section import FolderSection
 from fixtures.social_folder_fixtures import EntityTypeBinding, create_disposable_entities, disposable_folder_name
 from playwright.sync_api import Page, expect
-from utils.console_errors import collect_console_errors
+from utils.console_errors import (
+    TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL,
+    collect_console_errors,
+    exclude_known_defect_urls,
+)
 
 logger = logging.getLogger("elitea.tests.social_folders")
 
@@ -69,8 +90,9 @@ class TestClosingEmptyFolderReturnsCompleteList:
         create_disposable_entities(binding, social_folder_cleanup, "3208", 1)
 
         with allure.step(f"Step 0 — Open the {binding.key} list and capture the page-1 baseline"):
-            list_page.navigate()  # the type's own list page object; the app adds viewMode itself
-            folders.create_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            # The type's own navigate() + #2305 transit guard; the live console list is passed so the
+            # guard drops ONLY a redirected attempt's create-picker messages — see the docstring.
+            binding.open_list(list_page, folders, console_errors=console_errors)
             cards = binding.cards(list_page)
             cards.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             baseline_cards = cards.count()
@@ -110,4 +132,7 @@ class TestClosingEmptyFolderReturnsCompleteList:
             expect(folders.folder_item_count(folder_id)).to_have_text("(0)")
 
         with allure.step("Axis 2 — No unexpected console errors"):
-            assert not console_errors, f"Unexpected console errors: {console_errors}"
+            # Known defect: #1971 — the project-id-less toolkitTypes 404 fires on
+            # project-scope transitions; excluded by its exact URL only (never by status code).
+            unexpected = exclude_known_defect_urls(console_errors, TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL)
+            assert not unexpected, f"Unexpected console errors: {unexpected}"
