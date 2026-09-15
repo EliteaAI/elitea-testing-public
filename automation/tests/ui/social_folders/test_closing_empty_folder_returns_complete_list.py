@@ -5,13 +5,19 @@ Surface digest: test-specs/social-folders/_surface.md
 Source defect EliteaAI/elitea_issues#6483 is CLOSED (R-2.0.6) — expected GREEN.
 
 Entity type is DRAWN once per run (lead decision #2301) from the six-type
-pool; pin with ``SOCIAL_FOLDER_ENTITY_TYPE=<type>`` in ``.env.test``. This
-case needs no entities at all — only the drawn type's list route.
+pool; pin with ``SOCIAL_FOLDER_ENTITY_TYPE=<type>`` in ``.env.test``. The
+folder itself stays EMPTY; ONE disposable entity of the drawn type is
+seeded via the API so the list page renders at all — a zero-entity list
+redirects to the type's create page and never mounts the FOLDERS panel
+(verified live: project 399 holds 0 credentials and 0 toolkits, so the
+credentials draw redirected 3/3 without it). It is never filed.
 
 Fidelity: every observable (folder row + count, empty state, header, URL
-state, the unfiltered list) is produced by the UI/backend. The only API
-call is the teardown DELETE of the disposable folder (transit — cleanup
-after every assertion). Clarification #2302: the case text says
+state, the unfiltered list) is produced by the UI/backend. The seeded
+entity is a declared TRANSIT substitution (test data reached before the
+steps under test; it is part of the read-only page-1 baseline, nothing is
+asserted about it). Teardown deletes it and the folder via the API (after
+every assertion). Clarification #2302: the case text says
 ``No items in this folder yet.`` (trailing period); the product renders
 ``No items in this folder yet`` on all five list components — the product
 string is asserted.
@@ -22,7 +28,7 @@ import logging
 import allure
 import pytest
 from components.folder_section import FolderSection
-from fixtures.social_folder_fixtures import EntityTypeBinding, disposable_folder_name
+from fixtures.social_folder_fixtures import EntityTypeBinding, create_disposable_entities, disposable_folder_name
 from playwright.sync_api import Page, expect
 from utils.console_errors import collect_console_errors
 
@@ -57,6 +63,10 @@ class TestClosingEmptyFolderReturnsCompleteList:
         folders = FolderSection(page, binding.folder_entity_type)
         console_errors = collect_console_errors(page)
         folder_name = disposable_folder_name("3208", binding)
+
+        # Transit: one unfiled disposable entity so the list mounts (a zero-entity list
+        # redirects to the create page); it is part of the baseline, never filed.
+        create_disposable_entities(binding, social_folder_cleanup, "3208", 1)
 
         with allure.step(f"Step 0 — Open the {binding.key} list and capture the page-1 baseline"):
             list_page.navigate()  # the type's own list page object; the app adds viewMode itself

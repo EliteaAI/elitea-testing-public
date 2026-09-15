@@ -220,9 +220,19 @@ def social_folder_binding(
             form.open_controls_menu()
             form.click_delete_menu_item()
             form.fill_delete_confirm_name(entity["name"])
-            form.confirm_delete(pid, entity["id"])  # waits for the DELETE 204 + /mcps/all
+            # Not McpFormPage.confirm_delete(): its trailing wait_for_url("**/mcps/all") glob does
+            # not match the navigate(-1) landing "/mcps/all?folder=<id>" the folder view produces
+            # (observed live, 3/3). Wait for the DELETE 204 here and the list route (any query) below.
+            with page.expect_response(
+                lambda r: r.request.method == "DELETE"
+                and f"/tool/prompt_lib/{pid}/{entity['id']}" in r.url,
+                timeout=20000,
+            ) as delete_info:
+                form.delete_confirm_button.click()
+            assert delete_info.value.status == 204, f"Delete MCP returned HTTP {delete_info.value.status}"
+            _wait_for_list_route(page, binding)
 
-        return EntityTypeBinding(
+        binding = EntityTypeBinding(
             key=key,
             route="/mcps/all?viewMode=owner",
             folder_entity_type="mcp",
@@ -238,6 +248,7 @@ def social_folder_binding(
             delete=lambda e: _tolerant(lambda: toolkit_api.delete_toolkit(e["id"])),
             delete_via_ui=delete_via_ui,
         )
+        return binding
 
     if key == "toolkits_and_indexes":
         buckets: dict[int, str] = {}
