@@ -1338,6 +1338,7 @@ nodes:
     input:
       - issue_title
       - issue_body
+      - issue_label
     input_mapping:
       board_repo:
         type: fixed
@@ -1351,6 +1352,9 @@ nodes:
       body:
         type: variable
         value: issue_body
+      labels:
+        type: template
+        value: '["{{ issue_label }}"]'
       fields:
         type: fixed
         value:
@@ -1370,6 +1374,7 @@ nodes:
     input:
       - issue_title
       - issue_body
+      - issue_label
     input_mapping:
       board_repo:
         type: fixed
@@ -1383,6 +1388,9 @@ nodes:
       body:
         type: variable
         value: issue_body
+      labels:
+        type: template
+        value: '["{{ issue_label }}"]'
       fields:
         type: fixed
         value:
@@ -1418,28 +1426,6 @@ nodes:
       - issue_result
     output:
       - issue_number
-    structured_output: true
-    transition: ApplyIssueLabel
-
-  - id: ApplyIssueLabel
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: update_issue
-    input:
-      - issue_number
-      - issue_label
-    input_mapping:
-      issue_id:
-        type: variable
-        value: issue_number
-      labels:
-        type: template
-        value: '["{{ issue_label }}"]'
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
-    output:
-      - label_result
     structured_output: true
     transition: StoreIssueAndNext
 
