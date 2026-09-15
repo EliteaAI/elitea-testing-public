@@ -13,16 +13,16 @@
 
 ## Test Results Matrix
 
-| Test Case | #150 | #152 |
-|-----------|--------|--------|
-| ELITEA-1869 | 🟠 | 🟠 |
-| ELITEA-1899 | 🔴 | 🔴 |
-| ELITEA-1901 | 🔴 | 🟢 |
-| ELITEA-1902 | 🟢 | 🔴 |
+| Test Case | #150 | #152 | #153 |
+|-----------|--------|--------|--------|
+| ELITEA-1869 | 🟠 | 🟠 | 🟠 |
+| ELITEA-1899 | 🔴 | 🔴 | 🔴 |
+| ELITEA-1901 | 🔴 | 🟢 | 🟢 |
+| ELITEA-1902 | 🟢 | 🔴 | 🟢 |
 
 ## Summary
 
-- **Runs Shown:** 2 (max 10)
+- **Runs Shown:** 3 (max 10)
 - **Total Test Cases:** 4
 
 *Generated automatically from maintenance files*
