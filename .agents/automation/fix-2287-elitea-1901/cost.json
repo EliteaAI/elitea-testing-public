@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "fix-2287-elitea-1901",
- "generatedAt": "2026-09-14T21:09:57.325Z",
+ "generatedAt": "2026-09-15T10:13:00.993Z",
  "sources": {
   "window": {
    "start": "2026-09-13T20:50:59.391Z",
@@ -26,27 +26,27 @@
   ]
  },
  "totals": {
-  "costUsd": 10.8,
-  "tokens": 11742207,
+  "costUsd": 11.08,
+  "tokens": 12193729,
   "tokensSplit": {
-   "input": 134,
-   "output": 53172,
-   "cacheRead": 11190196,
-   "cacheWrite": 498705
+   "input": 138,
+   "output": 54498,
+   "cacheRead": 11638375,
+   "cacheWrite": 500718
   },
   "tokensByModel": {
    "claude-opus-5": {
-    "input": 134,
-    "output": 53172,
-    "cacheRead": 11190196,
-    "cacheWrite": 498705
+    "input": 138,
+    "output": 54498,
+    "cacheRead": 11638375,
+    "cacheWrite": 500718
    }
   },
-  "activeMin": 22,
+  "activeMin": 23,
   "dispatches": 2,
   "sessions": 1,
-  "turns": 47,
-  "toolCalls": 65,
+  "turns": 49,
+  "toolCalls": 66,
   "toolErrors": 4,
   "skills": []
  },
@@ -66,36 +66,36 @@
    "toolErrors": 1
   },
   "test-automation-lead": {
-   "costUsd": 7.37,
-   "tokens": 8908315,
+   "costUsd": 7.65,
+   "tokens": 9359837,
    "tok": {
-    "input": 94,
-    "output": 40373,
-    "cacheRead": 8665127,
-    "cacheWrite": 202721
+    "input": 98,
+    "output": 41699,
+    "cacheRead": 9113306,
+    "cacheWrite": 204734
    },
-   "activeMin": 19,
+   "activeMin": 20,
    "dispatches": 0,
-   "toolCalls": 47,
+   "toolCalls": 48,
    "toolErrors": 3
   }
  },
  "overhead": {
   "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
-  "costUsd": 7.37,
-  "sharePct": 68,
+  "costUsd": 7.65,
+  "sharePct": 69,
   "lead": {
-   "costUsd": 7.37,
-   "tokens": 8908315,
+   "costUsd": 7.65,
+   "tokens": 9359837,
    "tok": {
-    "input": 94,
-    "output": 40373,
-    "cacheRead": 8665127,
-    "cacheWrite": 202721
+    "input": 98,
+    "output": 41699,
+    "cacheRead": 9113306,
+    "cacheWrite": 204734
    },
-   "activeMin": 19,
+   "activeMin": 20,
    "dispatches": 0,
-   "toolCalls": 47,
+   "toolCalls": 48,
    "toolErrors": 3
   },
   "stages": {
@@ -163,9 +163,9 @@
     "toolErrors": 1
    },
    "loaded": {
-    "costUsd": 10.8,
-    "tokens": 11742207,
-    "activeMin": 22
+    "costUsd": 11.08,
+    "tokens": 12193729,
+    "activeMin": 23
    }
   }
  ],
@@ -193,23 +193,23 @@
    "n": 1
   },
   "loadedCostUsd": {
-   "avg": 10.8,
-   "median": 10.8,
-   "min": 10.8,
-   "max": 10.8,
+   "avg": 11.08,
+   "median": 11.08,
+   "min": 11.08,
+   "max": 11.08,
    "n": 1
   },
   "loadedActiveMin": {
-   "avg": 22,
-   "median": 22,
-   "min": 22,
-   "max": 22,
+   "avg": 23,
+   "median": 23,
+   "min": 23,
+   "max": 23,
    "n": 1
   }
  },
  "averages": {
   "totalPerDelivered": {
-   "costUsd": 10.8,
+   "costUsd": 11.08,
    "note": "whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)"
   },
   "directPerCase": {

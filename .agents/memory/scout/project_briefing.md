@@ -129,3 +129,10 @@ both, so your profile is his single source of project truth.
   without the gitfile, git silently answers for the PARENT repo.
 - Re-capturing an unchanged session is skipped by design (`thisEnd > prevEnd`); to re-mine, capture
   into a sandbox `--cwd` and append the line (dedup: same endedAt → later capturedAt wins).
+- Factory tokenomics on the card (2026-09-15): `factory/run.sh` posts one `tokenomics: v1` YAML comment per
+  session via `.claude/skills/tokenomics/scripts/issue-tokenomics.mjs` (delta vs the issue's cumulative ledger
+  line — the loop resumes one conversation per issue). Ledger convention: `costUsd`/`activeMin` include
+  sub-agents, `tokens`/`turns`/`toolCalls` are parent-only (`telemetry-capture.mjs:754-756`).
+  `issue-tokenomics-backfill.mjs` derives each issue's sid (md5 of `repo#issue#agent`) to find issues with
+  ledger data; DRY RUN by default. Loop death vectors: SIGHUP from a bare VS Code terminal (use tmux) — the
+  last unguarded `set -e` tracker write (intro comment) was guarded 2026-09-15.

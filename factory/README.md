@@ -324,3 +324,43 @@ Factory agents move statuses themselves, per their loop prompts. The loop reads
 the board, launches sessions, and comments; its single write is parking a card
 the agent can no longer park itself. Judgment lives in prose (the seed and the
 loop prompts); scripts do only what a script can check.
+
+## Tokenomics on the card
+
+After every session the loop posts one comment with that run's cost — a YAML
+block (`tokenomics: v1` first line) rendered by
+`factory/tokenomics/issue-tokenomics.mjs` from the session's
+telemetry ledger line, never from the agent: dollars, real-work vs cache tokens,
+by role, per dispatch with stage, declared scope, and the running conversation
+total (the loop resumes one conversation per issue, so each comment is the
+run's delta). Off with `TOKENOMICS_COMMENT=0`; never fatal. The scripts live
+here, not in the skill folder (which `init --update` overwrites); they import the
+skill's own report helpers so the numbers are the skill's numbers. Tests:
+`node --test factory/tokenomics/issue-tokenomics.test.mjs`. Backfill for issues the loop worked before
+this existed (dry run by default; `--post` writes, in order, skipping runs
+already commented):
+
+```bash
+env -u GITHUB_TOKEN node factory/tokenomics/issue-tokenomics-backfill.mjs \
+  --tracking-repo EliteaAI/elitea-testing-public --agent test-automation-lead \
+  --issues 1-2500 [--post --gh "env -u GITHUB_TOKEN gh"]
+```
+
+After each session the loop also regenerates `reports/team.html` and
+`reports/<YYYY-MM>.html` in the telemetry submodule from the ledger and pushes
+the `telemetry` branch (`refresh_reports` in `run.sh`; `TOKENOMICS_REPORTS=0`
+opts out). One machine running loops: the pages just supersede each other.
+**Two machines: those two shared file names can conflict on `telemetry`** —
+`syncTelemetry`'s merge is conflict-free only for per-user files, and a failed
+merge is skipped until the next capture. Accepted as-is (operator ruling
+2026-09-15); if a second factory host appears, switch the names to
+`team-<user>.html` like the ledger.
+
+**Batch pages, whichever way the job was done.** `refresh_reports` also runs
+`factory/tokenomics/batch-page.mjs --session <sid>`: if the session's scope
+names a batch, it renders `reports/<batch>.html` — and when no workflow wrote
+`.agents/automation/<batch>/report.json` (a lead working a card with direct
+dispatches or solo), it synthesizes the receipt from the scope's declared
+outcomes first (`source: scope`, uncommitted in the main tree, exactly where a
+hand-written one lands). A real receipt is never overwritten; no batch or no
+outcomes → nothing happens.

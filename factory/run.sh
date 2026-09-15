@@ -395,6 +395,56 @@ release_gate() {
 }
 trap 'release_gate' EXIT
 
+# ---- tokenomics comment -----------------------------------------------------
+# After every session, post what the run cost as a YAML block on the issue —
+# derived from the session's ledger line (the tokenomics SessionEnd capture),
+# never from anything the agent reported. One comment per run, delta vs the
+# conversation before it plus the running total; `tokenomics: v1` on the
+# block's first line is the marker to grep/parse for. Opt-out:
+# TOKENOMICS_COMMENT=0 (config.env or loop env). A factory without the skill
+# posts nothing. Never fatal — a missing block costs one comment, not the loop.
+TELEMETRY_DIR="${TELEMETRY_DIR:-.agents/telemetry/automation}"
+TOKENOMICS_SCRIPT="${TOKENOMICS_SCRIPT:-factory/tokenomics/issue-tokenomics.mjs}"
+ledger_count() { cat "$TELEMETRY_DIR"/usage-*.jsonl 2>/dev/null | grep -c "\"id\":\"$1\"" || true; }
+post_tokenomics() { # <issue> <sid> <attempt-no> <board status> <loop verdict>
+  [ "${TOKENOMICS_COMMENT:-1}" != "0" ] || return 0
+  [ -f "$TOKENOMICS_SCRIPT" ] || return 0
+  local err="$STATE/tokenomics-error-$LOOP.txt" yaml run
+  run=$(( ${runs_before:-0} + 1 ))
+  yaml=$(node "$TOKENOMICS_SCRIPT" --session "$2" --baseline-count "${ledger_before:-0}" \
+           --runs-before "${runs_before:-0}" --issue "$1" --loop "$LOOP" --agent "$AGENT" \
+           --attempt "$3/$MAX_ATTEMPTS" --started "${run_started:-}" --ended "${run_ended:-}" \
+           --board-after "$4" --verdict "$5" --wait "${TOKENOMICS_WAIT:-30}" 2>"$err") \
+    || { echo "[$LOOP] #$1: no tokenomics block — $(head -1 "$err" 2>/dev/null | cut -c1-160)" >&2; return 0; }
+  gh issue comment "$1" -R "$TRACKING_REPO" \
+    -b "$(printf '📊 **Tokenomics** — run %s of this conversation (attempt %s/%s)\n\n```yaml\n%s\n```' "$run" "$3" "$MAX_ATTEMPTS" "$yaml")" \
+    >/dev/null 2>"$err" \
+    || echo "[$LOOP] #$1: tokenomics comment failed — $(head -1 "$err" 2>/dev/null | cut -c1-160) — continuing" >&2
+  echo "[$LOOP] #$1: tokenomics posted (run $run)."
+  return 0
+}
+# After every session: regenerate the team pages from the ledger (a pure
+# recompute — no scope, no close, no agent) and push the telemetry branch, so
+# reports/ on `telemetry` is always current without anyone remembering to run
+# them. Opt-out: TOKENOMICS_REPORTS=0. Never fatal.
+TOKENOMICS_SKILL="${TOKENOMICS_SKILL:-.claude/skills/tokenomics}"
+refresh_reports() { # [<sid>] — with a session: its batch page too (receipt synthesized from the scope if none)
+  [ "${TOKENOMICS_REPORTS:-1}" != "0" ] || return 0
+  [ -f "$TOKENOMICS_SKILL/scripts/team-report.mjs" ] || return 0
+  local out="$TELEMETRY_DIR/reports" err="$STATE/reports-error-$LOOP.txt" month
+  month=$(date +%Y-%m); mkdir -p "$out"
+  if [ -n "${1:-}" ] && [ -f factory/tokenomics/batch-page.mjs ]; then
+    echo "[$LOOP] $(node factory/tokenomics/batch-page.mjs --session "$1" 2>&1 | tail -1)"
+  fi
+  { node "$TOKENOMICS_SKILL/scripts/team-report.mjs" --html --out "$out/team.html" \
+    && node "$TOKENOMICS_SKILL/scripts/team-report.mjs" --html --since "$month-01" --label "$month" --out "$out/$month.html" \
+    && node -e "import('./$TOKENOMICS_SKILL/hooks/telemetry-capture.mjs').then(m => process.exit(m.syncTelemetry(process.cwd()) ? 0 : 1))"; } \
+    >/dev/null 2>"$err" \
+    && echo "[$LOOP] reports refreshed + pushed (telemetry: reports/team.html, reports/$month.html)." \
+    || echo "[$LOOP] reports refresh/push incomplete — $(head -1 "$err" 2>/dev/null | cut -c1-160)" >&2
+  return 0
+}
+
 run_session() { # extra claude args…
   local cap=()
   [ -n "${MAX_TURNS:-}" ] && cap=(--max-turns "$MAX_TURNS")
@@ -496,11 +546,19 @@ from memory without reading the latest comments is a protocol violation."
   # so a deleted or outdated one gets restored on the next claim.
   # NOTE: it is PUBLIC. Never include local paths, usernames, or machine
   # details — the operator knows where the factory runs; the id is enough.
-  if ! gh issue view "$issue" -R "$TRACKING_REPO" --json comments \
-       -q '.comments[].body' 2>/dev/null | grep -qF "$sid"; then
+  # NEVER fatal: this was the last unguarded tracker write under set -e — a
+  # GitHub hiccup (rate limit, 502) at claim time killed the whole loop
+  # instead of costing one comment (live finding, 2026-09-15). A failed post
+  # is retried by the self-healing check on the next claim anyway.
+  comments=$(gh issue view "$issue" -R "$TRACKING_REPO" --json comments -q '.comments[].body' 2>/dev/null || true)
+  if ! printf '%s' "$comments" | grep -qF "$sid"; then
     gh issue comment "$issue" -R "$TRACKING_REPO" \
-      -b "🔧 **Factory** ($AGENT) works this card. Conversation \`$sid\` — to take over: stop the loop, then \`claude --resume $sid\`. One conversation per issue — for history read this thread, to steer comment on it."
+      -b "🔧 **Factory** ($AGENT) works this card. Conversation \`$sid\` — to take over: stop the loop, then \`claude --resume $sid\`. One conversation per issue — for history read this thread, to steer comment on it." \
+      >/dev/null 2>"$STATE/board-error-$LOOP.txt" \
+      || echo "[$LOOP] #$issue: intro comment failed — $(head -1 "$STATE/board-error-$LOOP.txt" 2>/dev/null | cut -c1-160) — continuing; it is re-posted on the next claim" >&2
   fi
+  # Tokenomics blocks this conversation already posted — the run counter.
+  runs_before=$(printf '%s\n' "$comments" | grep -c "^conversation: $sid" || true)
 
   # Ownership BEFORE the session: from here until the card leaves this
   # loop's queue, only this loop may retry it out of the shared
@@ -509,6 +567,7 @@ from memory without reading the latest comments is a protocol violation."
 
   wait_gate
 
+  run_started=$(date -u +%Y-%m-%dT%H:%M:%SZ); ledger_before=$(ledger_count "$sid")
   # Resume-first: the transcript on disk is the only truth about whether this
   # conversation exists. Not found → start it fresh under the same derived id.
   run_session --resume "$sid"
@@ -529,6 +588,7 @@ from memory without reading the latest comments is a protocol violation."
   fi
 
   release_gate
+  run_ended=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
   # Outcome — read from the board, never from the transcript. SUCCESS means
   # "the card left this loop's queue": for a pipeline loop that's a status
@@ -547,7 +607,9 @@ from memory without reading the latest comments is a protocol violation."
     # covers a failed QUEUE read too: an empty read is not "left the queue"
     # (a rate-limited pass once read an In Progress card as done — live).
     echo "[$LOOP] #$issue: board unreadable — outcome deferred to next pass."
+    verdict=deferred
   elif [ "$in_queue" = 0 ]; then
+    verdict=left-queue
     clear_attempts "$issue"
     clear_claim "$issue"
     case "$st" in
@@ -558,11 +620,15 @@ from memory without reading the latest comments is a protocol violation."
   else
     note_attempt "$issue"
     if [ "$(attempts "$issue")" -ge "$MAX_ATTEMPTS" ]; then
+      verdict=escalated
       escalate "$issue"
     else
+      verdict=retry
       echo "[$LOOP] #$issue still in this loop's queue (status: $st); will retry."
     fi
   fi
+  post_tokenomics "$issue" "$sid" "$((n + 1))" "$st" "$verdict" || true
+  refresh_reports "$sid" || true
 
   [ -n "$ONCE" ] && exit 0
 done
