@@ -2225,3 +2225,65 @@ class ToolkitAPI:
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
+
+
+class SocialFolderAPI:
+    """Read / clean up social (entity) folders — ELITEA-3208/3209/3210.
+
+    Entity folders are the FOLDERS panel on the six private entity lists
+    (``EliteaUI/src/[fsd]/entities/folder/``). The specs create and drive
+    folders through the UI (the case's own actions); this client exists for
+    the two things the UI is NOT the subject of — ground-truth reads of the
+    folder list (``entities_count``) and loud teardown of a disposable folder.
+    Endpoints per ``entityFoldersApi.js`` (surface digest
+    ``test-specs/social-folders/_surface.md`` § Backend traffic):
+
+    - ``GET  /social/folders/prompt_lib/{pid}?entity_type=<t>&include_counts=true``
+    - ``DELETE /social/folder/prompt_lib/{pid}/{fid}`` → 204
+
+    Same cookie-or-Bearer auth shape as :class:`SkillAPI`.
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: str | None = None,
+        project_id: str | None = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+        self.project_id = project_id or str(settings.elitea_project_id)
+        self._session = requests.Session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+        logger.debug("SocialFolderAPI initialised — base_url=%s", self.base_url)
+
+    def _folders_url(self) -> str:
+        return f"{self.base_url}/social/folders/prompt_lib/{self.project_id}"
+
+    def _folder_url(self, folder_id: int) -> str:
+        return f"{self.base_url}/social/folder/prompt_lib/{self.project_id}/{folder_id}"
+
+    def list_folders(self, entity_type: str) -> list[dict]:
+        """Return the folders of *entity_type* WITH ``entities_count``
+        (``include_counts=true`` — without it the count field is absent)."""
+        resp = self._session.get(
+            self._folders_url(),
+            params={"entity_type": entity_type, "include_counts": "true"},
+        )
+        _raise_for_status(resp)
+        return resp.json().get("folders", [])
+
+    def delete_folder(self, folder_id: int) -> int:
+        """``DELETE`` a folder; returns the status code (204 on success, 404
+        when the case already deleted it — callers decide what to tolerate)."""
+        url = self._folder_url(folder_id)
+        logger.debug("DELETE folder %s", url)
+        resp = self._session.delete(url)
+        if resp.status_code not in (204, 404):
+            _raise_for_status(resp)
+        return resp.status_code
+
+    def close(self):
+        self._session.close()
