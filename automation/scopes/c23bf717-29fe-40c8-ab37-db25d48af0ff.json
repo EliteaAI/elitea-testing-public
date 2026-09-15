@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "session": "c23bf717-29fe-40c8-ab37-db25d48af0ff",
+  "intent": "automation",
+  "batch": "fix-2297",
+  "cases": [
+    "ELITEA-2440",
+    "ELITEA-2442"
+  ],
+  "declaredAt": "2026-09-15T10:26:29.776Z",
+  "updatedAt": "2026-09-15T10:33:16.728Z",
+  "outcomes": {
+    "ELITEA-2442": {
+      "outcome": "verified-non-defect",
+      "at": "2026-09-15T10:33:09.749Z"
+    },
+    "ELITEA-2440": {
+      "outcome": "verified-non-defect",
+      "at": "2026-09-15T10:33:09.749Z"
+    }
+  },
+  "closedAt": "2026-09-15T10:33:16.728Z"
+}
