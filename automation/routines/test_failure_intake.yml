@@ -1354,7 +1354,7 @@ nodes:
         value: issue_body
       labels:
         type: template
-        value: '["{{ issue_label }}"]'
+        value: '["{{ issue_label | default("aqa:mapping") }}"]'
       fields:
         type: fixed
         value:
@@ -1390,7 +1390,7 @@ nodes:
         value: issue_body
       labels:
         type: template
-        value: '["{{ issue_label }}"]'
+        value: '["{{ issue_label | default("aqa:maintenance") }}"]'
       fields:
         type: fixed
         value:
@@ -1435,11 +1435,13 @@ nodes:
       type: fixed
       value: |
         import json
+        import re
 
         out = {'created_issues': '[]', 'current_group_index': '0'}
 
         try:
-            issue_number = alita_state.get('issue_number', '0')
+            issue_number = alita_state.get('issue_number', '0') or '0'
+            issue_result = alita_state.get('issue_result', '') or ''
             created_raw = alita_state.get('created_issues', '[]')
             idx = int(alita_state.get('current_group_index', '0'))
             groups_raw = alita_state.get('issue_groups', '[]')
@@ -1450,10 +1452,15 @@ nodes:
 
             groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
 
-            # Build issue URL from extracted number
+            # Build issue URL from extracted number (with fallback to issue_result)
             issue_url = ''
             if issue_number and issue_number != '0':
                 issue_url = f"https://github.com/EliteaAI/elitea-testing-public/issues/{issue_number}"
+            elif issue_result:
+                # Fallback: extract number directly from issue_result
+                match = re.search(r"issue with number ['\"]?(\d+)['\"]?", str(issue_result), re.IGNORECASE)
+                if match:
+                    issue_url = f"https://github.com/EliteaAI/elitea-testing-public/issues/{match.group(1)}"
 
             # Store the created issue with its tests
             if idx < len(groups):
@@ -1472,6 +1479,7 @@ nodes:
         out
     input:
       - issue_number
+      - issue_result
       - created_issues
       - current_group_index
       - issue_groups
