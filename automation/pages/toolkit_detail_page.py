@@ -201,6 +201,56 @@ class ToolkitDetailPage(BasePage):
         )
         logger.info("Opened the Test Toolkit surface")
 
+    # ------------------------------------------------------------------
+    # Three-dot menu → Delete (shared ToolkitsControls.jsx + DeleteEntityModal;
+    # the testids are the ones McpFormPage / CredentialDetailPage already bind
+    # for the same shared components). Added for ELITEA-3210.
+    # ------------------------------------------------------------------
+    controls_menu_button = LocatorDescriptor(
+        testid="controls-menu-button",
+        description="Three-dot menu button in the toolkit detail tab bar",
+    )
+    delete_menuitem = LocatorDescriptor(
+        testid="toolkit-actions-delete-menuitem",
+        description="Three-dot menu — Delete",
+    )
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Shared delete-confirmation modal",
+    )
+    delete_confirm_name_input = LocatorDescriptor(
+        testid="delete-confirm-name-input",
+        description="Type-to-confirm Name field (TextField wrapper; click focuses the inner input)",
+    )
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Shared delete-confirmation modal — Delete",
+    )
+
+    def delete_toolkit_via_menu(self, name: str, toolkit_id: int, timeout: int = 15000) -> None:
+        """Delete the current toolkit through its own UI: ⋮ → Delete → type
+        *name* → Delete; waits for the ``DELETE …/tool/prompt_lib/{pid}/{id}``
+        response (204). The post-delete redirect is the product's
+        ``navigate(-1)`` (``DeleteToolkitButton.jsx``) — it lands on the
+        list only when the detail page was reached in-app (a card click);
+        callers wait for the list URL themselves. Same fill shape as
+        ``McpFormPage.fill_delete_confirm_name`` (MUI needs keyboard events).
+        """
+        self.controls_menu_button.click()
+        self.delete_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self.delete_confirm_name_input.click()
+        self.delete_confirm_name_input.press_sequentially(name, delay=20)
+        expect(self.delete_confirm_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+        with self.page.expect_response(
+            lambda r: r.request.method == "DELETE"
+            and "/tool/prompt_lib/" in r.url
+            and r.url.rstrip("/").endswith(f"/{toolkit_id}"),
+            timeout=timeout,
+        ) as delete_info:
+            self.delete_confirm_button.click()
+        assert delete_info.value.status == 204, f"Delete toolkit returned HTTP {delete_info.value.status}"
+
     def navigate_to_toolkit(self, toolkit_id: int) -> None:
         """Navigate to toolkit detail page and wait for load.
 

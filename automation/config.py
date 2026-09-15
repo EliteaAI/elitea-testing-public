@@ -284,6 +284,18 @@ class Settings(BaseSettings):
     cf_ext_rate: str = ""
 
     # ------------------------------------------------------------------
+    # Social (entity) folders — ELITEA-3208/3209/3210, lead decision #2301.
+    # The entity type each social-folders spec runs against is DRAWN AT
+    # RANDOM once per test from the six-value pool in
+    # fixtures/social_folder_fixtures.py (agents · skills · pipelines ·
+    # toolkits_and_indexes · mcps · credentials). Set this to one of those
+    # values to PIN the draw (e.g. when re-running a red). Empty = random.
+    # `.env.test` beats a shell export (settings_customise_sources below) —
+    # edit the file, don't `export`.
+    # ------------------------------------------------------------------
+    social_folder_entity_type: str = ""
+
+    # ------------------------------------------------------------------
     # Source priority: .env.test beats system env vars
     # ------------------------------------------------------------------
     @classmethod

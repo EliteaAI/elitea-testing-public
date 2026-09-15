@@ -329,6 +329,22 @@ class AgentsListPage(BasePage):
         except Exception:
             return False
 
+    def open_card_by_name(self, name: str, timeout: int = 10000) -> None:
+        """Click the already-rendered agent card whose name is *name*.
+
+        Mirrors ``SkillsListPage.click_skill_card()`` /
+        ``CredentialsListPage.click_credential_card()``: filters the
+        ``entity-card`` collection by visible text and clicks the first
+        match. Assumes the caller is already on ``/agents/all``; does NOT
+        wait for the detail page — follow up with
+        ``AgentDetailPage(page).wait_for_page_load()``. Added for
+        ELITEA-3210 (in-folder entity delete through the product's own
+        detail-page delete action).
+        """
+        card = self.entity_card.filter(has_text=name)
+        card.first.wait_for(state="visible", timeout=timeout)
+        card.first.click()
+
     def get_card_icon_src(self, name: str, timeout: int = 10000) -> str:
         """Return the ``src`` of a matching agent card's icon ``<img>``.
 

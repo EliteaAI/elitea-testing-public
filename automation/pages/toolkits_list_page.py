@@ -62,6 +62,13 @@ class ToolkitsListPage(BasePage):
         description="Toolkit card outer container (card view) — collection locator",
     )
 
+    # Shared Card.jsx title testid — one per visible card (ELITEA-3208/3209/3210
+    # read the page-1 card-name baseline through it).
+    entity_card_name = LocatorDescriptor(
+        testid="entity-card-name",
+        description="Toolkit card title — collection locator",
+    )
+
     # Shared EmptyStatePage.jsx component testid (also used by MCP/
     # Applications/Skills/Pipelines list pages) — confirmed live this
     # renders for the Toolkits list's zero-match search state too.
@@ -132,6 +139,17 @@ class ToolkitsListPage(BasePage):
     # ------------------------------------------------------------------
     # Card list
     # ------------------------------------------------------------------
+
+    def open_card_by_name(self, name: str, timeout: int = 10000) -> None:
+        """Click the already-rendered toolkit card whose name is *name*
+        (same shape as ``AgentsListPage.open_card_by_name``). Assumes the
+        caller is on ``/toolkits/all``; does NOT wait for the detail page —
+        follow up with ``ToolkitDetailPage(page).wait_for_page_load()``.
+        Added for ELITEA-3210.
+        """
+        card = self.entity_card.filter(has_text=name)
+        card.first.wait_for(state="visible", timeout=timeout)
+        card.first.click()
 
     def count_visible_cards(self, timeout: int = 5000) -> int:
         """Return the number of toolkit cards currently visible (0 if none).

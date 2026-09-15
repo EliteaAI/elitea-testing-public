@@ -86,6 +86,12 @@ from fixtures.data_fixtures import (
     project_context_seed,
     analytics_empty_pipeline_id,
 )
+from fixtures.social_folder_fixtures import (  # noqa: F401 — ELITEA-3208/3209/3210
+    social_folder_entity_type,
+    social_folder_binding,
+    social_folder_api,
+    social_folder_cleanup,
+)
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
     cleanup_leaked_credentials,
