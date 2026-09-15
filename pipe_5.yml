@@ -1,0 +1,36 @@
+state:
+  input:
+    type: str
+  messages:
+    type: list
+  classification:
+    type: str
+    value: ''
+entry_point: Classify
+nodes:
+  - id: Classify
+    type: llm
+    prompt:
+      type: string
+      value: ''
+    input:
+      - input
+    input_mapping:
+      system:
+        type: fixed
+        value: "You are a test failure classifier. Respond with ONLY JSON: {\"failure_type\": \"timeout|element-not-found|assertion-failure|api-error|exception|unknown\", \"confidence\": \"HIGH|MEDIUM|LOW\", \"title\": \"[Fix] brief description\"}"
+      task:
+        type: fstring
+        value: "Classify: {input}"
+      chat_history:
+        type: variable
+        value: messages
+    output:
+      - messages
+      - classification
+    structured_output: false
+    transition: Report
+  - id: Report
+    type: printer
+    message: "Classification: {{classification}}"
+    transition: END
