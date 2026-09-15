@@ -15,7 +15,7 @@
 
 | Test Case | #150 | #152 | #153 | #155 | #156 | Tracking Issue |
 |-----------|--------|--------|--------|--------|--------|----------------|
-| ELITEA-1869 | 🟠 | 🟠 | 🟠 | 🟢 | 🟢 | [#2145](https://github.com/EliteaAI/elitea-testing-public/issues/2145) |
+| ELITEA-1869 | 🟠 | 🟠 | 🟠 | 🟢 | 🟢 | - |
 | ELITEA-1899 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | - |
 | ELITEA-1901 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | - |
 | ELITEA-1902 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | - |
@@ -29,6 +29,6 @@
 
 - **Runs Shown:** 5 (max 10)
 - **Total Test Cases:** 8
-- **With Tracking Issues:** 1
+- **With Tracking Issues:** 0
 
 *Generated automatically from maintenance files*
