@@ -1,0 +1,45 @@
+{
+  "runs": {
+    "20260915084200": {
+      "total": 80,
+      "details": [
+        {
+          "id": "ELITEA-2441",
+          "automation_test_id": "tests.ui.skills.test_skill_test_panel_no_new_conversation.TestSkillTestPanelNoNewConversation.test_test_panel_does_not_create_new_chat_conversation",
+          "resolution": "to_rerun",
+          "tracking_issue": "",
+          "failure_type": "api-error",
+          "failure_summary": "502 Bad Gateway on /elitea_core/conversations/prompt_lib/ endpoint",
+          "reasoning": "The test failed with 'requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: ***/elitea_core/conversations/prompt_lib/***'. This is a backend infrastructure error (Bad Gateway), not a product bug. The test was retried 3 times and failed consistently due to the same server-side error. All three skill test panel tests failed around the same time window, confirming a transient backend outage."
+        },
+        {
+          "id": "ELITEA-2442",
+          "automation_test_id": "tests.ui.skills.test_skill_test_panel_response_actions.TestSkillTestPanelResponseActions.test_test_panel_response_actions_enabled",
+          "resolution": "to_rerun",
+          "tracking_issue": "",
+          "failure_type": "timeout",
+          "failure_summary": "Locator timeout caused by 502 Bad Gateway on prompt_lib API",
+          "reasoning": "The test failed with 'playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 15000ms exceeded.' This timeout is a downstream consequence of the same 502 Bad Gateway backend error that affected the other skill test panel tests. The test was retried 3 times and failed each time. This is an infrastructure/backend issue, not a product bug."
+        },
+        {
+          "id": "ELITEA-2440",
+          "automation_test_id": "tests.ui.skills.test_skill_test_panel_version_instructions.TestSkillTestPanelVersionInstructions.test_test_panel_uses_selected_skill_version_instructions",
+          "resolution": "to_rerun",
+          "tracking_issue": "",
+          "failure_type": "timeout",
+          "failure_summary": "Locator timeout caused by 502 Bad Gateway on prompt_lib API",
+          "reasoning": "The test failed with 'playwright._impl._errors.TimeoutError: Locator.text_content: Timeout 10000ms exceeded.' This is another downstream timeout caused by the same 502 Bad Gateway backend error affecting the prompt_lib endpoint. The test was retried 3 times and failed each time. This is an infrastructure/backend issue, not a product bug."
+        },
+        {
+          "id": "ELITEA-1899",
+          "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+          "resolution": "to_fix",
+          "tracking_issue": "",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Known product defect: agent icon immediate-vs-persisted link check fails (issue #2055)",
+          "reasoning": "The failure message explicitly states 'known isolated product defect https://github.com/EliteaAI/elitea-testing-public/issues/2055'. The test's soft assertion guard is intentionally set to false while issue #2055 is open, and the failure is by design to track the known defect. No retry was attempted (failed on first run). This is a tracked known product bug, not an infrastructure or flaky issue."
+        }
+      ]
+    }
+  }
+}

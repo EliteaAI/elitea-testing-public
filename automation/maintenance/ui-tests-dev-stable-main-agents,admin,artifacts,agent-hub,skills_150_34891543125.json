@@ -1,0 +1,33 @@
+{
+  "runs": {
+    "20260914203622": {
+      "total": 80,
+      "details": [
+        {
+          "id": "ELITEA-1869",
+          "automation_test_id": "tests.ui.agents.test_agent_back_navigation.test_back_button_from_agent_detail_returns_to_intact_agents_list",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2145"
+        },
+        {
+          "id": "ELITEA-1899",
+          "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+          "resolution": "to_fix",
+          "tracking_issue": "",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Agent icon change does not update the header icon src after selection",
+          "reasoning": "The test fails with a clear assertion error: 'Selecting a different icon option should change the header icon src'. This is a deterministic product behavior failure \u2014 the icon change is not being reflected in the UI. No retry was attempted (unlike the back navigation test), and the failure is immediate after a single run, indicating a real functional regression in icon management."
+        },
+        {
+          "id": "ELITEA-1901",
+          "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
+          "resolution": "to_fix",
+          "tracking_issue": "",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Imported agent model selector shows wrong default model ('Anthropic Claude 4.5 Sonnet') instead of fixture model ('GPT-5.2')",
+          "reasoning": "The test fails with a clear and specific assertion: expected model 'GPT-5.2' but got 'Anthropic Claude 4.5 Sonnet'. This strongly suggests the import functionality is not correctly applying the model specified in the MD fixture file, or the system is overriding it with a default. This is a deterministic product behavior regression in the agent import feature."
+        }
+      ]
+    }
+  }
+}

@@ -48,6 +48,9 @@ state:
   failed_tests:
     type: str
     value: ''
+  total_tests:
+    type: str
+    value: '0'
   tms_index:
     type: str
     value: ''
@@ -301,12 +304,14 @@ nodes:
         import json
 
         # For success runs, create empty tests array and skip to file commit
+        # Note: total_tests will be 0 for success runs (logs not fetched)
         out = {
             'classified_tests': '[]',
-            'maintenance_json': '{"tests": []}',
+            'maintenance_json': '{"total": 0, "details": []}',
             'issue_groups': '[]',
             'total_groups': '0',
-            'created_issues': '[]'
+            'created_issues': '[]',
+            'total_tests': '0'
         }
         out
     input: []
@@ -316,6 +321,7 @@ nodes:
       - issue_groups
       - total_groups
       - created_issues
+      - total_tests
     structured_output: true
     transition: BuildFullFilePath
 
@@ -363,7 +369,7 @@ nodes:
         import json
         import re
 
-        out = {'failed_jobs': '- No job details available', 'failed_tests': '[]'}
+        out = {'failed_jobs': '- No job details available', 'failed_tests': '[]', 'total_tests': '0'}
 
         try:
             details_raw = alita_state.get('workflow_details', '{}')
@@ -406,6 +412,18 @@ nodes:
             elif isinstance(logs, str):
                 log_content = logs
 
+            # Extract total test count from pytest summary line
+            # Examples: "===== 73 passed, 2 failed in 45.23s ====="
+            #           "===== 71 passed, 2 failed, 1 skipped in 50.12s ====="
+            total_tests = 0
+            summary_matches = re.findall(r'=+ ([\d\w\s,]+) in [\d.]+s =+', log_content)
+            for summary in summary_matches:
+                run_total = 0
+                for match in re.finditer(r'(\d+) (passed|failed|skipped|error|xfailed|xpassed)', summary):
+                    run_total += int(match.group(1))
+                if run_total > total_tests:
+                    total_tests = run_total
+
             # Pattern 1: "FAILED tests/ui/..." - pytest summary format (captures up to space or dash)
             failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+?)(?:\s+-\s+|\s+$|\s+\[)')
             # Pattern 2: "tests/ui/... FAILED" - alternate format
@@ -443,7 +461,7 @@ nodes:
                     seen_tests.add(dotted)
                     failed_tests.append({'automation_test_id': dotted, 'raw_path': test_path})
 
-            out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests)}
+            out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests), 'total_tests': str(total_tests)}
         except:
             pass
 
@@ -454,6 +472,7 @@ nodes:
     output:
       - failed_jobs
       - failed_tests
+      - total_tests
     structured_output: true
     transition: CheckHasFailedTests
 
@@ -594,13 +613,25 @@ nodes:
     code:
       type: fixed
       value: |
+        import re
         file_name = alita_state.get('maintenance_file_path', 'unknown.json') or 'unknown.json'
-        out = {'full_file_path': f"automation/maintenance/{file_name}"}
+        # Build path to the .md report file (group name without run number/id)
+        # From: ui-tests-dev-stable-main-agents,admin_153_34927456741.json
+        # To:   ui-tests-dev-stable-main-agents,admin.md
+        base = file_name.replace('.json', '')
+        match = re.match(r'^(.+?)_\d+_\d+$', base)
+        if match:
+            group_name = match.group(1)
+        else:
+            group_name = base
+        md_file_path = f"automation/maintenance/{group_name}.md"
+        out = {'full_file_path': f"automation/maintenance/{file_name}", 'md_report_path': md_file_path}
         out
     input:
       - maintenance_file_path
     output:
       - full_file_path
+      - md_report_path
     structured_output: true
     transition: ReadPreviousRunFile
 
@@ -609,11 +640,11 @@ nodes:
     toolkit_name: GitHub_Tools
     tool: read_file
     input:
-      - full_file_path
+      - md_report_path
     input_mapping:
       file_path:
         type: variable
-        value: full_file_path
+        value: md_report_path
       branch:
         type: fixed
         value: automation/maintenance
@@ -652,28 +683,30 @@ nodes:
             except:
                 issues = []
 
-            # Parse previous run data - get latest timestamp's tests
-            prev_tests_by_auto_id = {}
-            prev_str = str(previous_run_raw).lower()
-            has_previous = previous_run_raw and 'not found' not in prev_str and 'error' not in prev_str and 'failed' not in prev_str
+            # Parse previous run data from .md report file
+            # Format: | ELITEA-1899 | 🔴 | 🔴 | [#2292](url) |
+            prev_tracking_issues = {}  # test_id (ELITEA-XXXX) -> tracking_issue_url
+            prev_str = str(previous_run_raw)
+            has_previous = previous_run_raw and 'not found' not in prev_str.lower() and 'error' not in prev_str.lower()[:50]
 
-            if has_previous:
-                try:
-                    prev_data = json.loads(previous_run_raw, strict=False) if isinstance(previous_run_raw, str) else previous_run_raw
-                    if isinstance(prev_data, dict):
-                        runs = prev_data.get('runs', {})
-                        if isinstance(runs, dict) and runs:
-                            # Get latest timestamp
-                            latest_ts = max(runs.keys())
-                            latest_tests = runs.get(latest_ts, [])
-                            if isinstance(latest_tests, list):
-                                for t in latest_tests:
-                                    if isinstance(t, dict):
-                                        aid = t.get('automation_test_id', '')
-                                        if aid:
-                                            prev_tests_by_auto_id[aid] = t
-                except:
-                    pass
+            if has_previous and '| Test Case |' in prev_str:
+                # Parse markdown table rows
+                for line in prev_str.split(chr(10)):
+                    line = line.strip()
+                    if not line.startswith('| ELITEA-'):
+                        continue
+                    # Extract test ID from first column
+                    cols = [c.strip() for c in line.split('|')]
+                    if len(cols) < 3:
+                        continue
+                    test_id = cols[1].strip()  # e.g., "ELITEA-1899"
+                    # Last column contains tracking issue: "[#2292](url)" or "-"
+                    last_col = cols[-2].strip() if cols[-1] == '' else cols[-1].strip()
+                    if last_col and last_col != '-':
+                        # Extract URL from markdown link [#123](url)
+                        url_match = re.search(r'\[.*?\]\((https://[^)]+)\)', last_col)
+                        if url_match:
+                            prev_tracking_issues[test_id] = url_match.group(1)
 
             # Build active issues map from GitHub search
             active_ids = {}
@@ -717,7 +750,7 @@ nodes:
                         'failure_type': 'TMS Mapping Missing',
                         'failure_summary': 'Test not registered in TMS index - add automation_test_id to case file'
                     })
-                # 2. Has open GitHub issue
+                # 2. Has open GitHub issue (from search)
                 elif elitea_id in active_ids:
                     classified.append({
                         'id': elitea_id,
@@ -725,30 +758,15 @@ nodes:
                         'resolution': 'already_in_progress',
                         'tracking_issue': active_ids[elitea_id]
                     })
-                # 3. Check previous run
-                elif auto_id in prev_tests_by_auto_id:
-                    prev = prev_tests_by_auto_id[auto_id]
-                    prev_resolution = prev.get('resolution', '')
-
-                    if prev_resolution == 'to_rerun':
-                        # Was marked for rerun - reprocess this time
-                        classified.append({
-                            'id': elitea_id,
-                            'automation_test_id': auto_id,
-                            'resolution': 'pending_analysis',
-                            'tracking_issue': None
-                        })
-                    else:
-                        # Copy all details from previous run - already processed
-                        classified.append({
-                            'id': elitea_id,
-                            'automation_test_id': auto_id,
-                            'resolution': 'already_in_progress',
-                            'tracking_issue': prev.get('tracking_issue'),
-                            'failure_type': prev.get('failure_type', ''),
-                            'failure_summary': prev.get('failure_summary', ''),
-                            'reasoning': prev.get('reasoning', 'From previous run')
-                        })
+                # 3. Has tracking issue from previous runs (.md report)
+                elif elitea_id in prev_tracking_issues:
+                    classified.append({
+                        'id': elitea_id,
+                        'automation_test_id': auto_id,
+                        'resolution': 'already_in_progress',
+                        'tracking_issue': prev_tracking_issues[elitea_id],
+                        'reasoning': 'From previous run report'
+                    })
                 # 4. New test - needs analysis
                 else:
                     classified.append({
@@ -950,10 +968,11 @@ nodes:
       value: |
         import json
 
-        out = {'maintenance_json': '{"tests": []}'}
+        out = {'maintenance_json': '{"total": 0, "details": []}'}
 
         try:
             classified_raw = alita_state.get('classified_tests', '[]')
+            total_tests = int(alita_state.get('total_tests', '0') or '0')
 
             try:
                 classified = json.loads(classified_raw, strict=False) if isinstance(classified_raw, str) else classified_raw
@@ -962,7 +981,7 @@ nodes:
             except:
                 classified = []
 
-            maintenance = {'tests': classified}
+            maintenance = {'total': total_tests, 'details': classified}
             out = {'maintenance_json': json.dumps(maintenance, indent=2)}
         except:
             pass
@@ -970,6 +989,7 @@ nodes:
         out
     input:
       - classified_tests
+      - total_tests
     output:
       - maintenance_json
     structured_output: true
@@ -1354,7 +1374,7 @@ nodes:
         value: issue_body
       labels:
         type: template
-        value: '["{{ issue_label }}"]'
+        value: '["{{ issue_label | default("aqa:mapping") }}"]'
       fields:
         type: fixed
         value:
@@ -1390,7 +1410,7 @@ nodes:
         value: issue_body
       labels:
         type: template
-        value: '["{{ issue_label }}"]'
+        value: '["{{ issue_label | default("aqa:maintenance") }}"]'
       fields:
         type: fixed
         value:
@@ -1435,11 +1455,13 @@ nodes:
       type: fixed
       value: |
         import json
+        import re
 
         out = {'created_issues': '[]', 'current_group_index': '0'}
 
         try:
-            issue_number = alita_state.get('issue_number', '0')
+            issue_number = alita_state.get('issue_number', '0') or '0'
+            issue_result = alita_state.get('issue_result', '') or ''
             created_raw = alita_state.get('created_issues', '[]')
             idx = int(alita_state.get('current_group_index', '0'))
             groups_raw = alita_state.get('issue_groups', '[]')
@@ -1450,10 +1472,15 @@ nodes:
 
             groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
 
-            # Build issue URL from extracted number
+            # Build issue URL from extracted number (with fallback to issue_result)
             issue_url = ''
             if issue_number and issue_number != '0':
                 issue_url = f"https://github.com/EliteaAI/elitea-testing-public/issues/{issue_number}"
+            elif issue_result:
+                # Fallback: extract number directly from issue_result
+                match = re.search(r"issue with number ['\"]?(\d+)['\"]?", str(issue_result), re.IGNORECASE)
+                if match:
+                    issue_url = f"https://github.com/EliteaAI/elitea-testing-public/issues/{match.group(1)}"
 
             # Store the created issue with its tests
             if idx < len(groups):
@@ -1472,6 +1499,7 @@ nodes:
         out
     input:
       - issue_number
+      - issue_result
       - created_issues
       - current_group_index
       - issue_groups
@@ -1564,7 +1592,7 @@ nodes:
         from datetime import datetime
 
         timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-        default_content = json.dumps({'runs': {timestamp: []}}, indent=2)
+        default_content = json.dumps({'runs': {timestamp: {'total': 0, 'details': []}}}, indent=2)
 
         # Default output in case of any failure - always has valid structure
         out = {'final_maintenance_json': default_content}
@@ -1573,7 +1601,7 @@ nodes:
             maintenance_json_raw = alita_state.get('maintenance_json', '{}') or '{}'
             existing_content = alita_state.get('existing_file_content', '') or ''
 
-            # Parse current run's test data
+            # Parse current run's data (new schema: {total, details})
             current_data = {}
             try:
                 current_data = json.loads(maintenance_json_raw, strict=False) if isinstance(maintenance_json_raw, str) else maintenance_json_raw
@@ -1582,9 +1610,11 @@ nodes:
             except:
                 current_data = {}
 
-            current_tests = current_data.get('tests', [])
-            if not isinstance(current_tests, list):
-                current_tests = []
+            # Support both old schema (tests: []) and new schema (total, details)
+            current_total = current_data.get('total', 0)
+            current_details = current_data.get('details', current_data.get('tests', []))
+            if not isinstance(current_details, list):
+                current_details = []
 
             # Parse existing file content (if exists)
             # Check for API error responses only - not content words like "assertion-failure"
@@ -1608,8 +1638,8 @@ nodes:
                 except:
                     existing_runs = {}
 
-            # Add current run with timestamp key - tests directly as value
-            existing_runs[timestamp] = current_tests
+            # Add current run with new schema: {total, details}
+            existing_runs[timestamp] = {'total': current_total, 'details': current_details}
 
             # Build final merged JSON
             merged_data = {'runs': existing_runs}

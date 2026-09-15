@@ -1,0 +1,26 @@
+{
+  "runs": {
+    "20260915071802": {
+      "total": 80,
+      "details": [
+        {
+          "id": "ELITEA-1899",
+          "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+          "resolution": "to_fix",
+          "tracking_issue": "",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Known product defect: icon change immediate-vs-persisted link check fails (tracked in GitHub issue #2055)",
+          "reasoning": "The test failure message explicitly states this is a 'known isolated product defect https://github.com/EliteaAI/elitea-testing-public/issues/2055'. The soft assertion guard intentionally skips the immediate-vs-persisted link evaluation while issue #2055 is open. All other sub-checks (PUT 200, persistence after reload, Save-stays-disabled, exact-URL match) passed. This is a pre-acknowledged product bug, not a new regression or infrastructure issue."
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        }
+      ]
+    }
+  }
+}

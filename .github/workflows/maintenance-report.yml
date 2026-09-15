@@ -90,10 +90,14 @@ jobs:
               files_info.reverse()
 
               # Collect data from files
-              runs_data = {}  # run_number -> {test_id -> resolution}
+              runs_data = {}  # run_number -> {test_id -> {resolution, tracking_issue}}
+              runs_total = {}  # run_number -> total executed tests
               run_numbers_order = []
+              # Track latest tracking issue for each test (for dedup column)
+              latest_tracking_issues = {}  # test_id -> tracking_issue_url
 
-              for run_number, run_id, filepath in files_info:
+              for idx, (run_number, run_id, filepath) in enumerate(files_info):
+                  is_last_file = (idx == len(files_info) - 1)
                   try:
                       with open(filepath, 'r') as f:
                           data = json.load(f)
@@ -107,18 +111,40 @@ jobs:
 
                   # Get the latest run timestamp
                   latest_ts = max(runs.keys())
-                  tests = runs.get(latest_ts, [])
+                  run_data = runs.get(latest_ts, {})
+
+                  # Support both old schema (list) and new schema ({total, details})
+                  if isinstance(run_data, list):
+                      # Old schema: run_data is the tests list directly
+                      tests = run_data
+                      total = 0
+                  elif isinstance(run_data, dict):
+                      # New schema: {total, details}
+                      tests = run_data.get('details', [])
+                      total = run_data.get('total', 0)
+                  else:
+                      tests = []
+                      total = 0
 
                   run_key = str(run_number) if run_number > 0 else run_id[:8]
 
                   if run_key not in runs_data:
                       runs_data[run_key] = {}
+                      runs_total[run_key] = total
                       run_numbers_order.append(run_key)
 
                   for test in tests:
                       test_id = test.get('id') or test.get('automation_test_id') or 'UNKNOWN'
                       resolution = test.get('resolution', 'unknown')
-                      runs_data[run_key][test_id] = resolution
+                      tracking_issue = test.get('tracking_issue', '')
+                      runs_data[run_key][test_id] = {
+                          'resolution': resolution,
+                          'tracking_issue': tracking_issue
+                      }
+                      # Only track issues from the LAST run (most recent)
+                      # Tests that pass in the last run should not show historical tracking issues
+                      if is_last_file and tracking_issue:
+                          latest_tracking_issues[test_id] = tracking_issue
 
               if not runs_data:
                   print(f"No valid data for group {group_name}")
@@ -150,12 +176,14 @@ jobs:
                   "",
               ]
 
-              # Build header
+              # Build header with Tracking Issue column
               header = "| Test Case |"
               separator = "|-----------|"
               for run_num in run_numbers_order:
                   header += f" #{run_num} |"
                   separator += "--------|"
+              header += " Tracking Issue |"
+              separator += "----------------|"
 
               lines.append(header)
               lines.append(separator)
@@ -164,13 +192,32 @@ jobs:
               for test_id in all_test_ids:
                   row = f"| {test_id} |"
                   for run_num in run_numbers_order:
-                      resolution = runs_data[run_num].get(test_id)
-                      if resolution:
-                          icon = get_resolution_icon(resolution)
+                      test_data = runs_data[run_num].get(test_id)
+                      if test_data:
+                          icon = get_resolution_icon(test_data['resolution'])
                           row += f" {icon} |"
                       else:
                           row += " 🟢 |"
+                  # Add tracking issue column (link or dash)
+                  tracking_url = latest_tracking_issues.get(test_id, '')
+                  if tracking_url:
+                      # Extract issue number from URL for shorter display
+                      issue_match = re.search(r'/issues/(\d+)', tracking_url)
+                      if issue_match:
+                          row += f" [#{issue_match.group(1)}]({tracking_url}) |"
+                      else:
+                          row += f" [link]({tracking_url}) |"
+                  else:
+                      row += " - |"
                   lines.append(row)
+
+              # Add "Total executed" row at the bottom
+              total_row = "| **Total executed** |"
+              for run_num in run_numbers_order:
+                  total = runs_total.get(run_num, 0)
+                  total_row += f" {total if total > 0 else '-'} |"
+              total_row += " - |"
+              lines.append(total_row)
 
               # Summary stats
               lines.extend([
@@ -179,6 +226,7 @@ jobs:
                   "",
                   f"- **Runs Shown:** {len(run_numbers_order)} (max {MAX_RUNS})",
                   f"- **Total Test Cases:** {len(all_test_ids)}",
+                  f"- **With Tracking Issues:** {len([t for t in all_test_ids if t in latest_tracking_issues])}",
                   "",
                   f"*Generated automatically from maintenance files*",
               ])
