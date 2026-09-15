@@ -602,7 +602,7 @@ nodes:
     input_mapping:
       search_query:
         type: fixed
-        value: "is:issue is:open [FIX]"
+        value: "is:issue is:open repo:EliteaAI/elitea-testing-public label:aqa:maintenance,aqa:mapping"
     output:
       - existing_issues
     structured_output: true
@@ -709,7 +709,9 @@ nodes:
                             prev_tracking_issues[test_id] = url_match.group(1)
 
             # Build active issues map from GitHub search
-            active_ids = {}
+            # Map by ELITEA-ID from title AND by automation_test_id from body
+            active_ids = {}  # ELITEA-XXXX -> issue_url
+            active_test_ids = {}  # automation_test_id -> issue_url
             if isinstance(issues, dict):
                 issues = issues.get('items', [])
             if not isinstance(issues, list):
@@ -719,17 +721,26 @@ nodes:
                 if not isinstance(issue, dict):
                     continue
                 title = issue.get('title', '')
+                body = issue.get('body', '') or ''
                 if not isinstance(title, str):
                     continue
                 url = issue.get('html_url', '') or issue.get('url', '')
+                labels = issue.get('labels', [])
+                if isinstance(labels, list):
+                    label_names = [l.get('name', '') if isinstance(l, dict) else str(l) for l in labels]
+                    if 'ready' in [l.lower() for l in label_names if isinstance(l, str)]:
+                        continue  # Skip issues marked as ready/done
+
+                # Extract ELITEA-ID from title
                 match = re.search(r'\[ELITEA-(\d+)\]', title)
                 if match:
                     elitea_id = f"ELITEA-{match.group(1)}"
-                    labels = issue.get('labels', [])
-                    if isinstance(labels, list):
-                        label_names = [l.get('name', '') if isinstance(l, dict) else str(l) for l in labels]
-                        if 'ready' not in [l.lower() for l in label_names if isinstance(l, str)]:
-                            active_ids[elitea_id] = url
+                    active_ids[elitea_id] = url
+
+                # Extract automation_test_id from body (format: `tests.ui.xxx.TestY.test_z`)
+                test_id_matches = re.findall(r'`(tests\.[a-zA-Z0-9_.]+)`', body)
+                for test_id in test_id_matches:
+                    active_test_ids[test_id.lower()] = url
 
             classified = []
             for test in tests:
@@ -742,15 +753,25 @@ nodes:
 
                 # 1. No TMS mapping
                 if elitea_id is None:
-                    classified.append({
-                        'id': None,
-                        'automation_test_id': auto_id,
-                        'resolution': 'id_mapping_error',
-                        'tracking_issue': None,
-                        'failure_type': 'TMS Mapping Missing',
-                        'failure_summary': 'Test not registered in TMS index - add automation_test_id to case file'
-                    })
-                # 2. Has open GitHub issue (from search)
+                    # But check if automation_test_id matches an existing issue
+                    if auto_id.lower() in active_test_ids:
+                        classified.append({
+                            'id': None,
+                            'automation_test_id': auto_id,
+                            'resolution': 'already_in_progress',
+                            'tracking_issue': active_test_ids[auto_id.lower()],
+                            'reasoning': 'Matched by automation_test_id in issue body (no TMS mapping)'
+                        })
+                    else:
+                        classified.append({
+                            'id': None,
+                            'automation_test_id': auto_id,
+                            'resolution': 'id_mapping_error',
+                            'tracking_issue': None,
+                            'failure_type': 'TMS Mapping Missing',
+                            'failure_summary': 'Test not registered in TMS index - add automation_test_id to case file'
+                        })
+                # 2. Has open GitHub issue by ELITEA-ID (from search title)
                 elif elitea_id in active_ids:
                     classified.append({
                         'id': elitea_id,
@@ -758,7 +779,16 @@ nodes:
                         'resolution': 'already_in_progress',
                         'tracking_issue': active_ids[elitea_id]
                     })
-                # 3. Has tracking issue from previous runs (.md report)
+                # 3. Has open GitHub issue by automation_test_id (from search body)
+                elif auto_id.lower() in active_test_ids:
+                    classified.append({
+                        'id': elitea_id,
+                        'automation_test_id': auto_id,
+                        'resolution': 'already_in_progress',
+                        'tracking_issue': active_test_ids[auto_id.lower()],
+                        'reasoning': 'Matched by automation_test_id in issue body'
+                    })
+                # 4. Has tracking issue from previous runs (.md report)
                 elif elitea_id in prev_tracking_issues:
                     classified.append({
                         'id': elitea_id,
@@ -767,7 +797,7 @@ nodes:
                         'tracking_issue': prev_tracking_issues[elitea_id],
                         'reasoning': 'From previous run report'
                     })
-                # 4. New test - needs analysis
+                # 5. New test - needs analysis
                 else:
                     classified.append({
                         'id': elitea_id,
