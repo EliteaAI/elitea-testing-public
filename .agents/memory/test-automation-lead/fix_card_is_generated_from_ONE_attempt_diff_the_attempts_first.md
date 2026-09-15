@@ -5,7 +5,7 @@ type: feedback
 aliases: [run_attempt, re-run attempt, attempt 2, all tests failed, whole suite red, intake card wrong signature, fix card triage, agent_hub catalog timeout]
 tags: [area/triage, type/lesson]
 created: 2026-09-10
-updated: 2026-09-10
+updated: 2026-09-15
 ---
 
 ## The finding
@@ -58,3 +58,11 @@ timeline when there is only one attempt.
 attempt of the same run passes, is environment unavailability.** Do not
 dispatch an analyst against it, and do not report those cases as needing work.
 Triage the residual failures that survive across attempts — those are the card.
+
+## Caveat — `run_attempt > 1` does not always mean the tests re-ran (#2297, 2026-09-15)
+
+Run 34943073679 reported `run_attempt: 2`, but attempt 2 had re-run **only** the failed
+`Notify intake pipeline` job; the `skills` / `agents` test jobs carried the same ids-by-name and
+byte-identical `started_at` (07:42:38Z) in both attempts. One execution, nothing to diff. Before
+diffing attempts, compare the test jobs' `started_at` across `attempts/<n>/jobs` — if they match,
+fall back to the shard-timeline method ([[env_outage_page_is_a_fix_card_root_cause]]).
