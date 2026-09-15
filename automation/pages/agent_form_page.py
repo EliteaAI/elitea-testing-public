@@ -9,7 +9,7 @@ Handles: /agents/create and /agents/all/{id} (edit mode)
 import logging
 import re
 
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
 from utils.actions import action
 
 from .base_page import BasePage
@@ -370,6 +370,36 @@ class AgentFormPage(BasePage):
     def get_name(self) -> str:
         """Read the current value of the Name field."""
         return self.name_input.input_value()
+
+    def expect_name(
+        self, expected: str, timeout: int = 10000, message: str | None = None
+    ) -> None:
+        """Assert the Name field carries ``expected``, retrying until ``timeout``.
+
+        The auto-retrying, testid-anchored replacement for the one-shot
+        ``assert page.get_name() == expected`` shape (#2261 / ELITEA-1902).
+        After a detail-page navigation the MUI form shell renders BEFORE the
+        agent GET returns, so a single ``input_value()`` read can land on the
+        still-empty input -- on DEV that produced ``assert '' == 'el-1902-…'``
+        3/3 in nightly runs #126/#127 while the screenshot showed the name
+        populated. ``expect(...).to_have_value`` polls the SAME system-produced
+        value until it matches or ``timeout`` elapses; on failure it names the
+        expected and the actual value. Nothing is weakened: an equality that
+        never becomes true still fails, just with a bounded wait instead of a
+        racing read.
+
+        Additive: :meth:`get_name` is untouched (callers that legitimately
+        read an empty create-form keep their one-shot semantics).
+
+        Args:
+            expected: The exact Name value the field must settle on.
+            timeout: Maximum wait in milliseconds for the value to appear.
+            message: Optional custom assertion message (prefixed to Playwright's
+                own expected/actual detail on failure).
+        """
+        expect(self.name_input, message=message).to_have_value(
+            expected, timeout=timeout
+        )
 
     def is_name_invalid(self, timeout: int = 5000) -> bool:
         """Return whether the Name field is currently flagged invalid (ELITEA-1900).
