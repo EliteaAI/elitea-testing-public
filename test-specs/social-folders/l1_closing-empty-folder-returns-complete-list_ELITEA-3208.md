@@ -14,10 +14,13 @@
 ## Entity type — randomized per run (lead decision #2301)
 Draw ONE of `agents · skills · pipelines · toolkits_and_indexes · mcps · credentials`
 once at setup; `SOCIAL_FOLDER_ENTITY_TYPE=<value>` (pydantic setting, `.env.test` beats
-shell env) pins it; log + allure-attach the draw. This case needs **no entities at
-all** — only the drawn type's list route and folder `entity_type` (table in
-`_surface.md`). The whole flow was executed live on `skills` and re-observed on
-`credentials`; the handles are identical on both mount paths.
+shell env) pins it; log + allure-attach the draw. The folder itself needs **no entities**,
+but the drawn type's list must MOUNT: **amended during implementation** — a zero-entity
+list redirects to the type's create page and never renders the FOLDERS panel (project 399
+holds 0 credentials and 0 toolkits; the `credentials` draw redirected 3/3), so the spec seeds
+ONE disposable, unfiled entity via the API (transit) that simply becomes part of the page-1
+baseline. The whole flow was executed live on `skills` and re-observed on `credentials`; the
+handles are identical on both mount paths. Implementation verified green on all six types.
 
 ## Preconditions
 - Logged in as `${TEST_USER}` in project `${ELITEA_PROJECT_ID}` (399).
@@ -30,7 +33,9 @@ all** — only the drawn type's list route and folder `entity_type` (table in
 - `${ELITEA_PROJECT_ID}` = `399`; whatever entities the list already shows — read-only. The list
   baseline (card count on page 1, ≤ 20) is **captured at runtime in step 0**, never hardcoded.
 ### generate-per-test (in test setup, cleaned up in its own teardown)
-- Folder name `sf-3208-<type>-<epoch>`; created **via the UI** in step 1 (the case's own action).
+- One disposable entity `sf-3208-<code>-1-<stamp>` of the drawn type (API, transit — see
+  § Fidelity Declaration; only there so the list mounts, never filed, part of the baseline).
+- Folder name `sf-3208-<code>-<stamp>`; created **via the UI** in step 1 (the case's own action).
   Its id is read from the `POST /social/folders/prompt_lib/{pid}` **201 response body** (`id`) and
   drives every `folder-item-{id}` / `folder-item-count-{id}` locator.
 ### generate-shared-with-cleanup
@@ -57,7 +62,7 @@ all** — only the drawn type's list route and folder `entity_type` (table in
      `folder-view-close-btn` count 0; `folder-empty-state` count 0; `entity-card` count ==
      `baseline_cards`; `entity-card-name` texts == `baseline_names`;
      `folder-item-{folder_id}` still present with `(0)`.
-4. Cleanup (teardown, API): `DELETE /social/folder/prompt_lib/{pid}/{folder_id}` → 204.
+4. Cleanup (teardown, API): delete the seeded entity; `DELETE /social/folder/prompt_lib/{pid}/{folder_id}` → 204.
 
 ## Expected Results
 - Step 1: 201 on create; the new folder row shows `(0)`.
@@ -104,10 +109,10 @@ See `_surface.md` § Handles for the full table with provenance. Used by this ca
 | Create-folder button | `folders-panel-create-btn` | on-main ✓ |
 | Create dialog / name input / save | `create-folder-dialog` · `CREATE_FOLDER_NAME_INPUT_FIELD = '[data-testid="create-folder-name-input"] input'` (testid is on the TextField root) · `create-folder-submit-btn` | on-main ✓ |
 | Folder row | `FOLDER_ITEM = '[data-testid="folder-item-{}"]'` (id from the 201 body) | on-main ✓ |
-| Folder row count | `testid needed: folder-item-count-{id}` → `FOLDER_ITEM_COUNT = '[data-testid="folder-item-count-{}"]'` | needs-adding (`FolderItem.jsx`, the `({folder.entities_count})` Typography) |
-| Folder view header name / count | `testid needed: folder-view-header-name`, `testid needed: folder-view-header-count` | needs-adding (`FolderViewHeader.jsx`) |
+| Folder row count | `FOLDER_ITEM_COUNT = '[data-testid="folder-item-count-{}"]'` (`FolderSection.folder_item_count(id)`) | on-automation/testids only (EliteaAI/EliteaUI@480f00d6, awaiting human promotion to main) — `FolderItem.jsx`, the `({folder.entities_count})` Typography |
+| Folder view header name / count | `folder-view-header-name`, `folder-view-header-count` (`FolderSection.header_name` / `header_count`) | on-automation/testids only (EliteaAI/EliteaUI@480f00d6, awaiting human promotion to main) — `FolderViewHeader.jsx` |
 | Close folder | `folder-view-close-btn` | on-main ✓ |
-| Empty state | `testid needed: folder-empty-state` (ALL 5 list components — the drawn type may be any of them) | needs-adding |
+| Empty state | `folder-empty-state` (`FolderSection.empty_state`; added in ALL 5 list components — MCPs render through `ToolkitsList.jsx`) | on-automation/testids only (EliteaAI/EliteaUI@480f00d6, awaiting human promotion to main) |
 | Cards | `entity-card`, `entity-card-name` | on-main ✓ |
 
 State is never a testid value: the open folder is asserted through the URL param and the
@@ -121,8 +126,9 @@ with `ids=0` → close: list GET without `ids`.
 ## Fidelity Declaration
 | Substitution | Kind | Authority |
 |---|---|---|
-| none in the executed steps — folder creation, open, close are all UI | — | — |
-| teardown folder delete via API | transit (cleanup only, after every assertion) | test data hygiene; the case's own observables are all UI-produced |
+| one disposable entity seeded via API before the list is opened | **transit** — the list must mount for the FOLDERS panel to exist; the entity is part of the read-only baseline and nothing is asserted about it | LEAD-BRIEF § Framework work (entities are test data); `.agents/testing.md` § Fidelity policy; amended during implementation (zero-entity lists redirect to the create page) |
+| folder creation, open, close — all UI | — | — |
+| teardown entity + folder delete via API | transit (cleanup only, after every assertion) | test data hygiene; the case's own observables are all UI-produced |
 
 ## Known Defects Found During Exploration
 - **#2302** `[Clarification][ELITEA-3208]` — case says `No items in this folder yet.`; product
@@ -136,7 +142,13 @@ none.
 ## Automation Hints
 - One spec file `automation/tests/ui/social_folders/test_closing_empty_folder_returns_complete_list.py`;
   folder actions through the reusable `automation/components/folder_section.py` (brief); list
-  route + page object from the entity-type resolver.
+  route + page object from the entity-type resolver (`automation/fixtures/social_folder_fixtures.py`,
+  `social_folder_binding` — shipped).
+- **Implementation note (2026-09-15):** the list GET with `ids=0` is matched by its exact `ids`
+  set (`FolderSection.open_folder(..., expected_ids={"0"})`) — a NON-empty folder fires a
+  transient `ids=0` GET first while `folder_items` loads (`useFolderEntities.hooks.js`), so
+  "first `ids=` GET" is not a safe predicate. `close_folder()` waits for the header to unmount
+  after the URL param clears (see `_surface.md` § Implementation notes).
 - Waits: `expect_response` on the POST (id) and on the list GET predicate (`'ids=' not in url`);
   `expect(locator).to_have_text("(0)")` auto-retries — never sleep.
 - The `folder-item-count-{id}` testid must be added on the Typography, not on the row (the row

@@ -77,6 +77,9 @@
     "src/EliteaAssistant.tsx",
     "src/index.ts"
   ],
+  "social-folders": [
+    "src/[fsd]/entities/folder/"
+  ],
   "shared": [
     "src/[fsd]/features/maintenance/",
     "src/[fsd]/features/project/",

@@ -109,8 +109,8 @@ Full table + provenance: `_surface.md` § Handles. Used here in addition to ELIT
 | Element | Handle | Provenance |
 |---|---|---|
 | Card move-to-folder button | `MOVE_TO_FOLDER_BTN = '[data-testid="move-to-folder-btn-{}"]'` (hover the card first — opacity 0) | on-main ✓ |
-| Move-to-folder menu: folder row / remove / create | `testid needed: move-to-folder-menu-folder-{id}`, `move-to-folder-menu-remove-item`, `move-to-folder-menu-create-item` (`FolderMenuContent.jsx:59/105/35`) — the create item is referenced by ELITEA-3210 only if used; do not add unreferenced ids | needs-adding |
-| Folder row "⋮" button | `testid needed: folder-item-menu-btn-{id}` (`FolderItem.jsx`, `className="folder-more-btn"`; hover the row first) | needs-adding |
+| Move-to-folder menu: folder row / remove | `MOVE_TO_FOLDER_MENU_FOLDER = '[data-testid="move-to-folder-menu-folder-{}"]'`, `move-to-folder-menu-remove-item` (`FolderSection.move_menu_folder_item(id)` / `move_menu_remove_item`; `FolderMenuContent.jsx`). `move-to-folder-menu-create-item` was NOT added — no spec references it | on-automation/testids only (EliteaAI/EliteaUI@480f00d6, awaiting human promotion to main) |
+| Folder row "⋮" button | `FOLDER_ITEM_MENU_BTN = '[data-testid="folder-item-menu-btn-{}"]'` (`FolderSection.folder_item_menu_button(id)`; hover the row first) | on-automation/testids only (EliteaAI/EliteaUI@480f00d6, awaiting human promotion to main) |
 | Folder menu → Delete | `folder-menu-delete` (`FolderActionsMenu.jsx:84`) | on-main ✓ |
 | Delete dialog + confirm | `delete-confirm-dialog`, `delete-confirm-button` (shared `DeleteEntityModal`; **`delete-folder-dialog` is dead**) | on-main ✓ |
 
@@ -141,3 +141,10 @@ none.
   call), THEN on the unfiltered list GET, THEN read cards — reading cards first can catch the
   pre-delete filtered grid.
 - Menu items are MUI `MenuItem`s inside `[role="menu"]`; the menu closes itself after a click.
+- **Implementation note (2026-09-15):** step 2's "list GET whose URL contains `ids=`" is
+  matched by the EXACT ids set `{e1, e2}` — the product first fires a transient `ids=0` list
+  GET while `folder_items` is loading (observed on `mcps`; `useFolderEntities.hooks.js` returns
+  `idsQueryParam='0'` until items arrive), so the first `ids=` GET can be the sentinel. In
+  step 3 the URL `folder` param clears BEFORE the DELETE 204 arrives (the product calls
+  `closeFolder()` optimistically) — the spec waits on the 204, the param and the unfiltered GET
+  together. Verified green on skills, agents, pipelines, toolkits_and_indexes, mcps, credentials.

@@ -54,7 +54,10 @@ action, never an API call.
      `move-to-folder-btn-{e3}` count 0 on the list.
 3. Click `folder-item-{folder_id}` (open) → verify header `(2)`, `entity-card` count 2, the two
    remaining `move-to-folder-btn-{e1|e2}` present; click `folder-view-close-btn` → URL param
-   gone; click `folder-item-{folder_id}` again (reopen) → wait for `folder_items` GET.
+   gone; click `folder-item-{folder_id}` again (reopen) → folder view open again (URL `folder`
+   param + header rendered — a re-open inside one mount may be served from the RTK cache with NO
+   `folder_items` GET; see § Automation Hints implementation notes). For `navigate(-1)` types the
+   folder is still open after step 2, so the spec closes it first and then runs open → close → reopen.
    - **Verify**: `folder-item-count-{folder_id}` == `(2)` after close AND after reopen;
      `folder-view-header-count` == `(2)`; cards == 2.
 4. Close the folder (`folder-view-close-btn`, URL param gone — e4 is not in the folder so it is
@@ -112,9 +115,9 @@ Full table + provenance: `_surface.md` § Handles. In addition to ELITEA-3208/32
 
 | Element | Handle | Provenance |
 |---|---|---|
-| Move-to-folder → Remove from folder | `testid needed: move-to-folder-menu-remove-item` (`FolderMenuContent.jsx:105`; renders only for a filed entity) | needs-adding |
+| Move-to-folder → Remove from folder | `move-to-folder-menu-remove-item` (`FolderSection.move_menu_remove_item`; `FolderMenuContent.jsx`; renders only for a filed entity) | on-automation/testids only (EliteaAI/EliteaUI@480f00d6, awaiting human promotion to main) |
 | Skill delete path (type `skills`) | `skill-controls-menu-button` → `skill-delete-menu-item` → `delete-confirm-name-input` (root testid; type into its descendant `input` — the existing `SkillDetailPage.delete_skill_via_menu` already does this) → `delete-confirm-button` | on-main ✓ |
-| Other types' delete path | resolver → the type's existing page-object delete helper (`AgentDetailPage`, `PipelinesListPage`/`PipelineDetailPage`, `McpFormPage`, `ToolkitDetailPage`, `CredentialDetailPage`) — **not executed by the analyst**; the implementer verifies each on its first draw and records the landing URL in `_surface.md` | existing suite |
+| Other types' delete path | resolver `delete_via_ui` (`social_folder_fixtures.py`) → `AgentsListPage.open_card_by_name` + `AgentDetailPage.delete_agent_via_menu`; `PipelinesListPage.open_pipeline_by_name` + `PipelineDetailPage.delete_pipeline_via_menu`; `McpListPage.open_card_by_name` + `McpFormPage` menu/fill + the shared `delete-confirm-button`; `ToolkitsListPage.open_card_by_name` + `ToolkitDetailPage.delete_toolkit_via_menu` (added); `CredentialsListPage.click_credential_card` + `CredentialDetailPage` delete flow — **all six executed live 2026-09-15, green**; landing URLs in `_surface.md` § Implementation notes | existing suite (+ additive methods) |
 
 ## Network Behavior
 Step 2 (skills): `DELETE /elitea_core/skill/prompt_lib/399/2213` → 204, then a stale
@@ -155,3 +158,19 @@ none.
   `include_counts=true` after the DELETE), and do NOT reload.
 - e4 must be moved from the complete list (step 4 closes the folder first) — an entity outside the
   open folder has no card inside it.
+- **Implementation notes (2026-09-15, all six types verified green):**
+  - Landing after the step-2 delete is type-specific: skills / agents / credentials land on the
+    bare list route (folder view closed); pipelines / toolkits / **mcps** redirect with
+    `navigate(-1)` back to `…/all?folder=<id>`, i.e. the folder view is still OPEN. Step 3
+    therefore normalises to "closed" first (declared in the spec docstring) — the case's "close
+    and reopen" is then executed literally. `McpFormPage.confirm_delete()` is NOT used for mcps:
+    its `wait_for_url("**/mcps/all")` glob never matches the `?folder=` landing.
+  - Re-opening / re-closing a folder inside one list mount may fire NO request at all (RTK Query
+    serves `folder_items` and often the list query from cache) — 3/3 timeouts when step 3 waited
+    on the network. Re-opens are taken from the product's own signals (URL `folder` param +
+    header rendered) and every count/card read auto-retries; only the FIRST open after a
+    membership change waits on the list GET with the exact ids.
+  - The row's click handler closes over the last-RENDERED `selectedFolderId`: a reopen click that
+    lands after the URL param cleared but before React re-rendered is treated as "same folder →
+    toggle closed" (reproduced once). `close_folder()` waits for the header to unmount before
+    returning.

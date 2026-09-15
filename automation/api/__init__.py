@@ -14,6 +14,7 @@ from api.client import (
     PipelineAPI,
     ProjectAPI,
     SkillAPI,
+    SocialFolderAPI,
     ToolkitAPI,
 )
 
@@ -26,5 +27,6 @@ __all__ = [
     "PipelineAPI",
     "ProjectAPI",
     "SkillAPI",
+    "SocialFolderAPI",
     "ToolkitAPI",
 ]
