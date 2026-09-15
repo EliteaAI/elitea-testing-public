@@ -13,12 +13,14 @@
 
 ## Test Results Matrix
 
-| Test Case | #151 |
-|-----------|--------|
+| Test Case | #151 | Tracking Issue |
+|-----------|--------|----------------|
+| **Total executed** | - | - |
 
 ## Summary
 
 - **Runs Shown:** 1 (max 10)
 - **Total Test Cases:** 0
+- **With Tracking Issues:** 0
 
 *Generated automatically from maintenance files*
