@@ -21,32 +21,32 @@
       "findings": [
         {
           "kind": "clarification",
-          "note": "[Clarification][ELITEA-3208] — case Step 2 expects `No items in this folder yet.` (trailing period); product renders `No items in this folder yet` on all 5 list components (verified live on skills + credentials, source-identical in the other 3). Case-text drift, not a product bug (copy internally consistent; not in elitea_issues#6480's list). AFS asserts the product string and cites #2302; ask is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "[Clarification][ELITEA-3208] \u2014 case Step 2 expects `No items in this folder yet.` (trailing period); product renders `No items in this folder yet` on all 5 list components (verified live on skills + credentials, source-identical in the other 3). Case-text drift, not a product bug (copy internally consistent; not in elitea_issues#6480's list). AFS asserts the product string and cites #2302; ask is \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "#2302"
         },
         {
           "kind": "defect",
-          "note": "[MINOR][ELITEA-3210] Deleting a skill from its detail page fires a stale GET /elitea_core/skill/prompt_lib/{pid}/{id} → 404 console error after the 204 DELETE. Sibling of #1666 (credentials twin), cross-linked both ways. Not folder-feature related; the implementer scopes the console assertion with exclude_known_defect_urls on the exact URL + `# Known defect: #2303` (credentials draw: #1666). Funct… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "[MINOR][ELITEA-3210] Deleting a skill from its detail page fires a stale GET /elitea_core/skill/prompt_lib/{pid}/{id} \u2192 404 console error after the 204 DELETE. Sibling of #1666 (credentials twin), cross-linked both ways. Not folder-feature related; the implementer scopes the console assertion with exclude_known_defect_urls on the exact URL + `# Known defect: #2303` (credentials draw: #1666). Funct\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "#2303"
         },
         {
           "kind": "note",
-          "note": "Brief drift: `data-testid=\"delete-folder-dialog\"` (DeleteFolderDialog.jsx:53) is DEAD at runtime — `Modal.DeleteEntityModal` hardcodes `delete-confirm-dialog`/`delete-confirm-button` and ignores the prop. Bind the shared ids (as admin_users_page.py / ai_provider_form_page.py already do). Also the folder menu testids live in FolderActionsMenu.jsx, not FolderMenuContent.jsx (brief names the wrong fi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Brief drift: `data-testid=\"delete-folder-dialog\"` (DeleteFolderDialog.jsx:53) is DEAD at runtime \u2014 `Modal.DeleteEntityModal` hardcodes `delete-confirm-dialog`/`delete-confirm-button` and ignores the prop. Bind the shared ids (as admin_users_page.py / ai_provider_form_page.py already do). Also the folder menu testids live in FolderActionsMenu.jsx, not FolderMenuContent.jsx (brief names the wrong fi\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "LEAD-BRIEF.md"
         },
         {
           "kind": "note",
-          "note": "`create-folder-name-input` lands on the MUI TextField ROOT div (Input.InputBase forwards data-testid to the root); `fill()` on it throws. Spec'd as class constant `CREATE_FOLDER_NAME_INPUT_FIELD = '[data-testid=\"create-folder-name-input\"] input'` (precedent oauth_auth_modal_page.py:91). Alternative for the implementer: relocate the testid via `inputProps` in EliteaUI — that is a UI change beyond a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "`create-folder-name-input` lands on the MUI TextField ROOT div (Input.InputBase forwards data-testid to the root); `fill()` on it throws. Spec'd as class constant `CREATE_FOLDER_NAME_INPUT_FIELD = '[data-testid=\"create-folder-name-input\"] input'` (precedent oauth_auth_modal_page.py:91). Alternative for the implementer: relocate the testid via `inputProps` in EliteaUI \u2014 that is a UI change beyond a\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
           "kind": "question",
-          "note": "Only the `skills` entity-delete flow was executed live (detail-page overflow menu; app redirects to bare `/skills/all`, dropping `viewMode` and `folder`, and the folder view closes). Under the randomized-type design the other 5 delete flows are exercised on their first draw by the implementer's resolver, unverified by analysis. If the lead wants analyst-verified delete paths per type, that is a fo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Only the `skills` entity-delete flow was executed live (detail-page overflow menu; app redirects to bare `/skills/all`, dropping `viewMode` and `folder`, and the folder view closes). Under the randomized-type design the other 5 delete flows are exercised on their first draw by the implementer's resolver, unverified by analysis. If the lead wants analyst-verified delete paths per type, that is a fo\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "ELITEA-3210 step 2"
         },
         {
           "kind": "note",
-          "note": "Strongest observables for this surface: the open folder is the URL search param `?folder=<id>` (useFolderView.hooks.js) — close deletes it in ~14 ms, deleting the open folder deletes it ~700 ms after the 204; 'complete unfiltered list' = the entity list GET re-firing WITHOUT `ids=` (empty folder uses the `ids=0` sentinel); counts arrive only on `GET /social/folders/...&include_counts=true`; entity… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Strongest observables for this surface: the open folder is the URL search param `?folder=<id>` (useFolderView.hooks.js) \u2014 close deletes it in ~14 ms, deleting the open folder deletes it ~700 ms after the 204; 'complete unfiltered list' = the entity list GET re-firing WITHOUT `ids=` (empty folder uses the `ids=0` sentinel); counts arrive only on `GET /social/folders/...&include_counts=true`; entity\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
@@ -56,81 +56,81 @@
         },
         {
           "kind": "clarification",
-          "note": "AFS drift amended on the branch: the AFS said ELITEA-3208 'needs no entities at all', but a zero-entity list redirects to the type's create page (ToolkitsList.jsx first-render effect; credentials list likewise) and never mounts the FOLDERS panel. Project 399 holds 0 credentials and 0 toolkits (API-verified 2026-09-15), so the credentials draw redirected 3/3. The spec now seeds ONE disposable unfil… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "AFS drift amended on the branch: the AFS said ELITEA-3208 'needs no entities at all', but a zero-entity list redirects to the type's create page (ToolkitsList.jsx first-render effect; credentials list likewise) and never mounts the FOLDERS panel. Project 399 holds 0 credentials and 0 toolkits (API-verified 2026-09-15), so the credentials draw redirected 3/3. The spec now seeds ONE disposable unfil\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_closing-empty-folder-returns-complete-list_ELITEA-3208.md"
         },
         {
           "kind": "note",
-          "note": "Product behaviour worth knowing (not in any of the three cases' scope, not filed): opening a NON-empty folder fires a transient list GET with the ids=0 sentinel before the real one, because useFolderItems returns idsQueryParam='0' while folder_items is still loading (useFolderEntities.hooks.js) — a wasted request and a possible empty-state flash. Any spec waiting on 'the first ids= GET' reads the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Product behaviour worth knowing (not in any of the three cases' scope, not filed): opening a NON-empty folder fires a transient list GET with the ids=0 sentinel before the real one, because useFolderItems returns idsQueryParam='0' while folder_items is still loading (useFolderEntities.hooks.js) \u2014 a wasted request and a possible empty-state flash. Any spec waiting on 'the first ids= GET' reads the \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
           "kind": "note",
-          "note": "Intermittent /mcps/all -> /mcps/create redirect with 20 MCPs present: hit twice as the SECOND social-folders test in a pytest session on mcps (McpListPage.navigate() timed out on agent-card-view-button; failure screenshot shows the 'Choose the MCP type' picker). Not reproduced by 3 fresh-context probes nor by API create+delete followed by navigation; later 3-spec runs on mcps were clean. Suspected… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Intermittent /mcps/all -> /mcps/create redirect with 20 MCPs present: hit twice as the SECOND social-folders test in a pytest session on mcps (McpListPage.navigate() timed out on agent-card-view-button; failure screenshot shows the 'Choose the MCP type' picker). Not reproduced by 3 fresh-context probes nor by API create+delete followed by navigation; later 3-spec runs on mcps were clean. Suspected\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/mcp_list_page.py"
         },
         {
           "kind": "note",
-          "note": "McpFormPage.confirm_delete() ends with wait_for_url('**/mcps/all'), a glob that never matches the navigate(-1) landing '/mcps/all?folder=<id>&viewMode=owner' produced when the detail page was reached from an open folder view (3/3 timeouts). Not modified (shared caller, additive-only rule); the social-folders binding waits on the DELETE 204 + a list-route regex instead. Worth a small fix-only card:… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "McpFormPage.confirm_delete() ends with wait_for_url('**/mcps/all'), a glob that never matches the navigate(-1) landing '/mcps/all?folder=<id>&viewMode=owner' produced when the detail page was reached from an open folder view (3/3 timeouts). Not modified (shared caller, additive-only rule); the social-folders binding waits on the DELETE 204 + a list-route regex instead. Worth a small fix-only card:\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/mcp_form_page.py"
         },
         {
           "kind": "note",
-          "note": "node coverage/campaign.mjs lint-areas reports '[ FAIL ] 1 mapped path(s) no longer exist — settings src/[fsd]/pages/user-settings/'. Pre-existing on the trunk (git show tests/batch-social-folders-critical:coverage/areas.json line 49), not introduced by the social-folders area addition. Needs a repoint by whoever owns the settings area mapping.",
+          "note": "node coverage/campaign.mjs lint-areas reports '[ FAIL ] 1 mapped path(s) no longer exist \u2014 settings src/[fsd]/pages/user-settings/'. Pre-existing on the trunk (git show tests/batch-social-folders-critical:coverage/areas.json line 49), not introduced by the social-folders area addition. Needs a repoint by whoever owns the settings area mapping.",
           "ref": "coverage/areas.json"
         },
         {
           "kind": "note",
-          "note": "Post-delete landing after the type's normal entity delete (ELITEA-3210 step 2) is type-specific and now documented in _surface.md: skills/agents/credentials land on the bare list (folder closed); pipelines/toolkits/mcps navigate(-1) back to '…/all?folder=<id>' with the folder still OPEN, so the spec normalises to closed before the case's close -> reopen. Only skills (#2303) and credentials (#1666)… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Post-delete landing after the type's normal entity delete (ELITEA-3210 step 2) is type-specific and now documented in _surface.md: skills/agents/credentials land on the bare list (folder closed); pipelines/toolkits/mcps navigate(-1) back to '\u2026/all?folder=<id>' with the folder still OPEN, so the spec normalises to closed before the case's close -> reopen. Only skills (#2303) and credentials (#1666)\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/fixtures/social_folder_fixtures.py"
         },
         {
           "kind": "note",
-          "note": "Self-inflicted, recovered, no damage: 'git stash -q push -- <paths>' (flag before subcommand) stashes nothing, and a chained 'git stash pop' applied stash@{0} — a months-old WIP from another branch — which conflicted on .agents/automation/campaigns/chat-remaining.md. Restored with 'git checkout HEAD -- <that file>'; the 18 foreign stash entries are untouched. This clone carries many stale stashes;… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Self-inflicted, recovered, no damage: 'git stash -q push -- <paths>' (flag before subcommand) stashes nothing, and a chained 'git stash pop' applied stash@{0} \u2014 a months-old WIP from another branch \u2014 which conflicted on .agents/automation/campaigns/chat-remaining.md. Restored with 'git checkout HEAD -- <that file>'; the 18 foreign stash entries are untouched. This clone carries many stale stashes;\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": ".agents/memory/test-automation-engineer/git_stash_flag_order_pops_a_foreign_stash.md"
         },
         {
           "kind": "note",
-          "note": "Docstring drift (Nit): the spec says 'skills / agents / MCPs / credentials land on the bare list route' and only pipelines/toolkits use navigate(-1). The AFS § Automation Hints (3210) and the fixture comment at social_folder_fixtures.py:223-225 both record MCPs landing on '/mcps/all?folder=<id>' via navigate(-1) (observed 3/3). Code handles both (step 3 normalises on url_folder_param), so no behav… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Docstring drift (Nit): the spec says 'skills / agents / MCPs / credentials land on the bare list route' and only pipelines/toolkits use navigate(-1). The AFS \u00a7 Automation Hints (3210) and the fixture comment at social_folder_fixtures.py:223-225 both record MCPs landing on '/mcps/all?folder=<id>' via navigate(-1) (observed 3/3). Code handles both (step 3 normalises on url_folder_param), so no behav\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/tests/ui/social_folders/test_folder_count_accurate_after_entity_deletion.py:20"
         },
         {
           "kind": "note",
-          "note": "AFS implementation note says the URL folder param clears BEFORE the DELETE 204 (optimistic closeFolder). Source disagrees: DeleteFolderDialog.jsx:23 does `await deleteFolder(...)` (unwrap) and only then calls onDelete, so the close and the unfiltered list GET are post-204 — which is what the analyst measured (~700 ms after). Consequence: step 4's `folder_id is None` read from the step-3 response c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "AFS implementation note says the URL folder param clears BEFORE the DELETE 204 (optimistic closeFolder). Source disagrees: DeleteFolderDialog.jsx:23 does `await deleteFolder(...)` (unwrap) and only then calls onDelete, so the close and the unfiltered list GET are post-204 \u2014 which is what the analyst measured (~700 ms after). Consequence: step 4's `folder_id is None` read from the step-3 response c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_deleting-open-folder-returns-complete-list_ELITEA-3209.md:325"
         },
         {
           "kind": "note",
-          "note": "Dead code (Nit): FolderSection.wait_for_count_refetch, SocialFolderAPI.list_folders (api/client.py) and FolderSection.create_cancel_button have no callers in the three specs. create_cancel_button binds the pre-existing main testid create-folder-cancel-btn that nothing executes — a page-object reference the presence metric may count as covered (#511 spirit). Remove or leave for the next case that c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Dead code (Nit): FolderSection.wait_for_count_refetch, SocialFolderAPI.list_folders (api/client.py) and FolderSection.create_cancel_button have no callers in the three specs. create_cancel_button binds the pre-existing main testid create-folder-cancel-btn that nothing executes \u2014 a page-object reference the presence metric may count as covered (#511 spirit). Remove or leave for the next case that c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/components/folder_section.py:201"
         },
         {
           "kind": "note",
-          "note": "Flake watch for the gate: step 3 asserts `card_names to_have_text(baseline_names)` — order-sensitive. In 3209 the two seeded entities receive writes after the baseline is captured (two move PUTs, then the backend unfiles them on folder delete). If the list sort keys on updated_at, e1/e2 could swap relative to the step-0 order and produce a false red. Passed 6/6 live per the Run Report, so recorded… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Flake watch for the gate: step 3 asserts `card_names to_have_text(baseline_names)` \u2014 order-sensitive. In 3209 the two seeded entities receive writes after the baseline is captured (two move PUTs, then the backend unfiles them on folder delete). If the list sort keys on updated_at, e1/e2 could swap relative to the step-0 order and produce a false red. Passed 6/6 live per the Run Report, so recorded\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/tests/ui/social_folders/test_deleting_open_folder_returns_complete_list.py:118"
         },
         {
           "kind": "note",
-          "note": "Teardown gap (Nit): toolkits_and_indexes create() creates the artifact bucket before the toolkit; if create_artifact_toolkit raises, the bucket is never registered and leaks (buckets[] only fills on success, register_entity never runs). Register the bucket name for cleanup before the toolkit POST (testing.md § Teardown-guard ordering — flag before the mutation).",
+          "note": "Teardown gap (Nit): toolkits_and_indexes create() creates the artifact bucket before the toolkit; if create_artifact_toolkit raises, the bucket is never registered and leaks (buckets[] only fills on success, register_entity never runs). Register the bucket name for cleanup before the toolkit POST (testing.md \u00a7 Teardown-guard ordering \u2014 flag before the mutation).",
           "ref": "automation/fixtures/social_folder_fixtures.py:256"
         },
         {
           "kind": "note",
-          "note": "open_card_by_name (agents, toolkits) uses `self.entity_card.filter(has_text=name)` — a text filter scoped to a testid collection, same shape as the existing click_skill_card / click_credential_card / open_pipeline_by_name. Not caught by the mechanical grep and not a new raw handle (no id-keyed card testid exists on the shared Card.jsx). Recorded for canon visibility; the lead brief's 'never match … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "open_card_by_name (agents, toolkits) uses `self.entity_card.filter(has_text=name)` \u2014 a text filter scoped to a testid collection, same shape as the existing click_skill_card / click_credential_card / open_pipeline_by_name. Not caught by the mechanical grep and not a new raw handle (no id-keyed card testid exists on the shared Card.jsx). Recorded for canon visibility; the lead brief's 'never match \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/agents_list_page.py:344"
         },
         {
           "kind": "note",
-          "note": "Fidelity judgement on 3210 step 2 ('updates 3→2 without a manual refresh'): for bare-list-landing types the product's own post-delete redirect remounts the list and refetches counts, so the count is fresh by construction; the navigate(-1) types (pipelines/toolkits/mcps) land back on ?folder=<id> with the folder still open and exercise the in-place update the source defect #6482 was about. The test… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Fidelity judgement on 3210 step 2 ('updates 3\u21922 without a manual refresh'): for bare-list-landing types the product's own post-delete redirect remounts the list and refetches counts, so the count is fresh by construction; the navigate(-1) types (pipelines/toolkits/mcps) land back on ?folder=<id> with the folder still open and exercise the in-place update the source defect #6482 was about. The test\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_folder-count-accurate-after-entity-deletion-and-changes_ELITEA-3210.md:420"
         },
         {
           "kind": "note",
-          "note": "Reviewer paste — mechanical checks on `git diff 92750f91a...tests/ELITEA-3208-social-folders-critical -- automation/`. Locator grep: 6 hits, all `self.page.locator(self.<UPPER>.format(...))` / `create_dialog.locator(self.CREATE_FOLDER_NAME_INPUT_FIELD)` resolving one hop to `[data-testid=` class constants (FOLDER_ITEM, FOLDER_ITEM_COUNT, FOLDER_ITEM_MENU_BTN, CREATE_FOLDER_NAME_INPUT_FIELD, MOVE_T… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+          "note": "Reviewer paste \u2014 mechanical checks on `git diff 92750f91a...tests/ELITEA-3208-social-folders-critical -- automation/`. Locator grep: 6 hits, all `self.page.locator(self.<UPPER>.format(...))` / `create_dialog.locator(self.CREATE_FOLDER_NAME_INPUT_FIELD)` resolving one hop to `[data-testid=` class constants (FOLDER_ITEM, FOLDER_ITEM_COUNT, FOLDER_ITEM_MENU_BTN, CREATE_FOLDER_NAME_INPUT_FIELD, MOVE_T\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
         },
         {
           "kind": "note",
-          "note": "Lead-brief guardrails verified: (1) draw logged to stdout + logger + allure attachment (social_folder_fixtures.py:93-96); (2) SOCIAL_FOLDER_ENTITY_TYPE pin via config.py:295 with the .env.test-beats-shell note; (3) draw is a function-scoped fixture consumed once at setup, never re-drawn; coverage/areas.json social-folders sits immediately before shared. Clarification #2302 OPEN (question, case-tex… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+          "note": "Lead-brief guardrails verified: (1) draw logged to stdout + logger + allure attachment (social_folder_fixtures.py:93-96); (2) SOCIAL_FOLDER_ENTITY_TYPE pin via config.py:295 with the .env.test-beats-shell note; (3) draw is a function-scoped fixture consumed once at setup, never re-drawn; coverage/areas.json social-folders sits immediately before shared. Clarification #2302 OPEN (question, case-tex\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
         }
       ],
       "afs": "test-specs/social-folders/l1_closing-empty-folder-returns-complete-list_ELITEA-3208.md",
@@ -152,32 +152,32 @@
       "findings": [
         {
           "kind": "clarification",
-          "note": "[Clarification][ELITEA-3208] — case Step 2 expects `No items in this folder yet.` (trailing period); product renders `No items in this folder yet` on all 5 list components (verified live on skills + credentials, source-identical in the other 3). Case-text drift, not a product bug (copy internally consistent; not in elitea_issues#6480's list). AFS asserts the product string and cites #2302; ask is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "[Clarification][ELITEA-3208] \u2014 case Step 2 expects `No items in this folder yet.` (trailing period); product renders `No items in this folder yet` on all 5 list components (verified live on skills + credentials, source-identical in the other 3). Case-text drift, not a product bug (copy internally consistent; not in elitea_issues#6480's list). AFS asserts the product string and cites #2302; ask is \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "#2302"
         },
         {
           "kind": "defect",
-          "note": "[MINOR][ELITEA-3210] Deleting a skill from its detail page fires a stale GET /elitea_core/skill/prompt_lib/{pid}/{id} → 404 console error after the 204 DELETE. Sibling of #1666 (credentials twin), cross-linked both ways. Not folder-feature related; the implementer scopes the console assertion with exclude_known_defect_urls on the exact URL + `# Known defect: #2303` (credentials draw: #1666). Funct… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "[MINOR][ELITEA-3210] Deleting a skill from its detail page fires a stale GET /elitea_core/skill/prompt_lib/{pid}/{id} \u2192 404 console error after the 204 DELETE. Sibling of #1666 (credentials twin), cross-linked both ways. Not folder-feature related; the implementer scopes the console assertion with exclude_known_defect_urls on the exact URL + `# Known defect: #2303` (credentials draw: #1666). Funct\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "#2303"
         },
         {
           "kind": "note",
-          "note": "Brief drift: `data-testid=\"delete-folder-dialog\"` (DeleteFolderDialog.jsx:53) is DEAD at runtime — `Modal.DeleteEntityModal` hardcodes `delete-confirm-dialog`/`delete-confirm-button` and ignores the prop. Bind the shared ids (as admin_users_page.py / ai_provider_form_page.py already do). Also the folder menu testids live in FolderActionsMenu.jsx, not FolderMenuContent.jsx (brief names the wrong fi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Brief drift: `data-testid=\"delete-folder-dialog\"` (DeleteFolderDialog.jsx:53) is DEAD at runtime \u2014 `Modal.DeleteEntityModal` hardcodes `delete-confirm-dialog`/`delete-confirm-button` and ignores the prop. Bind the shared ids (as admin_users_page.py / ai_provider_form_page.py already do). Also the folder menu testids live in FolderActionsMenu.jsx, not FolderMenuContent.jsx (brief names the wrong fi\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "LEAD-BRIEF.md"
         },
         {
           "kind": "note",
-          "note": "`create-folder-name-input` lands on the MUI TextField ROOT div (Input.InputBase forwards data-testid to the root); `fill()` on it throws. Spec'd as class constant `CREATE_FOLDER_NAME_INPUT_FIELD = '[data-testid=\"create-folder-name-input\"] input'` (precedent oauth_auth_modal_page.py:91). Alternative for the implementer: relocate the testid via `inputProps` in EliteaUI — that is a UI change beyond a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "`create-folder-name-input` lands on the MUI TextField ROOT div (Input.InputBase forwards data-testid to the root); `fill()` on it throws. Spec'd as class constant `CREATE_FOLDER_NAME_INPUT_FIELD = '[data-testid=\"create-folder-name-input\"] input'` (precedent oauth_auth_modal_page.py:91). Alternative for the implementer: relocate the testid via `inputProps` in EliteaUI \u2014 that is a UI change beyond a\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
           "kind": "question",
-          "note": "Only the `skills` entity-delete flow was executed live (detail-page overflow menu; app redirects to bare `/skills/all`, dropping `viewMode` and `folder`, and the folder view closes). Under the randomized-type design the other 5 delete flows are exercised on their first draw by the implementer's resolver, unverified by analysis. If the lead wants analyst-verified delete paths per type, that is a fo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Only the `skills` entity-delete flow was executed live (detail-page overflow menu; app redirects to bare `/skills/all`, dropping `viewMode` and `folder`, and the folder view closes). Under the randomized-type design the other 5 delete flows are exercised on their first draw by the implementer's resolver, unverified by analysis. If the lead wants analyst-verified delete paths per type, that is a fo\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "ELITEA-3210 step 2"
         },
         {
           "kind": "note",
-          "note": "Strongest observables for this surface: the open folder is the URL search param `?folder=<id>` (useFolderView.hooks.js) — close deletes it in ~14 ms, deleting the open folder deletes it ~700 ms after the 204; 'complete unfiltered list' = the entity list GET re-firing WITHOUT `ids=` (empty folder uses the `ids=0` sentinel); counts arrive only on `GET /social/folders/...&include_counts=true`; entity… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Strongest observables for this surface: the open folder is the URL search param `?folder=<id>` (useFolderView.hooks.js) \u2014 close deletes it in ~14 ms, deleting the open folder deletes it ~700 ms after the 204; 'complete unfiltered list' = the entity list GET re-firing WITHOUT `ids=` (empty folder uses the `ids=0` sentinel); counts arrive only on `GET /social/folders/...&include_counts=true`; entity\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
@@ -187,81 +187,81 @@
         },
         {
           "kind": "clarification",
-          "note": "AFS drift amended on the branch: the AFS said ELITEA-3208 'needs no entities at all', but a zero-entity list redirects to the type's create page (ToolkitsList.jsx first-render effect; credentials list likewise) and never mounts the FOLDERS panel. Project 399 holds 0 credentials and 0 toolkits (API-verified 2026-09-15), so the credentials draw redirected 3/3. The spec now seeds ONE disposable unfil… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "AFS drift amended on the branch: the AFS said ELITEA-3208 'needs no entities at all', but a zero-entity list redirects to the type's create page (ToolkitsList.jsx first-render effect; credentials list likewise) and never mounts the FOLDERS panel. Project 399 holds 0 credentials and 0 toolkits (API-verified 2026-09-15), so the credentials draw redirected 3/3. The spec now seeds ONE disposable unfil\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_closing-empty-folder-returns-complete-list_ELITEA-3208.md"
         },
         {
           "kind": "note",
-          "note": "Product behaviour worth knowing (not in any of the three cases' scope, not filed): opening a NON-empty folder fires a transient list GET with the ids=0 sentinel before the real one, because useFolderItems returns idsQueryParam='0' while folder_items is still loading (useFolderEntities.hooks.js) — a wasted request and a possible empty-state flash. Any spec waiting on 'the first ids= GET' reads the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Product behaviour worth knowing (not in any of the three cases' scope, not filed): opening a NON-empty folder fires a transient list GET with the ids=0 sentinel before the real one, because useFolderItems returns idsQueryParam='0' while folder_items is still loading (useFolderEntities.hooks.js) \u2014 a wasted request and a possible empty-state flash. Any spec waiting on 'the first ids= GET' reads the \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
           "kind": "note",
-          "note": "Intermittent /mcps/all -> /mcps/create redirect with 20 MCPs present: hit twice as the SECOND social-folders test in a pytest session on mcps (McpListPage.navigate() timed out on agent-card-view-button; failure screenshot shows the 'Choose the MCP type' picker). Not reproduced by 3 fresh-context probes nor by API create+delete followed by navigation; later 3-spec runs on mcps were clean. Suspected… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Intermittent /mcps/all -> /mcps/create redirect with 20 MCPs present: hit twice as the SECOND social-folders test in a pytest session on mcps (McpListPage.navigate() timed out on agent-card-view-button; failure screenshot shows the 'Choose the MCP type' picker). Not reproduced by 3 fresh-context probes nor by API create+delete followed by navigation; later 3-spec runs on mcps were clean. Suspected\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/mcp_list_page.py"
         },
         {
           "kind": "note",
-          "note": "McpFormPage.confirm_delete() ends with wait_for_url('**/mcps/all'), a glob that never matches the navigate(-1) landing '/mcps/all?folder=<id>&viewMode=owner' produced when the detail page was reached from an open folder view (3/3 timeouts). Not modified (shared caller, additive-only rule); the social-folders binding waits on the DELETE 204 + a list-route regex instead. Worth a small fix-only card:… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "McpFormPage.confirm_delete() ends with wait_for_url('**/mcps/all'), a glob that never matches the navigate(-1) landing '/mcps/all?folder=<id>&viewMode=owner' produced when the detail page was reached from an open folder view (3/3 timeouts). Not modified (shared caller, additive-only rule); the social-folders binding waits on the DELETE 204 + a list-route regex instead. Worth a small fix-only card:\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/mcp_form_page.py"
         },
         {
           "kind": "note",
-          "note": "node coverage/campaign.mjs lint-areas reports '[ FAIL ] 1 mapped path(s) no longer exist — settings src/[fsd]/pages/user-settings/'. Pre-existing on the trunk (git show tests/batch-social-folders-critical:coverage/areas.json line 49), not introduced by the social-folders area addition. Needs a repoint by whoever owns the settings area mapping.",
+          "note": "node coverage/campaign.mjs lint-areas reports '[ FAIL ] 1 mapped path(s) no longer exist \u2014 settings src/[fsd]/pages/user-settings/'. Pre-existing on the trunk (git show tests/batch-social-folders-critical:coverage/areas.json line 49), not introduced by the social-folders area addition. Needs a repoint by whoever owns the settings area mapping.",
           "ref": "coverage/areas.json"
         },
         {
           "kind": "note",
-          "note": "Post-delete landing after the type's normal entity delete (ELITEA-3210 step 2) is type-specific and now documented in _surface.md: skills/agents/credentials land on the bare list (folder closed); pipelines/toolkits/mcps navigate(-1) back to '…/all?folder=<id>' with the folder still OPEN, so the spec normalises to closed before the case's close -> reopen. Only skills (#2303) and credentials (#1666)… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Post-delete landing after the type's normal entity delete (ELITEA-3210 step 2) is type-specific and now documented in _surface.md: skills/agents/credentials land on the bare list (folder closed); pipelines/toolkits/mcps navigate(-1) back to '\u2026/all?folder=<id>' with the folder still OPEN, so the spec normalises to closed before the case's close -> reopen. Only skills (#2303) and credentials (#1666)\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/fixtures/social_folder_fixtures.py"
         },
         {
           "kind": "note",
-          "note": "Self-inflicted, recovered, no damage: 'git stash -q push -- <paths>' (flag before subcommand) stashes nothing, and a chained 'git stash pop' applied stash@{0} — a months-old WIP from another branch — which conflicted on .agents/automation/campaigns/chat-remaining.md. Restored with 'git checkout HEAD -- <that file>'; the 18 foreign stash entries are untouched. This clone carries many stale stashes;… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Self-inflicted, recovered, no damage: 'git stash -q push -- <paths>' (flag before subcommand) stashes nothing, and a chained 'git stash pop' applied stash@{0} \u2014 a months-old WIP from another branch \u2014 which conflicted on .agents/automation/campaigns/chat-remaining.md. Restored with 'git checkout HEAD -- <that file>'; the 18 foreign stash entries are untouched. This clone carries many stale stashes;\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": ".agents/memory/test-automation-engineer/git_stash_flag_order_pops_a_foreign_stash.md"
         },
         {
           "kind": "note",
-          "note": "Docstring drift (Nit): the spec says 'skills / agents / MCPs / credentials land on the bare list route' and only pipelines/toolkits use navigate(-1). The AFS § Automation Hints (3210) and the fixture comment at social_folder_fixtures.py:223-225 both record MCPs landing on '/mcps/all?folder=<id>' via navigate(-1) (observed 3/3). Code handles both (step 3 normalises on url_folder_param), so no behav… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Docstring drift (Nit): the spec says 'skills / agents / MCPs / credentials land on the bare list route' and only pipelines/toolkits use navigate(-1). The AFS \u00a7 Automation Hints (3210) and the fixture comment at social_folder_fixtures.py:223-225 both record MCPs landing on '/mcps/all?folder=<id>' via navigate(-1) (observed 3/3). Code handles both (step 3 normalises on url_folder_param), so no behav\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/tests/ui/social_folders/test_folder_count_accurate_after_entity_deletion.py:20"
         },
         {
           "kind": "note",
-          "note": "AFS implementation note says the URL folder param clears BEFORE the DELETE 204 (optimistic closeFolder). Source disagrees: DeleteFolderDialog.jsx:23 does `await deleteFolder(...)` (unwrap) and only then calls onDelete, so the close and the unfiltered list GET are post-204 — which is what the analyst measured (~700 ms after). Consequence: step 4's `folder_id is None` read from the step-3 response c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "AFS implementation note says the URL folder param clears BEFORE the DELETE 204 (optimistic closeFolder). Source disagrees: DeleteFolderDialog.jsx:23 does `await deleteFolder(...)` (unwrap) and only then calls onDelete, so the close and the unfiltered list GET are post-204 \u2014 which is what the analyst measured (~700 ms after). Consequence: step 4's `folder_id is None` read from the step-3 response c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_deleting-open-folder-returns-complete-list_ELITEA-3209.md:325"
         },
         {
           "kind": "note",
-          "note": "Dead code (Nit): FolderSection.wait_for_count_refetch, SocialFolderAPI.list_folders (api/client.py) and FolderSection.create_cancel_button have no callers in the three specs. create_cancel_button binds the pre-existing main testid create-folder-cancel-btn that nothing executes — a page-object reference the presence metric may count as covered (#511 spirit). Remove or leave for the next case that c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Dead code (Nit): FolderSection.wait_for_count_refetch, SocialFolderAPI.list_folders (api/client.py) and FolderSection.create_cancel_button have no callers in the three specs. create_cancel_button binds the pre-existing main testid create-folder-cancel-btn that nothing executes \u2014 a page-object reference the presence metric may count as covered (#511 spirit). Remove or leave for the next case that c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/components/folder_section.py:201"
         },
         {
           "kind": "note",
-          "note": "Flake watch for the gate: step 3 asserts `card_names to_have_text(baseline_names)` — order-sensitive. In 3209 the two seeded entities receive writes after the baseline is captured (two move PUTs, then the backend unfiles them on folder delete). If the list sort keys on updated_at, e1/e2 could swap relative to the step-0 order and produce a false red. Passed 6/6 live per the Run Report, so recorded… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Flake watch for the gate: step 3 asserts `card_names to_have_text(baseline_names)` \u2014 order-sensitive. In 3209 the two seeded entities receive writes after the baseline is captured (two move PUTs, then the backend unfiles them on folder delete). If the list sort keys on updated_at, e1/e2 could swap relative to the step-0 order and produce a false red. Passed 6/6 live per the Run Report, so recorded\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/tests/ui/social_folders/test_deleting_open_folder_returns_complete_list.py:118"
         },
         {
           "kind": "note",
-          "note": "Teardown gap (Nit): toolkits_and_indexes create() creates the artifact bucket before the toolkit; if create_artifact_toolkit raises, the bucket is never registered and leaks (buckets[] only fills on success, register_entity never runs). Register the bucket name for cleanup before the toolkit POST (testing.md § Teardown-guard ordering — flag before the mutation).",
+          "note": "Teardown gap (Nit): toolkits_and_indexes create() creates the artifact bucket before the toolkit; if create_artifact_toolkit raises, the bucket is never registered and leaks (buckets[] only fills on success, register_entity never runs). Register the bucket name for cleanup before the toolkit POST (testing.md \u00a7 Teardown-guard ordering \u2014 flag before the mutation).",
           "ref": "automation/fixtures/social_folder_fixtures.py:256"
         },
         {
           "kind": "note",
-          "note": "open_card_by_name (agents, toolkits) uses `self.entity_card.filter(has_text=name)` — a text filter scoped to a testid collection, same shape as the existing click_skill_card / click_credential_card / open_pipeline_by_name. Not caught by the mechanical grep and not a new raw handle (no id-keyed card testid exists on the shared Card.jsx). Recorded for canon visibility; the lead brief's 'never match … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "open_card_by_name (agents, toolkits) uses `self.entity_card.filter(has_text=name)` \u2014 a text filter scoped to a testid collection, same shape as the existing click_skill_card / click_credential_card / open_pipeline_by_name. Not caught by the mechanical grep and not a new raw handle (no id-keyed card testid exists on the shared Card.jsx). Recorded for canon visibility; the lead brief's 'never match \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/agents_list_page.py:344"
         },
         {
           "kind": "note",
-          "note": "Fidelity judgement on 3210 step 2 ('updates 3→2 without a manual refresh'): for bare-list-landing types the product's own post-delete redirect remounts the list and refetches counts, so the count is fresh by construction; the navigate(-1) types (pipelines/toolkits/mcps) land back on ?folder=<id> with the folder still open and exercise the in-place update the source defect #6482 was about. The test… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Fidelity judgement on 3210 step 2 ('updates 3\u21922 without a manual refresh'): for bare-list-landing types the product's own post-delete redirect remounts the list and refetches counts, so the count is fresh by construction; the navigate(-1) types (pipelines/toolkits/mcps) land back on ?folder=<id> with the folder still open and exercise the in-place update the source defect #6482 was about. The test\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_folder-count-accurate-after-entity-deletion-and-changes_ELITEA-3210.md:420"
         },
         {
           "kind": "note",
-          "note": "Reviewer paste — mechanical checks on `git diff 92750f91a...tests/ELITEA-3208-social-folders-critical -- automation/`. Locator grep: 6 hits, all `self.page.locator(self.<UPPER>.format(...))` / `create_dialog.locator(self.CREATE_FOLDER_NAME_INPUT_FIELD)` resolving one hop to `[data-testid=` class constants (FOLDER_ITEM, FOLDER_ITEM_COUNT, FOLDER_ITEM_MENU_BTN, CREATE_FOLDER_NAME_INPUT_FIELD, MOVE_T… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+          "note": "Reviewer paste \u2014 mechanical checks on `git diff 92750f91a...tests/ELITEA-3208-social-folders-critical -- automation/`. Locator grep: 6 hits, all `self.page.locator(self.<UPPER>.format(...))` / `create_dialog.locator(self.CREATE_FOLDER_NAME_INPUT_FIELD)` resolving one hop to `[data-testid=` class constants (FOLDER_ITEM, FOLDER_ITEM_COUNT, FOLDER_ITEM_MENU_BTN, CREATE_FOLDER_NAME_INPUT_FIELD, MOVE_T\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
         },
         {
           "kind": "note",
-          "note": "Lead-brief guardrails verified: (1) draw logged to stdout + logger + allure attachment (social_folder_fixtures.py:93-96); (2) SOCIAL_FOLDER_ENTITY_TYPE pin via config.py:295 with the .env.test-beats-shell note; (3) draw is a function-scoped fixture consumed once at setup, never re-drawn; coverage/areas.json social-folders sits immediately before shared. Clarification #2302 OPEN (question, case-tex… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+          "note": "Lead-brief guardrails verified: (1) draw logged to stdout + logger + allure attachment (social_folder_fixtures.py:93-96); (2) SOCIAL_FOLDER_ENTITY_TYPE pin via config.py:295 with the .env.test-beats-shell note; (3) draw is a function-scoped fixture consumed once at setup, never re-drawn; coverage/areas.json social-folders sits immediately before shared. Clarification #2302 OPEN (question, case-tex\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
         }
       ],
       "afs": "test-specs/social-folders/l1_deleting-open-folder-returns-complete-list_ELITEA-3209.md",
@@ -283,32 +283,32 @@
       "findings": [
         {
           "kind": "clarification",
-          "note": "[Clarification][ELITEA-3208] — case Step 2 expects `No items in this folder yet.` (trailing period); product renders `No items in this folder yet` on all 5 list components (verified live on skills + credentials, source-identical in the other 3). Case-text drift, not a product bug (copy internally consistent; not in elitea_issues#6480's list). AFS asserts the product string and cites #2302; ask is … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "[Clarification][ELITEA-3208] \u2014 case Step 2 expects `No items in this folder yet.` (trailing period); product renders `No items in this folder yet` on all 5 list components (verified live on skills + credentials, source-identical in the other 3). Case-text drift, not a product bug (copy internally consistent; not in elitea_issues#6480's list). AFS asserts the product string and cites #2302; ask is \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "#2302"
         },
         {
           "kind": "defect",
-          "note": "[MINOR][ELITEA-3210] Deleting a skill from its detail page fires a stale GET /elitea_core/skill/prompt_lib/{pid}/{id} → 404 console error after the 204 DELETE. Sibling of #1666 (credentials twin), cross-linked both ways. Not folder-feature related; the implementer scopes the console assertion with exclude_known_defect_urls on the exact URL + `# Known defect: #2303` (credentials draw: #1666). Funct… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "[MINOR][ELITEA-3210] Deleting a skill from its detail page fires a stale GET /elitea_core/skill/prompt_lib/{pid}/{id} \u2192 404 console error after the 204 DELETE. Sibling of #1666 (credentials twin), cross-linked both ways. Not folder-feature related; the implementer scopes the console assertion with exclude_known_defect_urls on the exact URL + `# Known defect: #2303` (credentials draw: #1666). Funct\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "#2303"
         },
         {
           "kind": "note",
-          "note": "Brief drift: `data-testid=\"delete-folder-dialog\"` (DeleteFolderDialog.jsx:53) is DEAD at runtime — `Modal.DeleteEntityModal` hardcodes `delete-confirm-dialog`/`delete-confirm-button` and ignores the prop. Bind the shared ids (as admin_users_page.py / ai_provider_form_page.py already do). Also the folder menu testids live in FolderActionsMenu.jsx, not FolderMenuContent.jsx (brief names the wrong fi… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Brief drift: `data-testid=\"delete-folder-dialog\"` (DeleteFolderDialog.jsx:53) is DEAD at runtime \u2014 `Modal.DeleteEntityModal` hardcodes `delete-confirm-dialog`/`delete-confirm-button` and ignores the prop. Bind the shared ids (as admin_users_page.py / ai_provider_form_page.py already do). Also the folder menu testids live in FolderActionsMenu.jsx, not FolderMenuContent.jsx (brief names the wrong fi\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "LEAD-BRIEF.md"
         },
         {
           "kind": "note",
-          "note": "`create-folder-name-input` lands on the MUI TextField ROOT div (Input.InputBase forwards data-testid to the root); `fill()` on it throws. Spec'd as class constant `CREATE_FOLDER_NAME_INPUT_FIELD = '[data-testid=\"create-folder-name-input\"] input'` (precedent oauth_auth_modal_page.py:91). Alternative for the implementer: relocate the testid via `inputProps` in EliteaUI — that is a UI change beyond a… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "`create-folder-name-input` lands on the MUI TextField ROOT div (Input.InputBase forwards data-testid to the root); `fill()` on it throws. Spec'd as class constant `CREATE_FOLDER_NAME_INPUT_FIELD = '[data-testid=\"create-folder-name-input\"] input'` (precedent oauth_auth_modal_page.py:91). Alternative for the implementer: relocate the testid via `inputProps` in EliteaUI \u2014 that is a UI change beyond a\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
           "kind": "question",
-          "note": "Only the `skills` entity-delete flow was executed live (detail-page overflow menu; app redirects to bare `/skills/all`, dropping `viewMode` and `folder`, and the folder view closes). Under the randomized-type design the other 5 delete flows are exercised on their first draw by the implementer's resolver, unverified by analysis. If the lead wants analyst-verified delete paths per type, that is a fo… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Only the `skills` entity-delete flow was executed live (detail-page overflow menu; app redirects to bare `/skills/all`, dropping `viewMode` and `folder`, and the folder view closes). Under the randomized-type design the other 5 delete flows are exercised on their first draw by the implementer's resolver, unverified by analysis. If the lead wants analyst-verified delete paths per type, that is a fo\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "ELITEA-3210 step 2"
         },
         {
           "kind": "note",
-          "note": "Strongest observables for this surface: the open folder is the URL search param `?folder=<id>` (useFolderView.hooks.js) — close deletes it in ~14 ms, deleting the open folder deletes it ~700 ms after the 204; 'complete unfiltered list' = the entity list GET re-firing WITHOUT `ids=` (empty folder uses the `ids=0` sentinel); counts arrive only on `GET /social/folders/...&include_counts=true`; entity… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Strongest observables for this surface: the open folder is the URL search param `?folder=<id>` (useFolderView.hooks.js) \u2014 close deletes it in ~14 ms, deleting the open folder deletes it ~700 ms after the 204; 'complete unfiltered list' = the entity list GET re-firing WITHOUT `ids=` (empty folder uses the `ids=0` sentinel); counts arrive only on `GET /social/folders/...&include_counts=true`; entity\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
@@ -318,81 +318,81 @@
         },
         {
           "kind": "clarification",
-          "note": "AFS drift amended on the branch: the AFS said ELITEA-3208 'needs no entities at all', but a zero-entity list redirects to the type's create page (ToolkitsList.jsx first-render effect; credentials list likewise) and never mounts the FOLDERS panel. Project 399 holds 0 credentials and 0 toolkits (API-verified 2026-09-15), so the credentials draw redirected 3/3. The spec now seeds ONE disposable unfil… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "AFS drift amended on the branch: the AFS said ELITEA-3208 'needs no entities at all', but a zero-entity list redirects to the type's create page (ToolkitsList.jsx first-render effect; credentials list likewise) and never mounts the FOLDERS panel. Project 399 holds 0 credentials and 0 toolkits (API-verified 2026-09-15), so the credentials draw redirected 3/3. The spec now seeds ONE disposable unfil\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_closing-empty-folder-returns-complete-list_ELITEA-3208.md"
         },
         {
           "kind": "note",
-          "note": "Product behaviour worth knowing (not in any of the three cases' scope, not filed): opening a NON-empty folder fires a transient list GET with the ids=0 sentinel before the real one, because useFolderItems returns idsQueryParam='0' while folder_items is still loading (useFolderEntities.hooks.js) — a wasted request and a possible empty-state flash. Any spec waiting on 'the first ids= GET' reads the … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Product behaviour worth knowing (not in any of the three cases' scope, not filed): opening a NON-empty folder fires a transient list GET with the ids=0 sentinel before the real one, because useFolderItems returns idsQueryParam='0' while folder_items is still loading (useFolderEntities.hooks.js) \u2014 a wasted request and a possible empty-state flash. Any spec waiting on 'the first ids= GET' reads the \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/_surface.md"
         },
         {
           "kind": "note",
-          "note": "Intermittent /mcps/all -> /mcps/create redirect with 20 MCPs present: hit twice as the SECOND social-folders test in a pytest session on mcps (McpListPage.navigate() timed out on agent-card-view-button; failure screenshot shows the 'Choose the MCP type' picker). Not reproduced by 3 fresh-context probes nor by API create+delete followed by navigation; later 3-spec runs on mcps were clean. Suspected… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Intermittent /mcps/all -> /mcps/create redirect with 20 MCPs present: hit twice as the SECOND social-folders test in a pytest session on mcps (McpListPage.navigate() timed out on agent-card-view-button; failure screenshot shows the 'Choose the MCP type' picker). Not reproduced by 3 fresh-context probes nor by API create+delete followed by navigation; later 3-spec runs on mcps were clean. Suspected\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/mcp_list_page.py"
         },
         {
           "kind": "note",
-          "note": "McpFormPage.confirm_delete() ends with wait_for_url('**/mcps/all'), a glob that never matches the navigate(-1) landing '/mcps/all?folder=<id>&viewMode=owner' produced when the detail page was reached from an open folder view (3/3 timeouts). Not modified (shared caller, additive-only rule); the social-folders binding waits on the DELETE 204 + a list-route regex instead. Worth a small fix-only card:… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "McpFormPage.confirm_delete() ends with wait_for_url('**/mcps/all'), a glob that never matches the navigate(-1) landing '/mcps/all?folder=<id>&viewMode=owner' produced when the detail page was reached from an open folder view (3/3 timeouts). Not modified (shared caller, additive-only rule); the social-folders binding waits on the DELETE 204 + a list-route regex instead. Worth a small fix-only card:\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/mcp_form_page.py"
         },
         {
           "kind": "note",
-          "note": "node coverage/campaign.mjs lint-areas reports '[ FAIL ] 1 mapped path(s) no longer exist — settings src/[fsd]/pages/user-settings/'. Pre-existing on the trunk (git show tests/batch-social-folders-critical:coverage/areas.json line 49), not introduced by the social-folders area addition. Needs a repoint by whoever owns the settings area mapping.",
+          "note": "node coverage/campaign.mjs lint-areas reports '[ FAIL ] 1 mapped path(s) no longer exist \u2014 settings src/[fsd]/pages/user-settings/'. Pre-existing on the trunk (git show tests/batch-social-folders-critical:coverage/areas.json line 49), not introduced by the social-folders area addition. Needs a repoint by whoever owns the settings area mapping.",
           "ref": "coverage/areas.json"
         },
         {
           "kind": "note",
-          "note": "Post-delete landing after the type's normal entity delete (ELITEA-3210 step 2) is type-specific and now documented in _surface.md: skills/agents/credentials land on the bare list (folder closed); pipelines/toolkits/mcps navigate(-1) back to '…/all?folder=<id>' with the folder still OPEN, so the spec normalises to closed before the case's close -> reopen. Only skills (#2303) and credentials (#1666)… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Post-delete landing after the type's normal entity delete (ELITEA-3210 step 2) is type-specific and now documented in _surface.md: skills/agents/credentials land on the bare list (folder closed); pipelines/toolkits/mcps navigate(-1) back to '\u2026/all?folder=<id>' with the folder still OPEN, so the spec normalises to closed before the case's close -> reopen. Only skills (#2303) and credentials (#1666)\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/fixtures/social_folder_fixtures.py"
         },
         {
           "kind": "note",
-          "note": "Self-inflicted, recovered, no damage: 'git stash -q push -- <paths>' (flag before subcommand) stashes nothing, and a chained 'git stash pop' applied stash@{0} — a months-old WIP from another branch — which conflicted on .agents/automation/campaigns/chat-remaining.md. Restored with 'git checkout HEAD -- <that file>'; the 18 foreign stash entries are untouched. This clone carries many stale stashes;… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Self-inflicted, recovered, no damage: 'git stash -q push -- <paths>' (flag before subcommand) stashes nothing, and a chained 'git stash pop' applied stash@{0} \u2014 a months-old WIP from another branch \u2014 which conflicted on .agents/automation/campaigns/chat-remaining.md. Restored with 'git checkout HEAD -- <that file>'; the 18 foreign stash entries are untouched. This clone carries many stale stashes;\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": ".agents/memory/test-automation-engineer/git_stash_flag_order_pops_a_foreign_stash.md"
         },
         {
           "kind": "note",
-          "note": "Docstring drift (Nit): the spec says 'skills / agents / MCPs / credentials land on the bare list route' and only pipelines/toolkits use navigate(-1). The AFS § Automation Hints (3210) and the fixture comment at social_folder_fixtures.py:223-225 both record MCPs landing on '/mcps/all?folder=<id>' via navigate(-1) (observed 3/3). Code handles both (step 3 normalises on url_folder_param), so no behav… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Docstring drift (Nit): the spec says 'skills / agents / MCPs / credentials land on the bare list route' and only pipelines/toolkits use navigate(-1). The AFS \u00a7 Automation Hints (3210) and the fixture comment at social_folder_fixtures.py:223-225 both record MCPs landing on '/mcps/all?folder=<id>' via navigate(-1) (observed 3/3). Code handles both (step 3 normalises on url_folder_param), so no behav\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/tests/ui/social_folders/test_folder_count_accurate_after_entity_deletion.py:20"
         },
         {
           "kind": "note",
-          "note": "AFS implementation note says the URL folder param clears BEFORE the DELETE 204 (optimistic closeFolder). Source disagrees: DeleteFolderDialog.jsx:23 does `await deleteFolder(...)` (unwrap) and only then calls onDelete, so the close and the unfiltered list GET are post-204 — which is what the analyst measured (~700 ms after). Consequence: step 4's `folder_id is None` read from the step-3 response c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "AFS implementation note says the URL folder param clears BEFORE the DELETE 204 (optimistic closeFolder). Source disagrees: DeleteFolderDialog.jsx:23 does `await deleteFolder(...)` (unwrap) and only then calls onDelete, so the close and the unfiltered list GET are post-204 \u2014 which is what the analyst measured (~700 ms after). Consequence: step 4's `folder_id is None` read from the step-3 response c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_deleting-open-folder-returns-complete-list_ELITEA-3209.md:325"
         },
         {
           "kind": "note",
-          "note": "Dead code (Nit): FolderSection.wait_for_count_refetch, SocialFolderAPI.list_folders (api/client.py) and FolderSection.create_cancel_button have no callers in the three specs. create_cancel_button binds the pre-existing main testid create-folder-cancel-btn that nothing executes — a page-object reference the presence metric may count as covered (#511 spirit). Remove or leave for the next case that c… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Dead code (Nit): FolderSection.wait_for_count_refetch, SocialFolderAPI.list_folders (api/client.py) and FolderSection.create_cancel_button have no callers in the three specs. create_cancel_button binds the pre-existing main testid create-folder-cancel-btn that nothing executes \u2014 a page-object reference the presence metric may count as covered (#511 spirit). Remove or leave for the next case that c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/components/folder_section.py:201"
         },
         {
           "kind": "note",
-          "note": "Flake watch for the gate: step 3 asserts `card_names to_have_text(baseline_names)` — order-sensitive. In 3209 the two seeded entities receive writes after the baseline is captured (two move PUTs, then the backend unfiles them on folder delete). If the list sort keys on updated_at, e1/e2 could swap relative to the step-0 order and produce a false red. Passed 6/6 live per the Run Report, so recorded… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Flake watch for the gate: step 3 asserts `card_names to_have_text(baseline_names)` \u2014 order-sensitive. In 3209 the two seeded entities receive writes after the baseline is captured (two move PUTs, then the backend unfiles them on folder delete). If the list sort keys on updated_at, e1/e2 could swap relative to the step-0 order and produce a false red. Passed 6/6 live per the Run Report, so recorded\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/tests/ui/social_folders/test_deleting_open_folder_returns_complete_list.py:118"
         },
         {
           "kind": "note",
-          "note": "Teardown gap (Nit): toolkits_and_indexes create() creates the artifact bucket before the toolkit; if create_artifact_toolkit raises, the bucket is never registered and leaks (buckets[] only fills on success, register_entity never runs). Register the bucket name for cleanup before the toolkit POST (testing.md § Teardown-guard ordering — flag before the mutation).",
+          "note": "Teardown gap (Nit): toolkits_and_indexes create() creates the artifact bucket before the toolkit; if create_artifact_toolkit raises, the bucket is never registered and leaks (buckets[] only fills on success, register_entity never runs). Register the bucket name for cleanup before the toolkit POST (testing.md \u00a7 Teardown-guard ordering \u2014 flag before the mutation).",
           "ref": "automation/fixtures/social_folder_fixtures.py:256"
         },
         {
           "kind": "note",
-          "note": "open_card_by_name (agents, toolkits) uses `self.entity_card.filter(has_text=name)` — a text filter scoped to a testid collection, same shape as the existing click_skill_card / click_credential_card / open_pipeline_by_name. Not caught by the mechanical grep and not a new raw handle (no id-keyed card testid exists on the shared Card.jsx). Recorded for canon visibility; the lead brief's 'never match … [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "open_card_by_name (agents, toolkits) uses `self.entity_card.filter(has_text=name)` \u2014 a text filter scoped to a testid collection, same shape as the existing click_skill_card / click_credential_card / open_pipeline_by_name. Not caught by the mechanical grep and not a new raw handle (no id-keyed card testid exists on the shared Card.jsx). Recorded for canon visibility; the lead brief's 'never match \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "automation/pages/agents_list_page.py:344"
         },
         {
           "kind": "note",
-          "note": "Fidelity judgement on 3210 step 2 ('updates 3→2 without a manual refresh'): for bare-list-landing types the product's own post-delete redirect remounts the list and refetches counts, so the count is fresh by construction; the navigate(-1) types (pipelines/toolkits/mcps) land back on ?folder=<id> with the folder still open and exercise the in-place update the source defect #6482 was about. The test… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "note": "Fidelity judgement on 3210 step 2 ('updates 3\u21922 without a manual refresh'): for bare-list-landing types the product's own post-delete redirect remounts the list and refetches counts, so the count is fresh by construction; the navigate(-1) types (pipelines/toolkits/mcps) land back on ?folder=<id> with the folder still open and exercise the in-place update the source defect #6482 was about. The test\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
           "ref": "test-specs/social-folders/l1_folder-count-accurate-after-entity-deletion-and-changes_ELITEA-3210.md:420"
         },
         {
           "kind": "note",
-          "note": "Reviewer paste — mechanical checks on `git diff 92750f91a...tests/ELITEA-3208-social-folders-critical -- automation/`. Locator grep: 6 hits, all `self.page.locator(self.<UPPER>.format(...))` / `create_dialog.locator(self.CREATE_FOLDER_NAME_INPUT_FIELD)` resolving one hop to `[data-testid=` class constants (FOLDER_ITEM, FOLDER_ITEM_COUNT, FOLDER_ITEM_MENU_BTN, CREATE_FOLDER_NAME_INPUT_FIELD, MOVE_T… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+          "note": "Reviewer paste \u2014 mechanical checks on `git diff 92750f91a...tests/ELITEA-3208-social-folders-critical -- automation/`. Locator grep: 6 hits, all `self.page.locator(self.<UPPER>.format(...))` / `create_dialog.locator(self.CREATE_FOLDER_NAME_INPUT_FIELD)` resolving one hop to `[data-testid=` class constants (FOLDER_ITEM, FOLDER_ITEM_COUNT, FOLDER_ITEM_MENU_BTN, CREATE_FOLDER_NAME_INPUT_FIELD, MOVE_T\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
         },
         {
           "kind": "note",
-          "note": "Lead-brief guardrails verified: (1) draw logged to stdout + logger + allure attachment (social_folder_fixtures.py:93-96); (2) SOCIAL_FOLDER_ENTITY_TYPE pin via config.py:295 with the .env.test-beats-shell note; (3) draw is a function-scoped fixture consumed once at setup, never re-drawn; coverage/areas.json social-folders sits immediately before shared. Clarification #2302 OPEN (question, case-tex… [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+          "note": "Lead-brief guardrails verified: (1) draw logged to stdout + logger + allure attachment (social_folder_fixtures.py:93-96); (2) SOCIAL_FOLDER_ENTITY_TYPE pin via config.py:295 with the .env.test-beats-shell note; (3) draw is a function-scoped fixture consumed once at setup, never re-drawn; coverage/areas.json social-folders sits immediately before shared. Clarification #2302 OPEN (question, case-tex\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
         }
       ],
       "afs": "test-specs/social-folders/l1_folder-count-accurate-after-entity-deletion-and-changes_ELITEA-3210.md",
@@ -414,5 +414,53 @@
   "quality_flags": [],
   "quota_halted": false,
   "expected_red": [],
-  "parked": []
+  "parked": [],
+  "lead_gate": {
+    "by": "test-automation-lead (independent, pre-merge, per .agents/testing.md \u00a7 Merge gate)",
+    "head": "55471788a",
+    "branch": "tests/batch-social-folders-critical",
+    "target": "http://localhost:5173",
+    "cmd": "HEADLESS=true ../.venv/bin/pytest <3 node-ids> -p no:cacheprovider (x3, clean process each)",
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      76.98,
+      56.13,
+      66.45
+    ],
+    "reruns_json": [
+      "{}",
+      "{}",
+      "{}"
+    ],
+    "drawn_entity_types": [
+      {
+        "run": 1,
+        "ELITEA-3208": "agents",
+        "ELITEA-3209": "mcps",
+        "ELITEA-3210": "skills",
+        "guard_2305": "3209 (mcps) hit, re-navigated, Axis 2 green"
+      },
+      {
+        "run": 2,
+        "ELITEA-3208": "toolkits_and_indexes",
+        "ELITEA-3209": "agents",
+        "ELITEA-3210": "mcps",
+        "guard_2305": "none"
+      },
+      {
+        "run": 3,
+        "ELITEA-3208": "toolkits_and_indexes",
+        "ELITEA-3209": "credentials",
+        "ELITEA-3210": "toolkits_and_indexes",
+        "guard_2305": "3210 (toolkits_and_indexes) hit, re-navigated, Axis 2 green"
+      }
+    ],
+    "prior_attempt": "first lead gate on e367730f7 was 3/3 green at invocation level but run 3 impure (reruns.json: 3208 count 1, allure broken at Step 0 \u2014 landed on /toolkits/create) \u2192 filed #2305, fix PR #2306 (3 rounds, 2 fresh static reviews, APPROVED) merged into the trunk, gate re-run from scratch on 55471788a (this record)",
+    "findings_routed": [
+      "#2302 clarification (ELITEA-3208 trailing period \u2192 case text)",
+      "#2303 bug (stale GET 404 after skill delete)",
+      "#2305 bug (first-render empty-list redirect, sibling of #1734)"
+    ]
+  }
 }
