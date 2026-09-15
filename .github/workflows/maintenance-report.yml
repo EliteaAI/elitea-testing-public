@@ -96,7 +96,8 @@ jobs:
               # Track latest tracking issue for each test (for dedup column)
               latest_tracking_issues = {}  # test_id -> tracking_issue_url
 
-              for run_number, run_id, filepath in files_info:
+              for idx, (run_number, run_id, filepath) in enumerate(files_info):
+                  is_last_file = (idx == len(files_info) - 1)
                   try:
                       with open(filepath, 'r') as f:
                           data = json.load(f)
@@ -140,8 +141,9 @@ jobs:
                           'resolution': resolution,
                           'tracking_issue': tracking_issue
                       }
-                      # Update latest tracking issue (files are in chronological order)
-                      if tracking_issue:
+                      # Only track issues from the LAST run (most recent)
+                      # Tests that pass in the last run should not show historical tracking issues
+                      if is_last_file and tracking_issue:
                           latest_tracking_issues[test_id] = tracking_issue
 
               if not runs_data:
