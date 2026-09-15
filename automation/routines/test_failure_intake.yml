@@ -48,6 +48,9 @@ state:
   failed_tests:
     type: str
     value: ''
+  total_tests:
+    type: str
+    value: '0'
   tms_index:
     type: str
     value: ''
@@ -301,12 +304,14 @@ nodes:
         import json
 
         # For success runs, create empty tests array and skip to file commit
+        # Note: total_tests will be 0 for success runs (logs not fetched)
         out = {
             'classified_tests': '[]',
-            'maintenance_json': '{"tests": []}',
+            'maintenance_json': '{"total": 0, "details": []}',
             'issue_groups': '[]',
             'total_groups': '0',
-            'created_issues': '[]'
+            'created_issues': '[]',
+            'total_tests': '0'
         }
         out
     input: []
@@ -316,6 +321,7 @@ nodes:
       - issue_groups
       - total_groups
       - created_issues
+      - total_tests
     structured_output: true
     transition: BuildFullFilePath
 
@@ -363,7 +369,7 @@ nodes:
         import json
         import re
 
-        out = {'failed_jobs': '- No job details available', 'failed_tests': '[]'}
+        out = {'failed_jobs': '- No job details available', 'failed_tests': '[]', 'total_tests': '0'}
 
         try:
             details_raw = alita_state.get('workflow_details', '{}')
@@ -406,6 +412,18 @@ nodes:
             elif isinstance(logs, str):
                 log_content = logs
 
+            # Extract total test count from pytest summary line
+            # Examples: "===== 73 passed, 2 failed in 45.23s ====="
+            #           "===== 71 passed, 2 failed, 1 skipped in 50.12s ====="
+            total_tests = 0
+            summary_matches = re.findall(r'=+ ([\d\w\s,]+) in [\d.]+s =+', log_content)
+            for summary in summary_matches:
+                run_total = 0
+                for match in re.finditer(r'(\d+) (passed|failed|skipped|error|xfailed|xpassed)', summary):
+                    run_total += int(match.group(1))
+                if run_total > total_tests:
+                    total_tests = run_total
+
             # Pattern 1: "FAILED tests/ui/..." - pytest summary format (captures up to space or dash)
             failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+?)(?:\s+-\s+|\s+$|\s+\[)')
             # Pattern 2: "tests/ui/... FAILED" - alternate format
@@ -443,7 +461,7 @@ nodes:
                     seen_tests.add(dotted)
                     failed_tests.append({'automation_test_id': dotted, 'raw_path': test_path})
 
-            out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests)}
+            out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests), 'total_tests': str(total_tests)}
         except:
             pass
 
@@ -454,6 +472,7 @@ nodes:
     output:
       - failed_jobs
       - failed_tests
+      - total_tests
     structured_output: true
     transition: CheckHasFailedTests
 
@@ -949,10 +968,11 @@ nodes:
       value: |
         import json
 
-        out = {'maintenance_json': '{"tests": []}'}
+        out = {'maintenance_json': '{"total": 0, "details": []}'}
 
         try:
             classified_raw = alita_state.get('classified_tests', '[]')
+            total_tests = int(alita_state.get('total_tests', '0') or '0')
 
             try:
                 classified = json.loads(classified_raw, strict=False) if isinstance(classified_raw, str) else classified_raw
@@ -961,7 +981,7 @@ nodes:
             except:
                 classified = []
 
-            maintenance = {'tests': classified}
+            maintenance = {'total': total_tests, 'details': classified}
             out = {'maintenance_json': json.dumps(maintenance, indent=2)}
         except:
             pass
@@ -969,6 +989,7 @@ nodes:
         out
     input:
       - classified_tests
+      - total_tests
     output:
       - maintenance_json
     structured_output: true
@@ -1571,7 +1592,7 @@ nodes:
         from datetime import datetime
 
         timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-        default_content = json.dumps({'runs': {timestamp: []}}, indent=2)
+        default_content = json.dumps({'runs': {timestamp: {'total': 0, 'details': []}}}, indent=2)
 
         # Default output in case of any failure - always has valid structure
         out = {'final_maintenance_json': default_content}
@@ -1580,7 +1601,7 @@ nodes:
             maintenance_json_raw = alita_state.get('maintenance_json', '{}') or '{}'
             existing_content = alita_state.get('existing_file_content', '') or ''
 
-            # Parse current run's test data
+            # Parse current run's data (new schema: {total, details})
             current_data = {}
             try:
                 current_data = json.loads(maintenance_json_raw, strict=False) if isinstance(maintenance_json_raw, str) else maintenance_json_raw
@@ -1589,9 +1610,11 @@ nodes:
             except:
                 current_data = {}
 
-            current_tests = current_data.get('tests', [])
-            if not isinstance(current_tests, list):
-                current_tests = []
+            # Support both old schema (tests: []) and new schema (total, details)
+            current_total = current_data.get('total', 0)
+            current_details = current_data.get('details', current_data.get('tests', []))
+            if not isinstance(current_details, list):
+                current_details = []
 
             # Parse existing file content (if exists)
             # Check for API error responses only - not content words like "assertion-failure"
@@ -1615,8 +1638,8 @@ nodes:
                 except:
                     existing_runs = {}
 
-            # Add current run with timestamp key - tests directly as value
-            existing_runs[timestamp] = current_tests
+            # Add current run with new schema: {total, details}
+            existing_runs[timestamp] = {'total': current_total, 'details': current_details}
 
             # Build final merged JSON
             merged_data = {'runs': existing_runs}

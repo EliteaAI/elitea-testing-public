@@ -91,6 +91,7 @@ jobs:
 
               # Collect data from files
               runs_data = {}  # run_number -> {test_id -> {resolution, tracking_issue}}
+              runs_total = {}  # run_number -> total executed tests
               run_numbers_order = []
               # Track latest tracking issue for each test (for dedup column)
               latest_tracking_issues = {}  # test_id -> tracking_issue_url
@@ -109,12 +110,26 @@ jobs:
 
                   # Get the latest run timestamp
                   latest_ts = max(runs.keys())
-                  tests = runs.get(latest_ts, [])
+                  run_data = runs.get(latest_ts, {})
+
+                  # Support both old schema (list) and new schema ({total, details})
+                  if isinstance(run_data, list):
+                      # Old schema: run_data is the tests list directly
+                      tests = run_data
+                      total = 0
+                  elif isinstance(run_data, dict):
+                      # New schema: {total, details}
+                      tests = run_data.get('details', [])
+                      total = run_data.get('total', 0)
+                  else:
+                      tests = []
+                      total = 0
 
                   run_key = str(run_number) if run_number > 0 else run_id[:8]
 
                   if run_key not in runs_data:
                       runs_data[run_key] = {}
+                      runs_total[run_key] = total
                       run_numbers_order.append(run_key)
 
                   for test in tests:
@@ -193,6 +208,14 @@ jobs:
                   else:
                       row += " - |"
                   lines.append(row)
+
+              # Add "Total executed" row at the bottom
+              total_row = "| **Total executed** |"
+              for run_num in run_numbers_order:
+                  total = runs_total.get(run_num, 0)
+                  total_row += f" {total if total > 0 else '-'} |"
+              total_row += " - |"
+              lines.append(total_row)
 
               # Summary stats
               lines.extend([
