@@ -231,12 +231,41 @@ class FolderSection:
         return folder_id, response
 
     @action("Open a folder from the panel")
-    def open_folder(self, folder_id: int, list_path_fragment: str, timeout: int = RESPONSE_TIMEOUT) -> Response:
-        """Click the folder row; wait for its ``folder_items`` GET and the
-        folder-FILTERED entity list GET (``ids=`` present — ``ids=0`` for an
-        empty folder). Returns the filtered list response."""
+    def open_folder(
+        self,
+        folder_id: int,
+        list_path_fragment: str,
+        expected_ids: set[str] | None = None,
+        timeout: int = RESPONSE_TIMEOUT,
+    ) -> Response | None:
+        """Click the folder row and wait until the folder view is open.
+
+        With *expected_ids* (the FIRST open of a folder whose membership just
+        changed): also wait for the ``folder_items`` GET and for the
+        folder-FILTERED entity list GET whose ``ids`` set == *expected_ids*
+        (``{"0"}`` for an empty folder — the product's sentinel), and return
+        that list response. Why the ids are matched, not just ``ids=``
+        presence: ``useFolderItems`` (``useFolderEntities.hooks.js``) returns
+        ``idsQueryParam='0'`` while the folder_items query is still LOADING,
+        so a non-empty folder first fires a transient ``ids=0`` list GET and
+        then the real one (observed live on the MCP list, ELITEA-3209).
+
+        Without *expected_ids* (a RE-open): RTK Query serves ``folder_items``
+        — and often the list query itself — from cache, so no request is
+        guaranteed to fire (observed live on skills, ELITEA-3210 step 3:
+        3/3 timeouts when the reopen waited on the network). The open state
+        is then taken from the product's own signals — the URL ``folder``
+        param and the header rendering — and callers assert counts/cards
+        through auto-retrying expectations. Returns ``None``."""
+        if expected_ids is None:
+            self.folder_item(folder_id).click()
+            self.expect_folder_param(folder_id, timeout=timeout)
+            self.header_count.wait_for(state="visible", timeout=timeout)
+            return None
         with self.page.expect_response(
-            lambda r: self.is_entity_list_get(r, list_path_fragment, filtered=True), timeout=timeout
+            lambda r: self.is_entity_list_get(r, list_path_fragment, filtered=True)
+            and self.list_get_ids(r) == expected_ids,
+            timeout=timeout,
         ) as list_info, self.page.expect_response(
             lambda r: self._is_folder_items_get(r, folder_id), timeout=timeout
         ):
@@ -244,14 +273,37 @@ class FolderSection:
         return list_info.value
 
     @action("Close the open folder via the header")
-    def close_folder(self, list_path_fragment: str, timeout: int = RESPONSE_TIMEOUT) -> Response:
-        """Click the header's close button; wait for the UNFILTERED list GET
-        (no ``ids=``) — the honest 'complete list' oracle."""
+    def close_folder(
+        self, list_path_fragment: str, wait_for_list: bool = True, timeout: int = RESPONSE_TIMEOUT
+    ) -> Response | None:
+        """Click the header's close button.
+
+        ``wait_for_list=True`` (the case's own "complete list" observable —
+        ELITEA-3208 step 3): wait for the UNFILTERED list GET (no ``ids=``)
+        and return it. ``False`` (a repeat close inside one mount, where RTK
+        Query may serve the unfiltered list from cache and fire nothing):
+        wait on the URL ``folder`` param being removed instead."""
+        if not wait_for_list:
+            self.close_button.click()
+            self.expect_folder_param(None, timeout=timeout)
+            self._wait_until_closed_committed(timeout)
+            return None
         with self.page.expect_response(
             lambda r: self.is_entity_list_get(r, list_path_fragment, filtered=False), timeout=timeout
         ) as list_info:
             self.close_button.click()
+        self._wait_until_closed_committed(timeout)
         return list_info.value
+
+    def _wait_until_closed_committed(self, timeout: int) -> None:
+        """The folder-view state is derived from the URL (``useFolderView``),
+        but the row's click handler closes over the LAST RENDERED
+        ``selectedFolderId``: a click that lands after the URL param is gone
+        yet before React re-renders is treated as "same folder → toggle
+        closed" (observed live, ELITEA-3210 step 3 — the reopen click no-oped).
+        The header is rendered only while a folder is selected, so its
+        disappearance is the commit signal."""
+        self.header_count.wait_for(state="hidden", timeout=timeout)
 
     @action("Delete a folder via its ⋮ menu")
     def delete_folder(self, folder_id: int, timeout: int = RESPONSE_TIMEOUT) -> Response:
@@ -289,14 +341,17 @@ class FolderSection:
         )
 
     @action("Move an entity into a folder via the card menu")
-    def move_entity_to_folder(self, entity_id: int, folder_id: int, timeout: int = RESPONSE_TIMEOUT) -> dict:
+    def move_entity_to_folder(
+        self, entity_id: int, folder_id: int, timeout: int = RESPONSE_TIMEOUT
+    ) -> tuple[dict, Response]:
         """Card ⋯ → the folder's menu row; wait for the PUT 200 and the
-        ``include_counts=true`` refetch that updates the panel count.
-        Returns the PUT body (``folder_id`` echoes the target)."""
+        ``include_counts=true`` folders refetch that updates the panel count.
+        Returns ``(PUT body, refetch response)`` — the PUT body's ``folder_id``
+        echoes the target; the refetch body carries ``entities_count``."""
         self.open_move_menu(entity_id)
-        with self.page.expect_response(self._is_folders_count_refetch, timeout=timeout), self._expect_move_put(
-            timeout
-        ) as put_info:
+        with self.page.expect_response(
+            self._is_folders_count_refetch, timeout=timeout
+        ) as refetch_info, self._expect_move_put(timeout) as put_info:
             self.move_menu_folder_item(folder_id).click()
         response = put_info.value
         assert response.status == 200, f"move_to_folder returned HTTP {response.status}: {response.text()[:300]}"
@@ -304,19 +359,27 @@ class FolderSection:
         assert body.get("folder_id") == folder_id, (
             f"move_to_folder echoed folder_id={body.get('folder_id')!r}, expected {folder_id}"
         )
-        return body
+        return body, refetch_info.value
 
     @action("Remove an entity from its folder via the card menu")
-    def remove_entity_from_folder(self, entity_id: int, timeout: int = RESPONSE_TIMEOUT) -> dict:
+    def remove_entity_from_folder(self, entity_id: int, timeout: int = RESPONSE_TIMEOUT) -> tuple[dict, Response]:
         """Card ⋯ → 'Remove from folder'; wait for the PUT 200 (``folder_id``
-        null) and the counts refetch. Returns the PUT body."""
+        null) and the counts refetch. Returns ``(PUT body, refetch response)``."""
         self.open_move_menu(entity_id)
-        with self.page.expect_response(self._is_folders_count_refetch, timeout=timeout), self._expect_move_put(
-            timeout
-        ) as put_info:
+        with self.page.expect_response(
+            self._is_folders_count_refetch, timeout=timeout
+        ) as refetch_info, self._expect_move_put(timeout) as put_info:
             self.move_menu_remove_item.click()
         response = put_info.value
         assert response.status == 200, f"move_to_folder(remove) returned HTTP {response.status}"
         body = response.json()
         assert body.get("folder_id") is None, f"remove-from-folder echoed folder_id={body.get('folder_id')!r}"
-        return body
+        return body, refetch_info.value
+
+    @staticmethod
+    def entities_count_from_refetch(refetch: Response, folder_id: int) -> int | None:
+        """``entities_count`` of *folder_id* in an ``include_counts=true`` folders body."""
+        for folder in refetch.json().get("folders", []):
+            if int(folder.get("id", -1)) == int(folder_id):
+                return folder.get("entities_count")
+        return None

@@ -78,10 +78,8 @@ class TestClosingEmptyFolderReturnsCompleteList:
             expect(folders.folder_item_count(folder_id)).to_have_text("(0)", timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 2 — Open the empty folder: exact empty text and (0) in header + row"):
-            filtered = folders.open_folder(folder_id, binding.list_path_fragment)
-            assert folders.list_get_ids(filtered) == {"0"}, (
-                f"an empty folder must query the list with the ids=0 sentinel, got {filtered.url}"
-            )
+            # an empty folder queries the list with the ids=0 sentinel (useFolderEntities.hooks.js)
+            folders.open_folder(folder_id, binding.list_path_fragment, expected_ids={"0"})
             folders.expect_folder_param(folder_id)
             expect(folders.header_name).to_have_text(folder_name, timeout=UI_ELEMENT_TIMEOUT)
             expect(folders.header_count).to_have_text("(0)", timeout=UI_ELEMENT_TIMEOUT)
