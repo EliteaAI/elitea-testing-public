@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "session": "462e40d3-200d-4c6b-a72c-e275669513c5",
+  "intent": "investigation",
+  "cases": [
+    "ELITEA-1899"
+  ],
+  "declaredAt": "2026-09-15T03:44:03.593Z",
+  "updatedAt": "2026-09-15T03:49:09.778Z",
+  "outcomes": {
+    "ELITEA-1899": {
+      "outcome": "duplicate",
+      "at": "2026-09-15T03:49:09.778Z"
+    }
+  }
+}
