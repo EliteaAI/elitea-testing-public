@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "session": "1cd81dc3-34b0-47cb-a1cd-2709ace1cae1",
+  "intent": "automation",
+  "batch": "social-folders-critical",
+  "cases": [
+    "ELITEA-3208",
+    "ELITEA-3209",
+    "ELITEA-3210"
+  ],
+  "declaredAt": "2026-09-15T13:34:23.027Z",
+  "updatedAt": "2026-09-15T15:48:48.416Z",
+  "outcomes": {
+    "ELITEA-3208": {
+      "outcome": "automated",
+      "at": "2026-09-15T15:45:57.888Z"
+    },
+    "ELITEA-3209": {
+      "outcome": "automated",
+      "at": "2026-09-15T15:45:57.888Z"
+    },
+    "ELITEA-3210": {
+      "outcome": "automated",
+      "at": "2026-09-15T15:45:57.888Z"
+    }
+  },
+  "closedAt": "2026-09-15T15:48:48.416Z"
+}
