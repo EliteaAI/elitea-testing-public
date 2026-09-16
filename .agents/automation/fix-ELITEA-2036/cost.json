@@ -1,15 +1,16 @@
 {
  "v": 1,
  "batch": "fix-ELITEA-2036",
- "generatedAt": "2026-09-16T14:11:08.826Z",
+ "generatedAt": "2026-09-16T21:15:02.022Z",
  "sources": {
   "window": {
    "start": "2026-09-15T14:08:20.100Z",
-   "end": "2026-09-17T14:10:19.645Z",
+   "end": "2026-09-17T21:14:59.798Z",
    "source": "scopes"
   },
-  "sessions": 1,
+  "sessions": 2,
   "sessionIds": [
+   "claude:01bc9308-aca0-44ff-a16e-52d2baa8d4dc",
    "claude:75ceb15d-c88f-44f6-a902-1b635eb5d0c7"
   ],
   "hosts": [
@@ -26,63 +27,63 @@
   ]
  },
  "totals": {
-  "costUsd": 2.46,
-  "tokens": 1820175,
+  "costUsd": 6.33,
+  "tokens": 5276127,
   "tokensSplit": {
-   "input": 26,
-   "output": 12479,
-   "cacheRead": 1677215,
-   "cacheWrite": 130455
+   "input": 68,
+   "output": 29614,
+   "cacheRead": 4933959,
+   "cacheWrite": 312486
   },
   "tokensByModel": {
    "claude-opus-5": {
-    "input": 26,
-    "output": 12479,
-    "cacheRead": 1677215,
-    "cacheWrite": 130455
+    "input": 68,
+    "output": 29614,
+    "cacheRead": 4933959,
+    "cacheWrite": 312486
    }
   },
-  "activeMin": 3,
+  "activeMin": 7,
   "dispatches": 0,
-  "sessions": 1,
-  "turns": 13,
-  "toolCalls": 12,
-  "toolErrors": 1,
+  "sessions": 2,
+  "turns": 34,
+  "toolCalls": 32,
+  "toolErrors": 2,
   "skills": []
  },
  "byRole": {
   "test-automation-lead": {
-   "costUsd": 2.46,
-   "tokens": 1820175,
+   "costUsd": 6.33,
+   "tokens": 5276127,
    "tok": {
-    "input": 26,
-    "output": 12479,
-    "cacheRead": 1677215,
-    "cacheWrite": 130455
+    "input": 68,
+    "output": 29614,
+    "cacheRead": 4933959,
+    "cacheWrite": 312486
    },
-   "activeMin": 3,
+   "activeMin": 7,
    "dispatches": 0,
-   "toolCalls": 12,
-   "toolErrors": 1
+   "toolCalls": 32,
+   "toolErrors": 2
   }
  },
  "overhead": {
   "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
-  "costUsd": 2.46,
+  "costUsd": 6.33,
   "sharePct": 100,
   "lead": {
-   "costUsd": 2.46,
-   "tokens": 1820175,
+   "costUsd": 6.33,
+   "tokens": 5276127,
    "tok": {
-    "input": 26,
-    "output": 12479,
-    "cacheRead": 1677215,
-    "cacheWrite": 130455
+    "input": 68,
+    "output": 29614,
+    "cacheRead": 4933959,
+    "cacheWrite": 312486
    },
-   "activeMin": 3,
+   "activeMin": 7,
    "dispatches": 0,
-   "toolCalls": 12,
-   "toolErrors": 1
+   "toolCalls": 32,
+   "toolErrors": 2
   },
   "stages": {
    "costUsd": null,
@@ -132,9 +133,9 @@
     "toolErrors": 0
    },
    "loaded": {
-    "costUsd": 2.46,
-    "tokens": 1820175,
-    "activeMin": 3
+    "costUsd": 6.33,
+    "tokens": 5276127,
+    "activeMin": 7
    }
   }
  ],
@@ -144,17 +145,17 @@
   "directTokens": null,
   "directActiveMin": null,
   "loadedCostUsd": {
-   "avg": 2.46,
-   "median": 2.46,
-   "min": 2.46,
-   "max": 2.46,
+   "avg": 6.33,
+   "median": 6.33,
+   "min": 6.33,
+   "max": 6.33,
    "n": 1
   },
   "loadedActiveMin": {
-   "avg": 3,
-   "median": 3,
-   "min": 3,
-   "max": 3,
+   "avg": 7,
+   "median": 7,
+   "min": 7,
+   "max": 7,
    "n": 1
   }
  },
