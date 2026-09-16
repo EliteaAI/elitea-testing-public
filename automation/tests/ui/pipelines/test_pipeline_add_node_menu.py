@@ -4,10 +4,19 @@ TMS: ELITEA-2030
 (test-specs/pipelines/l2_pipeline-add-node-menu_ELITEA-2030.md)
 
 Opens the canvas "+" Add Node menu on an empty pipeline, verifies it lists
-exactly the 11 expected node types in DOM order, selects "LLM" and confirms
-the node appears on canvas with its config immediately visible (no
-click-to-expand step exists for any node type on this canvas), then
-re-opens the menu and confirms Escape dismisses it without adding a node.
+exactly the 10 expected node types in DOM order and does NOT offer the
+deprecated "Custom" node, selects "LLM" and confirms the node appears on
+canvas with its config immediately visible (no click-to-expand step exists
+for any node type on this canvas), then re-opens the menu and confirms
+Escape dismisses it without adding a node.
+
+Adjusted 2026-09-16 (#2317) for UI drift EL-6616 — EliteaAI/EliteaUI@0cd5e792
+(*feat: [EL-6616] Deprecate and hide Custom node from pipeline node picker*)
+hides "Custom" from the Add-node picker. The 11→10 change in
+``EXPECTED_NODE_TYPES`` is a change of the case's EXPECTED RESULT caused by
+a deliberate product change, not a weakened assertion: the comparison stays
+exact-list ``==`` in DOM order, and Step 3 gains a first-class absence
+assertion on the Custom item so the deprecation is test-enforced.
 
 Testid gap CLOSED (review round 1, was AFS "not blocking" — the recommendation
 to reuse the existing raw-handle ``add_node()``-family methods as-is did not
@@ -37,10 +46,11 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark
 
 UI_ELEMENT_TIMEOUT = 10_000
 
+# 10 types since EL-6616 (EliteaAI/EliteaUI@0cd5e792) — "Custom" is deprecated
+# and hidden from the picker; its absence is asserted separately in Step 3.
 EXPECTED_NODE_TYPES = [
     "Agent",
     "Code",
-    "Custom",
     "Decision",
     "Human-in-the-loop",
     "LLM",
@@ -58,8 +68,9 @@ EXPECTED_NODE_TYPES = [
     "onetest-ai Test Case link",
 )
 def test_add_node_menu_lists_types_adds_node_and_dismisses(page, pipeline_id):
-    """Add Node menu lists exactly 11 types in order; LLM selection adds a
-    node with config visible; Escape dismisses without adding a node."""
+    """Add Node menu lists exactly 10 types in order and omits the deprecated
+    Custom node (EL-6616); LLM selection adds a node with config visible;
+    Escape dismisses without adding a node."""
     with allure.step("Step 1 — Navigate to the pipeline's canvas"):
         pipeline_page = _navigate_to_canvas(page, pipeline_id)
         assert pipeline_page.canvas_wrapper.is_visible(), "Canvas wrapper should be visible"
@@ -67,9 +78,14 @@ def test_add_node_menu_lists_types_adds_node_and_dismisses(page, pipeline_id):
     with allure.step("Step 2/3 — Click 'Add node' and read all menu item labels"):
         menu_items = pipeline_page.get_add_node_menu_items(timeout=UI_ELEMENT_TIMEOUT)
         assert menu_items == EXPECTED_NODE_TYPES, (
-            f"Add node menu should list exactly the 11 expected types in order, "
-            f"got: {menu_items}"
+            f"Add node menu should list exactly the 10 expected types in order "
+            f"(Custom hidden since EL-6616), got: {menu_items}"
         )
+        # Step 3(b) — first-class absence assertion: the deprecated "Custom"
+        # node must not be offered (EL-6616, EliteaAI/EliteaUI@0cd5e792).
+        # Asserted AFTER the positive list check above — a to_have_count(0)
+        # on its own would also be satisfied by a menu that never rendered.
+        pipeline_page.expect_add_node_menu_item_absent("custom", timeout=UI_ELEMENT_TIMEOUT)
         # Dismiss this inspection-only opening before proceeding to step 4's
         # own fresh open+select — leaves the canvas in a known state. The
         # close is polled (not an instant DOM check) — the menu's close
