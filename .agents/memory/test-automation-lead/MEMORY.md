@@ -145,6 +145,7 @@
 - [A repair's re-anchoring drops a cross-check](sanctioned_red_repair_must_name_the_link_it_reanchors.md) — the defect fix won't restore it
 - [A prior factory commit is not a human ruling](a_prior_factory_commit_is_not_a_human_ruling.md) — factory commits as the operator; verify before citing precedent
 - [A FIX card can have no work in it](a_fix_card_can_have_no_work_in_it.md) — sanctioned-RED CI reds are correct; verify 4 things, change no code
+- [A [FIX] card can be filed AFTER its fix already merged to main](a_fix_card_can_be_filed_after_its_fix_already_merged_to_main.md) — intake keys on the run's commit; grep the failure string on origin/main HEAD at filing time (0 hits ⇒ already promoted), then still gate main HEAD on DEV
 - [A CI traceback names the SYMPTOM; the second error line often names the CAUSE](the_second_error_line_in_a_ci_log_is_often_the_real_cause.md) — an intermittent line is a race, not noise; two lines can be two repairs
 - [Backticks in `gh --body` run](gh_body_backticks_are_executed.md) — use `--body-file`; read the comment back
 - [Serialization drift](serialization_drift_fix_class.md) — assert parsed structure; walk steps BEHIND the break
@@ -206,3 +207,4 @@
 - [Deprecated-feature FIX cards → question, not repair](deprecated-feature-fix-cards.md) — subject removed by design (EL-6616 Custom node) ⇒ #2326-style question + Blocked; no precedent for retiring an automated case
 - [CI-user membership precondition class](ci-user-membership-precondition-class.md) — DEV autotest users differ in team-project membership; suite→user mapping shifts per run; check the CI USER first on 'precondition unmet' [FIX] cards (#2320/#2327)
 - [Clean cherry-pick to main, hidden symbol dependency on sibling repair](cherry_pick_to_main_hidden_symbol_dependency_on_sibling_repair.md) — clean page-object auto-merge ≠ dependency proof; run spec once / `git log -S'<field>'` before gating; promote the whole sibling commit, never hand-patch the field (#2330)
+- [intake_approved_status_is_not_a_human_ruling](intake_approved_status_is_not_a_human_ruling.md) — a [FIX] card in Approved was placed there by the intake routine (yml:1219), not a human; cannot override a survivor's dedupe instruction
