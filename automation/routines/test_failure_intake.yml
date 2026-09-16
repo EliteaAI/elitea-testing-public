@@ -123,6 +123,9 @@ state:
   issue_status:
     type: str
     value: ''
+  issue_number:
+    type: str
+    value: '0'
   label_result:
     type: str
     value: ''
