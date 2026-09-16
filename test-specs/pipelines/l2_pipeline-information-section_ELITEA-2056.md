@@ -55,7 +55,9 @@
 7. Click `copy_id_button`.
    - **Verify**: the app-wide toast (`toast-alert`, `data-severity="info"`)
      becomes visible with text `"The ID has been copied to the clipboard."`
-     (confirmed live, `get_toast_alert("info")`/`get_toast_text()`), AND
+     (confirmed live, `get_toast_alert("info")` + an auto-retrying
+     `expect(toast_message).to_contain_text(...)` — see § Toast mechanism
+     note below), AND
      `navigator.clipboard.readText()` returns the pipeline's own id (safe —
      the real pytest `context` fixture grants `clipboard-read`/`-write`, per
      the ELITEA-2026 precedent).
@@ -63,6 +65,25 @@
    - **Verify**: the toast becomes visible with text `"The Version ID has
      been copied to the clipboard."`, AND the clipboard content equals the
      version id read in step 4.
+   - **Toast mechanism note (amended 2026-09-16, #2321 repair):** the app
+     has ONE toast slot — `ToastProvider.jsx:13-21` keeps a single
+     `toastProps` state and `openToast` overwrites it in place (no queue, no
+     drop), and `CopyToClipboardButton.jsx:15-18` calls `toastInfo` only
+     after `await navigator.clipboard.writeText()` resolves. So immediately
+     after the step-8 click the step-7 toast is still mounted on the same
+     `toast-alert` node; a one-shot "toast visible → read text" resolves on
+     the previous click's message (the CI failure). Each step's toast text is
+     therefore asserted with an auto-retrying `to_contain_text` on THIS
+     step's message — the two messages are not substrings of each other, so
+     only the clicked button's own toast satisfies it. No wait for the prior
+     toast's dismissal is needed (the second toast replaces, never drops).
+     MUI's auto-hide timer keys on `open`, not `message` (`useSnackbar.js:
+     55-60`), so the swapped-in step-8 text inherits the step-7 toast's
+     remaining ~3 s window — ample for the 100 ms assertion poll. Verified
+     on localhost: expecting the step-7 text at step 8 PASSES (the stale
+     toast is readable at the first poll), which is exactly the CI failure
+     mode inverted; expecting the step-8 text is satisfiable only by the
+     step-8 click.
 9. Click `information_show_link`.
    - **Verify**: a modal opens (`role="dialog"`, title "Pipeline") rendering
      the pipeline as a Mermaid diagram (**not** a navigation — see § Known
@@ -125,7 +146,7 @@
 | Trigger row | `PipelineDetailPage.information_trigger_row` (testid `information-trigger-row`) | pre-existing (ELITEA-2041) |
 | "Show" link | **testid needed** — confirmed live via `document.querySelectorAll`: the "Show" `Typography` (`ApplicationInformation.jsx`, `showPipeline` conditional block, same guard shape as the pre-existing `information-trigger-row`) had NO `data-testid` at all. | **Resolved during ELITEA-2056 implementation:** added `data-testid="pipeline-information-show-link"` to `EliteaUI/src/pages/Applications/Components/Applications/ApplicationInformation.jsx`, committed + pushed to `automation/testids` (`EliteaAI/EliteaUI@22184211`). `PipelineDetailPage.information_show_link` added. |
 | Show-link modal's diagram | **No new testid needed** — the modal (`StyledShowContextModal.jsx`, shared with Agents' AgentModal) has no testid of its own, but its Mermaid content reuses the pre-existing `chat-mermaid-diagram-svg-container` testid (hardcoded inside the shared `MermaidDiagramOutput/DiagramOutput.jsx` — same tech-debt naming already flagged by the ELITEA-2053 digest entry for chat starters; not fixed opportunistically here). Confirmed live: resolves to exactly 1 element inside the opened dialog, containing 6 `<svg>` nodes. | `PipelineDetailPage.show_context_diagram_container` added (same testid literal already used by `ChatPage.diagram_svg_container` — cross-page duplication precedent already exists for `copy-id`/`copy-version-id`/`agent-information-section` between `AgentDetailPage` and `PipelineDetailPage`). |
-| Copy success toast | `PipelineDetailPage.get_toast_alert("info")` / `get_toast_text()` (testid `toast-alert` + `data-severity="info"`) | pre-existing, shared app-wide toast |
+| Copy success toast | `PipelineDetailPage.get_toast_alert("info")` + `PipelineDetailPage.toast_message` (testid `toast-alert` + `data-severity="info"`, testid `toast-message`) | pre-existing, shared app-wide toast. Text read via auto-retrying `expect(...).to_contain_text` per step (not the one-shot `get_toast_text()`) — single replace-in-place toast slot, see step 8's mechanism note. |
 
 ## Network Behavior
 - Reading the Information section's fields fires no additional request
