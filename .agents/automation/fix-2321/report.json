@@ -1,0 +1,13 @@
+{
+  "batch": "fix-2321",
+  "source": "lead",
+  "session": "77535d73-99b3-4dfd-a178-0841f9ac0d17",
+  "generatedAt": "2026-09-16T15:05:00.000Z",
+  "note": "hand-written by the lead — [FIX] card repaired by direct dispatch (implementer + fresh reviewer), no workflow receipt; gate 3x DEV via -p devenv (22.97/24.22/23.53 s, reruns.json {} x3); PR #2328 -> main 7e33cd59f; base ae2830c10",
+  "cases": [
+    { "id": "ELITEA-2056", "outcome": "automated", "issue": 2321, "pr": "https://github.com/EliteaAI/elitea-testing-public/pull/2328" }
+  ],
+  "findings": [
+    { "kind": "follow-up", "issue": 2329, "summary": "4 sibling specs with consecutive one-shot get_toast_text() reads" }
+  ]
+}
