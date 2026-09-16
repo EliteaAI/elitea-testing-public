@@ -1,0 +1,13 @@
+{
+  "batch": "fix-2315-elitea-2453",
+  "source": "scope",
+  "session": "4eaa60c5-5930-4547-afaf-6848ac05d846",
+  "generatedAt": "2026-09-16T13:18:25.988Z",
+  "note": "synthesized by factory/tokenomics/batch-page.mjs from the session's declared scope — no workflow receipt existed",
+  "cases": [
+    {
+      "id": "ELITEA-2453",
+      "outcome": "already-covered"
+    }
+  ]
+}
