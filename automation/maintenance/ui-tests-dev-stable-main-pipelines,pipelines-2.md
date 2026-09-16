@@ -13,21 +13,21 @@
 
 ## Test Results Matrix
 
-| Test Case | #166 | Tracking Issue |
-|-----------|--------|----------------|
-| ELITEA-2022 | 🔴 | - |
-| ELITEA-2030 | 🔴 | - |
-| ELITEA-2036 | 🔴 | - |
-| ELITEA-2051 | 🔴 | - |
-| ELITEA-2056 | 🔴 | - |
-| ELITEA-2063 | 🔴 | - |
-| ELITEA-2070 | 🔴 | - |
-| ELITEA-2453 | 🔴 | - |
-| **Total executed** | - | - |
+| Test Case | #166 | #167 | Tracking Issue |
+|-----------|--------|--------|----------------|
+| ELITEA-2022 | 🔴 | 🔴 | - |
+| ELITEA-2030 | 🔴 | 🟢 | - |
+| ELITEA-2036 | 🔴 | 🔴 | - |
+| ELITEA-2051 | 🔴 | 🔴 | - |
+| ELITEA-2056 | 🔴 | 🟢 | - |
+| ELITEA-2063 | 🔴 | 🟢 | - |
+| ELITEA-2070 | 🔴 | 🟢 | - |
+| ELITEA-2453 | 🔴 | 🔴 | - |
+| **Total executed** | - | - | - |
 
 ## Summary
 
-- **Runs Shown:** 1 (max 10)
+- **Runs Shown:** 2 (max 10)
 - **Total Test Cases:** 8
 - **With Tracking Issues:** 0
 
