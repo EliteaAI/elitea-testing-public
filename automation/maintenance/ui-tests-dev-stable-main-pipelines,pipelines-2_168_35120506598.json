@@ -1,0 +1,27 @@
+{
+  "runs": {
+    "20260916164152": {
+      "total": 0,
+      "details": [
+        {
+          "id": "ELITEA-2036",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "timeout",
+          "failure_summary": "Playwright Locator.wait_for timeout (5000ms) exceeded in custom node configuration test \u2014 failed on all 3 retry attempts",
+          "reasoning": "The test failed consistently across all 3 retry attempts (screenshots captured at 162256, 162314, 162332), each time with a Playwright TimeoutError waiting for a locator. Retries rule out a transient flake. The consistent failure on the same step strongly suggests a real product regression in the custom node configuration UI (e.g., an element that no longer appears or renders differently). INVESTIGATE is warranted."
+        },
+        {
+          "id": "ELITEA-2051",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "infrastructure",
+          "failure_summary": "Test precondition unmet: CI test user has no second non-public project available to use as a fork source",
+          "reasoning": "The failure message is explicit and self-describing: 'ELITEA-2051 precondition unmet: the acting user belongs to no project usable as a fork SOURCE \u2014 every membership is either the fork target or the public project (1, both excluded). The case requires a second, non-public project to fork FROM.' This is a test environment/data setup problem \u2014 the required second project does not exist for the test account in the DEV environment. This is not a product bug but requires action to fix the CI environment data setup so the precondition can be satisfied."
+        }
+      ]
+    }
+  }
+}
