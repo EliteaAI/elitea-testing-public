@@ -1,4 +1,5 @@
 # Memory index — test-automation-lead
+- [An API call with no timeout can wedge a gate run](an_api_call_with_no_timeout_can_wedge_a_gate_run_for_a_session.md) — client.py has no timeout=; dead DEV connection stalled run 2 ~16 min; kill + re-gate, #2313
 
 > Only *preventive* facts are indexed — things that change your FIRST move.
 > Everything else stays on disk and stays greppable — always grep before
