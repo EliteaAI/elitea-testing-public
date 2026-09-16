@@ -3273,6 +3273,39 @@ class PipelineDetailPage(PipelineFormPage):
         menu_item.click()
         self.page.wait_for_timeout(1000)
 
+    def expect_add_node_menu_item_absent(self, node_type: str, timeout: int = 5000) -> None:
+        """Assert a node type is NOT offered in an ALREADY-OPEN Add Node menu.
+
+        Exists for the EL-6616 deprecation absence check (ELITEA-2030,
+        #2317): EliteaAI/EliteaUI@0cd5e792 hides the ``Custom`` node from the
+        picker by adding it to ``DeprecatedNodes``, so the case now asserts
+        the ``pipeline-add-node-menu-item-custom`` item renders zero times —
+        a first-class, test-enforced observable that goes red if the UI team
+        ever restores the item.
+
+        Ordering contract (load-bearing, mirrors ``test_agent_back_navigation``
+        / `.agents/testing.md` § EL-6460): call this only AFTER a positive
+        check has proven the menu is open (e.g. after
+        :meth:`get_add_node_menu_items` returned the expected list) —
+        ``to_have_count(0)`` on its own is satisfied by a menu that has not
+        rendered yet.
+
+        Locator: the existing class-level ``ADD_NODE_MENU_ITEM_BY_TYPE``
+        templated-testid constant, per `.agents/testing.md` § Locator policy
+        (dynamic testids) — no new LocatorDescriptor field, no new testid.
+
+        Args:
+            node_type: Internal node-type key that must be absent (e.g.
+                "custom" — FlowEditorConstants.PipelineNodeTypes value, not
+                the display label).
+            timeout: Maximum wait time for the count-0 assertion to settle.
+        """
+        from playwright.sync_api import expect
+
+        expect(self.page.locator(self.ADD_NODE_MENU_ITEM_BY_TYPE.format(node_type))).to_have_count(
+            0, timeout=timeout
+        )
+
     def is_popup_menu_visible(self) -> bool:
         """Return whether either canvas popup menu is currently rendered.
 
