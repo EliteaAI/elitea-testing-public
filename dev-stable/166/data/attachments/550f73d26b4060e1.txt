@@ -1,0 +1,5 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Close Run History panel — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("run-history-close-button") to be visible
+ERROR    elitea.steps:actions.py:49 Step failed: Select Run History item — Timeout 10000ms exceeded while waiting for event "response"
+ERROR    elitea.steps:actions.py:49 Step failed: Select Run History item — Timeout 10000ms exceeded while waiting for event "response"
