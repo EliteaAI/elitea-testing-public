@@ -36,6 +36,19 @@ secret scanner needs the diff staged: `git reset --soft origin/main && python3 s
 Part 1 of `sync-base-branches`. Whole card ~35 min including the branch sync; the red is actually
 retired from CI, unlike a `duplicate` + Ready close (#2314/#2315 same day).
 
+## Fresh repair, no base PR at all — run the pipeline on a base-cut branch, cherry-pick to main, sync down (#2317, ELITEA-2030, 2026-09-16)
+
+When the [FIX] card needs REAL work (class-A adjust), do not open a base PR and then promote it —
+that is two gates for one change. Shape that worked: cut `tests/adjust-<case>` from
+`origin/automation/base` (slots must read CURRENT memory — `.agents/memory/` on `main` is 40k lines
+behind base) → analyst commits the AFS, implementer commits spec + page object, fresh reviewer
+approves → `git merge-tree --write-tree --merge-base=<sha>~1 origin/main <sha>` per commit (rc 0 ⇒
+clean) → `git checkout -b AI_AQA/fix-<test> origin/main && git cherry-pick -x <AFS> <repair>` (skip
+the `docs(memory)` commits) → hunk-identical proof → 3× DEV gate on the checked-out candidate → push,
+PR to `main` (`Refs`), squash-merge → `git checkout automation/base && git merge <work-branch> &&
+git merge origin/main && git push`. Base ends 0 behind, carries the memory commits, and the method
+appears exactly once. TMS `automation_pr` = the `main` PR (there is no other). ~75 min incl. 3 slots.
+
 ## Guard rails that still apply
 
 - **Never `--body 'Fixes #<issue>'`** (the template's step 5): it auto-closes the card on merge, and
