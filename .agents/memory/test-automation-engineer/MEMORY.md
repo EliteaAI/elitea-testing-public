@@ -117,3 +117,5 @@
 - [A settle can be fragile AND vacuous](a_settle_can_be_fragile_and_vacuous_at_once.md) — networkidle 0.00s; wait on what the caller reads next, not on silence
 - [Response predicates: don't filter on 200, DO exclude 3xx](status_filtered_response_predicate_hides_the_failure.md) — redirect hops win the wait
 - [git stash flag order pops a foreign stash](git_stash_flag_order_pops_a_foreign_stash.md) — `git stash -q push` stashes nothing; the chained pop applies stash@{0} from another branch
+
+- [Promotion cherry-pick hidden sibling dependency](promotion_cherry_pick_hidden_sibling_dependency.md) — clean page-object auto-merge still broke on main: grep new symbols vs main first
