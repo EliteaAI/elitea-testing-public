@@ -21,6 +21,7 @@ import logging
 
 import allure
 import pytest
+from playwright.sync_api import expect
 
 from tests.ui.pipeline_helpers import _navigate_to_detail
 
@@ -32,6 +33,20 @@ UI_ELEMENT_TIMEOUT = 10_000
 TOAST_TIMEOUT = 10_000
 COPY_ID_TOAST_TEXT = "The ID has been copied to the clipboard."
 COPY_VERSION_ID_TOAST_TEXT = "The Version ID has been copied to the clipboard."
+# Toast mechanism (EliteaUI src/components/ToastProvider.jsx:13-21): the
+# provider holds ONE `toastProps` state and `openToast` overwrites it in
+# place — no queue, no drop. `CopyToClipboardButton.jsx:15-18` dispatches
+# `toastInfo(copyMessage)` only AFTER `await navigator.clipboard.writeText()`
+# resolves, so right after the second copy click the FIRST toast is still
+# mounted and visible on the same `toast-alert` node; a one-shot
+# `wait_for(visible)` + `text_content()` read there is anchored to the
+# previous click (#2321). Each toast read below is therefore an
+# auto-retrying `expect(...).to_contain_text(<this click's text>)` — the
+# two messages are not substrings of each other, so the assertion can only
+# be satisfied by the toast the clicked button itself produced. (MUI's
+# auto-hide timer keys on `open`, not `message` — useSnackbar.js:55-60 — so
+# the swapped-in Step 8 text inherits the Step 7 toast's remaining ~3 s
+# window, still far above the assertion's 100 ms poll.)
 EXPECTED_TRIGGER_TEXT = "Trigger:Chat Message"
 
 # Known defect: https://github.com/EliteaAI/elitea-testing-public/issues/1368
@@ -111,12 +126,14 @@ def test_pipeline_information_section(page, pipeline_with_llm_id):
 
     with allure.step('Step 7 — Click "Copy ID"; verify toast feedback and clipboard content'):
         pipeline_page.copy_id_button.click()
-        toast_alert = pipeline_page.get_toast_alert("info")
-        toast_alert.wait_for(state="visible", timeout=TOAST_TIMEOUT)
-        toast_text = pipeline_page.get_toast_text(timeout=TOAST_TIMEOUT)
-        assert COPY_ID_TOAST_TEXT in toast_text, (
-            f"Copy ID toast should confirm the clipboard copy, got: {toast_text!r}"
-        )
+        expect(
+            pipeline_page.get_toast_alert("info"),
+            "Copy ID should raise an info-severity toast",
+        ).to_be_visible(timeout=TOAST_TIMEOUT)
+        expect(
+            pipeline_page.toast_message,
+            "Copy ID toast should confirm the clipboard copy",
+        ).to_contain_text(COPY_ID_TOAST_TEXT, timeout=TOAST_TIMEOUT)
         clipboard_text = page.evaluate("navigator.clipboard.readText()")
         assert clipboard_text == pipeline_id_text, (
             f"Clipboard should contain the pipeline id {pipeline_id_text!r}, got {clipboard_text!r}"
@@ -124,12 +141,17 @@ def test_pipeline_information_section(page, pipeline_with_llm_id):
 
     with allure.step('Step 8 — Click "Copy version ID"; verify toast feedback and clipboard content'):
         pipeline_page.copy_version_id_button.click()
-        toast_alert = pipeline_page.get_toast_alert("info")
-        toast_alert.wait_for(state="visible", timeout=TOAST_TIMEOUT)
-        toast_text = pipeline_page.get_toast_text(timeout=TOAST_TIMEOUT)
-        assert COPY_VERSION_ID_TOAST_TEXT in toast_text, (
-            f"Copy version ID toast should confirm the clipboard copy, got: {toast_text!r}"
-        )
+        # The Step 7 toast may still be open on this same node (replace-in-
+        # place, see the module comment) — the retrying assertion waits for
+        # the message THIS click produced, not for "a toast is visible".
+        expect(
+            pipeline_page.get_toast_alert("info"),
+            "Copy version ID should raise an info-severity toast",
+        ).to_be_visible(timeout=TOAST_TIMEOUT)
+        expect(
+            pipeline_page.toast_message,
+            "Copy version ID toast should confirm the clipboard copy",
+        ).to_contain_text(COPY_VERSION_ID_TOAST_TEXT, timeout=TOAST_TIMEOUT)
         clipboard_text = page.evaluate("navigator.clipboard.readText()")
         assert clipboard_text == version_id_text, (
             f"Clipboard should contain the version id {version_id_text!r}, got {clipboard_text!r}"
