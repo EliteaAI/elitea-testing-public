@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "session": "4cac2d04-3c72-4f41-ab1a-ddbadf523fab",
+  "intent": "investigation",
+  "cases": [
+    "ELITEA-2022"
+  ],
+  "declaredAt": "2026-09-16T15:27:56.615Z",
+  "updatedAt": "2026-09-16T15:43:04.434Z",
+  "outcomes": {
+    "ELITEA-2022": {
+      "outcome": "promoted-to-main",
+      "at": "2026-09-16T15:43:04.434Z"
+    }
+  }
+}
