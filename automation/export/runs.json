@@ -161,6 +161,40 @@
       "scenarios_automated": 1,
       "scenarios_executed": 1,
       "notes": "gate not-run; outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/fix-2321/cost.json (v1); batch slug 'fix-2321'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-fix-ELITEA-2036",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 0 delivered.",
+      "maturity": "pilot",
+      "sessions": 2,
+      "turns": 34,
+      "subagent_dispatches": 0,
+      "orchestrator_cost_pct": 100,
+      "tokens": {
+        "input": 68,
+        "output": 29614,
+        "cache_read": 4933959,
+        "cache_create": 312486
+      },
+      "primary_model": "claude-opus-5",
+      "models_used": [
+        "claude-opus-5"
+      ],
+      "tokens_by_model": {
+        "claude-opus-5": {
+          "input": 68,
+          "output": 29614,
+          "cache_read": 4933959,
+          "cache_create": 312486
+        }
+      },
+      "cost_api_equivalent_usd": 6.33,
+      "cache_read_share_pct": 47.8,
+      "scenarios_authored": 1,
+      "scenarios_automated": 0,
+      "scenarios_executed": 1,
+      "notes": "gate not-run; outcomes: blocked 1. Telemetry cohort: reconstructed from .agents/automation/fix-ELITEA-2036/cost.json (v1); batch slug 'fix-ELITEA-2036'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
