@@ -1,0 +1,413 @@
+state:
+  input:
+    type: str
+  messages:
+    type: list
+  project_items:
+    type: str
+    value: '[]'
+  verified_tickets:
+    type: str
+    value: '[]'
+  current_ticket_index:
+    type: str
+    value: '0'
+  total_tickets:
+    type: str
+    value: '0'
+  current_ticket:
+    type: str
+    value: '{}'
+  processed_result:
+    type: str
+    value: ''
+  issue_title:
+    type: str
+    value: ''
+  issue_body:
+    type: str
+    value: ''
+  created_issues:
+    type: str
+    value: '[]'
+
+nodes:
+  - id: START
+    type: code
+    code:
+      type: fixed
+      value: |
+        {'start': 'Pipeline started'}
+    input: []
+    output:
+      - start
+    structured_output: true
+    transition: FetchProjectItems
+
+  - id: FetchProjectItems
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: get_project_items
+    input: []
+    input_mapping:
+      owner:
+        type: fixed
+        value: EliteaAI
+      project_number:
+        type: fixed
+        value: 1
+    output:
+      - project_items
+    structured_output: true
+    transition: FilterVerifiedTickets
+
+  - id: FilterVerifiedTickets
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0'}
+
+        try:
+            items_raw = alita_state.get('project_items', '[]')
+
+            try:
+                items = json.loads(items_raw, strict=False) if isinstance(items_raw, str) else items_raw
+                if not isinstance(items, list):
+                    items = []
+            except:
+                items = []
+
+            # Filter items with status "Verified on DEV Env"
+            verified = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+
+                # Check status field - may be nested in fields or direct
+                status = None
+
+                # Try direct status
+                status = item.get('status', '')
+
+                # Try fields.Status
+                fields = item.get('fields', {})
+                if isinstance(fields, dict):
+                    status = fields.get('Status', status)
+
+                # Try fieldValues
+                field_values = item.get('fieldValues', {})
+                if isinstance(field_values, dict):
+                    status = field_values.get('Status', status)
+
+                if status == 'Verified on DEV Env':
+                    verified.append(item)
+
+            out = {
+                'verified_tickets': json.dumps(verified),
+                'current_ticket_index': '0',
+                'total_tickets': str(len(verified))
+            }
+        except Exception as e:
+            out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0'}
+
+        out
+    input:
+      - project_items
+    output:
+      - verified_tickets
+      - current_ticket_index
+      - total_tickets
+    structured_output: true
+    transition: CheckMoreTickets
+
+  - id: CheckMoreTickets
+    type: router
+    input:
+      - current_ticket_index
+      - total_tickets
+    condition: |
+      {% set idx = current_ticket_index | int %}
+      {% set total = total_tickets | int %}
+      {% if idx < total %}
+      PrepareCurrentTicket
+      {% else %}
+      FinalSummary
+      {% endif %}
+    routes:
+      - PrepareCurrentTicket
+      - FinalSummary
+    default_output: FinalSummary
+
+  - id: PrepareCurrentTicket
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {'current_ticket': '{}'}
+
+        try:
+            tickets_raw = alita_state.get('verified_tickets', '[]')
+            idx = int(alita_state.get('current_ticket_index', '0'))
+
+            tickets = json.loads(tickets_raw, strict=False) if isinstance(tickets_raw, str) else tickets_raw
+            if isinstance(tickets, list) and idx < len(tickets):
+                out = {'current_ticket': json.dumps(tickets[idx])}
+        except:
+            pass
+
+        out
+    input:
+      - verified_tickets
+      - current_ticket_index
+    output:
+      - current_ticket
+    structured_output: true
+    transition: ProcessTicket
+
+  - id: ProcessTicket
+    type: code
+    code:
+      type: fixed
+      value: |
+        # DUMMY NODE - Replace with actual processing logic
+        # This node should:
+        # 1. Analyze the ticket content
+        # 2. Extract test requirements
+        # 3. Determine automation scope
+        # 4. Generate test specification draft
+
+        import json
+
+        out = {'processed_result': 'processed'}
+
+        try:
+            ticket_raw = alita_state.get('current_ticket', '{}')
+            ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
+
+            # Extract basic info for now
+            title = ticket.get('title', 'Unknown')
+            number = ticket.get('number', 0)
+            url = ticket.get('url', '')
+
+            out = {
+                'processed_result': json.dumps({
+                    'status': 'processed',
+                    'title': title,
+                    'number': number,
+                    'url': url
+                })
+            }
+        except:
+            pass
+
+        out
+    input:
+      - current_ticket
+    output:
+      - processed_result
+    structured_output: true
+    transition: PrepareAutomationIssue
+
+  - id: PrepareAutomationIssue
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {'issue_title': '', 'issue_body': ''}
+
+        try:
+            ticket_raw = alita_state.get('current_ticket', '{}')
+            processed_raw = alita_state.get('processed_result', '{}')
+
+            ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
+            processed = json.loads(processed_raw, strict=False) if isinstance(processed_raw, str) else processed_raw
+
+            # Extract ticket info
+            title = ticket.get('title', 'Unknown')
+            number = ticket.get('number', 0)
+            url = ticket.get('url', ticket.get('html_url', ''))
+            body = ticket.get('body', '')
+
+            # Build automation issue title
+            issue_title = f"[Automate] {title}"
+
+            # Build automation issue body
+            lines = [
+                "## Source Ticket",
+                "",
+                f"- **Original Issue:** [{title}]({url})",
+                f"- **Issue Number:** #{number}",
+                f"- **Status:** Verified on DEV Env",
+                "",
+                "## Description",
+                "",
+                body[:1000] if body else "No description provided.",
+                "",
+                "## Automation Scope",
+                "",
+                "<!-- TODO: Define test scenarios -->",
+                "",
+                "## Instructions",
+                "",
+                "1. **Branch from main** - Create fix branch from `main`: `git checkout main && git pull && git checkout -b AI_AQA/automate-<feature>`",
+                "2. **Commit prefix** - All commits MUST start with `AI_AQA:`",
+                "3. **Create PR to main** - Submit PR targeting `main` branch",
+                "4. **Link to source** - Reference the original issue in PR description",
+                "",
+                "---",
+                f"Auto-generated by Verified Ticket Intake Pipeline | Source: #{number}",
+            ]
+
+            out = {
+                'issue_title': issue_title[:256],
+                'issue_body': chr(10).join(lines)
+            }
+        except Exception as e:
+            out = {'issue_title': 'Error', 'issue_body': str(e)}
+
+        out
+    input:
+      - current_ticket
+      - processed_result
+    output:
+      - issue_title
+      - issue_body
+    structured_output: true
+    transition: CreateAutomationIssue
+
+  - id: CreateAutomationIssue
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: create_issue_on_project
+    input:
+      - issue_title
+      - issue_body
+    input_mapping:
+      board_repo:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      project_title:
+        type: fixed
+        value: Test Automation Factory
+      title:
+        type: variable
+        value: issue_title
+      body:
+        type: variable
+        value: issue_body
+      labels:
+        type: fixed
+        value: '["aqa:intake"]'
+      fields:
+        type: fixed
+        value:
+          Status: Approved
+      issue_repo:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+    output:
+      - issue_result
+    structured_output: true
+    transition: StoreAndNext
+
+  - id: StoreAndNext
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {'created_issues': '[]', 'current_ticket_index': '0'}
+
+        try:
+            issue_result = alita_state.get('issue_result', '')
+            created_raw = alita_state.get('created_issues', '[]')
+            idx = int(alita_state.get('current_ticket_index', '0'))
+            ticket_raw = alita_state.get('current_ticket', '{}')
+
+            created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
+            if not isinstance(created, list):
+                created = []
+
+            ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
+
+            created.append({
+                'source_number': ticket.get('number', 0),
+                'source_title': ticket.get('title', ''),
+                'automation_issue': issue_result
+            })
+
+            out = {
+                'created_issues': json.dumps(created),
+                'current_ticket_index': str(idx + 1)
+            }
+        except:
+            pass
+
+        out
+    input:
+      - issue_result
+      - created_issues
+      - current_ticket_index
+      - current_ticket
+    output:
+      - created_issues
+      - current_ticket_index
+    structured_output: true
+    transition: CheckMoreTickets
+
+  - id: FinalSummary
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {'summary': 'No tickets processed'}
+
+        try:
+            created_raw = alita_state.get('created_issues', '[]')
+            total = alita_state.get('total_tickets', '0')
+
+            created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
+            if not isinstance(created, list):
+                created = []
+
+            lines = [
+                "## Verified Ticket Intake Summary",
+                "",
+                f"**Total verified tickets found:** {total}",
+                f"**Automation issues created:** {len(created)}",
+                "",
+            ]
+
+            if created:
+                lines.append("### Created Issues")
+                lines.append("")
+                for item in created:
+                    source = item.get('source_number', '?')
+                    title = item.get('source_title', 'Unknown')
+                    result = item.get('automation_issue', '')
+                    lines.append(f"- #{source}: {title}")
+                    lines.append(f"  - Result: {result[:100]}...")
+                    lines.append("")
+
+            out = {'summary': chr(10).join(lines)}
+        except Exception as e:
+            out = {'summary': f'Error generating summary: {e}'}
+
+        out
+    input:
+      - created_issues
+      - total_tickets
+    output:
+      - summary
+    structured_output: true
+    transition: END
