@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "session": "80e7c5e7-1290-4881-a343-a9a1cb373f20",
+  "intent": "investigation",
+  "cases": [
+    "ELITEA-2022"
+  ],
+  "declaredAt": "2026-09-16T13:05:24.487Z",
+  "updatedAt": "2026-09-16T13:11:22.294Z",
+  "outcomes": {
+    "ELITEA-2022": {
+      "outcome": "duplicate-promotion-gap",
+      "at": "2026-09-16T13:11:22.294Z"
+    }
+  }
+}
