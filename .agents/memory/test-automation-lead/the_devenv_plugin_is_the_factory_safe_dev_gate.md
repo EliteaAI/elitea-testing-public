@@ -45,6 +45,7 @@ time.sleep(5)"; done` inside ONE Bash call with `timeout: 600000`. Resolved in ~
 
 ## Cost datapoint for the promotion-gap re-cert class
 
+#2318 (ELITEA-2063, cross-run re-detection of #2077, promoted to `main` via the #2316 cherry-pick shape rather than re-certified): session ~50 min, gate ~100 s (34/30/30 s), 0 hazard attempts; `pipeline_detail_page.py` 3-way-merged cleanly onto a `main` that #2322 had touched the same day. ⚠️ zsh `rm -f $LOG.run*.log` with no match aborts the `&&` chain BEFORE `nohup` — `setopt nullglob` first, and confirm the summary file exists after launch.
 #2315 (ELITEA-2453, 10th+ filing, ~40 s/run pipeline spec): session ~12 min, gate ~120 s, 0 hazard attempts. #2246 (ELITEA-2367, 14th filing): whole session ~15 min, gate ~95 s. #2247 (ELITEA-1866, 7th filing, a ~100 s/run toolkit-creation spec): session ~15 min, gate ~310 s wall, 0 hazard attempts — clone the script with `sed` on NODE/LOG only. The human had bulk-closed
 the previous 8 twins as `wontfix` two minutes earlier — the factory keeps paying a session per
 nightly until `automation/base` is promoted (#2157). The cheapest honest close is exactly this:
