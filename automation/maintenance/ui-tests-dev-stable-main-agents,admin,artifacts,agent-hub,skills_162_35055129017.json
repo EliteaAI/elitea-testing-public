@@ -1,0 +1,18 @@
+{
+  "runs": {
+    "20260916043940": {
+      "total": 0,
+      "details": [
+        {
+          "id": "ELITEA-1899",
+          "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "assertion-failure",
+          "failure_summary": "Known product defect #2055 - agent icon immediate-vs-persisted link assertion fails per tracked issue",
+          "reasoning": "The failure message explicitly states this is a 'known isolated product defect https://github.com/EliteaAI/elitea-testing-public/issues/2055, not test/infrastructure'. The test's soft assertion framework reports failure because the guard condition for issue #2055 is active. All other assertions (PUT 200, persistence after reload, Save-stays-disabled, exact-URL match on dashboard card) passed. This is a deliberate, tracked product bug \u2014 not a flaky test or infrastructure issue \u2014 and should be treated as a known pattern until issue #2055 is resolved."
+        }
+      ]
+    }
+  }
+}
