@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "6b74ef56-e64f-41b4-af5a-d46eba042968",
+  "intent": "automation",
+  "batch": "fix-2331-elitea-2453",
+  "cases": [
+    "ELITEA-2453"
+  ],
+  "declaredAt": "2026-09-16T15:45:05.581Z",
+  "updatedAt": "2026-09-16T15:52:22.847Z",
+  "outcomes": {
+    "ELITEA-2453": {
+      "outcome": "already-covered",
+      "at": "2026-09-16T15:52:22.847Z"
+    }
+  }
+}
