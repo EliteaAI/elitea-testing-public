@@ -49,6 +49,13 @@ PR to `main` (`Refs`), squash-merge → `git checkout automation/base && git mer
 git merge origin/main && git push`. Base ends 0 behind, carries the memory commits, and the method
 appears exactly once. TMS `automation_pr` = the `main` PR (there is no other). ~75 min incl. 3 slots.
 
+## A `duplicate`+Ready close on a promotion-gap twin buys ~2 h (#2315 → #2331, ELITEA-2453, 2026-09-16)
+
+#2315 was closed `duplicate`+Ready at 13:17Z with a closure note saying the nightly would re-file. Run #167
+re-filed it as #2331 at 15:25Z. The promotion (this note's #2316 shape) took ~25 min with 0 dispatches and
+retired the signature from `main` for good. **On a `[FIX]` card whose repair already sits on `automation/base`
+with a clean symbol check, the `duplicate` close is never the cheaper option — promote.**
+
 ## Guard rails that still apply
 
 - **Never `--body 'Fixes #<issue>'`** (the template's step 5): it auto-closes the card on merge, and
