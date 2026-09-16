@@ -1515,15 +1515,7 @@ nodes:
       - issue_number_int
       - issue_label
     condition: |
-      {% if issue_number_int and issue_number_int != '0' %}
-        {% if issue_label == 'aqa:mapping' %}
-      AddLabelMapping
-        {% else %}
-      AddLabelMaintenance
-        {% endif %}
-      {% else %}
-      StoreIssueAndNext
-      {% endif %}
+      {% if issue_number_int and issue_number_int != '0' %}{% if issue_label == 'aqa:mapping' %}AddLabelMapping{% else %}AddLabelMaintenance{% endif %}{% else %}StoreIssueAndNext{% endif %}
     routes:
       - AddLabelMaintenance
       - AddLabelMapping
