@@ -5,7 +5,7 @@ type: feedback
 aliases: [AI_AQA template, auto-merge if test-only, PR to main for FIX cards, da663ef, promotion gap closed by merging]
 tags: [area/triage, area/merge-gate, type/procedure]
 created: 2026-09-15
-updated: 2026-09-15
+updated: 2026-09-16
 ---
 
 ## What changed (#2286, ELITEA-1899, re-detection 16 of 16)
@@ -20,6 +20,21 @@ Fifteen prior ELITEA-1899 cards ended `duplicate` + "human merges #2056". Under 
 correct disposition of a promotion-gap [FIX] card whose repair PR to `main` already exists is:
 **gate the merge candidate on DEV 3× (§ Merge gate, before `gh pr merge`), squash-merge with an
 `AI_AQA:` title, merge `main` back into `automation/base`, close.** Not another no-op.
+
+## No PR to `main` exists yet? Make it — the cherry-pick is cheap (#2316, ELITEA-2070, 2026-09-16)
+
+The #2286 shape assumed a repair PR to `main` already existed. When it does not, the template's own
+steps 1-5 are the recipe: `git checkout -b AI_AQA/fix-<test> origin/main`, `git cherry-pick -n <AFS sha>`
+then `-n <repair sha>`. Expect conflicts ONLY in `.agents/memory/*/daily/*.md` (append-only logs) —
+restore those from `origin/main`, `git rm --cached` + delete the new memory notes, commit spec-only.
+A page object that has drifted 269 lines from the repair's parent still 3-way-merged cleanly; prove
+it with a hunk-for-hunk diff against the base repair (`git diff R^ R -- automation/` vs
+`git diff --cached origin/main -- automation/`, `^[+-]` lines only — must be identical). The staged-only
+secret scanner needs the diff staged: `git reset --soft origin/main && python3 scripts/scan-secrets.py
+&& git reset --soft <head>`. Gate the branch (it IS the merge candidate when cut from a fresh
+`origin/main`), return to `automation/base`, `gh pr merge --squash --subject "AI_AQA: …"`, then
+Part 1 of `sync-base-branches`. Whole card ~35 min including the branch sync; the red is actually
+retired from CI, unlike a `duplicate` + Ready close (#2314/#2315 same day).
 
 ## Guard rails that still apply
 
