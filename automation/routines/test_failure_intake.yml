@@ -126,6 +126,12 @@ state:
   label_result:
     type: str
     value: ''
+  issue_number_int:
+    type: str
+    value: '0'
+  labels_list:
+    type: str
+    value: '["aqa:maintenance"]'
   skip_reason:
     type: str
     value: ''
@@ -1474,20 +1480,62 @@ nodes:
     structured_output: true
     transition: AddLabelsToIssue
 
+  - id: PrepareLabelsInput
+    type: code
+    code:
+      type: fixed
+      value: |
+        # Prepare inputs for AddLabelsToIssue - ensure non-empty values
+        issue_number = alita_state.get('issue_number', '0') or '0'
+        issue_label = alita_state.get('issue_label', '') or ''
+
+        # Set default label if empty
+        if not issue_label:
+            issue_label = 'aqa:maintenance'
+
+        out = {
+            'issue_number_int': issue_number,
+            'labels_list': f'["{issue_label}"]'
+        }
+        out
+    input:
+      - issue_number
+      - issue_label
+    output:
+      - issue_number_int
+      - labels_list
+    structured_output: true
+    transition: CheckIssueNumberValid
+
+  - id: CheckIssueNumberValid
+    type: router
+    input:
+      - issue_number_int
+    condition: |
+      {% if issue_number_int and issue_number_int != '0' %}
+      AddLabelsToIssue
+      {% else %}
+      StoreIssueAndNext
+      {% endif %}
+    routes:
+      - AddLabelsToIssue
+      - StoreIssueAndNext
+    default_output: StoreIssueAndNext
+
   - id: AddLabelsToIssue
     type: toolkit
     toolkit_name: GitHub_Tools
     tool: update_issue
     input:
-      - issue_number
-      - issue_label
+      - issue_number_int
+      - labels_list
     input_mapping:
       issue_id:
         type: variable
-        value: issue_number
+        value: issue_number_int
       labels:
-        type: template
-        value: '["{{ issue_label | default("aqa:maintenance") }}"]'
+        type: variable
+        value: labels_list
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
