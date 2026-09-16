@@ -1487,14 +1487,16 @@ nodes:
       value: |
         # Prepare inputs for AddLabelsToIssue - ensure non-empty values
         issue_number = alita_state.get('issue_number', '0') or '0'
-        issue_label = alita_state.get('issue_label', '') or ''
+        issue_label = alita_state.get('issue_label', '') or 'aqa:maintenance'
 
-        # Set default label if empty
-        if not issue_label:
-            issue_label = 'aqa:maintenance'
+        # Convert issue_number to int for the tool
+        try:
+            issue_number_int = int(issue_number)
+        except:
+            issue_number_int = 0
 
         out = {
-            'issue_number_int': issue_number,
+            'issue_number_int': str(issue_number_int),
             'issue_label': issue_label
         }
         out
@@ -1511,34 +1513,62 @@ nodes:
     type: router
     input:
       - issue_number_int
+      - issue_label
     condition: |
       {% if issue_number_int and issue_number_int != '0' %}
-      AddLabelsToIssue
+        {% if issue_label == 'aqa:mapping' %}
+      AddLabelMapping
+        {% else %}
+      AddLabelMaintenance
+        {% endif %}
       {% else %}
       StoreIssueAndNext
       {% endif %}
     routes:
-      - AddLabelsToIssue
+      - AddLabelMaintenance
+      - AddLabelMapping
       - StoreIssueAndNext
     default_output: StoreIssueAndNext
 
-  - id: AddLabelsToIssue
+  - id: AddLabelMaintenance
     type: toolkit
     toolkit_name: GitHub_Tools
-    tool: add_labels_to_issue
+    tool: update_issue
     input:
       - issue_number_int
-      - issue_label
     input_mapping:
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
-      issue_number:
+      issue_id:
         type: variable
         value: issue_number_int
       labels:
+        type: fixed
+        value:
+          - aqa:maintenance
+    output:
+      - label_result
+    structured_output: true
+    transition: StoreIssueAndNext
+
+  - id: AddLabelMapping
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: update_issue
+    input:
+      - issue_number_int
+    input_mapping:
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      issue_id:
         type: variable
-        value: issue_label
+        value: issue_number_int
+      labels:
+        type: fixed
+        value:
+          - aqa:mapping
     output:
       - label_result
     structured_output: true
