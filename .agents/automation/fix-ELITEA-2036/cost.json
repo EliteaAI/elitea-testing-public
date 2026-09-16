@@ -1,16 +1,16 @@
 {
  "v": 1,
- "batch": "fix-2318",
- "generatedAt": "2026-09-16T14:07:02.079Z",
+ "batch": "fix-ELITEA-2036",
+ "generatedAt": "2026-09-16T14:11:08.826Z",
  "sources": {
   "window": {
-   "start": "2026-09-15T13:56:58.073Z",
-   "end": "2026-09-17T14:06:19.850Z",
+   "start": "2026-09-15T14:08:20.100Z",
+   "end": "2026-09-17T14:10:19.645Z",
    "source": "scopes"
   },
   "sessions": 1,
   "sessionIds": [
-   "claude:600bce3d-5e88-4439-a5a6-2165b0d3218a"
+   "claude:75ceb15d-c88f-44f6-a902-1b635eb5d0c7"
   ],
   "hosts": [
    "claude"
@@ -26,62 +26,62 @@
   ]
  },
  "totals": {
-  "costUsd": 7.13,
-  "tokens": 8877826,
+  "costUsd": 2.46,
+  "tokens": 1820175,
   "tokensSplit": {
-   "input": 96,
-   "output": 34362,
-   "cacheRead": 8648310,
-   "cacheWrite": 195058
+   "input": 26,
+   "output": 12479,
+   "cacheRead": 1677215,
+   "cacheWrite": 130455
   },
   "tokensByModel": {
    "claude-opus-5": {
-    "input": 96,
-    "output": 34362,
-    "cacheRead": 8648310,
-    "cacheWrite": 195058
+    "input": 26,
+    "output": 12479,
+    "cacheRead": 1677215,
+    "cacheWrite": 130455
    }
   },
-  "activeMin": 11,
+  "activeMin": 3,
   "dispatches": 0,
   "sessions": 1,
-  "turns": 48,
-  "toolCalls": 47,
+  "turns": 13,
+  "toolCalls": 12,
   "toolErrors": 1,
   "skills": []
  },
  "byRole": {
   "test-automation-lead": {
-   "costUsd": 7.13,
-   "tokens": 8877826,
+   "costUsd": 2.46,
+   "tokens": 1820175,
    "tok": {
-    "input": 96,
-    "output": 34362,
-    "cacheRead": 8648310,
-    "cacheWrite": 195058
+    "input": 26,
+    "output": 12479,
+    "cacheRead": 1677215,
+    "cacheWrite": 130455
    },
-   "activeMin": 11,
+   "activeMin": 3,
    "dispatches": 0,
-   "toolCalls": 47,
+   "toolCalls": 12,
    "toolErrors": 1
   }
  },
  "overhead": {
   "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
-  "costUsd": 7.13,
+  "costUsd": 2.46,
   "sharePct": 100,
   "lead": {
-   "costUsd": 7.13,
-   "tokens": 8877826,
+   "costUsd": 2.46,
+   "tokens": 1820175,
    "tok": {
-    "input": 96,
-    "output": 34362,
-    "cacheRead": 8648310,
-    "cacheWrite": 195058
+    "input": 26,
+    "output": 12479,
+    "cacheRead": 1677215,
+    "cacheWrite": 130455
    },
-   "activeMin": 11,
+   "activeMin": 3,
    "dispatches": 0,
-   "toolCalls": 47,
+   "toolCalls": 12,
    "toolErrors": 1
   },
   "stages": {
@@ -101,20 +101,20 @@
   "byStage": {}
  },
  "outcomes": {
-  "automated": 1
+  "blocked": 1
  },
- "delivered": 1,
+ "delivered": 0,
  "gate": null,
  "records": {
   "note": "script-authored gate verdicts (gate-runs.jsonl) + declared session outcomes (work-scope) vs the receipt — drift means report.json needs a write-back, records never overwrite it",
   "declaredOutcomes": {
-   "ELITEA-2063": "automated"
+   "ELITEA-2036": "blocked"
   }
  },
  "cases": [
   {
-   "id": "ELITEA-2063",
-   "outcome": "automated",
+   "id": "ELITEA-2036",
+   "outcome": "blocked",
    "findings": 0,
    "direct": {
     "costUsd": null,
@@ -132,9 +132,9 @@
     "toolErrors": 0
    },
    "loaded": {
-    "costUsd": 7.13,
-    "tokens": 8877826,
-    "activeMin": 11
+    "costUsd": 2.46,
+    "tokens": 1820175,
+    "activeMin": 3
    }
   }
  ],
@@ -144,31 +144,28 @@
   "directTokens": null,
   "directActiveMin": null,
   "loadedCostUsd": {
-   "avg": 7.13,
-   "median": 7.13,
-   "min": 7.13,
-   "max": 7.13,
+   "avg": 2.46,
+   "median": 2.46,
+   "min": 2.46,
+   "max": 2.46,
    "n": 1
   },
   "loadedActiveMin": {
-   "avg": 11,
-   "median": 11,
-   "min": 11,
-   "max": 11,
+   "avg": 3,
+   "median": 3,
+   "min": 3,
+   "max": 3,
    "n": 1
   }
  },
  "averages": {
-  "totalPerDelivered": {
-   "costUsd": 7.13,
-   "note": "whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)"
-  },
+  "totalPerDelivered": null,
   "directPerCase": null
  },
  "coverage": {
   "casesAttributed": 0,
   "casesUnattributed": [
-   "ELITEA-2063"
+   "ELITEA-2036"
   ],
   "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
  }
