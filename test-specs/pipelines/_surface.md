@@ -2,7 +2,262 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2449 analysis).
+> place, don't append duplicate entries. Last updated: 2026-09-09 (ELITEA-2002 repair
+> pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
+
+## VERSION dropdown — a bare page-level `Escape` does NOT reliably close it; press Escape ON AN OPTION and CONFIRM (confirmed live, 2026-09-09, ELITEA-2002 repair / `#2077`)
+
+Applies to **every** surface that renders `ApplicationVersionSelect.jsx:230`
+(`testId="agent-version-selector-trigger"`) — Pipelines, Agents, Skills. It is one component:
+`SingleSelect.jsx:662` adds `${dataTestId}-combobox` via `SelectDisplayProps`, and
+`SingleSelectDropdown.jsx:40` mounts `<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />`.
+`SimpleSearchBar.jsx` autofocuses (`autoFocus = true` + a 100 ms `setTimeout` re-focus) and maps
+Escape to *clear the search box* **before** calling that external handler — so an Escape fired
+while focus sits in the search field is consumed and never reaches MUI's `Modal`.
+
+Observed on the **pipeline** detail page (`/pipelines/all/9421`), Playwright MCP:
+
+| Focus | Action | `aria-expanded` | options | backdrops |
+|---|---|---|---|---|
+| menu Paper (`MuiPopover-paper`, `tabindex=-1`) | page-level Escape | `false` | 0 | 0 |
+| the search `input` | page-level Escape | **`true`** | 1 | 1 |
+| the search `input` | page-level Escape AGAIN | **`true`** | 1 | 1 |
+| — | `Locator.press("Escape")` on an option | `false` | 0 | 0 (URL unchanged, no version selected) |
+
+Where focus lands after opening is a race between MUI's own Menu focus management and
+`SimpleSearchBar`'s delayed re-focus — it landed on the Paper in this probe and in the search
+field on CI, which is why the failure is intermittent rather than absolute.
+
+**Handles (all on EliteaUI `main`, verified 2026-09-09 — nothing to add):**
+
+```
+VERSION_OPTION_ANY                = [data-testid^="version-option-"]
+                                    :not([data-testid="version-option-pin-icon"])
+                                    :not([data-testid^="version-option-set-default-"])
+VERSION_SELECTOR_COMBOBOX          = [data-testid="agent-version-selector-trigger-combobox"]
+  ..._EXPANDED  / ..._COLLAPSED    = same + [aria-expanded="true"] / ["false"]
+```
+
+**Waiting rule.** `aria-expanded="false"` alone is a LEADING indicator — it flips at the start
+of the `Grow` exit transition while `MuiBackdrop-root` keeps intercepting pointer events for
+~200-300 ms. Require `aria-expanded="false"` **AND** zero `VERSION_OPTION_ANY` before treating
+the menu as closed.
+
+**Symptom when you get this wrong:** the failure surfaces in a *later, unrelated* step as
+`Locator.click: Timeout … <div class="MuiBackdrop-root MuiBackdrop-invisible …> from
+<div id="menu-" …> subtree intercepts pointer events`. `AgentDetailPage.close_version_selector()`
+(PR #2058) is the reference implementation.
+
+**Resolved during ELITEA-2002 implementation (2026-09-09, `#2077`):** the pipelines side is now
+implemented too — `PipelineDetailPage.close_versions_menu()` (confirmed close: Escape on
+`VERSION_OPTION_ANY.first`, then `aria-expanded="false"` **AND** zero options, raising on
+give-up) and `PipelineDetailPage.open_version_selector()` (idempotent + `_EXPANDED`
+post-condition). Both fixed **in place** — all three pipeline call sites drive this one dropdown,
+and both new args are defaulted, so no spec changed. Matched control pair on **dev.elitea.ai**,
+same command minutes apart: pristine `automation/base` reproduced the backdrop signature
+(`test_pipeline_create_version.py:146` → `select_version_by_name` → `open_version_selector`,
+1 failed in 36.04 s); the repair ran `2 passed` twice over BOTH caller specs (42.89 s / 41.43 s),
+including `test_pipeline_delete_version` which the nightly failed 3/3 on this same mechanism.
+Use these two methods on any new pipelines spec — never a bare `page.keyboard.press("Escape")`.
+
+
+## Pipeline EXECUTION waits — `wait_for_embedded_chat_response()` cannot fail, and the run's own status is the honest signal (confirmed live, 2026-09-09, ELITEA-2448 repair / `#2076`)
+
+**Read this before writing or repairing any spec that runs a pipeline from the
+embedded chat.** Three separately-verified facts, measured at 250 ms sampling
+across three live executions of a `Code 1 (entry) -> END` pipeline.
+
+**1. `PipelineDetailPage.wait_for_embedded_chat_response()` is a SOFT wait — it
+logs `WARNING Embedded chat response did not stabilise within timeout` and
+returns normally** (`pipeline_detail_page.py:7336-7396`). A spec that "waits"
+with it has no wait at all; whatever assertion follows inherits the race. Two
+mechanisms make it burn its whole budget on a pipeline that emits no chat answer:
+  - its Delete-button wait uses **all remaining budget** inside `try/except:
+    pass`, and that action bar never appears for such a pipeline (verified at
+    130 s and 165 s post-send, hover included — the answer `<li>` holds only
+    `chat-answer-thought-accordion` + `chat-answer-tool-chip`);
+  - the pre-answer placeholder phrase **rotates every 2.0 s** (`Waking the
+    agent…` → `Packing its tools…` → `Wiring integrations…` → `Fetching keys &
+    creds…` → `Installing skills…` → `Learning your playbook…` → `Safety checks
+    on…` → `Quick sandbox test…`), so the helper's `stable_duration_ms=3000`
+    stability check can never be satisfied while it is showing.
+  **Corollary for triage:** a failure screenshot frozen on `Fetching keys &
+  creds…` means *the run had not started yet* — it is a carousel frame, not a
+  hang signature. **Do not change the helper** — 20 caller files depend on it;
+  give the individual spec its own wait.
+
+**2. `pipeline-run-node-label` means the run STARTED, not that it finished.**
+The run node is created on the `AgentStart`/`StartTask` socket event
+(`parseRunsByEvent.helpers.js:69-81`) and stays visible through `In progress`
+(`RunStateNode.jsx:93`). Using its visibility as a completion proxy is the bug
+`#2076` was made of.
+
+**3. The honest completion observable — `pipeline-run-details-status-badge`'s
+`data-status`, and it updates LIVE while the panel is open.** Verified: panel
+opened mid-run, badge read `In progress`, then flipped in place to `Completed`
+(`RunStatus.jsx:15-16` renders `data-testid` + `data-status={status}`). With the
+panel opened during the run, the post-completion panel content is fully
+correct — timeline step 0 `data-status="completed"` / `aria-label="pyodide"`,
+`Timeline step:pyodide` section text, and the state row's After JSON. All of
+these testids are on EliteaUI **`main`** (verified 2026-09-09 after
+`git fetch origin`), so the pattern is safe for deployed-env CI.
+⚠️ **Open the Run Details panel exactly ONCE.** While it is open the MUI Dialog
+overlays the canvas and intercepts pointer events, so a second click on
+`pipeline-run-node-label` retries until timeout
+(`MuiDialog-container … subtree intercepts pointer events`).
+
+**Timings measured on DEV (same pipeline, within one hour) — budget accordingly:**
+
+| Run | send → run node appears | run node → `Completed` | send → `Completed` |
+|---|---|---|---|
+| 1 (fresh page) | 4.5 s | 31.0 s | 35.5 s |
+| 2 (2nd message, same page) | never (abandoned at 100 s) | — | — |
+| 3 (fresh page load) | 89.3 s | 31.7 s | 121.0 s |
+
+Node execution is stable at ~31 s (pyodide). **The variance is entirely
+backend run-START latency (4.5 s … 89 s+).** A 90 s budget for
+send→anything is not enough; ELITEA-2448 now uses
+`PIPELINE_RUN_START_TIMEOUT = 150_000` for start + `PIPELINE_EXECUTION_TIMEOUT
+= 90_000` for start→`Completed`. A run that never starts is upstream of every
+assertion a case makes — same family as the ledger's LLM/HITL trigger-side
+flakes: **re-run, never accept 2-of-3.**
+
+**Product-side observation, NOT filed (needs an LLM-node control run):** for a
+Code-node-only pipeline the embedded-chat answer bubble never finalises — no
+answer body (`skill-test-last-response` never renders), no action bar even on
+hover, long after the run reads `Completed`. May be correct-by-design (nothing
+to say) or a UI finalisation gap.
+
+## Entry-point Trigger restriction — EL-6128 GREYS OUT instead of HIDING; and `select-option-selected-icon` poisons `select-option-*` enumeration (confirmed live, 2026-08-26, ELITEA-2008 triage)
+
+**Two independent facts, both live-confirmed on `automation/testids` @ 0-behind-`origin/main`.**
+
+**① The Trigger dropdown no longer hides restricted options — it disables them in place.**
+EliteaAI/EliteaUI@cb70a64e + @15099206 + @07e0e9b1 (EL-6128, on `origin/main` 2026-08-24/25) changed
+`TriggerTypeSelector.jsx` from `TRIGGER_OPTIONS.filter(...)` to
+`TRIGGER_OPTIONS.map(opt => opt.value === chat_message ? opt : {...opt, disabled: true})`.
+
+- Restricted state (Printer / HITL / non-empty `interrupt_before|after` in the **saved** YAML):
+  all three options render; `select-option-schedule` and `select-option-webhook` carry
+  **`aria-disabled="true"`** (+ MUI `Mui-disabled` class); `select-option-chat_message` does not.
+- Unrestricted state: **no `aria-disabled` attribute at all** on any option — absent, *not* `"false"`.
+  So an "is enabled" check must be `:not([aria-disabled="true"])`, never `== "false"`.
+- **The option NAME list is `['Chat Message','Schedule','Webhook']` in BOTH states.** Any assertion
+  written against names alone now proves nothing. Assert the enabled/disabled split.
+- The restriction is still gated on the **last-SAVED** YAML (`values.version_details.instructions`),
+  not the live canvas — unchanged by EL-6128, re-confirmed live 2026-08-26.
+- Predicate widened to `hasInteractiveElements || hasDelegatedOauthToolkit` — a saved delegated-OAuth
+  toolkit now restricts the trigger too. **No TMS case covers that yet.**
+- The `Trigger` label tooltip gained a reason sentence, but its info icon has **no testid**
+  (`<span data-info-tooltip="true">`), so it is not assertable without new UI work.
+
+Handles, all **on `origin/main`** (verified 2026-08-26 after `git fetch origin`) — no new testids needed:
+`pipeline-entry-point-trigger-select`, `select-option-{chat_message|schedule|webhook}` (shared template
+`SingleSelectMenuItem.jsx:117`), `pipeline-node-interrupt-before-toggle-{node_id}`, `agent-save-button`.
+
+**② `select-option-selected-icon` breaks `get_open_listbox_option_names()` on localhost.**
+EliteaAI/EliteaUI@b0a7d61a (2026-08-24, **`automation/testids` only, NOT on `main`**) put
+`data-testid="select-option-selected-icon"` on the ✓ icon *inside* the selected `MenuItem`. It matches
+`SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'` (`pipeline_detail_page.py:1580`), so every
+enumeration returns a spurious `''` for the selected option:
+
+```
+localhost baseline: ['Chat Message', '', 'Schedule', 'Webhook']
+```
+
+Bites localhost only today; **breaks DEV the moment a human cherry-picks b0a7d61a**. Affects ~40
+`SELECT_OPTION_PREFIX` references + `test_pipeline_entry_point_trigger_types_persist.py` and the two
+`pipelines_2` MCP-node specs. Root fix = rename the icon testid out of the `select-option-` namespace.
+Same commit also added `data-selected` on options — **also `automation/testids`-only, do not build
+DEV-bound assertions on it.**
+
+## MCP node — the 4 Tools ADD triggers, the Tools card's untestid'd name/connection-status, input-mapping TYPE gaps, and LIVE MCP-node EXECUTION (confirmed live, 2026-08-24, ELITEA-1952/1953)
+
+Extends § "MCP node — inline config panel, CONDITIONALLY rendered (…ELITEA-2037)"
+below; everything there still holds. New this session, all live-confirmed on
+pipeline `9506` with MCP toolkit `autotest_mcp_w05` (DeepWiki fixture):
+
+- **All four TOOLS ADD triggers already carry testids and are already
+  `PipelineDetailPage` fields** (`pipeline_detail_page.py:1374/1399/1408/1420),
+  all on `origin/main`: `agent-add-toolkit-button`, `agent-add-mcp-button`,
+  `agent-add-agent-button`, `agent-add-pipeline-button`. **Visible text is
+  `Toolkit`/`MCP`/`Agent`/`Pipeline` — the `+` is a separate icon**, so a case
+  text saying `"+ MCP"` must not be matched as a string.
+- **The attached-tool card (`agent-toolkit-card`) has TWO testid gaps.** Its
+  children are: an untestid'd MCP `<svg>` icon, an untestid'd
+  `<div class="MuiTypography-root MuiTypography-bodyMed">` holding the **name**,
+  `toolkit-card-tools-toggle` ("Show tools"), `toolkit-open-button`,
+  `agent-toolkit-delete-button`, and an untestid'd `<button>` reading **`Log in`**
+  — that button IS the card's **connection status** for an unauthenticated Remote
+  MCP. Recommended: `pipeline-tools-card-name`,
+  `pipeline-tools-card-connection-status`. ⚠️ **Distinct from
+  `toolkit-connection-status`** (that one is `McpAuthStatus.jsx` on the MCP
+  *detail* page, not the pipeline Tools card).
+- **Input-mapping row shape**: `HeadingChip(DisplayName)` + a **`Type` select**
+  (options `select-option-fixed` / `-variable` / `-fstring`, i.e. Fixed/Variable/
+  F-String) + a `Value` control. The heading text is `Input mapping (required N)`
+  — sentence case with the count, NOT the uppercase "INPUT MAPPING (REQUIRED)"
+  several case texts use. **No JSON-schema data type is displayed** anywhere; the
+  "Type" the UI shows is the *mapping* type.
+- **Two live testid gaps on the MCP node's input mapping** (both are one-line
+  widenings of existing plumbing, exact lines in
+  `test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md`):
+  1. the **Type select** — `BaseToolNode.jsx:208-212` passes `typeTestIdPrefix`
+     only for `nodeType === Toolkit`; MCP gets `undefined`, leaving two identical
+     `id="simple-select-Type"` controls per node (positional only). The comment in
+     that file says it was scoped to Toolkit "because the MCP node's equivalent
+     select is untouched by any test" — ELITEA-1953 is that test, so widening it
+     now SATISFIES #511 rather than violating it.
+  2. the **Variable-branch Value select** — `InputMappingItem.jsx:245-255` (the
+     non-enum, non-string `Select.SingleSelect`) has no `dataTestId`, while the
+     other two branches already pass `dataTestId={valueTestId}` (lines 146, 170).
+- **Switching a row's Type to `Variable` SWAPS the Value WIDGET** — the text input
+  (and with it `pipeline-mcp-node-input-mapping-value-{param}`) is **removed from
+  the DOM** and replaced by a state-variable select auto-set to `input`
+  (`id="simple-select-[object Object]"` — a cosmetic id-computation slip, not a
+  functional defect; never locate on it). Same behaviour class as the LLM/HITL
+  finding at § "LLM/HITL node Type+Value field" below. The Type change is
+  **per-row**: the sibling row keeps `Fixed`.
+- **Default toggle states on a fresh MCP node** (re-confirmed, and the nuance the
+  case texts get wrong): all three are **unchecked**. `Interrupt before` is
+  additionally `disabled` *because the node is the entry point*; `Interrupt after`
+  *because `transition == END`*; **`Structured output` is NOT `disabled`** — just
+  unchecked. A case text saying "disabled by default" means OFF, not the
+  `disabled` attribute.
+- **Persistence through Save + full reload is clean** for: per-row Type,
+  Variable-branch value, Fixed value, Toolkit, Tool, input-mapping heading, and all
+  three toggle states. `PUT …/application/prompt_lib/{project}/{id}` → 201.
+- **THERE IS NO `START` NODE.** A fresh pipeline's canvas holds only `END`; "start"
+  is the node's `Trigger`/entry-point property
+  (`pipeline-entry-point-trigger-select`, which the sole node auto-acquires). The
+  `MCP 1 → END` edge is **auto-created** from the node's default `transition` —
+  it does not exist at add time (edge count 0 right after "Add node → MCP") but is
+  present after Save + reload as
+  `rf__edge-xy-edge__MCP 1---EliteAPipelineEnd`. Any case step saying
+  "connect START → X → END" is case-text drift with nothing to drag.
+- **LIVE MCP-NODE EXECUTION WORKS AND IS ASSERTABLE (new capability on this
+  surface).** Sending a message in the embedded chat on a saved pipeline whose MCP
+  node has a Toolkit+Tool runs the tool for real. The assistant message then
+  contains `chat-answer-thought-accordion` → **`chat-answer-tool-chip` whose text
+  is exactly `"{toolkit_name}: {tool_name} (MCP1)"`** (e.g.
+  `autotest_mcp_w05: ask_question (MCP1)`) plus `skill-test-last-response` holding
+  the real tool output. **That chip is the observable that proves the MCP node ran
+  the SELECTED tool** — a non-empty answer alone does not (a silent LLM-only
+  fallback would also produce one). `chat-answer-tool-chip` is on `origin/main` and
+  already wired on `ChatPage`/`AgentDetailPage`, but NOT yet on
+  `PipelineDetailPage` — page-object work only, no EliteaUI change. Wall clock this
+  session: ~11 s "Thought" + streaming, ~40 s end to end. Budget 180 s, wait on the
+  last message's `chat-delete-button`, never a sleep.
+- **⚠️ Enter does NOT send in the embedded chat composer.** Filling
+  `chat-message-input` and pressing Enter leaves the text in the field and posts
+  nothing — `chat-send-button` must be clicked.
+  `PipelineDetailPage.send_message_in_embedded_chat()` already does this; do not
+  "simplify" it to a keypress.
+- **The pipeline CREATE form requires Description as well as Name** —
+  `agent-save-button` stays `disabled` until both are filled. (Only relevant if a
+  case creates the pipeline through the UI; specs normally use the `pipeline_id`
+  API fixture.)
+
 
 ## Code node — input filtering (elitea_state scoping), confirmed live, clean pass (2026-08-09, ELITEA-2449)
 
@@ -3518,6 +3773,129 @@ never rendered the Code node's `input`/`output` fields. The test verifies
 those fields via `pipeline_api.get_pipeline()` server-truth readback instead
 of `pipeline_page.get_yaml_content()`. No new issue filed — same root cause,
 same established workaround pattern.
+
+## MCP node — Input-mapping Type control + Tools-card composition + live MCP execution (**Resolved/added during ELITEA-1952/1953 implementation, 2026-08-24**)
+
+Implementation-time facts confirmed by the implementer while building
+`test_mcp_node_executes_selected_tool` (ELITEA-1952) and
+`test_mcp_node_input_mapping_type_and_toggles_persist` (ELITEA-1953) in
+`automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py`.
+Behaviour/scope claims elsewhere in this digest are unchanged.
+
+**New testids (EliteaAI/EliteaUI, `automation/testids`):**
+
+| Testid | Where | Commit |
+|---|---|---|
+| `pipeline-mcp-node-input-mapping-type-{param}` | `BaseToolNode.jsx` — `typeTestIdPrefix` widened from Toolkit-only to `Toolkit \| Mcp` | EliteaAI/EliteaUI@5c24ed30 |
+| `pipeline-mcp-node-input-mapping-value-{param}` (Variable branch) | `InputMappingItem.jsx` — the enum/variable `Select.SingleSelect` | EliteaAI/EliteaUI@7a5fce32 |
+| `toolkit-card-name` | `ToolCard.jsx` — the card's name Typography | EliteaAI/EliteaUI@5c24ed30 |
+| `toolkit-card-connection-status` (+ `data-connected="true\|false"`) | `ToolCard.jsx` — the MCP Online/Offline status-icon Box | EliteaAI/EliteaUI@5c24ed30 |
+
+**The Variable mapping type does NOT render the "no-enum" select branch.**
+`FlowEditorHelpers.getEnumList('variable', …)` returns the state-variable list
+(`flowEditor.helpers.js:162`), so `enumList` is non-empty and
+`InputMappingItem.jsx` renders its FIRST branch
+(`dataType !== 'array' || type === 'variable'`), not the final `Select.SingleSelect`
+the ELITEA-1953 AFS pointed at. A testid placed on the final select never appears
+in the DOM. Cost one rerun to find.
+
+**One row Value testid, two widget shapes — two different readers.** Since
+EliteaAI/EliteaUI@7a5fce32 the row's Value control keeps the same testid whether
+Type is Fixed/F-String (a text input) or Variable (a state-variable select). Read
+it with `get_mcp_node_input_mapping_value()` (`input_value()`) in the first case
+and `get_mcp_node_input_mapping_variable_value()` (`text_content()`) in the
+second. Handy side effect: a `text_content()` read returning `"input"` PROVES the
+widget swapped, because a text input has no text content — that is how the tests
+assert the swap now that the old absence assertion is void.
+
+**The canvas Control Panel intercepts Input-mapping clicks.** A freshly-added node
+spawns above ReactFlow's bottom-left `rf__controls` panel; once the Input-mapping
+rows render, the node card extends down over it and the panel's "Fit View" button
+intercepts the pointer on the Type select's click (Playwright names `rf__controls`
+as the intercepting subtree). Remedy: `move_node(node_id, dx=450, dy=0)` right
+after adding the node — the same remedy
+`test_pipeline_interrupt_before_after_toggles.py:87` already uses.
+
+**Connection status belongs on the indicator, not the Log-in button.** The AFS
+proposed tagging the card's `Log in` button as the connection-status control, but
+`McpLogInButton` returns `null` once the MCP is authorized — a testid whose
+PRESENCE flips with state, outlawed by the PR #581 ruling. The Online/Offline
+indicator Box is always rendered for an MCP card, so it carries the stable testid
+and expresses state in `data-connected`. A freshly-provisioned, never-authenticated
+Remote MCP reads `"false"` (confirmed live).
+
+**Live MCP execution from the embedded chat is stable and ~40 s.** Sending the
+repo name as the chat message (with `repoName` bound Type=Variable to the `input`
+state variable and `question` left Fixed) drives the DeepWiki fixture MCP end to
+end. Proof the node ran the SELECTED tool is the `chat-answer-tool-chip` inside the
+last `chat-message-item`, text `"{toolkit}: ask_question (MCP1)"` — asserted with
+`to_contain_text("{toolkit}: ask_question")` rather than the full string, since the
+node-id segment renders without its space. Answer body (~1 kB) asserted by shape
+only. Whole test: 39 s, zero console errors, green first try.
+
+**Saving RE-INITIALISES the whole flow graph — post-save canvas reads must be
+polled** (*Resolved during the ELITEA-1952 flake fix, 2026-08-24*). The Save
+PUT's `201` is NOT the point at which the canvas is settled. The response
+updates the RTK Query cache, which re-runs `PipelineEditor.jsx`'s init effect
+("Triggers on initial load and after save when RTK Query cache updates",
+`PipelineEditor.jsx:347`) → `initThePipeline` → `resetFlag` → `FlowEditor.jsx`
+rebuilds the graph wholesale (`setFlowNodes(initialNodes)` /
+`setFlowEdges(initialEdges)`, plus a 150 ms `setTimeout` Redux sync,
+`FlowEditor.jsx:176-195`). During that window the canvas is momentarily EMPTY —
+both merge-gate failure screenshots showed a blank canvas with the TOOLS card
+intact. A one-shot `edge_testid_present()` / `.count()` read fired right after
+`save_and_wait_for_update()` lands inside it on ~40 % of runs (2 of 5 gate runs;
+a diagnostic run measured the edge re-appearing **0.09 s** after the one-shot
+read returned `False`). Use `wait_for_edge()` (polls the same exact edge testid
+via `expect().to_have_count(1)`) — or any auto-retrying assertion — for ANY
+canvas read after a Save; never a one-shot boolean.
+
+**The embedded-chat tool chip marks the START of a tool call, not the end**
+(*same fix*). `wait_for_embedded_chat_response()` stabilises on the whole
+`chat-message-item`'s text, which is already non-empty and unchanging (the chip
++ "Thought" header) while the MCP round trip is still in flight — so it can
+return while the run indicator still spins at 0 % and the answer body is `""`.
+Poll the answer BODY (`skill-test-last-response`, via
+`get_last_embedded_chat_response_locator()`) with
+`expect(...).to_contain_text(re.compile(r"[\s\S]{N,}"))` before reading it with
+`get_last_embedded_chat_message_text()`.
+
+## Entry-point Trigger select — restriction is now a DISABLED state, and the first post-reload click is swallowed (**Resolved/added during ELITEA-2008 repair implementation, 2026-08-26**)
+
+**The trigger restriction no longer hides options — it greys them out in place**
+(EliteaAI/EliteaUI@cb70a64e, EL-6128, on `main` 2026-08-24). Any assertion that reads only
+the option NAME list can no longer distinguish a restricted pipeline from an unrestricted
+one — both render `Chat Message, Schedule, Webhook`. Confirmed live:
+
+```
+select-option-chat_message      aria-disabled = None     <- enabled
+select-option-selected-icon     aria-disabled = None     <- NOT an option, see below
+select-option-schedule          aria-disabled = "true"   <- restricted
+select-option-webhook           aria-disabled = "true"   <- restricted
+```
+
+An **enabled option carries no `aria-disabled` attribute at all** — absent, never `"false"` —
+so the enabled check must be `:not([aria-disabled="true"])`, never
+`to_have_attribute("aria-disabled", "false")`. Use
+`PipelineDetailPage.get_trigger_option_states()` (added by this repair): opens the dropdown
+once, returns `{trigger_value: is_enabled}` read per value, closes via Escape.
+
+**`get_open_listbox_option_names()` / `SELECT_OPTION_PREFIX` are unsafe on localhost
+(issue #1806).** The prefix `[data-testid^="select-option-"]` also matches
+`select-option-selected-icon`, the ✓ icon INSIDE the selected MenuItem
+(EliteaAI/EliteaUI@b0a7d61a, on `automation/testids` only), so enumeration returns a spurious
+empty entry: `['Chat Message', '', 'Schedule', 'Webhook']`. Verified live 2026-08-26, and
+verified pre-existing by a control run against the unmodified page object —
+`test_pipeline_entry_point_trigger_types_persist.py::test_entry_point_trigger_types_persist`
+fails on exactly this, on localhost only, today. **Read per value, not by family**, and the
+spec is immune on both localhost and DEV.
+
+**The FIRST click on the Trigger select after a full page reload is swallowed.** Selecting the
+node remounts its config panel and replaces the Select element the click already resolved, so
+the menu never opens and the wait burns its whole timeout (reproduced 3/3 at 10 s; a second
+click opens it immediately). `open_trigger_select()` now absorbs this: 3 s probe wait, then —
+only if no option element exists at all — one re-click. Anything else driving this select
+after a reload should expect the same and reuse that method rather than clicking directly.
 
 **Resolved/added during ELITEA-2037 repair (#1891, 2026-08-28):** on the
 pipeline detail page, `.MuiPopper-root >> nth=0` is **not** "the popper I just
