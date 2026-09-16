@@ -1,0 +1,45 @@
+{
+  "runs": {
+    "20260916153226": {
+      "total": 0,
+      "details": [
+        {
+          "id": "ELITEA-2022",
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_ui_menu",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "assertion-failure",
+          "failure_summary": "Sanctioned RED failure \u2014 known defect #1332 (redirect issue on pipeline delete via UI menu)",
+          "reasoning": "The failure message explicitly states 'Soft assertion(s) failed (sanctioned RED \u2014 known defect #1332, redirect)'. This is a tracked, acknowledged defect. No new investigation needed; it should be monitored against defect #1332."
+        },
+        {
+          "id": "ELITEA-2453",
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_multiple_state_variables.test_run_details_multiple_state_variables_different_types",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "assertion-failure",
+          "failure_summary": "State variable 'custom_text' After value is empty after pipeline run execution",
+          "reasoning": "Clear assertion failure: `AssertionError: 'custom_text' After value should be non-empty`. This indicates the pipeline run is not populating the 'custom_text' state variable as expected after execution. No retry/flakiness indicators \u2014 it failed cleanly once. This is a product behavior regression that needs investigation."
+        },
+        {
+          "id": "ELITEA-2036",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for custom node configuration element (5000ms exceeded, failed all 3 retries)",
+          "reasoning": "The test failed with `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 5000ms exceeded` and was retried 3 times (3 FAIL screenshots captured at different timestamps), failing consistently each time. Consistent failure across all retries rules out flakiness and points to a real product issue \u2014 the custom node configuration UI element is not appearing as expected."
+        },
+        {
+          "id": "ELITEA-2051",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "infrastructure",
+          "failure_summary": "Test precondition unmet: test user has no second non-public project to fork FROM in the DEV environment",
+          "reasoning": "The failure message is explicit: 'ELITEA-2051 precondition unmet: the acting user belongs to no project usable as a fork SOURCE \u2014 every membership is either the fork target or the public project (1, both excluded). The case requires a second, non-public project to fork FROM.' This is an environment/test-data setup issue \u2014 the required project membership is missing in the DEV environment. This needs investigation to either fix the environment setup or adjust the test precondition handling, but it is not a product code bug."
+        }
+      ]
+    }
+  }
+}
