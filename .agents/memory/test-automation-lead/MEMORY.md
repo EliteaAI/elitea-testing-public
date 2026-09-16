@@ -1,4 +1,5 @@
 # Memory index — test-automation-lead
+- [Second toast within the first's window reads as the first](a_second_toast_within_the_first_toasts_window_is_read_as_the_first.md) — single-slot ToastProvider replace-in-place; fix = retrying expect anchored to THIS click's text; never a dismissal wait or timeout raise; #2321/#2329
 - [An API call with no timeout can wedge a gate run](an_api_call_with_no_timeout_can_wedge_a_gate_run_for_a_session.md) — client.py has no timeout=; dead DEV connection stalled run 2 ~16 min; kill + re-gate, #2313
 
 > Only *preventive* facts are indexed — things that change your FIRST move.
