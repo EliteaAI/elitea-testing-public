@@ -38,3 +38,11 @@ so a count off a completed-but-truncated log undercounts. When the number has to
 right, parse the JUnit XML from the run artifacts instead of grepping logs — it is the
 authoritative record (`gh run download <run> -n test-results-<env>-user<N>-<runNumber>`;
 note the artifact suffix is the **run number**, not the run id).
+
+**Second stub shape (2026-09-17, #2342) — the REST route refuses on a COMPLETED run.**
+`env -u GITHUB_TOKEN gh api repos/<o>/<r>/actions/jobs/<id>/logs` exits 0 and writes a
+99-byte line: `the response contains terminal escape sequences; pass
+--allow-escape-sequences to output it anyway`. A grep over it is a false zero exactly
+like the in-progress stub, and the run being finished does not protect you. Use
+`gh run view --repo <r> --job <id> --log-failed` (or `--log`) instead; the same
+`wc -c` size guard above catches both shapes.
