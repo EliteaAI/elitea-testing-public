@@ -1,0 +1,81 @@
+{
+  "runs": {
+    "20260916131309": {
+      "total": 0,
+      "details": [
+        {
+          "id": "ELITEA-2022",
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_ui_menu",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "assertion-failure",
+          "failure_summary": "Soft assertion failure sanctioned as known defect #1332 (redirect issue on delete pipeline via UI menu)",
+          "reasoning": "The failure message explicitly states 'Soft assertion(s) failed (sanctioned RED \u2014 known defect #1332, redirect)'. This is a pre-acknowledged defect already tracked, not a new regression."
+        },
+        {
+          "id": "ELITEA-2453",
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_multiple_state_variables.test_run_details_multiple_state_variables_different_types",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "assertion-failure",
+          "failure_summary": "Run details 'custom_text' state variable After value is empty after pipeline execution",
+          "reasoning": "Clear assertion failure: 'AssertionError: custom_text After value should be non-empty'. This indicates the pipeline execution is not populating the custom_text state variable as expected \u2014 a product behavior regression worth investigating."
+        },
+        {
+          "id": "ELITEA-2070",
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_history_view_executions.TestPipelineRunHistoryPanelClose.test_run_history_panel_closes_and_restores_chat",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for response event when selecting Run History item / closing Run History panel",
+          "reasoning": "The test failed 3 consecutive retry attempts with 'Timeout 10000ms exceeded while waiting for event response' on both 'Close Run History panel' and 'Select Run History item' steps. Consistent failure across all retries points to a real UI/backend issue rather than flakiness."
+        },
+        {
+          "id": "ELITEA-2030",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_add_node_menu.test_add_node_menu_lists_types_adds_node_and_dismisses",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "assertion-failure",
+          "failure_summary": "Add node menu lists 10 types instead of expected 11 \u2014 a node type is missing from the menu",
+          "reasoning": "Clear assertion failure: the menu returned ['Agent', 'Code', 'Decision', 'Human-in-the-loop', 'LLM', 'MCP', 'Printer', 'Router', 'State modifier', 'Toolkit'] (10 items) but the test expects exactly 11. One node type has been removed or renamed in the product, indicating a real product change or regression."
+        },
+        {
+          "id": "ELITEA-2063",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_create_version.test_create_pipeline_version_save_list_switch_preserves_canvas_state",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "timeout",
+          "failure_summary": "Timeout clicking VERSION dropdown selector when switching pipeline versions",
+          "reasoning": "Failed all 3 retry attempts with 'Locator.click: Timeout 10000ms exceeded' when trying to select a version from the VERSION dropdown. Consistent failure across all retries indicates a real UI regression, not flakiness."
+        },
+        {
+          "id": "ELITEA-2036",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for custom node configuration element to appear",
+          "reasoning": "Failed all 3 retry attempts with 'Locator.wait_for: Timeout 5000ms exceeded'. Consistent failure across retries suggests the custom node configuration UI element is not rendering, pointing to a real product regression."
+        },
+        {
+          "id": "ELITEA-2051",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "infrastructure",
+          "failure_summary": "Test precondition unmet: no second non-public project available for fork source in test environment",
+          "reasoning": "The failure message explicitly states 'ELITEA-2051 precondition unmet: the acting user belongs to no project usable as a fork SOURCE'. The test user only has membership in the fork target project and the public project. This is a test environment configuration issue \u2014 the required second project is missing from the DEV environment setup."
+        },
+        {
+          "id": "ELITEA-2056",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section",
+          "resolution": "to_fix",
+          "tracking_issue": null,
+          "failure_type": "assertion-failure",
+          "failure_summary": "Clipboard copy toast message text mismatch on copy version ID action",
+          "reasoning": "Clear assertion failure: 'AssertionError: Copy version ID toast should confirm the clipboard copy, got: \"The ID has been copied to the clipboard.\"' The test expects a different toast message text than what the product currently displays. This indicates either a product text change or a test expectation that needs updating \u2014 either way it requires investigation to determine which is correct."
+        }
+      ]
+    }
+  }
+}
