@@ -33,7 +33,6 @@ from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 
@@ -43,6 +42,17 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 UI_ELEMENT_TIMEOUT = 10000
 NAVIGATION_TIMEOUT = 15000
 FORM_SAVE_TIMEOUT = 15000
+#: The post-delete redirect fires on the success toast's CLOSE (EliteaUI's
+#: ``onCloseToast`` -> ``navigate(-1)``), not on the DELETE response, so it can
+#: land several seconds after ``delete_pipeline_via_menu()`` has returned.
+#: Measured on dev.elitea.ai across three in-app runs: 0.0 s / 7.1 s / 6.6 s.
+#: Budget generously — an 8 s budget against a 7 s reality is a flake generator.
+POST_DELETE_REDIRECT_TIMEOUT = 25000
+#: How long the dashboard may take to drop a just-deleted card. The redirect
+#: is a history-back, so the dashboard repaints its CACHED list first and only
+#: drops the card once the list refetch lands — absence is a state it arrives
+#: at, not one it starts in.
+DASHBOARD_REFRESH_TIMEOUT = 15000
 
 
 class TestPipelineDashboard:
@@ -86,7 +96,7 @@ class TestPipelineDashboard:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2024_pipeline-dashboard-view-toggle-card-vs-table.md", "onetest-ai Test Case link")
     @pytest.mark.p1
-    def test_view_toggle_table_and_card(self, page):
+    def test_view_toggle_table_and_card(self, page, pipeline_id, pipeline_api):
         """Dashboard should support switching between table and card views.
 
         Extended for ELITEA-2024 (AFS:
@@ -94,10 +104,37 @@ class TestPipelineDashboard:
         with default-state (Step 3) and actual-rendered-layout (Steps 5 & 7)
         assertions — the original ELITEA-0855 coverage (button visibility +
         button aria-pressed state) is unchanged.
+
+        REPAIR 2026-09-09 (board #2118, CI run 34331579791): the test used to
+        ASSUME the ambient project held at least one pipeline. The CI matrix
+        project holds none, so Step 7 failed and — worse — Step 5 passed
+        vacuously, because CardList.jsx's ``showEmptyOrError`` short-circuits
+        BOTH the table and the card branch, making "zero cards" true of an
+        empty state that mounted no table at all. The test now establishes the
+        case's declared precondition itself and asserts it at Step 1.
+
+        Fidelity — transit substitution (AFS § Fidelity Declaration): the
+        precondition pipeline is created through the API (``pipeline_id``
+        fixture) instead of through the UI create form, purely so the
+        dashboard has content to lay out. Every value this test asserts on —
+        the toggles' ``aria-pressed`` state, the ``view`` URL parameter, and
+        which layout component the dashboard mounts — is produced by the live
+        application in response to real clicks. The case does not specify how
+        the pipeline gets there.
         """
-        with allure.step("Step 1 — Navigate to pipelines dashboard"):
+        with allure.step("Step 1 — Navigate to pipelines dashboard with a known pipeline present"):
+            pipeline_name = pipeline_api.get_pipeline(pipeline_id).get("name", "")
             list_page = PipelinesListPage(page)
             list_page.navigate()
+            # Waiting, POSITIVE assertion — during the dashboard's loading
+            # window both entity-card-name and empty-state-title read 0, so a
+            # bare count here would be as vacuous as the Step 5 bug this
+            # repair closes. 10 s, not get_card_names()'s 5 s default: 5 s is
+            # exactly what expired in CI.
+            assert pipeline_name in list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT), (
+                f"Precondition: pipeline {pipeline_name!r} should be on the dashboard "
+                "before the view toggle is exercised"
+            )
 
         with allure.step("Step 2 — Verify view toggle buttons exist"):
             assert list_page.table_view_button.is_visible(), "Table view button should exist"
@@ -119,6 +156,10 @@ class TestPipelineDashboard:
 
         with allure.step("Step 5 — Verify layout actually changed to table format"):
             assert "view=table" in page.url, f"Expected ?view=table in URL, got {page.url!r}"
+            assert list_page.empty_state_title.count() == 0, (
+                "Dashboard must not be showing the empty state — a zero card count "
+                "would then prove nothing about the table layout"
+            )
             assert list_page.entity_card_name.count() == 0, (
                 "No card elements (entity-card-name) should render while in table view"
             )
@@ -131,8 +172,9 @@ class TestPipelineDashboard:
 
         with allure.step("Step 7 — Verify layout returned to card grid format"):
             assert "view=cards" in page.url, f"Expected ?view=cards in URL, got {page.url!r}"
-            assert list_page.get_card_names(), (
-                "Card elements (entity-card-name) should render again after switching to card view"
+            assert pipeline_name in list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT), (
+                f"Pipeline {pipeline_name!r} should render as a card again after "
+                "switching back to card view"
             )
 
 
@@ -422,78 +464,77 @@ class TestDeletePipeline:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2022_delete-pipeline.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_delete_pipeline_via_ui_menu(self, page, pipeline_api):
-        """Create a pipeline, delete via the UI three-dot menu, and verify removal.
+        """Open a pipeline from the dashboard, delete it via the three-dot
+        menu, and verify the automatic redirect plus its removal.
 
         Extends coverage for ELITEA-2022 (test-specs/pipelines/lextend_delete-
-        pipeline-via-actions-menu_ELITEA-2022.md) — additive Step 4 assertion
-        that the app auto-redirects to the Pipelines dashboard as a direct
-        consequence of the delete action (previously this test drove its own
-        navigation afterward, masking the redirect entirely).
+        pipeline-via-actions-menu_ELITEA-2022.md) — Step 4 asserts that the app
+        auto-redirects to the Pipelines dashboard as a direct consequence of
+        the delete action.
 
-        **Known product defect (step 4, sanctioned RED):** the redirect
-        (`navigate(-1)` in EliteaUI's `useDeleteApplication`) is a browser-
-        history no-op when the detail page was reached via direct navigation
-        — exactly this test's own setup (Step 2: `detail_page.navigate(pid)`,
-        a `page.goto()`, no prior in-app history entry). Confirmed live via
-        Playwright MCP (8s poll, no redirect, 0 console errors). Filed as
-        `EliteaAI/elitea-testing-public#1332`. Per `.agents/testing.md` §
-        Merge gate's analysis-time exception, Step 4's redirect assertion is
-        `soft_failures`-tagged `# Known defect: #1332`; Step 5 (pipeline
-        actually gone) is unaffected and stays a hard assertion — it reaches
-        the dashboard itself since the redirect can't be relied on while
-        #1332 stays open.
+        **The arrival path is load-bearing — do not swap Step 2 for a deep
+        link.** EliteaUI's post-delete redirect is `navigate(-1)` (React Router
+        history-back, fired from the success toast's close), so whether it
+        fires is decided entirely by how the detail page was reached. The case
+        has no navigation step between "Save" (Step 2) and "open the three-dot
+        menu" (Step 3), i.e. the user it describes arrives in-app — so this
+        test opens the pipeline by clicking its dashboard card. Reaching it via
+        `page.goto()` instead manufactures a failure the case never describes
+        (measured on dev.elitea.ai: in-app arrival redirects 3/3, deep-link
+        arrival 0/3).
+
+        Substitution declared (transit only): the pipeline itself is seeded via
+        `pipeline_api.create_pipeline()`, because the case lists the pipeline's
+        existence as a *precondition* and UI creation is covered by ELITEA-2020
+        / ELITEA-2021. The case's own observable — the redirect — is still
+        produced by the system through the real UI delete flow.
+
+        `EliteaAI/elitea-testing-public#1332` stays a real, OPEN product bug:
+        the redirect genuinely no-ops for a deep-link arrival (bookmarks,
+        shared links, browser-restored tabs). It is simply not this case's
+        scenario, so it is neither asserted nor masked here.
         """
-        with allure.step("Step 1 — Create pipeline via API"):
+        pipeline_name = f"autotest_delete_ui_pipe_{uuid.uuid4().hex[:8]}"
+
+        with allure.step("Step 1 — Create pipeline via API (precondition)"):
             pipeline = pipeline_api.create_pipeline(
-                name="autotest_delete_ui_pipe",
+                name=pipeline_name,
                 description="Will be deleted via UI",
             )
             pid = pipeline["id"]
 
         try:
-            with allure.step("Step 2 — Navigate to pipeline detail page"):
+            with allure.step(
+                "Step 2 — Open the pipeline from the Pipelines dashboard (in-app arrival)"
+            ):
+                list_page = PipelinesListPage(page)
+                list_page.navigate()
+                list_page.open_pipeline_by_name(pipeline_name)
                 detail_page = PipelineDetailPage(page)
-                detail_page.navigate(pid)
+                detail_page.wait_for_detail_page_load()
 
             with allure.step("Step 3 — Delete pipeline via three-dot menu"):
                 detail_page.delete_pipeline_via_menu(timeout=NAVIGATION_TIMEOUT)
 
-            soft_failures = []
             with allure.step(
-                "Step 4 — Verify automatic redirect to Pipelines dashboard. KNOWN "
-                "DEFECT — sanctioned RED (EliteaAI/elitea-testing-public#1332): "
-                "navigate(-1) no-ops when the detail page was reached via direct "
-                "navigation, so the app never leaves the deleted pipeline's stale "
-                "detail route"
+                "Step 4 — Verify the app auto-redirects to the Pipelines dashboard"
             ):
-                try:
-                    page.wait_for_url(
-                        lambda url: urlparse(url).path.rstrip("/").endswith("/pipelines/all"),
-                        timeout=8000,
-                    )
-                except PlaywrightTimeoutError:
-                    soft_failures.append(
-                        "Known defect https://github.com/EliteaAI/elitea-testing-public/"
-                        f"issues/1332: expected auto-redirect to the Pipelines dashboard "
-                        f"after delete, but the URL stayed at {page.url!r}"
-                    )
-
-            with allure.step("Step 5 — Verify pipeline removed from dashboard"):
-                list_page = PipelinesListPage(page)
-                if not urlparse(page.url).path.rstrip("/").endswith("/pipelines/all"):
-                    # Redirect known-broken (#1332) — reach the dashboard
-                    # explicitly so this step's own assertion (pipeline
-                    # actually gone) still runs and isn't masked by the
-                    # redirect defect above.
-                    list_page.navigate()
-                assert not list_page.pipeline_exists_in_list("autotest_delete_ui_pipe", timeout=3000), (
-                    "Pipeline 'autotest_delete_ui_pipe' should be gone after UI deletion"
+                page.wait_for_url(
+                    lambda url: urlparse(url).path.rstrip("/").endswith("/pipelines/all"),
+                    timeout=POST_DELETE_REDIRECT_TIMEOUT,
                 )
 
-            if soft_failures:
-                pytest.fail(
-                    "Soft assertion(s) failed (sanctioned RED — known defect #1332, redirect):\n"
-                    + "\n".join(soft_failures)
+            with allure.step("Step 5 — Verify pipeline removed from dashboard"):
+                # Waiting, non-vacuous absence check — see
+                # PipelinesListPage.wait_for_pipeline_absent(). It is scoped to
+                # the rendered grid on purpose: the case's Step 7 observable is
+                # the LIST, and `pipeline_exists_in_list()`'s page-wide
+                # `text="…"` match cannot express it here, because the delete
+                # success toast ("The <name> pipeline has been successfully
+                # deleted.") also carries the name and is still on screen at
+                # this point (evidenced live on dev.elitea.ai, board #2139).
+                list_page.wait_for_pipeline_absent(
+                    pipeline_name, timeout=DASHBOARD_REFRESH_TIMEOUT
                 )
         finally:
             try:
