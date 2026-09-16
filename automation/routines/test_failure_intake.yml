@@ -1478,7 +1478,7 @@ nodes:
     output:
       - issue_number
     structured_output: true
-    transition: AddLabelsToIssue
+    transition: PrepareLabelsInput
 
   - id: PrepareLabelsInput
     type: code
@@ -1495,7 +1495,7 @@ nodes:
 
         out = {
             'issue_number_int': issue_number,
-            'labels_list': f'["{issue_label}"]'
+            'issue_label': issue_label
         }
         out
     input:
@@ -1503,7 +1503,7 @@ nodes:
       - issue_label
     output:
       - issue_number_int
-      - labels_list
+      - issue_label
     structured_output: true
     transition: CheckIssueNumberValid
 
@@ -1525,20 +1525,20 @@ nodes:
   - id: AddLabelsToIssue
     type: toolkit
     toolkit_name: GitHub_Tools
-    tool: update_issue
+    tool: add_labels_to_issue
     input:
       - issue_number_int
-      - labels_list
+      - issue_label
     input_mapping:
-      issue_id:
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      issue_number:
         type: variable
         value: issue_number_int
       labels:
         type: variable
-        value: labels_list
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
+        value: issue_label
     output:
       - label_result
     structured_output: true
