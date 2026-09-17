@@ -1,0 +1,50 @@
+{
+  "runs": {
+    "20260917210650": {
+      "total": 30,
+      "details": [
+        {
+          "id": "ELITEA-1866",
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_creation_create_bucket_verify_list_files.TestToolkitCreationCreateBucketVerifyListFiles.test_create_artifact_toolkit_creates_bucket_verify_list_files",
+          "resolution": "to_fix",
+          "tracking_issue": "",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Bucket list_files returns non-empty UI output despite API reporting 0 rows \u2014 UI response parsing mismatch",
+          "reasoning": "The test ran once and failed immediately (no retries shown), with a clear assertion mismatch. The bucket API correctly returns empty rows, but the UI output captured includes the full message context. This is a product/test behavior change that needs investigation."
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestToolkitCredentialIndicators.test_toolkit_credential_indicators_e2e",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[github]",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[jira]",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[jira]",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        }
+      ]
+    }
+  }
+}
