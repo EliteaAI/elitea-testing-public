@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Click the Information section's 'Show' link — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("chat-mermaid-diagram-svg-container").locator(".node").first

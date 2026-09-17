@@ -1,0 +1,637 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Thu Sep 17 09:08:13 UTC 2026","Thu Sep 17 09:08:42 UTC 2026","28413","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"skipped","Thu Sep 17 09:07:14 UTC 2026","Thu Sep 17 09:07:14 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolkitLiveReload","","","test_blocked_toolkit_live_reload_case_insensitive","Verify blocked toolkit takes effect immediately with case-insensitive matching."
+"passed","Thu Sep 17 09:17:07 UTC 2026","Thu Sep 17 09:17:27 UTC 2026","20725","tests.ui.skills","test_skill_pin_unpin","TestSkillPinUnpin","","","test_skill_pin_moves_to_top_and_unpin_reverts","Pinning a skill (via the detail-page menu) moves it to the top of
+        the list; unpinning (same menu) reverts it."
+"passed","Thu Sep 17 09:09:14 UTC 2026","Thu Sep 17 09:09:42 UTC 2026","28187","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Thu Sep 17 09:17:54 UTC 2026","Thu Sep 17 09:18:17 UTC 2026","22606","tests.ui.artifacts","test_artifacts_upload_duplicate_keep_both","TestArtifactUploadDuplicateKeepBoth","","","'Keep both' in 'Resolve duplicates' saves both the original and a renamed copy with distinct timestamps","Keep both uploads a renamed copy; the original duplicate is never re-touched."
+"passed","Thu Sep 17 09:14:48 UTC 2026","Thu Sep 17 09:15:06 UTC 2026","18191","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Thu Sep 17 09:07:57 UTC 2026","Thu Sep 17 09:08:06 UTC 2026","9251","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+        "
+"passed","Thu Sep 17 09:08:04 UTC 2026","Thu Sep 17 09:08:16 UTC 2026","11875","tests.ui.agent_hub","test_agent_hub_like_agent_from_modal","TestAgentHubLikeAgentFromModal","","","test_agent_hub_like_agent_from_modal","Like an agent from the expanded detail modal: toggle state, increment
+        count, and verify persistence across modal close/reopen and in the
+        card list."
+"passed","Thu Sep 17 09:08:53 UTC 2026","Thu Sep 17 09:09:01 UTC 2026","8334","tests.ui.agent_hub","test_agent_hub_start_conversation_creates_new_chat","TestAgentHubStartConversationCreatesNewChat","","","test_agent_hub_start_conversation_creates_new_chat","Starting a conversation from a Catalog agent's detail modal creates a
+        new chat and redirects the user to the Chat interface with the
+        blank-conversation welcome message displayed."
+"passed","Thu Sep 17 09:08:07 UTC 2026","Thu Sep 17 09:08:13 UTC 2026","5812","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+        "
+"passed","Thu Sep 17 09:19:03 UTC 2026","Thu Sep 17 09:19:26 UTC 2026","23191","tests.ui.skills","test_skill_test_panel_no_new_conversation","TestSkillTestPanelNoNewConversation","","","test_test_panel_does_not_create_new_chat_conversation","Running a test prompt via the SkillTestPanel must not create a
+        new Chat conversation — verified via network capture, Chat sidebar
+        DOM count, and the Conversations API ground truth."
+"passed","Thu Sep 17 09:12:25 UTC 2026","Thu Sep 17 09:13:31 UTC 2026","65845","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
+        Skill entity (new unique ID) is created and correctly linked.
+
+        Steps (AFS test-specs/skills/l3_import-agent-recreates-skills-with-new-ids_ELITEA-1795.md):
+        1. (Precondition setup, mirrors ELITEA-1794) Create a Skill + an
+           Agent, attach the Skill, export the Agent via the actions
+           overflow menu.
+        2. Navigate to the Agents list; click ""Import""; verify a native
+           file chooser opens.
+        3. Select the exported file; verify the ""Import parameters""
+           preview dialog previews the embedded Agent + Skill content.
+        4. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog lists 1 agent + 1 skill.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's
+           detail page with a new, distinct Agent ID.
+        6. Verify the imported Agent's Skills section shows the Skill
+           attached (waiting on the async application_skills fetch, not
+           asserting on first paint) and the API response's skill_id is
+           new/unique.
+        7. Navigate to the Skills list; verify two cards share the Skill's
+           name (source + imported); verify the imported Skill's own
+           detail page shows a new ID and verbatim content; verify the
+           source Skill AND the source Agent are both unaffected by the
+           import (Axis 2 additions — import must be purely additive).
+        8. Edit + save the imported Agent; verify a clean save.
+        "
+"passed","Thu Sep 17 09:07:21 UTC 2026","Thu Sep 17 09:07:34 UTC 2026","12658","tests.ui.agent_hub","test_agent_hub_close_agent_detail_modal","TestAgentHubCloseAgentDetailModal","","","test_agent_hub_close_agent_detail_modal","Clicking the X button in the agent detail modal closes the modal,
+        and the user remains on the Catalog list view — read-only, zero
+        console errors, zero 4xx/5xx."
+"skipped","Thu Sep 17 09:07:13 UTC 2026","Thu Sep 17 09:07:13 UTC 2026","0","tests.ui.admin","test_analytics_default_load","TestAnalyticsDefaultLoad","","","test_analytics_page_default_load","Header, date filter bar (4 presets, ""Last 24h"" active by default,
+        From/To 1 day apart), 7-tab bar with Overview selected, and the page
+        settling out of its loading state all render as specified."
+"passed","Thu Sep 17 09:17:32 UTC 2026","Thu Sep 17 09:18:04 UTC 2026","31839","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach a Remote MCP to an agent, verify persistence across reload,
+        then remove it and verify removal persists too.
+
+        Steps (AFS test-specs/agents/l3_mcp-attach-via-tools-section_ELITEA-1950.md):
+        1. Navigate to the agent detail page.
+        2. Verify the Tools section is expanded.
+        3. Verify the Toolkit/MCP add buttons are visible (live-accurate
+           equivalent of the case's ""tool type tabs"" — see module docstring).
+        4. Click ""+ MCP""; the shared popper opens with search + menu items.
+        5. Select the target MCP by name.
+        6. Verify the MCP appears as a card in the Tools section.
+        7. Verify the attach auto-saves (PATCH .../tool/prompt_lib/... -> 201;
+           no separate agent-level Save step exists for this flow).
+        8. Reload; verify the MCP is still attached.
+        9. Remove the MCP; confirm the ""Remove MCP?"" dialog; verify it's gone,
+           including after a fresh reload.
+
+        Args:
+            page: Playwright page fixture.
+            agent_id: Fresh agent created by fixture (auto-cleanup).
+            mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
+        "
+"skipped","Thu Sep 17 09:19:05 UTC 2026","Thu Sep 17 09:19:05 UTC 2026","0","tests.ui.artifacts","test_bucket_permissions_api","TestBucketPermissionsAPI","","","No Access: All API operations return 403 Forbidden","Verify that 'No access' permission blocks GET, POST, and DELETE API calls.
+
+        ELITEA-2493: User B with 'No access' exception cannot access the bucket
+        via direct API calls — all operations must return 403 Forbidden.
+
+        Steps:
+        1. Admin sets User B to 'No access' for the test bucket (UI)
+        2. Verify GET request returns 403 Forbidden (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
+        "
+"passed","Thu Sep 17 09:10:30 UTC 2026","Thu Sep 17 09:10:37 UTC 2026","7038","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Thu Sep 17 09:09:28 UTC 2026","Thu Sep 17 09:09:57 UTC 2026","29206","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"passed","Thu Sep 17 09:07:34 UTC 2026","Thu Sep 17 09:07:46 UTC 2026","12613","tests.ui.agent_hub","test_agent_hub_copy_link_from_modal","TestAgentHubCopyLinkFromModal","","","test_copy_link_from_modal_navigates_to_agent","Copy a link from the agent detail modal's Share action, navigate to it
+        in a new page context, and verify the modal auto-opens showing the same
+        agent's details (name, description, starters, welcome message)."
+"passed","Thu Sep 17 09:11:15 UTC 2026","Thu Sep 17 09:11:28 UTC 2026","13176","tests.ui.agents","test_agent_embedded_chat_shift_enter","TestAgentEmbeddedChatShiftEnter","","","test_shift_enter_new_line_enter_sends","Shift+Enter inserts a newline without sending; Enter submits the
+        accumulated multi-line message and triggers a response."
+"passed","Thu Sep 17 09:15:54 UTC 2026","Thu Sep 17 09:16:12 UTC 2026","18452","tests.ui.agents","test_build_with_ai_skill_from_agent","TestBuildWithAISkillFromAgent","","","test_build_with_ai_skill_auto_attaches_and_redirects_to_agent","Creating a Skill via Build with AI from an Agent's SKILLS section
+        redirects back to the Agent editor (never the Skill details page),
+        auto-attaches the new Skill once the async attach chain completes,
+        and the attachment persists after Save + reload.
+
+        Steps (AFS
+        test-specs/agents/l2_build-with-ai-skill-from-agent-auto-attaches-and-redirects_ELITEA-1999.md):
+        1. Open the fixture Agent for editing; in the SKILLS section click
+           ""+ Skill"" -> ""Create new""; verify navigation to
+           /skills/create?source_application_id=...&return_url=....
+        2. Click ""Build with AI""; fill the prompt; click Generate; verify
+           the generate-draft POST resolves 200 and the review form shows
+           the generated Name/Description/Instructions.
+        3. Click ""Create Skill""; verify the creation POST resolves 201 and
+           the URL transitions to /agents/all/{agent_id}?..., NOT to a
+           Skill-details URL.
+        4. Verify the user lands on the Agent editor, not the Skill details
+           page.
+        5. Verify the new Skill is automatically attached (async — poll,
+           do not assert immediately, see SKILL_ATTACH_TIMEOUT).
+        6. Save the Agent and reload it; verify the attached Skill is still
+           present and correctly linked.
+        "
+"passed","Thu Sep 17 09:13:05 UTC 2026","Thu Sep 17 09:13:24 UTC 2026","19045","tests.ui.artifacts","test_artifacts_file_preview_edit_save","TestArtifactFilePreviewEditSave","","","Editing file content and saving persists the change","Editing content and clicking Save persists the change to the backend."
+"passed","Thu Sep 17 09:07:25 UTC 2026","Thu Sep 17 09:08:04 UTC 2026","39034","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: '1bucket'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Thu Sep 17 09:12:46 UTC 2026","Thu Sep 17 09:12:59 UTC 2026","12820","tests.ui.agents","test_agent_save_as_version","TestAgentSaveAsVersion","","","test_save_as_version_creates_named_version_visible_in_dropdown","Editing Instructions and clicking Save As Version creates a named
+        version that appears (and is active) in the VERSION dropdown; switching
+        back to 'base' reverts the Instructions field to its original content
+        (ELITEA-1890, Step 8)."
+"passed","Thu Sep 17 09:18:46 UTC 2026","Thu Sep 17 09:19:05 UTC 2026","18846","tests.ui.artifacts","test_artifacts_upload_multiple_files","TestArtifactsUploadMultipleFiles","","","Upload multiple files at once via the toolbar upload button","Select 3 files in one native-picker call, upload, verify metadata.
+
+        Read-only from the fresh bucket's perspective going in — the bucket
+        itself is the test's own mutation (via ``artifact_bucket``, deleted
+        in its own teardown), the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        the multi-file upload, so there is no pre-existing empty bucket to
+        assert against read-only.
+        "
+"passed","Thu Sep 17 09:11:56 UTC 2026","Thu Sep 17 09:12:19 UTC 2026","22979","tests.ui.agents","test_agent_publish_unpublish_version","TestAgentPublishUnpublishVersion","","","test_publish_draft_version_then_unpublish_reverts_to_draft","Publishing a Draft version clones it into a Published version and
+        makes Unpublish available; clicking Unpublish reverts that version's
+        status back to Draft."
+"passed","Thu Sep 17 09:12:59 UTC 2026","Thu Sep 17 09:13:30 UTC 2026","30849","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"passed","Thu Sep 17 09:10:53 UTC 2026","Thu Sep 17 09:11:25 UTC 2026","31959","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting 2 individual files via checkbox (partial selection) drives the header checkbox indeterminate and deletes only those files","Checking 2 file checkboxes (partial selection) drives the header
+        'select all' checkbox into the INDETERMINATE state, leaves sibling
+        folder checkboxes unchecked, and deleting via the toolbar removes
+        only the 2 selected files — subfolders completely unaffected.
+
+        Own fresh `artifact_bucket` instance (function-scoped fixture) —
+        deliberately NOT sharing state with `test_delete_subfolder_via_checkbox`
+        above, since that test's own core assertion (a1 gets deleted) directly
+        conflicts with this test's own precondition (a1 must survive).
+        "
+"passed","Thu Sep 17 09:09:11 UTC 2026","Thu Sep 17 09:09:19 UTC 2026","8349","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"passed","Thu Sep 17 09:15:53 UTC 2026","Thu Sep 17 09:16:23 UTC 2026","29685","tests.ui.skills","test_skill_export_import","TestSkillExportImport","","","test_export_and_import_skill_base_version","Export a skill's base version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Navigate to create-skill form; Save starts disabled.
+        2. Fill name/description/tags/instructions; Save enables.
+        3. Save; note the source skill ID.
+        4. Export the base version via the overflow menu; verify .md download.
+        5. Read the exported file; verify frontmatter + instructions body.
+        6. Navigate to Skills list; click Import; verify file chooser.
+        7. Upload the exported file; verify the Import parameters dialog.
+        8. Confirm import; verify navigation + success toast + new unique ID.
+        9. Verify imported skill's version/name/description/tags/instructions.
+        10. Edit + save the imported skill; verify a clean save.
+        "
+"skipped","Thu Sep 17 09:07:14 UTC 2026","Thu Sep 17 09:07:14 UTC 2026","0","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_expired_token_shows_expired_icon_and_label","ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
+        cell shows the gray/expired state icon and the exact 'Expired'
+        label. Read-only: uses existing live project data, no token created
+        or deleted. (ELITEA-2284 steps 4-5 — active token, green icon, 'in X
+        days' — are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 12 above; not
+        repeated here.)"
+"passed","Thu Sep 17 09:13:30 UTC 2026","Thu Sep 17 09:14:08 UTC 2026","37588","tests.ui.agents","test_agent_version_selector_order","TestAgentVersionSelectorOrder","","","test_version_selector_lists_versions_in_correct_order","The VERSION dropdown lists all versions with name + creation-time +
+        author metadata, sorted purely by created_at descending with 'base'
+        always last, and marks the default version with a pin icon whose
+        position is independent of the sort (CLARIFICATIONs #1091 and #1877)."
+"passed","Thu Sep 17 09:15:33 UTC 2026","Thu Sep 17 09:16:44 UTC 2026","71138","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
+
+        ELITEA-1327 regression: when an agent creates N files in a single tool call,
+        all N files must be downloadable via the UI.  Before the fix, only the last
+        file written would be persisted; all earlier files were silently lost.
+        "
+"passed","Thu Sep 17 09:10:07 UTC 2026","Thu Sep 17 09:10:30 UTC 2026","22745","tests.ui.agents","test_agent_copy_version_link","TestAgentCopyVersionLink","","","test_copy_version_link_produces_version_specific_url","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        AGENT-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab, through the project-switch redirect hop —
+        opens the correct agent at the correct named version."
+"passed","Thu Sep 17 09:12:05 UTC 2026","Thu Sep 17 09:12:47 UTC 2026","42123","tests.ui.artifacts","test_artifacts_duplicate_bucket_name","TestArtifactDuplicateBucketName","","","Duplicate bucket name is rejected; no duplicate is created","Attempting to create a bucket with a colliding name is rejected.
+
+        The precondition bucket is a genuine mutation the observable
+        requires (workflow skill Hard Rule 10: the case's own subject is
+        ""does the system reject a name that collides with something real"",
+        so a real collision target must exist) — created via the SAME ""New
+        Bucket"" UI form the duplicate-attempt itself uses, keeping both
+        creations on the identical code path the case exercises (not the
+        ``artifact_bucket`` API fixture).
+        "
+"passed","Thu Sep 17 09:14:09 UTC 2026","Thu Sep 17 09:14:44 UTC 2026","34628","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
+"passed","Thu Sep 17 09:11:01 UTC 2026","Thu Sep 17 09:11:14 UTC 2026","12801","tests.ui.agents","test_agent_embedded_chat_send_message","TestAgentEmbeddedChatSendMessage","","","test_send_message_via_enter_and_verify_non_empty_response","Typing ""PING"" and pressing Enter yields a non-empty response
+        containing ""PONG"", and clears the chat input."
+"passed","Thu Sep 17 09:16:13 UTC 2026","Thu Sep 17 09:16:27 UTC 2026","14416","tests.ui.agents","test_import_agent_valid_md_file","TestImportAgentValidMdFile","","","test_import_agent_valid_md_file","Import a hand-authored (not app-exported) ``.md`` file and verify
+        the resulting Agent's Name/Description/Instructions/Model all match
+        the source file verbatim.
+
+        The fixture's ``model:`` value is derived at run time from the
+        project's live model catalog (``credential_api.list_models()`` —
+        the same ``GET /configurations/models/{project_id}`` the import
+        wizard itself reads), never hardcoded: an unknown model name is
+        silently replaced by the wizard's ``items[0]`` fallback, so a stale
+        literal turns this assertion into a false red (board #2083). The
+        catalog is used as an ORACLE only — the imported agent's Model is
+        still produced entirely by the product.
+
+        Steps (AFS
+        test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md):
+        1. Navigate to the Agents dashboard; verify the ``Agents`` header,
+           the Import button, and that the list region settled into a
+           terminal, non-error state (cards OR the ""No agents yet"" empty
+           state). Makes no claim about pre-existing agents — zero is a
+           valid environment (AFS § Environment Independence).
+        2. Click the Import button and select the hand-authored ``.md``
+           fixture; verify the ""Import parameters"" preview dialog opens.
+        3. Verify the dialog shows an entity card for the agent (name
+           matches the fixture verbatim).
+        4. Confirm the dialog's Import button; verify the ""Import Complete""
+           success dialog lists the new agent, backed by a
+           ``201 Created`` on the import_wizard endpoint.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's detail
+           page, then re-open the Agents dashboard and verify a card with
+           the correct name.
+        6. Open the imported agent; verify Name, Description, Instructions,
+           and Model all match the source file verbatim.
+        "
+"skipped","Thu Sep 17 09:07:14 UTC 2026","Thu Sep 17 09:07:14 UTC 2026","0","tests.ui.admin","test_notification_text_content","TestNotificationTextContent","","","test_notification_text_content_renders_correctly","All 4 known notification types render their exact expected templates;
+        no row (of any type) shows raw JSON, broken HTML, or ""undefined"" text."
+"passed","Thu Sep 17 09:07:56 UTC 2026","Thu Sep 17 09:08:03 UTC 2026","6713","tests.ui.agent_hub","test_agent_hub_filter_single_category","TestAgentHubFilterSingleCategory","","","test_agent_hub_filter_by_single_category","Clicking a single category filter-rail chip selects that chip and
+        filters the Agent Hub content to that category's agents only."
+"skipped","Thu Sep 17 09:07:14 UTC 2026","Thu Sep 17 09:07:14 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestSensitiveToolLiveReload","","","test_sensitive_tool_live_reload_case_insensitive","Verify sensitive tool triggers authorization dialog immediately after config change."
+"skipped","Thu Sep 17 09:07:14 UTC 2026","Thu Sep 17 09:07:14 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolLiveReload","","","test_blocked_tool_live_reload_case_insensitive","Verify blocked tool takes effect immediately with case-insensitive matching."
+"passed","Thu Sep 17 09:16:24 UTC 2026","Thu Sep 17 09:16:58 UTC 2026","34799","tests.ui.skills","test_skill_export_import","TestSkillExportImportNonBaseVersion","","","test_import_skill_non_base_version","Export a skill's ver_1 version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Create a Skill with base version; note the source skill ID.
+        2. Edit instructions, click ""Save As Version"" → create `ver_1`.
+        3. With `ver_1` selected, export via the overflow menu; verify
+           the downloaded filename embeds the version name.
+        4. Read the exported file; verify frontmatter (incl. `elitea_version`)
+           and instructions body.
+        5. Navigate to Skills list; import the exported file; verify the
+           Import parameters dialog previews the ver_1 content.
+        6. Confirm import; verify navigation + unique new skill ID.
+        7. Verify imported skill's version is `base` and fields match the
+           exported ver_1 content.
+        8. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Thu Sep 17 09:19:26 UTC 2026","Thu Sep 17 09:19:45 UTC 2026","18971","tests.ui.skills","test_skill_test_panel_response_actions","TestSkillTestPanelResponseActions","","","test_test_panel_response_actions_enabled","Read aloud and Copy to clipboard are enabled and clickable on a
+        completed test-panel response."
+"passed","Thu Sep 17 09:16:59 UTC 2026","Thu Sep 17 09:17:07 UTC 2026","7404","tests.ui.skills","test_skill_export_import","TestSkillImportMissingFrontmatter","","","test_import_skill_missing_frontmatter_shows_validation_error","Upload a .md file missing the required `name` frontmatter key.
+
+        Steps (see AFS for full detail):
+        1. Navigate to Skills list; capture baseline skill count/IDs.
+        2. Click Import, select the fixture file; native file chooser opens.
+        3. Complete the upload; verify NO ""Import parameters"" dialog appears,
+           and an error toast shows a message naming the missing fields.
+        4. Verify no Skill was created (API IDs unchanged) and no
+           `skill_import` network request fired at all.
+        "
+"passed","Thu Sep 17 09:18:06 UTC 2026","Thu Sep 17 09:18:15 UTC 2026","8696","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
+        "
+"passed","Thu Sep 17 09:15:29 UTC 2026","Thu Sep 17 09:15:53 UTC 2026","23632","tests.ui.skills","test_skill_copy_link","TestSkillCopyLink","","","test_copy_link_copies_valid_url_to_correct_skill_and_version","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        SKILL-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab — opens the correct Skill at the correct
+        named version, with no ""not found"" error."
+"passed","Thu Sep 17 09:12:19 UTC 2026","Thu Sep 17 09:12:46 UTC 2026","26348","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"passed","Thu Sep 17 09:08:16 UTC 2026","Thu Sep 17 09:08:27 UTC 2026","11548","tests.ui.agent_hub","test_agent_hub_like_agent_list_view","TestAgentHubLikeAgentListView","","","test_agent_hub_like_agent_from_list_view","Liking an unliked agent card increments its count, fills the heart
+        icon, and persists across a full page refresh; unliking (cleanup)
+        restores the original baseline."
+"passed","Thu Sep 17 09:11:27 UTC 2026","Thu Sep 17 09:11:52 UTC 2026","25367","tests.ui.artifacts","test_artifacts_download_multiple_files_zip","TestArtifactDownloadMultipleFilesZip","","","Selecting 2 files via checkbox and clicking 'Download files' downloads them as a ZIP with a live progress dialog","Selecting 2 files and clicking 'Download files' produces a ZIP.
+
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with 4 files under ``a1/``) — the
+        minimal state this observable inherently requires (workflow skill
+        Hard Rule 10) — then every assertion reads that state without
+        further mutation.
+        "
+"passed","Thu Sep 17 09:11:53 UTC 2026","Thu Sep 17 09:12:04 UTC 2026","11210","tests.ui.artifacts","test_artifacts_download_single_file_dropdown","TestArtifactDownloadSingleFileDropdown","","","Single file downloads immediately via the actions dropdown, with no ZIP packaging","Downloading via the dropdown's 'Download' item is immediate, no ZIP.
+
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with ``a1/sample.txt``) — the minimal
+        state this observable inherently requires (workflow skill Hard
+        Rule 10) — then every assertion reads that state without further
+        mutation (Delete is verified visible, never clicked).
+        "
+"passed","Thu Sep 17 09:14:09 UTC 2026","Thu Sep 17 09:14:59 UTC 2026","49561","tests.ui.artifacts","test_artifacts_file_preview_markdown_raw_edit_save","TestArtifactFilePreviewMarkdownRawEditSave","","","Markdown file Raw tab enables editing; Save persists and Preview auto-shows the change","Raw tab enables editing; Save persists the change and re-shows it in Preview."
+"passed","Thu Sep 17 09:11:07 UTC 2026","Thu Sep 17 09:12:25 UTC 2026","77252","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — the removed agent's skill should NOT be listed.
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state.
+        "
+"passed","Thu Sep 17 09:10:14 UTC 2026","Thu Sep 17 09:10:52 UTC 2026","37844","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting a subfolder via checkbox and confirming toolbar delete removes the folder and its contents; other items unaffected","Deleting a subfolder via checkbox removes it and its contents only.
+
+        Bucket is mutated exactly once at setup (seeded with 5 keys — the
+        minimal fresh state this observable inherently requires, since the
+        case's own purpose is destructive: deleting part of the bucket's
+        contents; workflow skill Hard Rule 10) — every assertion afterward
+        reads that state (plus the one delete mutation the case itself
+        drives) without further seeding.
+        "
+"passed","Thu Sep 17 09:07:30 UTC 2026","Thu Sep 17 09:08:29 UTC 2026","58964","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"passed","Thu Sep 17 09:17:26 UTC 2026","Thu Sep 17 09:17:53 UTC 2026","26889","tests.ui.artifacts","test_artifacts_upload_duplicate_detected_modal","TestArtifactUploadDuplicateDetectedModal","","","Uploading a same-named file opens the 'Resolve duplicates' modal with the correct message, filename, and all four action buttons","Uploading a same-named file opens 'Resolve duplicates' with full content.
+
+        Read-only from the bucket's perspective: the bucket is seeded once
+        with the duplicate-detection target, then the test never mutates
+        state further — it only inspects the modal that opens (workflow
+        skill Hard Rule 10 — minimal mutation for the observable).
+        "
+"passed","Thu Sep 17 09:16:28 UTC 2026","Thu Sep 17 09:17:27 UTC 2026","59576","tests.ui.agents","test_import_agent_zip_nested_agent_dependencies","TestImportAgentZipNestedAgentDependencies","","","test_import_agent_zip_nested_agent_dependencies","Export a main Agent with a nested Agent dependency attached
+        (produces a .zip), import it back, and verify both entities are
+        recreated with new IDs and correctly linked.
+
+        Steps (AFS test-specs/agents/l3_import-agent-zip-nested-dependencies_ELITEA-1902.md):
+        1. (Precondition setup) Create a nested Agent, then a main Agent
+           with the nested Agent attached via the ""+ Agent"" picker.
+        2. Export the main Agent via the actions overflow menu; verify a
+           `.zip` file is downloaded.
+        3. Unzip and inspect the archive's contents; verify it contains one
+           `.agent.md` per entity (main + nested), and the main entity's
+           frontmatter references the nested Agent.
+        4. Navigate to Agents list; import the `.zip`; verify the ""Import
+           parameters"" preview dialog opens.
+        5. Verify the import wizard lists entity cards for the main agent
+           AND the nested dependency.
+        6. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog.
+        7. Verify the success dialog lists both new entities (""2 agents"").
+        8. Click ""Got it""; verify the main agent and nested agent are both
+           created with new, distinct IDs and correctly linked (Tools
+           section shows the nested agent attached).
+        "
+"passed","Thu Sep 17 09:11:48 UTC 2026","Thu Sep 17 09:11:56 UTC 2026","7795","tests.ui.agents","test_agent_name_character_limit","","","","test_agent_name_truncated_at_32_characters","Name field truncates input to 32 chars, no error at the limit, Save
+    enables once Description is also filled (ELITEA-1900).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Thu Sep 17 09:08:38 UTC 2026","Thu Sep 17 09:09:13 UTC 2026","34879","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket_one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Thu Sep 17 09:13:31 UTC 2026","Thu Sep 17 09:14:49 UTC 2026","78001","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
+        hover-revealed remove control + confirmation dialog, and verify Skill
+        A remains attached while Skill B survives standalone.
+
+        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
+        1. Create Skill A and Skill B via UI.
+        2. Create an Agent.
+        3. Attach both Skills to the Agent (precondition for this case).
+        4. Locate the hover-revealed ""remove skill"" control for Skill B.
+        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
+           from the UI list while Skill A remains.
+        6. Confirm persistence via a full page reload (detach auto-saves via
+           API; no explicit agent-level Save is available for this action).
+        7. Reopen the Agent (same reload satisfies this — no separate
+           close/reopen gesture exists in the live flow); only Skill A is
+           attached.
+        8. Navigate directly to Skill B's detail page and to the Skills list;
+           Skill B still exists standalone (detached, not deleted).
+        "
+"passed","Thu Sep 17 09:13:44 UTC 2026","Thu Sep 17 09:14:08 UTC 2026","24790","tests.ui.artifacts","test_artifacts_file_preview_markdown_default_mode","TestArtifactFilePreviewMarkdownDefaultMode","","","Markdown file opens in Preview mode by default with Save/Discard inactive","A Markdown file opens with Preview active, rendered, editing blocked."
+"passed","Thu Sep 17 09:08:42 UTC 2026","Thu Sep 17 09:09:10 UTC 2026","27616","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Thu Sep 17 09:08:05 UTC 2026","Thu Sep 17 09:08:38 UTC 2026","32519","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'new-bucket$'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Thu Sep 17 09:15:00 UTC 2026","Thu Sep 17 09:15:28 UTC 2026","28166","tests.ui.artifacts","test_artifacts_file_preview_open_editor_ui","TestArtifactFilePreviewOpenEditorUI","","","Opening a supported text file via the View/Edit icon shows the full editor UI","Opening a file via the View/Edit icon renders the full editor UI contract."
+"passed","Thu Sep 17 09:07:21 UTC 2026","Thu Sep 17 09:07:40 UTC 2026","18880","tests.ui.agents","test_agent_add_variables_persist_after_reload","TestAgentAddVariablesPersistAfterReload","","","test_add_two_variables_and_verify_they_persist_after_reload","Adding two {{variable}} references to Instructions, entering their
+        values, and saving persists both name+value pairs after a
+        full-navigation reload — asserted via both the DOM and the Save PUT
+        response body."
+"passed","Thu Sep 17 09:09:08 UTC 2026","Thu Sep 17 09:09:17 UTC 2026","9047","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
+"passed","Thu Sep 17 09:10:37 UTC 2026","Thu Sep 17 09:11:01 UTC 2026","23687","tests.ui.agents","test_agent_embedded_chat_conversation_starter_chips","TestConversationStarterChipsVisibleAndClickable","","","test_conversation_starter_chips_visible_and_clickable","Both configured starters render as chips in the embedded chat
+        before any message, clicking one pre-fills the input (no auto-send,
+        chip row disappears immediately), and explicitly sending it produces
+        a real agent response.
+
+        Step 8's Send is a plain (non-force) click gated on the send POST's own
+        201, and ""the agent responded"" is proven by the
+        `skill-test-last-response` answer element — not by a non-empty text read
+        that the loading placeholder also satisfies. See the module docstring
+        for the full rationale (issue #1812).
+        "
+"passed","Thu Sep 17 09:20:16 UTC 2026","Thu Sep 17 09:20:25 UTC 2026","9392","tests.ui.skills","test_skill_version_set_default","TestSkillVersionSetDefault","","","test_version_dropdown_set_default_shows_control_and_confirmation","Version dropdown shows a pin/set-as-default control per row;
+        confirming sets the named version as default and shows a
+        confirmation toast plus a persistent pin-icon/reorder indicator."
+"passed","Thu Sep 17 09:16:45 UTC 2026","Thu Sep 17 09:17:25 UTC 2026","40199","tests.ui.artifacts","test_artifacts_upload_duplicate_cancel","TestArtifactUploadDuplicateCancel","","","Cancel in 'Resolve duplicates' modal aborts entire upload, including the non-duplicate file","Cancel in the duplicate-resolution modal stops the WHOLE upload.
+
+        Read-only from the fresh bucket's perspective at the end: the bucket
+        is deliberately mutated once (seeded with sample.txt) so the
+        duplicate can be triggered at all — this is the minimal state the
+        observable inherently requires (workflow skill Hard Rule 10) — then
+        the test proves that mutation is the ONLY one that ever lands.
+        "
+"passed","Thu Sep 17 09:08:40 UTC 2026","Thu Sep 17 09:08:53 UTC 2026","12993","tests.ui.agent_hub","test_agent_hub_search_bar_filters_in_real_time","TestAgentHubSearchBarFiltersInRealTime","","","test_agent_hub_search_bar_filters_in_real_time","Typing a partial term into the Catalog search bar filters the
+        agent list in real time via a single debounced request; clearing
+        the typed text restores the exact original unfiltered set."
+"passed","Thu Sep 17 09:19:45 UTC 2026","Thu Sep 17 09:20:16 UTC 2026","30260","tests.ui.skills","test_skill_test_panel_version_instructions","TestSkillTestPanelVersionInstructions","","","test_test_panel_uses_selected_skill_version_instructions","Switching the VERSION selector changes which version's instructions
+        the test panel's AI response reflects — v1 (""Always say V1"") vs
+        base (""Always say BASE"") for the identical prompt."
+"passed","Thu Sep 17 09:11:28 UTC 2026","Thu Sep 17 09:11:47 UTC 2026","19227","tests.ui.agents","test_agent_icon_management","TestAgentIconManagement","","","test_agent_icon_change_persists_on_list_card","Selecting a new icon in the picker updates the header immediately
+        and the identical icon persists on the agent's dashboard card.
+
+        Currently SANCTIONED RED on the ""immediately"" half — open product
+        defect #2055 (see module docstring): the header ``<img>`` is not
+        rendered until a reload. Those two assertions are soft-aggregated and
+        still assert the correct behaviour; everything else is hard and green.
+        "
+"skipped","Thu Sep 17 09:19:11 UTC 2026","Thu Sep 17 09:19:11 UTC 2026","0","tests.ui.artifacts","test_bucket_permissions_api","TestBucketPermissionsAPI","","","Read-only: GET allowed, POST/DELETE return 403 Forbidden","Verify that 'Read-only' permission allows GET but blocks POST and DELETE.
+
+        ELITEA-2494: User B with 'Read-only' exception can read files (GET returns 200)
+        but cannot write or delete (POST/DELETE return 403 Forbidden).
+
+        Steps:
+        1. Admin sets User B to 'Read-only' for the test bucket (UI)
+        2. Verify GET request returns 200 OK with file content (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
+        "
+"passed","Thu Sep 17 09:13:25 UTC 2026","Thu Sep 17 09:13:42 UTC 2026","16982","tests.ui.artifacts","test_artifacts_file_preview_image_restricted_controls","TestArtifactFilePreviewImageRestrictedControls","","","Image file opens directly as image preview with inactive/absent edit controls","An image file renders directly, with edit controls absent or disabled."
+"passed","Thu Sep 17 09:09:43 UTC 2026","Thu Sep 17 09:10:13 UTC 2026","30163","tests.ui.artifacts","test_artifacts_create_bucket_upload_file","TestArtifactCreateBucketAndUploadFile","","","Create a bucket via the '+ Artifact Bucket' form and upload a file via the bucket-row dot-menu","Create a bucket via the form, upload a file via the bucket-menu.
+
+        The bucket is the test's own mutation (created via the UI, deleted
+        in teardown) — the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        bucket creation, so there is no pre-existing stable bucket to
+        assert against read-only.
+        "
+"passed","Thu Sep 17 09:10:35 UTC 2026","Thu Sep 17 09:11:07 UTC 2026","32259","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
+        the actions overflow menu, and verify the downloaded file's raw
+        content embeds the Skill's full content verbatim.
+
+        Steps (AFS test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md):
+        1. Create a Skill via UI, with a planted unique marker string in its
+           instructions.
+        2. Create an Agent via UI.
+        3. Attach the Skill to the Agent (case precondition).
+        4. Confirm the Agent detail view is open with the Skill attached
+           (already satisfied by step 3).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify it's a YAML
+           frontmatter + markdown body, with the Skill's name, `base`
+           version, and full instructions (including the marker) embedded
+           verbatim in the `skills:` list.
+        "
+"passed","Thu Sep 17 09:18:16 UTC 2026","Thu Sep 17 09:19:02 UTC 2026","46567","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"passed","Thu Sep 17 09:08:28 UTC 2026","Thu Sep 17 09:08:34 UTC 2026","6435","tests.ui.agent_hub","test_agent_hub_open_agent_detail_modal","TestAgentHubOpenAgentDetailModal","","","test_agent_hub_open_agent_detail_modal","Clicking a Catalog agent card opens the preview modal as an overlay,
+        displaying icon, name, owner, liked status, overflow menu, close
+        button, description, CHAT STARTERS section, Welcome Message section,
+        and the Start Chat button — read-only, zero console errors, zero
+        4xx/5xx."
+"passed","Thu Sep 17 09:08:30 UTC 2026","Thu Sep 17 09:10:35 UTC 2026","124942","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 6 Skills + an Agent, attach 5 of the Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
+
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 6 distinct Skills via the UI, under run-unique names — the
+           first 5 are the attach set, the 6th is never attached and backs
+           Step 9's ""no 6th attach"" assertions. The case's own Test Data
+           table instructs the test to create 6, so the precondition is
+           owned by the test rather than borrowed from pre-existing project
+           data.
+        1b. Confirm all 6 created Skills read back from the project.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
+        "
+"passed","Thu Sep 17 09:07:47 UTC 2026","Thu Sep 17 09:07:56 UTC 2026","9119","tests.ui.agent_hub","test_agent_hub_filter_multiple_categories","TestAgentHubFilterMultipleCategories","","","test_agent_hub_filter_by_multiple_categories","Clicking multiple category filter-rail chips accumulates filters:
+        both chips remain selected and agents from both categories display
+        simultaneously in separate labeled sections."
+"passed","Thu Sep 17 09:15:11 UTC 2026","Thu Sep 17 09:15:53 UTC 2026","41285","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Thu Sep 17 09:09:57 UTC 2026","Thu Sep 17 09:10:05 UTC 2026","7334","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+        "
+"passed","Thu Sep 17 09:14:49 UTC 2026","Thu Sep 17 09:15:29 UTC 2026","39375","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
+        selector shows the default version, opens a real Versions menu, and
+        persists across a full page reload.
+
+        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
+        1. Create a Skill with a saved `base` version.
+        2. Create an Agent.
+        3. Locate the Skills attachment section (expanded by default).
+        4-5. Attach the Skill; verify the counter updates and the card renders.
+        6. Verify the attached Skill card shows a version selector, and that
+           clicking it (via a correctly-scoped `.version-text` locator, NOT a
+           role-based one) opens a real ""Versions"" menu — hard-asserted
+           functional flow per the AFS (known defect #46 is a handle-quality/
+           accessibility gap, not a flaky functional failure).
+        7. Confirm the default version (`base`) is shown pre-selected, both
+           on the card and as the sole entry in the opened Versions menu.
+        8. Confirm persistence via a full page reload (no explicit
+           agent-level Save is available — attach is auto-saved via API).
+        "
+"skipped","Thu Sep 17 09:07:14 UTC 2026","Thu Sep 17 09:07:14 UTC 2026","0","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_invalid_token_name_shows_error_and_keeps_generate_disabled","ELITEA-2286 — a token name containing any character outside
+        [a-zA-Z0-9_-] (special characters or a space) shows the validation
+        error and keeps Generate disabled; replacing it with a conforming name
+        clears the error and re-enables Generate. Read-only against the
+        create-token FORM: never clicks Generate, creates no token, needs no
+        cleanup. (The empty-name-disables-Generate and
+        fresh-valid-name-enables-Generate observables are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 2/Step 3 — not
+        repeated here.)"
+"passed","Thu Sep 17 09:09:02 UTC 2026","Thu Sep 17 09:09:08 UTC 2026","5840","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
+
+        Steps:
+        1. Navigate to Agent Hub (Catalog)
+        2. Click the Trending category filter chip
+        3. Verify the filter is highlighted/active
+        4. Verify agents are displayed under Trending section
+        5. Verify the section header ""Trending"" is visible
+        "
+"passed","Thu Sep 17 09:09:20 UTC 2026","Thu Sep 17 09:09:26 UTC 2026","6845","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2.
+        "
+"passed","Thu Sep 17 09:18:18 UTC 2026","Thu Sep 17 09:18:45 UTC 2026","27503","tests.ui.artifacts","test_artifacts_upload_duplicate_skip","TestArtifactUploadDuplicateSkip","","","'Skip' in 'Resolve duplicates' uploads only the non-duplicate file, leaves the duplicate untouched","Skip uploads ONLY the non-duplicate file; the duplicate is never touched."
+"passed","Thu Sep 17 09:12:48 UTC 2026","Thu Sep 17 09:13:04 UTC 2026","16071","tests.ui.artifacts","test_artifacts_file_preview_actions_dropdown","TestArtifactFilePreviewActionsDropdown","","","Editor panel's actions dropdown contains Copy Content, Download, Delete and each works correctly","The editor panel's dropdown shows the right items and each action works."
+"passed","Thu Sep 17 09:07:49 UTC 2026","Thu Sep 17 09:07:56 UTC 2026","7072","tests.ui.agents","test_agent_build_with_ai_role_visibility","TestAgentBuildWithAIButtonRoleVisibility","","","test_build_with_ai_button_visible_for_admin_role","Magic Wand (""Build with AI"") button is visible, correctly
+        labelled, and functional (opens the generation modal) for the
+        admin-equivalent TEST_USER on the New Agent creation page."
+"passed","Thu Sep 17 09:08:34 UTC 2026","Thu Sep 17 09:08:40 UTC 2026","5346","tests.ui.agent_hub","test_agent_hub_page_loads_private_project","TestAgentHubPageLoadsPrivateProject","","","test_agent_hub_page_loads_private_project","Agent Hub (Catalog) page loads without error for a Private-project
+        user: heading, search bar, full category filter rail, and agent
+        cards are all visible, with zero console errors."
+"passed","Thu Sep 17 09:07:40 UTC 2026","Thu Sep 17 09:07:49 UTC 2026","8525","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","The agent detail page's breadcrumb back-navigation returns to the
+    Agents dashboard with the list intact (ELITEA-1869).
+
+    Read-only: reuses whichever agent already sits first in the project's
+    Agents list, creates nothing and cleans nothing up. The ``agent_id``
+    fixture is deliberately NOT used — the test clicks the first card, never
+    the created agent, so the fixture was pure per-invocation cost, and
+    read-only against pre-existing data is this project's default where the
+    observable allows it (``.agents/testing.md`` § Test data strategy).
+    (Secondary: that fixture's ``AgentAPI.create_agent()`` path was never
+    re-verified after #524's 2026-07-16 UI-path fix — a reason not to take an
+    unnecessary dependency, not a claimed blocker.)
+
+    The arrival at the detail page is an in-app card click, never a
+    ``page.goto`` deep link: for a back-navigation case the arrival path is
+    part of what produces the observable (.agents/testing.md § Fidelity policy
+    / the ELITEA-2022 wrong-interface-precondition entry).
+    "
