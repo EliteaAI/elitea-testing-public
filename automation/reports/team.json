@@ -1,39 +1,45 @@
 {
-  "generated": "2026-09-14T12:43:39.574Z",
+  "generated": "2026-09-17T09:14:31.453Z",
   "window": null,
-  "sessions": 132,
-  "people": 1,
+  "sessions": 171,
+  "people": 2,
   "totals": {
-    "sessions": 132,
-    "costUsd": 5505.942161499998,
-    "priced": 132,
+    "sessions": 171,
+    "costUsd": 5795.211159299999,
+    "priced": 170,
     "tokens": {
-      "input": 1990571,
-      "output": 37612978,
-      "cacheRead": 9297855036,
-      "cacheWrite": 244781582
+      "input": 2096804,
+      "output": 39354162,
+      "cacheRead": 9649430721,
+      "cacheWrite": 257895031
     },
-    "activeMin": 23226,
-    "wallMin": 98052,
-    "turns": 10949,
-    "toolCalls": 10613,
-    "toolErrors": 283
+    "activeMin": 24112,
+    "wallMin": 107416,
+    "turns": 12262,
+    "toolCalls": 11860,
+    "toolErrors": 349
   },
   "byCase": {
+    "ELITEA-1899": 11,
+    "ELITEA-2051": 7,
     "ELITEA-1140": 5,
+    "ELITEA-2036": 5,
     "ELITEA-2037": 4,
     "ELITEA-1866": 4,
     "ELITEA-2211": 4,
     "ELITEA-2367": 4,
     "ELITEA-2008": 4,
+    "ELITEA-2022": 4,
+    "ELITEA-2453": 4,
     "ELITEA-2354": 3,
     "ELITEA-2363": 3,
     "FAIL-2": 3,
     "ELITEA-2213": 3,
     "EL-6351": 3,
+    "ELITEA-1901": 3,
+    "ELITEA-2063": 3,
     "ELITEA-1892": 2,
     "ELITEA-1955": 2,
-    "ELITEA-1961": 2,
     "ELITEA-2094": 2,
     "ELITEA-2455": 2,
     "ELITEA-1808": 2,
@@ -42,19 +48,16 @@
     "ELITEA-2024": 2,
     "ELITEA-1869": 2,
     "ELITEA-2212": 2,
-    "ELITEA-2051": 2,
     "ELITEA-2392": 2,
     "ELITEA-1886": 2,
     "ELITEA-2210": 2,
     "ELITEA-2215": 2,
     "ELITEA-2474": 2,
-    "ELITEA-2022": 2,
     "ELITEA-1980": 2,
-    "ELITEA-1899": 2,
-    "ELITEA-1901": 2,
+    "ELITEA-1902": 2,
     "ELITEA-2421": 2,
     "ELITEA-2002": 2,
-    "ELITEA-2063": 2,
+    "ELITEA-2070": 2,
     "ELITEA-1891": 2,
     "ELITEA-1890": 2,
     "ELITEA-1790": 1,
@@ -94,6 +97,7 @@
     "ELITEA-1958": 1,
     "ELITEA-1959": 1,
     "ELITEA-1960": 1,
+    "ELITEA-1961": 1,
     "ELITEA-2033": 1,
     "POST-200": 1,
     "EL-6612": 1,
@@ -400,7 +404,6 @@
     "PUT-200": 1,
     "ELITEA-2023": 1,
     "ELITEA-2448": 1,
-    "ELITEA-1902": 1,
     "ELITEA-2612": 1,
     "EL-2418": 1,
     "ELITEA-2418": 1,
@@ -417,7 +420,6 @@
     "EL-6391": 1,
     "EL-6537": 1,
     "ELITEA-2011": 1,
-    "ELITEA-2070": 1,
     "N8-N11": 1,
     "EL-6238": 1,
     "EL-6540": 1,
@@ -486,106 +488,160 @@
     "ELITEA-0679": 1,
     "ELITEA-2016": 1,
     "ELITEA-2003": 1,
-    "EL-6460": 1,
     "ELITEA-2065": 1,
-    "ELITEA-2453": 1
+    "ELITEA-2441": 1,
+    "ELITEA-2440": 1,
+    "ELITEA-2442": 1,
+    "ELITEA-3208": 1,
+    "ELITEA-3209": 1,
+    "ELITEA-3210": 1,
+    "ELITEA-2030": 1,
+    "ELITEA-2056": 1
   },
   "byIntent": {
     "undeclared": {
-      "sessions": 132,
-      "costUsd": 5505.942161499998,
-      "priced": 132,
+      "sessions": 136,
+      "costUsd": 5498.853623249998,
+      "priced": 135,
       "tokens": {
-        "input": 1990571,
-        "output": 37612978,
-        "cacheRead": 9297855036,
-        "cacheWrite": 244781582
+        "input": 2092907,
+        "output": 37788626,
+        "cacheRead": 9319753236,
+        "cacheWrite": 246551000
       },
-      "activeMin": 23226,
-      "wallMin": 98052,
-      "turns": 10949,
-      "toolCalls": 10613,
-      "toolErrors": 283
+      "activeMin": 23347,
+      "wallMin": 99676,
+      "turns": 11112,
+      "toolCalls": 10749,
+      "toolErrors": 295
+    },
+    "automation": {
+      "sessions": 22,
+      "costUsd": 240.29865980000002,
+      "priced": 22,
+      "tokens": {
+        "input": 3183,
+        "output": 1285137,
+        "cacheRead": 276129800,
+        "cacheWrite": 9046477
+      },
+      "activeMin": 586,
+      "wallMin": 7566,
+      "turns": 817,
+      "toolCalls": 793,
+      "toolErrors": 32
+    },
+    "investigation": {
+      "sessions": 13,
+      "costUsd": 56.05887625,
+      "priced": 13,
+      "tokens": {
+        "input": 714,
+        "output": 280399,
+        "cacheRead": 53547685,
+        "cacheWrite": 2297554
+      },
+      "activeMin": 179,
+      "wallMin": 174,
+      "turns": 333,
+      "toolCalls": 318,
+      "toolErrors": 22
     }
   },
   "costSources": {
-    "ccusage-metered": 129,
+    "ccusage-metered": 167,
     "copilot-credits": 3
   },
-  "tokensOnly": 0,
+  "tokensOnly": 1,
   "byPerson": {
     "alexander-bychinskiy": {
-      "sessions": 132,
-      "costUsd": 5505.942161499998,
-      "priced": 132,
+      "sessions": 168,
+      "costUsd": 5775.528419049999,
+      "priced": 167,
       "tokens": {
-        "input": 1990571,
-        "output": 37612978,
-        "cacheRead": 9297855036,
-        "cacheWrite": 244781582
+        "input": 1997770,
+        "output": 39277673,
+        "cacheRead": 9637097668,
+        "cacheWrite": 256117620
       },
-      "activeMin": 23226,
-      "wallMin": 98052,
-      "turns": 10949,
-      "toolCalls": 10613,
-      "toolErrors": 283
+      "activeMin": 24053,
+      "wallMin": 105969,
+      "turns": 12167,
+      "toolCalls": 11760,
+      "toolErrors": 340
+    },
+    "aliaksandr-valadzko": {
+      "sessions": 3,
+      "costUsd": 19.68274025,
+      "priced": 3,
+      "tokens": {
+        "input": 99034,
+        "output": 76489,
+        "cacheRead": 12333053,
+        "cacheWrite": 1777411
+      },
+      "activeMin": 59,
+      "wallMin": 1447,
+      "turns": 95,
+      "toolCalls": 100,
+      "toolErrors": 9
     }
   },
   "byRole": {
-    "test-automation-lead": {
-      "units": 123,
-      "tokens": {
-        "input": 20521,
-        "output": 7225450,
-        "cacheRead": 2650709469,
-        "cacheWrite": 37576899
-      },
-      "activeMin": 12611,
-      "toolCalls": 9984,
-      "toolErrors": 263,
-      "costUsd": 1517.869409399999,
-      "priced": true
-    },
     "test-automation-engineer": {
-      "units": 567,
+      "units": 580,
       "tokens": {
-        "input": 59262,
-        "output": 16182984,
-        "cacheRead": 4106629816,
-        "cacheWrite": 112843716
+        "input": 60018,
+        "output": 16493554,
+        "cacheRead": 4169074238,
+        "cacheWrite": 115157532
       },
-      "activeMin": 5885,
-      "toolCalls": 23511,
-      "toolErrors": 868,
-      "costUsd": 2175.226119250001,
+      "activeMin": 5987,
+      "toolCalls": 23838,
+      "toolErrors": 887,
+      "costUsd": 2226.5957896500013,
       "priced": true
     },
     "qa-engineer": {
-      "units": 499,
+      "units": 508,
       "tokens": {
-        "input": 36723,
-        "output": 13214828,
-        "cacheRead": 2380817515,
-        "cacheWrite": 89432638
+        "input": 37362,
+        "output": 13428495,
+        "cacheRead": 2433642260,
+        "cacheWrite": 91114521
       },
-      "activeMin": 3871,
-      "toolCalls": 17985,
-      "toolErrors": 503,
-      "costUsd": 1679.277817549999,
+      "activeMin": 3924,
+      "toolCalls": 18290,
+      "toolErrors": 512,
+      "costUsd": 1720.6911241999992,
+      "priced": true
+    },
+    "test-automation-lead": {
+      "units": 157,
+      "tokens": {
+        "input": 22653,
+        "output": 8090610,
+        "cacheRead": 2832553816,
+        "cacheWrite": 43832423
+      },
+      "activeMin": 13127,
+      "toolCalls": 11011,
+      "toolErrors": 313,
+      "costUsd": 1692.9864828999987,
       "priced": true
     },
     "scout": {
-      "units": 5,
+      "units": 7,
       "tokens": {
-        "input": 1094,
-        "output": 581407,
-        "cacheRead": 117808924,
-        "cacheWrite": 3168699
+        "input": 4766,
+        "output": 856705,
+        "cacheRead": 159938042,
+        "cacheWrite": 4253514
       },
-      "activeMin": 657,
-      "toolCalls": 572,
-      "toolErrors": 19,
-      "costUsd": 104.62318600000002,
+      "activeMin": 813,
+      "toolCalls": 692,
+      "toolErrors": 26,
+      "costUsd": 106.30939300000001,
       "priced": true
     },
     "general-purpose": {
@@ -631,36 +687,36 @@
       "priced": true
     },
     "(interactive session)": {
-      "units": 4,
+      "units": 7,
       "tokens": {
-        "input": 1872363,
-        "output": 222359,
-        "cacheRead": 20260607,
-        "cacheWrite": 525473
+        "input": 1971397,
+        "output": 298848,
+        "cacheRead": 32593660,
+        "cacheWrite": 2302884
       },
-      "activeMin": 154,
-      "toolCalls": 57,
-      "toolErrors": 1,
-      "costUsd": 6.79075375,
+      "activeMin": 213,
+      "toolCalls": 157,
+      "toolErrors": 10,
+      "costUsd": 26.473494,
       "priced": true
     }
   },
   "byWeek": {
     "2026-W37": {
       "sessions": 78,
-      "costUsd": 1024.9212216,
+      "costUsd": 1038.85790785,
       "priced": 78,
       "tokens": {
-        "input": 15964,
-        "output": 6419250,
-        "cacheRead": 1197713820,
-        "cacheWrite": 39463439
+        "input": 16094,
+        "output": 6466237,
+        "cacheRead": 1213289450,
+        "cacheWrite": 40031234
       },
-      "activeMin": 3835,
-      "wallMin": 4155,
-      "turns": 3862,
-      "toolCalls": 3773,
-      "toolErrors": 121
+      "activeMin": 3853,
+      "wallMin": 11338,
+      "turns": 3890,
+      "toolCalls": 3800,
+      "toolErrors": 122
     },
     "2026-W35": {
       "sessions": 36,
@@ -727,20 +783,20 @@
       "toolErrors": 11
     },
     "2026-W38": {
-      "sessions": 6,
-      "costUsd": 31.75987875,
-      "priced": 6,
+      "sessions": 45,
+      "costUsd": 307.0921902999999,
+      "priced": 44,
       "tokens": {
-        "input": 382,
-        "output": 172133,
-        "cacheRead": 28919945,
-        "cacheWrite": 1479784
+        "input": 106485,
+        "output": 1866330,
+        "cacheRead": 364920000,
+        "cacheWrite": 14025438
       },
-      "activeMin": 78,
-      "wallMin": 64,
-      "turns": 136,
-      "toolCalls": 130,
-      "toolErrors": 8
+      "activeMin": 946,
+      "wallMin": 2245,
+      "turns": 1421,
+      "toolCalls": 1350,
+      "toolErrors": 73
     },
     "2026-W30": {
       "sessions": 1,
@@ -761,20 +817,20 @@
   },
   "byHost": {
     "claude": {
-      "sessions": 129,
-      "costUsd": 5499.151407749998,
-      "priced": 129,
+      "sessions": 168,
+      "costUsd": 5788.420405549999,
+      "priced": 167,
       "tokens": {
-        "input": 119790,
-        "output": 37518772,
-        "cacheRead": 9297855036,
-        "cacheWrite": 244781582
+        "input": 226023,
+        "output": 39259956,
+        "cacheRead": 9649430721,
+        "cacheWrite": 257895031
       },
-      "activeMin": 23186,
-      "wallMin": 96104,
-      "turns": 10933,
-      "toolCalls": 10613,
-      "toolErrors": 283
+      "activeMin": 24072,
+      "wallMin": 105468,
+      "turns": 12246,
+      "toolCalls": 11860,
+      "toolErrors": 349
     },
     "copilot-vscode": {
       "sessions": 3,
@@ -793,25 +849,505 @@
       "toolErrors": 0
     }
   },
-  "cases": {
-    "examined": 590,
-    "delivered": 385,
-    "outcomes": {
-      "blocked": 125,
-      "automated": 357,
-      "merged-ungated": 54,
-      "not-started": 1,
-      "merged-sanctioned-red": 28,
-      "already-covered": 25
+  "byWeekRole": {
+    "2026-W37": {
+      "test-automation-engineer": {
+        "units": 37,
+        "tokens": {
+          "input": 3320,
+          "output": 1430734,
+          "cacheRead": 293518795,
+          "cacheWrite": 13223793
+        },
+        "activeMin": 652,
+        "toolCalls": 1755,
+        "toolErrors": 45,
+        "costUsd": 256.40994775,
+        "priced": true
+      },
+      "qa-engineer": {
+        "units": 53,
+        "tokens": {
+          "input": 3560,
+          "output": 1801084,
+          "cacheRead": 295617578,
+          "cacheWrite": 11659374
+        },
+        "activeMin": 621,
+        "toolCalls": 2066,
+        "toolErrors": 50,
+        "costUsd": 262.85323680000005,
+        "priced": true
+      },
+      "test-automation-lead": {
+        "units": 76,
+        "tokens": {
+          "input": 7606,
+          "output": 3096735,
+          "cacheRead": 602198662,
+          "cacheWrite": 14462937
+        },
+        "activeMin": 2460,
+        "toolCalls": 3728,
+        "toolErrors": 119,
+        "costUsd": 516.9128443,
+        "priced": true
+      },
+      "scout": {
+        "units": 1,
+        "tokens": {
+          "input": 26,
+          "output": 9531,
+          "cacheRead": 1693808,
+          "cacheWrite": 159657
+        },
+        "activeMin": 6,
+        "toolCalls": 15,
+        "toolErrors": 2,
+        "costUsd": 2.6818790000000012,
+        "priced": true
+      },
+      "(interactive session)": {
+        "units": 1,
+        "tokens": {
+          "input": 1582,
+          "output": 128153,
+          "cacheRead": 20260607,
+          "cacheWrite": 525473
+        },
+        "activeMin": 114,
+        "toolCalls": 57,
+        "toolErrors": 1,
+        "costUsd": 0,
+        "priced": true
+      }
     },
-    "reports": 123
+    "2026-W35": {
+      "test-automation-engineer": {
+        "units": 225,
+        "tokens": {
+          "input": 18271,
+          "output": 6572010,
+          "cacheRead": 1259412827,
+          "cacheWrite": 44730260
+        },
+        "activeMin": 2486,
+        "toolCalls": 8144,
+        "toolErrors": 271,
+        "costUsd": 1003.8484425499997,
+        "priced": true
+      },
+      "qa-engineer": {
+        "units": 211,
+        "tokens": {
+          "input": 15484,
+          "output": 6251000,
+          "cacheRead": 1061690353,
+          "cacheWrite": 39694763
+        },
+        "activeMin": 1877,
+        "toolCalls": 8041,
+        "toolErrors": 207,
+        "costUsd": 899.1607352000002,
+        "priced": true
+      },
+      "test-automation-lead": {
+        "units": 36,
+        "tokens": {
+          "input": 7424,
+          "output": 2707220,
+          "cacheRead": 928837084,
+          "cacheWrite": 12783782
+        },
+        "activeMin": 5170,
+        "toolCalls": 3662,
+        "toolErrors": 95,
+        "costUsd": 625.5808455999979,
+        "priced": true
+      },
+      "general-purpose": {
+        "units": 3,
+        "tokens": {
+          "input": 236,
+          "output": 57734,
+          "cacheRead": 12825383,
+          "cacheWrite": 385276
+        },
+        "activeMin": 16,
+        "toolCalls": 115,
+        "toolErrors": 3,
+        "costUsd": 10.265196500000002,
+        "priced": true
+      },
+      "Explore": {
+        "units": 1,
+        "tokens": {
+          "input": 52,
+          "output": 14550,
+          "cacheRead": 1291575,
+          "cacheWrite": 82867
+        },
+        "activeMin": 3,
+        "toolCalls": 44,
+        "toolErrors": 0,
+        "costUsd": 1.5277162499999999,
+        "priced": true
+      }
+    },
+    "2026-W34": {
+      "scout": {
+        "units": 1,
+        "tokens": {
+          "input": 148,
+          "output": 62698,
+          "cacheRead": 12680626,
+          "cacheWrite": 437244
+        },
+        "activeMin": 36,
+        "toolCalls": 70,
+        "toolErrors": 4,
+        "costUsd": 12.280942999999997,
+        "priced": true
+      },
+      "qa-engineer": {
+        "units": 100,
+        "tokens": {
+          "input": 5511,
+          "output": 2189711,
+          "cacheRead": 291229922,
+          "cacheWrite": 15116352
+        },
+        "activeMin": 652,
+        "toolCalls": 2736,
+        "toolErrors": 65,
+        "costUsd": 283.01969740000004,
+        "priced": true
+      },
+      "test-automation-engineer": {
+        "units": 113,
+        "tokens": {
+          "input": 8114,
+          "output": 2644362,
+          "cacheRead": 426459363,
+          "cacheWrite": 17744596
+        },
+        "activeMin": 940,
+        "toolCalls": 3231,
+        "toolErrors": 128,
+        "costUsd": 352.2093406999999,
+        "priced": true
+      },
+      "test-automation-lead": {
+        "units": 3,
+        "tokens": {
+          "input": 1456,
+          "output": 455435,
+          "cacheRead": 190892408,
+          "cacheWrite": 2790606
+        },
+        "activeMin": 1924,
+        "toolCalls": 721,
+        "toolErrors": 20,
+        "costUsd": 134.74541900000003,
+        "priced": true
+      }
+    },
+    "2026-W33": {
+      "general-purpose": {
+        "units": 2,
+        "tokens": {
+          "input": 78,
+          "output": 34894,
+          "cacheRead": 3740011,
+          "cacheWrite": 268016
+        },
+        "activeMin": 9,
+        "toolCalls": 48,
+        "toolErrors": 0,
+        "costUsd": 4.417845499999999,
+        "priced": true
+      },
+      "scout": {
+        "units": 1,
+        "tokens": {
+          "input": 218,
+          "output": 144177,
+          "cacheRead": 25007815,
+          "cacheWrite": 303974
+        },
+        "activeMin": 142,
+        "toolCalls": 111,
+        "toolErrors": 3,
+        "costUsd": 19.149162499999996,
+        "priced": true
+      },
+      "test-automation-engineer": {
+        "units": 187,
+        "tokens": {
+          "input": 28721,
+          "output": 5351502,
+          "cacheRead": 2022527114,
+          "cacheWrite": 36189063
+        },
+        "activeMin": 1740,
+        "toolCalls": 10035,
+        "toolErrors": 415,
+        "costUsd": 536.3213094999999,
+        "priced": true
+      },
+      "qa-engineer": {
+        "units": 132,
+        "tokens": {
+          "input": 12027,
+          "output": 2914217,
+          "cacheRead": 723695486,
+          "cacheWrite": 22524599
+        },
+        "activeMin": 693,
+        "toolCalls": 5073,
+        "toolErrors": 180,
+        "costUsd": 226.28120864999997,
+        "priced": true
+      },
+      "test-automation-lead": {
+        "units": 1,
+        "tokens": {
+          "input": 3592,
+          "output": 777384,
+          "cacheRead": 895122855,
+          "cacheWrite": 6403740
+        },
+        "activeMin": 2900,
+        "toolCalls": 1657,
+        "toolErrors": 21,
+        "costUsd": 212.4205550000013,
+        "priced": true
+      },
+      "(interactive session)": {
+        "units": 2,
+        "tokens": {
+          "input": 1853243,
+          "output": 93058,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "activeMin": 40,
+        "toolCalls": 0,
+        "toolErrors": 0,
+        "costUsd": 6.7424230000000005,
+        "priced": true
+      }
+    },
+    "2026-W32": {
+      "test-automation-engineer": {
+        "units": 4,
+        "tokens": {
+          "input": 850,
+          "output": 183025,
+          "cacheRead": 106522129,
+          "cacheWrite": 845997
+        },
+        "activeMin": 66,
+        "toolCalls": 354,
+        "toolErrors": 11,
+        "costUsd": 26.621036,
+        "priced": true
+      },
+      "qa-engineer": {
+        "units": 2,
+        "tokens": {
+          "input": 91,
+          "output": 39866,
+          "cacheRead": 4716766,
+          "cacheWrite": 254553
+        },
+        "activeMin": 20,
+        "toolCalls": 45,
+        "toolErrors": 1,
+        "costUsd": 4.411503249999999,
+        "priced": true
+      },
+      "test-automation-lead": {
+        "units": 1,
+        "tokens": {
+          "input": 227,
+          "output": 83831,
+          "cacheRead": 22371143,
+          "cacheWrite": 516849
+        },
+        "activeMin": 106,
+        "toolCalls": 113,
+        "toolErrors": 1,
+        "costUsd": 13.754031999999995,
+        "priced": true
+      },
+      "Explore": {
+        "units": 3,
+        "tokens": {
+          "input": 78,
+          "output": 71718,
+          "cacheRead": 2582048,
+          "cacheWrite": 351611
+        },
+        "activeMin": 17,
+        "toolCalls": 100,
+        "toolErrors": 0,
+        "costUsd": 5.281932749999999,
+        "priced": true
+      },
+      "general-purpose": {
+        "units": 1,
+        "tokens": {
+          "input": 2,
+          "output": 164,
+          "cacheRead": 0,
+          "cacheWrite": 64302
+        },
+        "activeMin": 0,
+        "toolCalls": 0,
+        "toolErrors": 0,
+        "costUsd": 0.4059975,
+        "priced": true
+      },
+      "scout": {
+        "units": 2,
+        "tokens": {
+          "input": 702,
+          "output": 365001,
+          "cacheRead": 78426675,
+          "cacheWrite": 2267824
+        },
+        "activeMin": 473,
+        "toolCalls": 376,
+        "toolErrors": 10,
+        "costUsd": 70.51120150000003,
+        "priced": true
+      },
+      "claude-code-guide": {
+        "units": 1,
+        "tokens": {
+          "input": 162,
+          "output": 6890,
+          "cacheRead": 1189688,
+          "cacheWrite": 82085
+        },
+        "activeMin": 3,
+        "toolCalls": 19,
+        "toolErrors": 0,
+        "costUsd": 0.25618705,
+        "priced": true
+      }
+    },
+    "2026-W38": {
+      "test-automation-lead": {
+        "units": 40,
+        "tokens": {
+          "input": 2348,
+          "output": 970005,
+          "cacheRead": 193131664,
+          "cacheWrite": 6874509
+        },
+        "activeMin": 567,
+        "toolCalls": 1130,
+        "toolErrors": 57,
+        "costUsd": 189.57278700000006,
+        "priced": true
+      },
+      "test-automation-engineer": {
+        "units": 14,
+        "tokens": {
+          "input": 742,
+          "output": 311921,
+          "cacheRead": 60634010,
+          "cacheWrite": 2423823
+        },
+        "activeMin": 103,
+        "toolCalls": 319,
+        "toolErrors": 17,
+        "costUsd": 51.185713150000005,
+        "priced": true
+      },
+      "qa-engineer": {
+        "units": 10,
+        "tokens": {
+          "input": 689,
+          "output": 232617,
+          "cacheRead": 56692155,
+          "cacheWrite": 1864880
+        },
+        "activeMin": 61,
+        "toolCalls": 329,
+        "toolErrors": 9,
+        "costUsd": 44.964742900000005,
+        "priced": true
+      },
+      "scout": {
+        "units": 2,
+        "tokens": {
+          "input": 3672,
+          "output": 275298,
+          "cacheRead": 42129118,
+          "cacheWrite": 1084815
+        },
+        "activeMin": 156,
+        "toolCalls": 120,
+        "toolErrors": 7,
+        "costUsd": 1.6862070000000002,
+        "priced": true
+      },
+      "(interactive session)": {
+        "units": 3,
+        "tokens": {
+          "input": 99034,
+          "output": 76489,
+          "cacheRead": 12333053,
+          "cacheWrite": 1777411
+        },
+        "activeMin": 59,
+        "toolCalls": 100,
+        "toolErrors": 9,
+        "costUsd": 19.68274025,
+        "priced": true
+      }
+    },
+    "2026-W30": {
+      "(interactive session)": {
+        "units": 1,
+        "tokens": {
+          "input": 17538,
+          "output": 1148,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "activeMin": 0,
+        "toolCalls": 0,
+        "toolErrors": 0,
+        "costUsd": 0.04833075,
+        "priced": true
+      }
+    }
+  },
+  "cases": {
+    "examined": 597,
+    "delivered": 390,
+    "outcomes": {
+      "automated": 362,
+      "blocked": 124,
+      "merged-ungated": 54,
+      "already-covered": 25,
+      "merged-sanctioned-red": 28,
+      "not-started": 1,
+      "verified-non-defect": 3
+    },
+    "reports": 130
   },
   "perDelivered": {
-    "costUsd": 14.301148471428567,
-    "activeMin": 60
+    "costUsd": 14.859515793076921,
+    "activeMin": 62,
+    "automationOnlyCostUsd": 0.6161504097435898
   },
   "perExamined": {
-    "costUsd": 9.332105358474573
+    "costUsd": 9.707221372361808
   },
   "index": [
     {
@@ -2174,12 +2710,9 @@
       "user": "alexander-bychinskiy",
       "role": "test-automation-lead",
       "startedAt": "2026-09-10T05:21:57.230Z",
-      "costUsd": 28.4574855,
+      "costUsd": 42.39417174999999,
       "cases": [
-        "EL-6460",
-        "ELITEA-1869",
-        "ELITEA-1961",
-        "ELITEA-2022"
+        "ELITEA-1869"
       ]
     },
     {
@@ -2596,6 +3129,428 @@
       "startedAt": "2026-09-14T09:15:29.591Z",
       "costUsd": 3.143879,
       "cases": []
+    },
+    {
+      "host": "claude",
+      "id": "59d84a39-b4be-434b-bdfc-64a4e4e6d142",
+      "user": "alexander-bychinskiy",
+      "role": "scout",
+      "startedAt": "2026-09-14T11:26:23.148Z",
+      "costUsd": null,
+      "cases": []
+    },
+    {
+      "host": "claude",
+      "id": "ddf07314-3602-4e70-ae6b-5028bff417ac",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-14T20:35:41.762Z",
+      "costUsd": 7.5214430000000005,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "3455c1e6-5fd2-493c-a48d-2aac61812671",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-14T20:50:27.435Z",
+      "costUsd": 11.0795675,
+      "cases": [
+        "ELITEA-1901"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "462e40d3-200d-4c6b-a72c-e275669513c5",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T03:43:08.199Z",
+      "costUsd": 3.868717,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "5bce26c8-0ad3-416e-ae24-c0294f13cd56",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T03:50:09.880Z",
+      "costUsd": 4.2118435,
+      "cases": [
+        "ELITEA-1902"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "996e1988-5654-4af7-a779-d8e2cc110e85",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T04:29:23.196Z",
+      "costUsd": 3.874002999999999,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "98c78916-82c4-4129-a3c2-6b382375443b",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T07:19:47.392Z",
+      "costUsd": 4.7359684999999985,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "dea5cbd8-3cd2-41e9-ad16-0adb942d49c9",
+      "user": "alexander-bychinskiy",
+      "role": "scout",
+      "startedAt": "2026-09-15T07:53:12.495Z",
+      "costUsd": 1.6862070000000002,
+      "cases": []
+    },
+    {
+      "host": "claude",
+      "id": "a6970a15-f35e-4092-a84a-9d1b0f82e6c8",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T10:15:47.866Z",
+      "costUsd": 5.053599500000001,
+      "cases": [
+        "ELITEA-2441"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "c23bf717-29fe-40c8-ab37-db25d48af0ff",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T10:25:24.556Z",
+      "costUsd": 4.525905000000001,
+      "cases": [
+        "ELITEA-2440",
+        "ELITEA-2442"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "b1465c31-3e82-497c-a54b-59694ebb5054",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T10:34:40.606Z",
+      "costUsd": 3.7527099999999995,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "d3923e88-f9f6-4eaa-ab85-5499b1d38434",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T10:40:51.855Z",
+      "costUsd": 2.905903499999999,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "208626be-e952-4916-a93b-8412963a1f17",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T11:31:50.092Z",
+      "costUsd": 3.6147480000000005,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "1cd81dc3-34b0-47cb-a1cd-2709ace1cae1",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T13:33:53.309Z",
+      "costUsd": 66.81173255,
+      "cases": [
+        "ELITEA-3208",
+        "ELITEA-3209",
+        "ELITEA-3210"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "9dfd5a00-dc9b-43a3-a9d3-2fcf213f063f",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-15T20:47:19.082Z",
+      "costUsd": 4.1553725,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "0ba930d3-a4c9-4b9f-ac33-c18d04584cc8",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T05:13:09.192Z",
+      "costUsd": 4.866863,
+      "cases": [
+        "ELITEA-1899"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "ba66b8a5-5f6f-46ee-a886-0119731a3465",
+      "user": "aliaksandr-valadzko",
+      "role": null,
+      "startedAt": "2026-09-16T07:16:22.186Z",
+      "costUsd": 2.7976254999999997,
+      "cases": []
+    },
+    {
+      "host": "claude",
+      "id": "5d53690b-2292-40fa-8807-5387f85ae39f",
+      "user": "aliaksandr-valadzko",
+      "role": null,
+      "startedAt": "2026-09-16T08:54:32.234Z",
+      "costUsd": 3.2127085,
+      "cases": []
+    },
+    {
+      "host": "claude",
+      "id": "80e7c5e7-1290-4881-a343-a9a1cb373f20",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T13:04:56.111Z",
+      "costUsd": 3.4678765,
+      "cases": [
+        "ELITEA-2022"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "4eaa60c5-5930-4547-afaf-6848ac05d846",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T13:12:07.542Z",
+      "costUsd": 2.641074,
+      "cases": [
+        "ELITEA-2453"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "61200a0d-c118-4234-a172-a84f52f58a86",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T13:18:48.478Z",
+      "costUsd": 7.620025499999997,
+      "cases": [
+        "ELITEA-2070"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "973c013f-ad4a-498b-b39b-e6728ab1302e",
+      "user": "aliaksandr-valadzko",
+      "role": null,
+      "startedAt": "2026-09-16T13:26:24.933Z",
+      "costUsd": 13.67240625,
+      "cases": []
+    },
+    {
+      "host": "claude",
+      "id": "a24fcbd2-13bf-49cb-a6e8-68c074f9bad0",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T13:30:19.415Z",
+      "costUsd": 18.512796750000003,
+      "cases": [
+        "ELITEA-2030"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "600bce3d-5e88-4439-a5a6-2165b0d3218a",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T13:56:04.689Z",
+      "costUsd": 7.134265,
+      "cases": [
+        "ELITEA-2063"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "75ceb15d-c88f-44f6-a902-1b635eb5d0c7",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T14:07:23.680Z",
+      "costUsd": 2.4552625000000003,
+      "cases": [
+        "ELITEA-2036"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "5476fe00-cd51-4909-a0cc-657784f9c555",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T14:11:30.716Z",
+      "costUsd": 3.2152435,
+      "cases": [
+        "ELITEA-2051"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "77535d73-99b3-4dfd-a178-0841f9ac0d17",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T14:16:54.121Z",
+      "costUsd": 12.154880250000001,
+      "cases": [
+        "ELITEA-2056"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "4cac2d04-3c72-4f41-ab1a-ddbadf523fab",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T15:27:13.297Z",
+      "costUsd": 10.78072525,
+      "cases": [
+        "ELITEA-2022"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "6b74ef56-e64f-41b4-af5a-d46eba042968",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T15:44:21.186Z",
+      "costUsd": 5.559343000000001,
+      "cases": [
+        "ELITEA-2453"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "e2292479-fc7a-4869-ab66-6db10390b94e",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T15:53:49.976Z",
+      "costUsd": 2.7322035000000002,
+      "cases": [
+        "ELITEA-2036"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "22997908-f2d3-4c72-a025-b64b12cefbf6",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T15:57:49.241Z",
+      "costUsd": 2.1260055000000007,
+      "cases": [
+        "ELITEA-2051"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "26a1334c-23f6-4fa9-afa6-92f08bf02ac8",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T16:00:54.587Z",
+      "costUsd": 3.9260744999999995,
+      "cases": [
+        "ELITEA-2022"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "a0d1b1d8-faf9-4ff2-ab42-4b3f0c898b50",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T16:08:56.486Z",
+      "costUsd": 2.8946710000000007,
+      "cases": [
+        "ELITEA-2453"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "27a4c4f7-a47f-421c-a402-6fc79a3f196d",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T16:15:03.118Z",
+      "costUsd": 4.745549,
+      "cases": [
+        "ELITEA-2036"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "939edc98-f819-4638-aa62-0cc18ec482c5",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T16:23:52.972Z",
+      "costUsd": 5.4549845,
+      "cases": [
+        "ELITEA-2051"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "a317eda7-c83b-4a6f-ad0d-44ebdbbab963",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T16:38:12.286Z",
+      "costUsd": 1.9460175000000002,
+      "cases": [
+        "ELITEA-2036"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "ca82d710-a331-4b38-af5a-432b026b4e1e",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T16:40:52.405Z",
+      "costUsd": 2.272918,
+      "cases": [
+        "ELITEA-2051"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "01bc9308-aca0-44ff-a16e-52d2baa8d4dc",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T21:10:35.112Z",
+      "costUsd": 4.103685499999999,
+      "cases": [
+        "ELITEA-2036"
+      ]
+    },
+    {
+      "host": "claude",
+      "id": "1e49b882-7231-4ee6-ae6f-d5f8d57bfb50",
+      "user": "alexander-bychinskiy",
+      "role": "test-automation-lead",
+      "startedAt": "2026-09-16T21:15:54.602Z",
+      "costUsd": 19.241386500000004,
+      "cases": [
+        "ELITEA-2051"
+      ]
     }
   ],
   "byBatch": [
@@ -3377,7 +4332,7 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "green",
-      "drift": false
+      "drift": true
     },
     {
       "batch": "elitea-2450",
@@ -3407,7 +4362,7 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "green",
-      "drift": false
+      "drift": true
     },
     {
       "batch": "elitea-2455-chat-participants",
@@ -3437,6 +4392,66 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "GREEN (scoped)",
+      "drift": false
+    },
+    {
+      "batch": "fix-2145",
+      "cases": 1,
+      "delivered": 1,
+      "costUsd": 42.39,
+      "activeMin": 112,
+      "perDelivered": 42.39,
+      "gate": null,
+      "drift": false
+    },
+    {
+      "batch": "fix-2286-elitea-1899",
+      "cases": 1,
+      "delivered": 0,
+      "costUsd": 7.52,
+      "activeMin": 14,
+      "perDelivered": null,
+      "gate": null,
+      "drift": true
+    },
+    {
+      "batch": "fix-2287-elitea-1901",
+      "cases": 1,
+      "delivered": 1,
+      "costUsd": 11.08,
+      "activeMin": 23,
+      "perDelivered": 11.08,
+      "gate": "green",
+      "drift": false
+    },
+    {
+      "batch": "fix-2290",
+      "cases": 1,
+      "delivered": 1,
+      "costUsd": 4.21,
+      "activeMin": 9,
+      "perDelivered": 4.21,
+      "gate": null,
+      "drift": false
+    },
+    {
+      "batch": "fix-2296",
+      "cases": 1,
+      "delivered": 0,
+      "costUsd": 5.05,
+      "activeMin": 9,
+      "perDelivered": null,
+      "gate": null,
+      "drift": false
+    },
+    {
+      "batch": "fix-2297",
+      "cases": 2,
+      "delivered": 0,
+      "costUsd": 4.53,
+      "activeMin": 9,
+      "perDelivered": null,
+      "gate": null,
       "drift": false
     },
     {
@@ -3557,7 +4572,7 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "not-run",
-      "drift": false
+      "drift": true
     },
     {
       "batch": "pipelines-remaining-w2",
@@ -3567,7 +4582,7 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "green",
-      "drift": false
+      "drift": true
     },
     {
       "batch": "pipelines-remaining-w3",
@@ -3617,7 +4632,7 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "not-run",
-      "drift": false
+      "drift": true
     },
     {
       "batch": "settings-project-params",
@@ -3767,7 +4782,7 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "red",
-      "drift": false
+      "drift": true
     },
     {
       "batch": "skills-remaining-w3",
@@ -3797,6 +4812,16 @@
       "activeMin": 0,
       "perDelivered": null,
       "gate": "red",
+      "drift": false
+    },
+    {
+      "batch": "social-folders-critical",
+      "cases": 3,
+      "delivered": 3,
+      "costUsd": 66.81,
+      "activeMin": 246,
+      "perDelivered": 22.27,
+      "gate": "green",
       "drift": false
     },
     {
@@ -3854,6 +4879,56 @@
         "costUsd": 42.46,
         "tokens": 52940435,
         "activeMin": 142
+      }
+    },
+    {
+      "batch": "fix-2145",
+      "id": "ELITEA-1869",
+      "outcome": "automated",
+      "direct": {
+        "costUsd": 21.24,
+        "tokens": 24012583,
+        "tok": {
+          "input": 274,
+          "output": 135285,
+          "cacheRead": 22847075,
+          "cacheWrite": 1029949
+        },
+        "activeMin": 45,
+        "dispatches": 4,
+        "fixRounds": 0,
+        "toolCalls": 147,
+        "toolErrors": 6
+      },
+      "loaded": {
+        "costUsd": 42.39,
+        "tokens": 50023830,
+        "activeMin": 112
+      }
+    },
+    {
+      "batch": "social-folders-critical",
+      "id": "ELITEA-3208",
+      "outcome": "automated",
+      "direct": {
+        "costUsd": 24.19,
+        "tokens": 29675344,
+        "tok": {
+          "input": 324,
+          "output": 152918,
+          "cacheRead": 28494424,
+          "cacheWrite": 1027679
+        },
+        "activeMin": 52,
+        "dispatches": 5.33,
+        "fixRounds": 3,
+        "toolCalls": 148,
+        "toolErrors": 9
+      },
+      "loaded": {
+        "costUsd": 30.92,
+        "tokens": 38227019,
+        "activeMin": 102
       }
     },
     {
@@ -4229,6 +5304,56 @@
         "costUsd": 18.37,
         "tokens": 18221218,
         "activeMin": 61
+      }
+    },
+    {
+      "batch": "social-folders-critical",
+      "id": "ELITEA-3209",
+      "outcome": "automated",
+      "direct": {
+        "costUsd": 11.21,
+        "tokens": 15838239,
+        "tok": {
+          "input": 156,
+          "output": 71205,
+          "cacheRead": 15445232,
+          "cacheWrite": 321647
+        },
+        "activeMin": 21,
+        "dispatches": 1.33,
+        "fixRounds": 0,
+        "toolCalls": 68,
+        "toolErrors": 4
+      },
+      "loaded": {
+        "costUsd": 17.94,
+        "tokens": 24389914,
+        "activeMin": 71
+      }
+    },
+    {
+      "batch": "social-folders-critical",
+      "id": "ELITEA-3210",
+      "outcome": "automated",
+      "direct": {
+        "costUsd": 11.21,
+        "tokens": 15838239,
+        "tok": {
+          "input": 156,
+          "output": 71205,
+          "cacheRead": 15445232,
+          "cacheWrite": 321647
+        },
+        "activeMin": 21,
+        "dispatches": 1.33,
+        "fixRounds": 0,
+        "toolCalls": 68,
+        "toolErrors": 4
+      },
+      "loaded": {
+        "costUsd": 17.94,
+        "tokens": 24389914,
+        "activeMin": 71
       }
     },
     {
@@ -6354,6 +7479,31 @@
         "costUsd": 11.13,
         "tokens": 26016914,
         "activeMin": 53
+      }
+    },
+    {
+      "batch": "fix-2287-elitea-1901",
+      "id": "ELITEA-1901",
+      "outcome": "automated",
+      "direct": {
+        "costUsd": 3.43,
+        "tokens": 2833892,
+        "tok": {
+          "input": 40,
+          "output": 12799,
+          "cacheRead": 2525069,
+          "cacheWrite": 295984
+        },
+        "activeMin": 3,
+        "dispatches": 2,
+        "fixRounds": 0,
+        "toolCalls": 18,
+        "toolErrors": 1
+      },
+      "loaded": {
+        "costUsd": 11.08,
+        "tokens": 12193729,
+        "activeMin": 23
       }
     },
     {
@@ -9479,6 +10629,31 @@
         "costUsd": 4.24,
         "tokens": 16219196,
         "activeMin": 29
+      }
+    },
+    {
+      "batch": "fix-2290",
+      "id": "ELITEA-1902",
+      "outcome": "automated",
+      "direct": {
+        "costUsd": null,
+        "tokens": 0,
+        "tok": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "activeMin": 0,
+        "dispatches": 0,
+        "fixRounds": 0,
+        "toolCalls": 0,
+        "toolErrors": 0
+      },
+      "loaded": {
+        "costUsd": 4.21,
+        "tokens": 4233363,
+        "activeMin": 9
       }
     },
     {
@@ -14832,6 +16007,31 @@
       }
     },
     {
+      "batch": "fix-2286-elitea-1899",
+      "id": "ELITEA-1899",
+      "outcome": "blocked",
+      "direct": {
+        "costUsd": null,
+        "tokens": 0,
+        "tok": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "activeMin": 0,
+        "dispatches": 0,
+        "fixRounds": 0,
+        "toolCalls": 0,
+        "toolErrors": 0
+      },
+      "loaded": {
+        "costUsd": 7.52,
+        "tokens": 8175614,
+        "activeMin": 14
+      }
+    },
+    {
       "batch": "chat-remaining-w02",
       "id": "ELITEA-2100",
       "outcome": "blocked",
@@ -15429,6 +16629,31 @@
         "costUsd": 5.05,
         "tokens": 20462866,
         "activeMin": 34
+      }
+    },
+    {
+      "batch": "fix-2296",
+      "id": "ELITEA-2441",
+      "outcome": "verified-non-defect",
+      "direct": {
+        "costUsd": null,
+        "tokens": 0,
+        "tok": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "activeMin": 0,
+        "dispatches": 0,
+        "fixRounds": 0,
+        "toolCalls": 0,
+        "toolErrors": 0
+      },
+      "loaded": {
+        "costUsd": 5.05,
+        "tokens": 5131617,
+        "activeMin": 9
       }
     },
     {
@@ -16229,6 +17454,56 @@
         "costUsd": 2.27,
         "tokens": 3352901,
         "activeMin": 15
+      }
+    },
+    {
+      "batch": "fix-2297",
+      "id": "ELITEA-2440",
+      "outcome": "verified-non-defect",
+      "direct": {
+        "costUsd": null,
+        "tokens": 0,
+        "tok": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "activeMin": 0,
+        "dispatches": 0,
+        "fixRounds": 0,
+        "toolCalls": 0,
+        "toolErrors": 0
+      },
+      "loaded": {
+        "costUsd": 2.26,
+        "tokens": 2491903,
+        "activeMin": 5
+      }
+    },
+    {
+      "batch": "fix-2297",
+      "id": "ELITEA-2442",
+      "outcome": "verified-non-defect",
+      "direct": {
+        "costUsd": null,
+        "tokens": 0,
+        "tok": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "activeMin": 0,
+        "dispatches": 0,
+        "fixRounds": 0,
+        "toolCalls": 0,
+        "toolErrors": 0
+      },
+      "loaded": {
+        "costUsd": 2.26,
+        "tokens": 2491903,
+        "activeMin": 5
       }
     },
     {
@@ -19235,24 +20510,24 @@
   "perCaseStats": {
     "note": "over DELIVERED cases; loaded = direct + even batch-overhead share (allocation)",
     "loadedCostUsd": {
-      "avg": 10.624008264462818,
-      "median": 9.895,
+      "avg": 10.868911290322592,
+      "median": 10.125,
       "min": 1.68,
       "max": 42.46,
-      "n": 242
+      "n": 248
     },
     "loadedActiveMin": {
-      "avg": 26.107692307692307,
+      "avg": 26.69191919191919,
       "median": 29,
       "min": 0,
       "max": 142,
-      "n": 390
+      "n": 396
     }
   },
   "outside": {
-    "sessions": 122,
-    "costUsd": 2059.1564780999993,
-    "activeMin": 8207,
+    "sessions": 154,
+    "costUsd": 2206.8272131000003,
+    "activeMin": 8671,
     "note": "sessions no batch receipt claimed; per-id figures split each session evenly across the ids it named (allocation)",
     "byCase": [
       {
@@ -19270,6 +20545,13 @@
         "priced": true
       },
       {
+        "id": "ELITEA-2051",
+        "sessions": 7,
+        "costUsd": 75.46,
+        "activeMin": 226,
+        "priced": true
+      },
+      {
         "id": "ELITEA-2211",
         "sessions": 3,
         "costUsd": 73.73,
@@ -19281,6 +20563,13 @@
         "sessions": 4,
         "costUsd": 61.64,
         "activeMin": 307,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1899",
+        "sessions": 10,
+        "costUsd": 53.93,
+        "activeMin": 186,
         "priced": true
       },
       {
@@ -19298,6 +20587,20 @@
         "priced": true
       },
       {
+        "id": "ELITEA-2453",
+        "sessions": 4,
+        "costUsd": 51.81,
+        "activeMin": 191,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2022",
+        "sessions": 4,
+        "costUsd": 47.81,
+        "activeMin": 165,
+        "priced": true
+      },
+      {
         "id": "N8-N11",
         "sessions": 1,
         "costUsd": 44.87,
@@ -19312,31 +20615,10 @@
         "priced": true
       },
       {
-        "id": "ELITEA-2051",
-        "sessions": 2,
-        "costUsd": 43.15,
-        "activeMin": 181,
-        "priced": true
-      },
-      {
-        "id": "ELITEA-2453",
-        "sessions": 1,
-        "costUsd": 40.72,
-        "activeMin": 170,
-        "priced": true
-      },
-      {
         "id": "ELITEA-1892",
         "sessions": 2,
         "costUsd": 37.47,
         "activeMin": 154,
-        "priced": true
-      },
-      {
-        "id": "ELITEA-2022",
-        "sessions": 2,
-        "costUsd": 36.75,
-        "activeMin": 153,
         "priced": true
       },
       {
@@ -19358,6 +20640,13 @@
         "sessions": 2,
         "costUsd": 33.53,
         "activeMin": 91,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2063",
+        "sessions": 3,
+        "costUsd": 33.19,
+        "activeMin": 115,
         "priced": true
       },
       {
@@ -19400,13 +20689,6 @@
         "sessions": 1,
         "costUsd": 29.56,
         "activeMin": 88,
-        "priced": true
-      },
-      {
-        "id": "ELITEA-2063",
-        "sessions": 2,
-        "costUsd": 26.05,
-        "activeMin": 104,
         "priced": true
       },
       {
@@ -19459,13 +20741,6 @@
         "priced": true
       },
       {
-        "id": "ELITEA-1899",
-        "sessions": 2,
-        "costUsd": 22.16,
-        "activeMin": 54,
-        "priced": true
-      },
-      {
         "id": "ELITEA-2016",
         "sessions": 1,
         "costUsd": 21.96,
@@ -19494,6 +20769,13 @@
         "priced": true
       },
       {
+        "id": "ELITEA-2030",
+        "sessions": 1,
+        "costUsd": 18.51,
+        "activeMin": 38,
+        "priced": true
+      },
+      {
         "id": "ELITEA-0500",
         "sessions": 1,
         "costUsd": 16.27,
@@ -19508,6 +20790,13 @@
         "priced": true
       },
       {
+        "id": "ELITEA-2036",
+        "sessions": 5,
+        "costUsd": 15.98,
+        "activeMin": 21,
+        "priced": true
+      },
+      {
         "id": "ELITEA-0143",
         "sessions": 1,
         "costUsd": 15.04,
@@ -19519,6 +20808,13 @@
         "sessions": 1,
         "costUsd": 15.04,
         "activeMin": 52,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2070",
+        "sessions": 2,
+        "costUsd": 14.07,
+        "activeMin": 40,
         "priced": true
       },
       {
@@ -19554,6 +20850,13 @@
         "sessions": 1,
         "costUsd": 12.23,
         "activeMin": 41,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2056",
+        "sessions": 1,
+        "costUsd": 12.15,
+        "activeMin": 28,
         "priced": true
       },
       {
@@ -19634,13 +20937,6 @@
         "priced": true
       },
       {
-        "id": "ELITEA-1869",
-        "sessions": 2,
-        "costUsd": 8.66,
-        "activeMin": 33,
-        "priced": true
-      },
-      {
         "id": "ELITEA-2214",
         "sessions": 1,
         "costUsd": 8.48,
@@ -19697,20 +20993,6 @@
         "priced": true
       },
       {
-        "id": "EL-6460",
-        "sessions": 1,
-        "costUsd": 7.11,
-        "activeMin": 24,
-        "priced": true
-      },
-      {
-        "id": "ELITEA-1961",
-        "sessions": 1,
-        "costUsd": 7.11,
-        "activeMin": 24,
-        "priced": true
-      },
-      {
         "id": "EL-6391",
         "sessions": 1,
         "costUsd": 6.45,
@@ -19726,13 +21008,6 @@
       },
       {
         "id": "ELITEA-2011",
-        "sessions": 1,
-        "costUsd": 6.45,
-        "activeMin": 29,
-        "priced": true
-      },
-      {
-        "id": "ELITEA-2070",
         "sessions": 1,
         "costUsd": 6.45,
         "activeMin": 29,
@@ -19774,6 +21049,13 @@
         "priced": true
       },
       {
+        "id": "ELITEA-1869",
+        "sessions": 1,
+        "costUsd": 1.55,
+        "activeMin": 9,
+        "priced": true
+      },
+      {
         "id": "ELITEA-1898",
         "sessions": 1,
         "costUsd": 1.55,
@@ -19782,9 +21064,9 @@
       }
     ],
     "noCase": {
-      "sessions": 63,
-      "costUsd": 408.59,
-      "activeMin": 1706,
+      "sessions": 68,
+      "costUsd": 429.96,
+      "activeMin": 1921,
       "priced": true
     }
   }

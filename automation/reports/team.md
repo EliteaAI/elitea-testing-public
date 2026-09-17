@@ -1,21 +1,22 @@
 # Tokenomics — team usage report
 
-Generated: 2026-09-14T12:43:34.769Z
+Generated: 2026-09-17T09:14:15.932Z
 
 ## Totals
 
-- Sessions: 132 (claude 129, copilot-vscode 3)  ·  people: 1
-- Cost (real figures only): $5505.94 from 132 priced session(s) (ccusage-metered ×129, copilot-credits ×3)
-- Tokens (incl. sub-agents): total 9,582,240,167  ·  in 1,990,571, out 37,612,978, cache-read 9,297,855,036, cache-write 244,781,582
-- Real work: 39,603,549 tokens (in+out)  ·  cache hit rate: 97.4%
-- Time: 387.1h active  ·  1634.2h wall  ·  10949 turns  ·  10613 tool calls (283 err)
-- Case ids named in sessions: 469 distinct (sessions-per-case in the --json `byCase`; top: ELITEA-1140, ELITEA-2037, ELITEA-1866, ELITEA-2211, ELITEA-2367)
+- Sessions: 171 (claude 168, copilot-vscode 3)  ·  people: 2
+- Cost (real figures only): $5795.21 from 170 priced session(s) (ccusage-metered ×167, copilot-credits ×3)  ·  ⚠️ 1 session(s) tokens-only (no real dollar — never estimated)
+- Tokens (incl. sub-agents): total 9,948,776,718  ·  in 2,096,804, out 39,354,162, cache-read 9,649,430,721, cache-write 257,895,031
+- Real work: 41,450,966 tokens (in+out)  ·  cache hit rate: 97.4%
+- Time: 401.9h active  ·  1790.3h wall  ·  12262 turns  ·  11860 tool calls (349 err)
+- Case ids named in sessions: 477 distinct (sessions-per-case in the --json `byCase`; top: ELITEA-1899, ELITEA-2051, ELITEA-1140, ELITEA-2036, ELITEA-2037)
+- By declared intent: undeclared $5498.85 (136)  ·  automation $240.30 (22)  ·  investigation $56.06 (13)
 
 ## Cases (from the pipeline's own receipts)
 
-- Examined: 590 unique case(s) across 123 report(s)  ·  **delivered (automated): 385**
-- Outcomes: automated 357  ·  blocked 125  ·  merged-ungated 54  ·  merged-sanctioned-red 28  ·  already-covered 25  ·  not-started 1
-- Per delivered case: $14.30  ·  60 active min  ·  per case examined: $9.33
+- Examined: 597 unique case(s) across 130 report(s)  ·  **delivered (automated): 390**
+- Outcomes: automated 362  ·  blocked 124  ·  merged-ungated 54  ·  merged-sanctioned-red 28  ·  already-covered 25  ·  verified-non-defect 3  ·  not-started 1
+- Per delivered case: $14.86  ·  62 active min  ·  **automation-intent spend only: $0.62**  ·  per case examined: $9.71
   (spend in the window ÷ delivered cases in the receipts — align the window to the batch for a per-batch figure)
 
 ## By batch
@@ -99,13 +100,19 @@ Generated: 2026-09-14T12:43:34.769Z
 | elitea-2435-skill-pin-unpin | 1 | 1 | n/a | n/a | 0.0h | green | — |
 | elitea-2437-version-dropdown-set-default | 1 | 0 | n/a | n/a | 0.0h | — | — |
 | elitea-2438-skill-import-frontmatter | 1 | 1 | n/a | n/a | 0.0h | green | — |
-| elitea-2440-test-panel-version-instructions | 1 | 1 | n/a | n/a | 0.0h | green | — |
+| elitea-2440-test-panel-version-instructions | 1 | 1 | n/a | n/a | 0.0h | green | ⚠️ |
 | elitea-2450 | 1 | 1 | n/a | n/a | 0.0h | green | — |
 | elitea-2452 | 1 | 1 | n/a | n/a | 0.0h | green | — |
-| elitea-2453 | 1 | 1 | n/a | n/a | 0.0h | green | — |
+| elitea-2453 | 1 | 1 | n/a | n/a | 0.0h | green | ⚠️ |
 | elitea-2455-chat-participants | 1 | 0 | $41.49 | n/a | 2.5h | — | — |
 | elitea-2459-chat-folder-rename-tooltip | 1 | 1 | n/a | n/a | 0.0h | green | — |
 | elitea-2464-chat-modules-panel | 1 | 1 | n/a | n/a | 0.0h | GREEN (scoped) | — |
+| fix-2145 | 1 | 1 | $42.39 | $42.39 | 1.9h | — | — |
+| fix-2286-elitea-1899 | 1 | 0 | $7.52 | n/a | 0.2h | — | ⚠️ |
+| fix-2287-elitea-1901 | 1 | 1 | $11.08 | $11.08 | 0.4h | green | — |
+| fix-2290 | 1 | 1 | $4.21 | $4.21 | 0.1h | — | — |
+| fix-2296 | 1 | 0 | $5.05 | n/a | 0.1h | — | — |
+| fix-2297 | 2 | 0 | $4.53 | n/a | 0.1h | — | — |
 | help-center-remaining | 10 | 10 | n/a | n/a | 0.0h | green | — |
 | mcp-w01 | 8 | 8 | $79.39 | $9.92 | 5.1h | green | — |
 | mcp-w02 | 8 | 6 | $86.43 | $14.41 | 5.2h | green | — |
@@ -117,13 +124,13 @@ Generated: 2026-09-14T12:43:34.769Z
 | onboarding-w4 | 3 | 0 | $48.84 | n/a | 2.9h | red | ⚠️ |
 | pipeline-decision-node-2034 | 1 | 1 | n/a | n/a | 0.0h | green | — |
 | pipeline-router-node-2033 | 1 | 0 | n/a | n/a | 0.0h | red | — |
-| pipelines-remaining-w1 | 8 | 0 | n/a | n/a | 0.0h | not-run | — |
-| pipelines-remaining-w2 | 10 | 9 | n/a | n/a | 0.0h | green | — |
+| pipelines-remaining-w1 | 8 | 0 | n/a | n/a | 0.0h | not-run | ⚠️ |
+| pipelines-remaining-w2 | 10 | 9 | n/a | n/a | 0.0h | green | ⚠️ |
 | pipelines-remaining-w3 | 5 | 5 | n/a | n/a | 0.0h | green | — |
 | pipelines-remaining-w4 | 6 | 5 | n/a | n/a | 0.0h | green | — |
 | pipelines-remaining-w5 | 7 | 0 | n/a | n/a | 0.0h | not-run | — |
 | pipelines-remaining-w6 | 8 | 6 | n/a | n/a | 0.0h | green | — |
-| pipelines-remaining-w7 | 11 | 0 | n/a | n/a | 0.0h | not-run | — |
+| pipelines-remaining-w7 | 11 | 0 | n/a | n/a | 0.0h | not-run | ⚠️ |
 | settings-project-params | 1 | 1 | n/a | n/a | 0.0h | green | — |
 | settings-w01 | 9 | 5 | $82.57 | $16.51 | 6.2h | green | ⚠️ |
 | settings-w02 | 9 | 7 | $102.31 | $14.62 | 6.0h | green | — |
@@ -138,23 +145,26 @@ Generated: 2026-09-14T12:43:34.769Z
 | settings-w12 | 4 | 2 | $56.72 | $28.36 | 4.6h | green | — |
 | skills-buildwithai-fidelity-rework | 8 | 8 | n/a | n/a | 0.0h | green | — |
 | skills-remaining-w1 | 8 | 0 | n/a | n/a | 0.0h | incomplete | — |
-| skills-remaining-w2 | 8 | 0 | n/a | n/a | 0.0h | red | — |
+| skills-remaining-w2 | 8 | 0 | n/a | n/a | 0.0h | red | ⚠️ |
 | skills-remaining-w3 | 8 | 0 | n/a | n/a | 0.0h | red | — |
 | skills-remaining-w4 | 7 | 5 | n/a | n/a | 0.0h | green | — |
 | skills-remaining-w5 | 9 | 0 | n/a | n/a | 0.0h | red | — |
+| social-folders-critical | 3 | 3 | $66.81 | $22.27 | 4.1h | green | — |
 | support-assistant-w01 | 4 | 4 | $63.95 | $15.99 | 6.5h | green | — |
 | support-assistant-w02 | 6 | 6 | $80.83 | $13.47 | 7.3h | green | ⚠️ |
 | target-summary-tokens-range-2378 | 1 | 1 | n/a | n/a | 0.0h | green | — |
 
 ## Per case — every batch's cost.json rows (delivered first)
 
-- Delivered-case loaded cost: avg $10.62 · median $9.89 · min $1.68 · max $42.46 (n=242)
-- Delivered-case loaded time: avg 26m · median 29m · min 0m · max 142m (n=390)
+- Delivered-case loaded cost: avg $10.87 · median $10.13 · min $1.68 · max $42.46 (n=248)
+- Delivered-case loaded time: avg 27m · median 29m · min 0m · max 142m (n=396)
   (loaded = direct measured work + an even share of the batch overhead — an allocation, labelled as such)
 
 | case | batch | outcome | direct | loaded | active (loaded) |
 |---|---|---|---|---|---|
 | ELITEA-1810 | artifacts-w04 | merged-sanctioned-red | $39.99 | $42.46 | 142m |
+| ELITEA-1869 | fix-2145 | automated | $21.24 | $42.39 | 112m |
+| ELITEA-3208 | social-folders-critical | automated | $24.19 | $30.92 | 102m |
 | ELITEA-2091 | chat-remaining-w01 | automated | $26.39 | $30.68 | 106m |
 | ELITEA-2098 | chat-remaining-w01 | automated | $22.97 | $27.26 | 102m |
 | ELITEA-2314 | settings-w07 | automated | $20.12 | $25.71 | 82m |
@@ -170,6 +180,8 @@ Generated: 2026-09-14T12:43:34.769Z
 | ELITEA-2410 | settings-w10 | merged-sanctioned-red | $15.64 | $18.78 | 46m |
 | ELITEA-2348 | settings-w05 | automated | $15.99 | $18.63 | 47m |
 | ELITEA-2232 | onboarding-w2 | automated | $14.55 | $18.37 | 61m |
+| ELITEA-3209 | social-folders-critical | automated | $11.21 | $17.94 | 71m |
+| ELITEA-3210 | social-folders-critical | automated | $11.21 | $17.94 | 71m |
 | ELITEA-2266 | settings-w03 | automated | $14.03 | $17.80 | 51m |
 | ELITEA-2267 | settings-w03 | automated | $14.03 | $17.80 | 51m |
 | ELITEA-2345 | settings-w05 | automated | $14.92 | $17.56 | 39m |
@@ -255,6 +267,7 @@ Generated: 2026-09-14T12:43:34.769Z
 | ELITEA-1932 | mcp-w01 | automated | $9.92 | $11.27 | 37m |
 | ELITEA-2242 | settings-w01 | automated | $7.15 | $11.13 | 53m |
 | ELITEA-2243 | settings-w01 | merged-sanctioned-red | $7.15 | $11.13 | 53m |
+| ELITEA-1901 | fix-2287-elitea-1901 | automated | $3.43 | $11.08 | 23m |
 | ELITEA-1803 | artifacts-w01 | automated | $9.29 | $11.05 | 39m |
 | ELITEA-1804 | artifacts-w01 | automated | $9.29 | $11.05 | 39m |
 | ELITEA-2395 | settings-w10 | automated | $7.87 | $11.01 | 32m |
@@ -380,6 +393,7 @@ Generated: 2026-09-14T12:43:34.769Z
 | ELITEA-1855 | artifacts-w05 | automated | $2.60 | $4.31 | 24m |
 | ELITEA-2110 | chat-remaining-w03 | automated | $2.55 | $4.24 | 29m |
 | ELITEA-2112 | chat-remaining-w03 | automated | $2.55 | $4.24 | 29m |
+| ELITEA-1902 | fix-2290 | automated | n/a | $4.21 | 9m |
 | ELITEA-1861 | artifacts-w05 | automated | $2.00 | $3.71 | 23m |
 | ELITEA-2340 | settings-w05 | merged-sanctioned-red | $0.99 | $3.63 | 20m |
 | ELITEA-2341 | settings-w05 | merged-sanctioned-red | $0.99 | $3.63 | 20m |
@@ -594,6 +608,7 @@ Generated: 2026-09-14T12:43:34.769Z
 | ELITEA-2195 | chat-remaining-w13 | blocked | $5.29 | $7.88 | 48m |
 | ELITEA-2249 | settings-w01 | blocked | $3.71 | $7.69 | 38m |
 | ELITEA-2250 | settings-w01 | blocked | $3.71 | $7.69 | 38m |
+| ELITEA-1899 | fix-2286-elitea-1899 | blocked | n/a | $7.52 | 14m |
 | ELITEA-2100 | chat-remaining-w02 | blocked | $4.79 | $7.35 | 49m |
 | ELITEA-2176 | chat-remaining-w10 | merged-ungated | $5.04 | $7.19 | 47m |
 | ELITEA-2278 | settings-w04 | blocked | $3.81 | $7.09 | 28m |
@@ -618,6 +633,7 @@ Generated: 2026-09-14T12:43:34.769Z
 | ELITEA-2102 | chat-remaining-w02 | blocked | $2.81 | $5.37 | 41m |
 | ELITEA-2198 | chat-remaining-w13 | blocked | $2.72 | $5.31 | 40m |
 | ELITEA-2171 | chat-remaining-w10 | already-covered | $2.90 | $5.05 | 34m |
+| ELITEA-2441 | fix-2296 | verified-non-defect | n/a | $5.05 | 9m |
 | ELITEA-2133 | chat-remaining-w05 | blocked | $2.36 | $4.88 | 40m |
 | ELITEA-2134 | chat-remaining-w05 | blocked | $2.36 | $4.88 | 40m |
 | ELITEA-1943 | mcp-w03 | blocked | $3.22 | $4.70 | 32m |
@@ -650,6 +666,8 @@ Generated: 2026-09-14T12:43:34.769Z
 | ELITEA-2473 | chat-remaining-w15 | already-covered | $0.41 | $2.55 | 26m |
 | ELITEA-2306 | settings-w09 | blocked | n/a | $2.41 | 16m |
 | ELITEA-2380 | settings-w08 | blocked | n/a | $2.27 | 15m |
+| ELITEA-2440 | fix-2297 | verified-non-defect | n/a | $2.26 | 5m |
+| ELITEA-2442 | fix-2297 | verified-non-defect | n/a | $2.26 | 5m |
 | ELITEA-2191 | chat-remaining-w11 | blocked | n/a | $2.19 | 28m |
 | ELITEA-2194 | chat-remaining-w11 | already-covered | n/a | $2.19 | 28m |
 | ELITEA-2456 | chat-remaining-w04 | already-covered | n/a | $2.03 | 26m |
@@ -773,32 +791,33 @@ Generated: 2026-09-14T12:43:34.769Z
 
 ## Outside batches — by case id (no receipt claimed these sessions)
 
-- 122 session(s)  ·  $2059.16  ·  136.8h active — FIX/repair cards, investigations, framework work, and batches whose sessions predate capture. Per id: each session split evenly across the ids it named (allocation, mined ids).
+- 154 session(s)  ·  $2206.83  ·  144.5h active — FIX/repair cards, investigations, framework work, and batches whose sessions predate capture. Per id: each session split evenly across the ids it named (allocation, mined ids).
 
 | case id | sessions | cost (allocated) | active |
 |---|---|---|---|
 | ELITEA-1866 | 4 | $108.24 | 351m |
 | ELITEA-1140 | 5 | $88.12 | 351m |
+| ELITEA-2051 | 7 | $75.46 | 226m |
 | ELITEA-2211 | 3 | $73.73 | 255m |
 | ELITEA-2008 | 4 | $61.64 | 307m |
+| ELITEA-1899 | 10 | $53.93 | 186m |
 | ELITEA-1891 | 2 | $53.21 | 246m |
 | ELITEA-2367 | 4 | $52.45 | 198m |
+| ELITEA-2453 | 4 | $51.81 | 191m |
+| ELITEA-2022 | 4 | $47.81 | 165m |
 | N8-N11 | 1 | $44.87 | 209m |
 | ELITEA-2037 | 3 | $43.32 | 258m |
-| ELITEA-2051 | 2 | $43.15 | 181m |
-| ELITEA-2453 | 1 | $40.72 | 170m |
 | ELITEA-1892 | 2 | $37.47 | 154m |
-| ELITEA-2022 | 2 | $36.75 | 153m |
 | ELITEA-1955 | 2 | $36.16 | 146m |
 | ELITEA-1901 | 2 | $35.78 | 117m |
 | ELITEA-2024 | 2 | $33.53 | 91m |
+| ELITEA-2063 | 3 | $33.19 | 115m |
 | ELITEA-2363 | 3 | $32.26 | 127m |
 | ELITEA-2354 | 3 | $31.95 | 120m |
 | ELITEA-2213 | 3 | $30.81 | 130m |
 | FAIL-2 | 3 | $29.82 | 121m |
 | ELITEA-1790 | 1 | $29.61 | 96m |
 | ELITEA-2448 | 1 | $29.56 | 88m |
-| ELITEA-2063 | 2 | $26.05 | 104m |
 | ELITEA-0679 | 1 | $25.97 | 90m |
 | ELITEA-1890 | 2 | $24.54 | 106m |
 | ELITEA-1886 | 1 | $24.39 | 107m |
@@ -806,20 +825,23 @@ Generated: 2026-09-14T12:43:34.769Z
 | EL-6128 | 2 | $23.72 | 116m |
 | EL-6351 | 3 | $23.54 | 83m |
 | ELITEA-2212 | 2 | $22.34 | 90m |
-| ELITEA-1899 | 2 | $22.16 | 54m |
 | ELITEA-2016 | 1 | $21.96 | 144m |
 | ELITEA-1793 | 2 | $20.81 | 78m |
 | ELITEA-2002 | 2 | $20.11 | 67m |
 | ELITEA-1141 | 1 | $18.53 | 74m |
+| ELITEA-2030 | 1 | $18.51 | 38m |
 | ELITEA-0500 | 1 | $16.27 | 64m |
 | ELITEA-1142 | 1 | $16.27 | 64m |
+| ELITEA-2036 | 5 | $15.98 | 21m |
 | ELITEA-0143 | 1 | $15.04 | 52m |
 | ELITEA-2010 | 1 | $15.04 | 52m |
+| ELITEA-2070 | 2 | $14.07 | 40m |
 | ELITEA-1902 | 1 | $14.06 | 42m |
 | ELITEA-1740 | 1 | $13.94 | 55m |
 | ELITEA-2210 | 1 | $12.23 | 41m |
 | ELITEA-2215 | 1 | $12.23 | 41m |
 | ELITEA-2474 | 1 | $12.23 | 41m |
+| ELITEA-2056 | 1 | $12.15 | 28m |
 | ELITEA-1910 | 1 | $11.78 | 76m |
 | ELITEA-1915 | 1 | $11.78 | 76m |
 | ELITEA-1980 | 1 | $11.43 | 45m |
@@ -831,30 +853,27 @@ Generated: 2026-09-14T12:43:34.769Z
 | ELITEA-2003 | 1 | $9.26 | 34m |
 | EL-6400 | 1 | $8.69 | 29m |
 | PUT-200 | 1 | $8.69 | 29m |
-| ELITEA-1869 | 2 | $8.66 | 33m |
 | ELITEA-2214 | 1 | $8.48 | 39m |
 | EL-6540 | 1 | $8.33 | 20m |
-| ELITEA-0501 | 1 | $8.33 | 20m |
-| ELITEA-0855 | 1 | $8.19 | 21m |
-| ELITEA-2020 | 1 | $8.19 | 21m |
-| … 15 more ids | | | |
-| (no case id named) | 63 | $408.59 | 1706m |
+| … 16 more ids | | | |
+| (no case id named) | 68 | $429.96 | 1921m |
 
 ## By person
 
 | person | cost | sessions | tokens (in/out) | active | tools (err) |
 |---|---|---|---|---|---|
-| alexander-bychinskiy | $5505.94 | 132 | 1,990,571/37,612,978 | 387.1h | 10613 (283) |
+| alexander-bychinskiy | $5775.53 | 168 | 1,997,770/39,277,673 | 400.9h | 11760 (340) |
+| aliaksandr-valadzko | $19.68 | 3 | 99,034/76,489 | 1.0h | 100 (9) |
 
 ## By role
 
 | role | cost | units | tokens (in/out) | active | tools (err) |
 |---|---|---|---|---|---|
-| test-automation-engineer | $2175.23 | 567 | 59,262/16,182,984 | 98.1h | 23511 (868) |
-| qa-engineer | $1679.28 | 499 | 36,723/13,214,828 | 64.5h | 17985 (503) |
-| test-automation-lead | $1517.87 | 123 | 20,521/7,225,450 | 210.2h | 9984 (263) |
-| scout | $104.62 | 5 | 1,094/581,407 | 10.9h | 572 (19) |
-| (interactive session) | $6.79 | 4 | 1,872,363/222,359 | 2.6h | 57 (1) |
+| test-automation-engineer | $2226.60 | 580 | 60,018/16,493,554 | 99.8h | 23838 (887) |
+| qa-engineer | $1720.69 | 508 | 37,362/13,428,495 | 65.4h | 18290 (512) |
+| test-automation-lead | $1692.99 | 157 | 22,653/8,090,610 | 218.8h | 11011 (313) |
+| scout | $106.31 | 7 | 4,766/856,705 | 13.6h | 692 (26) |
+| (interactive session) | $26.47 | 7 | 1,971,397/298,848 | 3.5h | 157 (10) |
 | general-purpose | $15.09 | 6 | 316/92,792 | 0.4h | 163 (3) |
 | Explore | $6.81 | 4 | 130/86,268 | 0.3h | 144 (0) |
 | claude-code-guide | $0.26 | 1 | 162/6,890 | 0.1h | 19 (0) |
@@ -868,7 +887,7 @@ Generated: 2026-09-14T12:43:34.769Z
 | 2026-W33 | $1005.33 | 4 | 1,897,879/9,315,232 | 92.1h | 1768 (24) |
 | 2026-W34 | $782.26 | 4 | 15,229/5,352,206 | 59.2h | 791 (24) |
 | 2026-W35 | $2540.38 | 36 | 41,467/15,602,514 | 159.2h | 3662 (95) |
-| 2026-W37 | $1024.92 | 78 | 15,964/6,419,250 | 63.9h | 3773 (121) |
-| 2026-W38 | $31.76 | 6 | 382/172,133 | 1.3h | 130 (8) |
+| 2026-W37 | $1038.86 | 78 | 16,094/6,466,237 | 64.2h | 3800 (122) |
+| 2026-W38 | $307.09 | 45 | 106,485/1,866,330 | 15.8h | 1350 (73) |
 
 _Role dollars: each dispatch's own metered figure (Claude); a parent role's figure is its sessions minus their dispatches. Roles with no metered dispatch (Copilot) show tokens/time only. Fork/resume caveat: a forked session replays its parent's records; its ledger line can double-count the replayed tokens._
