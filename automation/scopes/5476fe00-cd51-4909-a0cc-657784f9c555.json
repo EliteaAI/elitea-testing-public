@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "session": "5476fe00-cd51-4909-a0cc-657784f9c555",
+  "intent": "investigation",
+  "cases": [
+    "ELITEA-2051"
+  ],
+  "declaredAt": "2026-09-16T14:11:49.417Z",
+  "updatedAt": "2026-09-16T14:16:12.653Z",
+  "outcomes": {
+    "ELITEA-2051": {
+      "outcome": "blocked",
+      "at": "2026-09-16T14:16:12.653Z"
+    }
+  }
+}
