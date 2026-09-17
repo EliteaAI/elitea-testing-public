@@ -1,9 +1,17 @@
+entry_point: START
+
 state:
   input:
     type: str
   messages:
     type: list
+  start:
+    type: str
+    value: ''
   project_items:
+    type: str
+    value: '[]'
+  milestone_issues:
     type: str
     value: '[]'
   verified_tickets:
@@ -44,23 +52,52 @@ nodes:
     structured_output: true
     transition: FetchProjectItems
 
+  # Step 1: Fetch items with "Verified on DEV Env" status from project board
   - id: FetchProjectItems
     type: toolkit
     toolkit_name: GitHub_Tools
-    tool: get_project_items
+    tool: search_project_issues
     input: []
     input_mapping:
-      owner:
+      board_repo:
         type: fixed
-        value: EliteaAI
+        value: EliteaAI/elitea_issues
       project_number:
         type: fixed
         value: 1
+      search_query:
+        type: fixed
+        value: 'status:"Verified on DEV Env"'
+      items_count:
+        type: fixed
+        value: 100
     output:
       - project_items
     structured_output: true
+    transition: FetchMilestoneIssues
+
+  # Step 2: Fetch issues with milestone R-2.0.7
+  - id: FetchMilestoneIssues
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: search_issues
+    input: []
+    input_mapping:
+      search_query:
+        type: fixed
+        value: 'milestone:"R-2.0.7" state:open'
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea_issues
+      max_count:
+        type: fixed
+        value: 100
+    output:
+      - milestone_issues
+    structured_output: true
     transition: FilterVerifiedTickets
 
+  # Step 3: Intersect - keep only items that are BOTH verified AND in milestone
   - id: FilterVerifiedTickets
     type: code
     code:
@@ -71,44 +108,60 @@ nodes:
         out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0'}
 
         try:
-            items_raw = alita_state.get('project_items', '[]')
+            # Get project board items (Verified on DEV Env status)
+            project_raw = alita_state.get('project_items', '{}')
+            project_data = json.loads(project_raw, strict=False) if isinstance(project_raw, str) else project_raw
+            if not isinstance(project_data, dict):
+                project_data = {}
 
-            try:
-                items = json.loads(items_raw, strict=False) if isinstance(items_raw, str) else items_raw
-                if not isinstance(items, list):
-                    items = []
-            except:
-                items = []
+            project_items = project_data.get('items', [])
+            if not isinstance(project_items, list):
+                project_items = []
 
-            # Filter items with status "Verified on DEV Env"
-            verified = []
-            for item in items:
-                if not isinstance(item, dict):
+            # Get milestone issues
+            milestone_raw = alita_state.get('milestone_issues', '[]')
+            milestone_issues = json.loads(milestone_raw, strict=False) if isinstance(milestone_raw, str) else milestone_raw
+            if not isinstance(milestone_issues, list):
+                milestone_issues = []
+
+            # Build set of issue numbers in milestone R-2.0.7
+            milestone_numbers = set()
+            for issue in milestone_issues:
+                num = issue.get('id')
+                if num:
+                    milestone_numbers.add(int(num))
+
+            # Filter project items: keep only those with Verified status AND in milestone
+            TARGET_STATUS = 'Verified on DEV Env'
+            filtered_items = []
+
+            for item in project_items:
+                # Check status
+                field_values = item.get('fieldValues', [])
+                is_verified = False
+                for fv in field_values:
+                    if isinstance(fv, dict):
+                        field_info = fv.get('field', {})
+                        fname = field_info.get('name', '') if isinstance(field_info, dict) else ''
+                        if fname == 'Status':
+                            fval = fv.get('name', '') or fv.get('optionName', '')
+                            if fval == TARGET_STATUS:
+                                is_verified = True
+                            break
+
+                if not is_verified:
                     continue
 
-                # Check status field - may be nested in fields or direct
-                status = None
-
-                # Try direct status
-                status = item.get('status', '')
-
-                # Try fields.Status
-                fields = item.get('fields', {})
-                if isinstance(fields, dict):
-                    status = fields.get('Status', status)
-
-                # Try fieldValues
-                field_values = item.get('fieldValues', {})
-                if isinstance(field_values, dict):
-                    status = field_values.get('Status', status)
-
-                if status == 'Verified on DEV Env':
-                    verified.append(item)
+                # Check if issue number is in milestone
+                content = item.get('content', {})
+                issue_number = content.get('number')
+                if issue_number and int(issue_number) in milestone_numbers:
+                    filtered_items.append(item)
 
             out = {
-                'verified_tickets': json.dumps(verified),
+                'verified_tickets': json.dumps(filtered_items),
                 'current_ticket_index': '0',
-                'total_tickets': str(len(verified))
+                'total_tickets': str(len(filtered_items))
             }
         except Exception as e:
             out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0'}
@@ -156,6 +209,8 @@ nodes:
 
             tickets = json.loads(tickets_raw, strict=False) if isinstance(tickets_raw, str) else tickets_raw
             if isinstance(tickets, list) and idx < len(tickets):
+                # Each item from search_project_issues has structure:
+                # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
                 out = {'current_ticket': json.dumps(tickets[idx])}
         except:
             pass
@@ -189,17 +244,26 @@ nodes:
             ticket_raw = alita_state.get('current_ticket', '{}')
             ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
 
-            # Extract basic info for now
-            title = ticket.get('title', 'Unknown')
-            number = ticket.get('number', 0)
-            url = ticket.get('url', '')
+            # search_project_issues item structure:
+            # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
+            content = ticket.get('content', {})
+
+            title = content.get('title', 'Unknown')
+            number = content.get('number', 0)
+            url = content.get('url', '')
+            state = content.get('state', '')
+            labels = content.get('labels', [])
+            assignees = content.get('assignees', [])
 
             out = {
                 'processed_result': json.dumps({
                     'status': 'processed',
                     'title': title,
                     'number': number,
-                    'url': url
+                    'url': url,
+                    'state': state,
+                    'labels': labels,
+                    'assignees': assignees
                 })
             }
         except:
@@ -229,14 +293,21 @@ nodes:
             ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
             processed = json.loads(processed_raw, strict=False) if isinstance(processed_raw, str) else processed_raw
 
-            # Extract ticket info
-            title = ticket.get('title', 'Unknown')
-            number = ticket.get('number', 0)
-            url = ticket.get('url', ticket.get('html_url', ''))
-            body = ticket.get('body', '')
+            # search_project_issues item structure:
+            # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
+            content = ticket.get('content', {})
+
+            title = content.get('title', 'Unknown')
+            number = content.get('number', 0)
+            url = content.get('url', '')
+            labels = content.get('labels', [])
 
             # Build automation issue title
             issue_title = f"[Automate] {title}"
+
+            # Format labels
+            label_names = [l.get('name', '') for l in labels if l.get('name')]
+            labels_str = ', '.join(label_names) if label_names else 'None'
 
             # Build automation issue body
             lines = [
@@ -245,10 +316,7 @@ nodes:
                 f"- **Original Issue:** [{title}]({url})",
                 f"- **Issue Number:** #{number}",
                 f"- **Status:** Verified on DEV Env",
-                "",
-                "## Description",
-                "",
-                body[:1000] if body else "No description provided.",
+                f"- **Labels:** {labels_str}",
                 "",
                 "## Automation Scope",
                 "",
@@ -282,36 +350,79 @@ nodes:
     structured_output: true
     transition: CreateAutomationIssue
 
+  # DEBUG MODE: Collect issues without creating them
+  # To enable real issue creation, replace this code node with the toolkit node below:
+  # ---
+  # - id: CreateAutomationIssue
+  #   type: toolkit
+  #   toolkit_name: GitHub_Tools
+  #   tool: create_issue_on_project
+  #   input:
+  #     - issue_title
+  #     - issue_body
+  #   input_mapping:
+  #     board_repo:
+  #       type: fixed
+  #       value: EliteaAI/elitea-testing-public
+  #     project_title:
+  #       type: fixed
+  #       value: Test Automation Factory
+  #     title:
+  #       type: variable
+  #       value: issue_title
+  #     body:
+  #       type: variable
+  #       value: issue_body
+  #     labels:
+  #       type: fixed
+  #       value: '["aqa:intake"]'
+  #     fields:
+  #       type: fixed
+  #       value:
+  #         Status: Approved
+  #     issue_repo:
+  #       type: fixed
+  #       value: EliteaAI/elitea-testing-public
+  #   output:
+  #     - issue_result
+  #   structured_output: true
+  #   transition: StoreAndNext
+  # ---
+
   - id: CreateAutomationIssue
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: create_issue_on_project
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        # DEBUG MODE: Simulate issue creation without actually creating
+        out = {'issue_result': ''}
+
+        try:
+            title = alita_state.get('issue_title', '')
+            body = alita_state.get('issue_body', '')
+
+            # Build a mock result that shows what WOULD be created
+            mock_result = {
+                'mode': 'DRY_RUN',
+                'would_create': {
+                    'repo': 'EliteaAI/elitea-testing-public',
+                    'project': 'Test Automation Factory',
+                    'title': title,
+                    'labels': ['aqa:intake'],
+                    'status': 'Approved',
+                    'body_preview': body[:200] + '...' if len(body) > 200 else body
+                }
+            }
+            out = {'issue_result': json.dumps(mock_result)}
+        except Exception as e:
+            out = {'issue_result': json.dumps({'error': str(e)})}
+
+        out
     input:
       - issue_title
       - issue_body
-    input_mapping:
-      board_repo:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
-      project_title:
-        type: fixed
-        value: Test Automation Factory
-      title:
-        type: variable
-        value: issue_title
-      body:
-        type: variable
-        value: issue_body
-      labels:
-        type: fixed
-        value: '["aqa:intake"]'
-      fields:
-        type: fixed
-        value:
-          Status: Approved
-      issue_repo:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
     output:
       - issue_result
     structured_output: true
@@ -338,9 +449,14 @@ nodes:
 
             ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
 
+            # search_project_issues item structure:
+            # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
+            content = ticket.get('content', {})
+
             created.append({
-                'source_number': ticket.get('number', 0),
-                'source_title': ticket.get('title', ''),
+                'source_number': content.get('number', 0),
+                'source_title': content.get('title', ''),
+                'source_url': content.get('url', ''),
                 'automation_issue': issue_result
             })
 
@@ -380,24 +496,62 @@ nodes:
             if not isinstance(created, list):
                 created = []
 
+            # Check if we're in dry run mode
+            is_dry_run = False
+            if created and isinstance(created[0].get('automation_issue'), str):
+                try:
+                    first_result = json.loads(created[0]['automation_issue'])
+                    is_dry_run = first_result.get('mode') == 'DRY_RUN'
+                except:
+                    pass
+
             lines = [
                 "## Verified Ticket Intake Summary",
                 "",
-                f"**Total verified tickets found:** {total}",
-                f"**Automation issues created:** {len(created)}",
-                "",
             ]
 
-            if created:
-                lines.append("### Created Issues")
+            if is_dry_run:
+                lines.append("### ⚠️ DRY RUN MODE - No issues were actually created")
                 lines.append("")
-                for item in created:
+
+            lines.extend([
+                f"**Total verified tickets found:** {total}",
+                f"**Issues {'collected (not created)' if is_dry_run else 'created'}:** {len(created)}",
+                "",
+            ])
+
+            if created:
+                lines.append("### Issues to Create" if is_dry_run else "### Created Issues")
+                lines.append("")
+                for idx, item in enumerate(created, 1):
                     source = item.get('source_number', '?')
-                    title = item.get('source_title', 'Unknown')
-                    result = item.get('automation_issue', '')
-                    lines.append(f"- #{source}: {title}")
-                    lines.append(f"  - Result: {result[:100]}...")
+                    source_title = item.get('source_title', 'Unknown')
+                    result_raw = item.get('automation_issue', '')
+
+                    lines.append(f"**{idx}. Source Ticket #{source}:** {source_title}")
+
+                    # Parse the result to show details
+                    try:
+                        result = json.loads(result_raw) if isinstance(result_raw, str) else result_raw
+                        if is_dry_run and 'would_create' in result:
+                            wc = result['would_create']
+                            lines.append(f"   - **Title:** {wc.get('title', 'N/A')}")
+                            lines.append(f"   - **Target Repo:** {wc.get('repo', 'N/A')}")
+                            lines.append(f"   - **Project:** {wc.get('project', 'N/A')}")
+                            lines.append(f"   - **Labels:** {', '.join(wc.get('labels', []))}")
+                            lines.append(f"   - **Status:** {wc.get('status', 'N/A')}")
+                        else:
+                            lines.append(f"   - Result: {str(result)[:150]}...")
+                    except:
+                        lines.append(f"   - Result: {result_raw[:150]}...")
+
                     lines.append("")
+
+            if is_dry_run:
+                lines.extend([
+                    "---",
+                    "**To create these issues for real:** Edit the pipeline YAML and uncomment the `GitHub_Tools.create_issue_on_project` toolkit node.",
+                ])
 
             out = {'summary': chr(10).join(lines)}
         except Exception as e:
