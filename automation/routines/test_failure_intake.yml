@@ -1661,9 +1661,10 @@ nodes:
                     test_to_issue[test_id] = issue_url
 
             # Update maintenance tests with their tracking issues
-            tests = maintenance.get('tests', [])
-            if isinstance(tests, list):
-                for test in tests:
+            # Schema uses 'details' not 'tests'
+            details = maintenance.get('details', [])
+            if isinstance(details, list):
+                for test in details:
                     if isinstance(test, dict):
                         auto_id = test.get('automation_test_id', '')
                         if auto_id in test_to_issue:
