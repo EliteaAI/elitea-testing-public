@@ -424,10 +424,10 @@ nodes:
             elif isinstance(logs, str):
                 log_content = logs
 
-            # Extract total test count from pytest summary line
-            # Examples: "===== 73 passed, 2 failed in 45.23s ====="
-            #           "===== 71 passed, 2 failed, 1 skipped in 50.12s ====="
+            # Extract total test count using multiple strategies
             total_tests = 0
+
+            # Strategy 1: pytest summary line "===== 73 passed, 2 failed in 45.23s ====="
             summary_matches = re.findall(r'=+ ([\d\w\s,]+) in [\d.]+s =+', log_content)
             for summary in summary_matches:
                 run_total = 0
@@ -435,6 +435,25 @@ nodes:
                     run_total += int(match.group(1))
                 if run_total > total_tests:
                     total_tests = run_total
+
+            # Strategy 2: Count unique test progress lines (tests/...PASSED/FAILED/RERUN [N%])
+            if total_tests == 0:
+                seen_test_lines = set()
+                progress_pattern = re.compile(r'(tests/[^\s]+::[^\s]+)\s+(?:PASSED|FAILED|RERUN)\s*\[\s*\d+%\]')
+                for match in progress_pattern.finditer(log_content):
+                    seen_test_lines.add(match.group(1))
+                if seen_test_lines:
+                    total_tests = len(seen_test_lines)
+
+            # Strategy 3: Extract from highest percentage marker [100%] reverse-math
+            if total_tests == 0:
+                pct_pattern = re.compile(r'\[\s*(\d+)%\]')
+                percentages = [int(m.group(1)) for m in pct_pattern.finditer(log_content)]
+                if percentages:
+                    max_pct = max(percentages)
+                    pct_count = len([p for p in percentages if p == 100 or (p > 0 and p <= 100)])
+                    if max_pct == 100 and pct_count > 0:
+                        total_tests = pct_count
 
             # Pattern 1: "FAILED tests/ui/..." - pytest summary format (captures up to space or dash)
             failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+?)(?:\s+-\s+|\s+$|\s+\[)')
