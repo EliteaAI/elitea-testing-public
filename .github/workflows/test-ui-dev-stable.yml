@@ -105,6 +105,26 @@ jobs:
     if: always() && (github.event_name == 'schedule' || inputs.enable_results_processing == true)
     runs-on: ubuntu-latest
     steps:
+      - name: Download JUnit artifacts for test counts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: test-results
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Calculate total test count from JUnit XMLs
+        id: counts
+        run: |
+          TOTAL=0
+          # Sum up tests from all junit.xml files
+          for xml in $(find test-results -name "junit.xml" 2>/dev/null); do
+            COUNT=$(grep -o 'tests="[0-9]*"' "$xml" | head -1 | grep -o '[0-9]*' || echo 0)
+            TOTAL=$((TOTAL + COUNT))
+          done
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "Total tests across all suites: $TOTAL"
+
       - name: Send webhook to intake pipeline
         env:
           MAINTENANCE_URL: ${{ secrets.MAINTENANCE_URL }}
@@ -127,6 +147,7 @@ jobs:
             --arg conclusion "${{ needs.test.result }}" \
             --arg actor "${{ github.actor }}" \
             --arg repo "${{ github.repository }}" \
+            --argjson total_tests ${{ steps.counts.outputs.total || 0 }} \
             '{
               action: $action,
               workflow_run: {
@@ -138,7 +159,8 @@ jobs:
                 head_branch: $head_branch,
                 head_sha: $head_sha,
                 conclusion: $conclusion,
-                actor: { login: $actor }
+                actor: { login: $actor },
+                total_tests: $total_tests
               },
               repository: { full_name: $repo }
             }')
