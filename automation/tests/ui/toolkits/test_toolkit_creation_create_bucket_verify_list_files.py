@@ -56,7 +56,9 @@ step-by-step disposition):
        "List files"; select it.
 29.    Verify the "List files" parameter panel (Bucket Name, Folder,
        Recursive, Include, Skip, "Run Test").
-30-31. Click "Run Test"; verify the result (`{'total': 0, 'rows': []}`).
+30-31. Click "Run Test"; verify the result — the payload is parsed
+       and compared structurally to `{"total": 0, "rows": []}`, not
+       substring-matched against one serialization (#2066).
 32-36. Navigate to Artifacts; search "new"; verify "new-bucket" is listed.
 37-39. Select "new-bucket"; verify the header + the empty-bucket state.
 
@@ -94,6 +96,7 @@ from pages.toolkit_detail_page import ToolkitDetailPage
 from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from pages.toolkits_list_page import ToolkitsListPage
 from playwright.sync_api import expect
+from utils.toolkit_result_payload import parse_tool_result_payload
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +124,11 @@ DELETE_RESPONSE_TIMEOUT = 15_000
 # actively forbid randomizing these (see AFS § Test Data).
 TOOLKIT_NAME = "my-artifact-toolkit"
 BUCKET_NAME = "new-bucket"
+
+# Step 31's expected tool result: `List files` against a just-created,
+# never-uploaded-to bucket. The VALUE is the case's observable and is
+# unchanged; only its serialization drifted (#2066) — see Step 31.
+EMPTY_LIST_FILES_RESULT = {"total": 0, "rows": []}
 SEARCH_TERM = "art"
 TOOL_KEY = "list_files"
 
@@ -741,9 +749,28 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                     f"Expected the result to reference 'list_files', "
                     f"got: {result_text!r}"
                 )
-                assert "{'total': 0, 'rows': []}" in result_text, (
+                # The payload is PARSED and compared structurally rather than
+                # substring-matched against one serialization (#2066): the
+                # product moved from a Python ``repr`` to pretty-printed JSON
+                # while the observable — the just-created bucket is empty —
+                # stayed correct. The parsed comparison is stronger than the
+                # substring pin on every axis that matters — position (the old
+                # pin matched anywhere in ``result_text``, wrapper prose
+                # included; this is anchored to the payload after the LAST
+                # marker), extra or renamed keys (whole-payload equality, not a
+                # fragment), and a payload that stops rendering at all (a loud
+                # AssertionError, never a silent miss) — and it survives drift
+                # in either direction. The one axis it no longer discriminates
+                # is int-vs-bool/float: Python dict equality compares values,
+                # not types, so ``{"total": False}`` and ``{"total": 0.0}``
+                # would both compare equal to ``{"total": 0}``. The product
+                # will not emit either for a row count
+                # (``utils/toolkit_result_payload``, pinned by
+                # ``tests/unit/test_toolkit_result_payload.py``).
+                payload = parse_tool_result_payload(result_text)
+                assert payload == EMPTY_LIST_FILES_RESULT, (
                     f"Expected an empty result for the just-created "
-                    f"bucket, got: {result_text!r}"
+                    f"bucket, got: {payload!r} (raw: {result_text!r})"
                 )
 
             with allure.step(
