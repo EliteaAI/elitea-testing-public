@@ -1582,3 +1582,38 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   control is inconclusive-by-construction — say so explicitly rather than letting a green control read
   as exoneration. Same family as the environment-scoped-sanctioned-RED entries (#1892/#2082,
   ELITEA-2354/#2166): *can this failure physically occur on the environment you are testing on?*
+- **DEV auth/gateway blip — a NEW precondition signature: `403 access_denied` with `current_permissions: []`,
+  then 502s, then the Keycloak sign-in page (2026-09-18, ELITEA-1183/#2349, PR #2359)**: gate A of
+  `test_toolkit_indicators_for_credentials.py::TestToolkitCredentialIndicators::test_toolkit_credential_indicators_e2e`
+  against `dev.elitea.ai` lost 2 of 3 invocations in a 3-minute window (11:31–11:34Z). Run 1: Steps 1–9 PASSED,
+  then Step 10's `PUT /configurations/configuration/399/<id>` returned
+  `403 {"error":"access_denied","required":[…],"current_permissions":[]}` — for the **same user that had created
+  the credential and toolkit ~30 s earlier** — and every cleanup-fixture GET in teardown returned `502 Bad Gateway`
+  (`reruns.json {}`: `HTTPError` is not in `--only-rerun`, so **zero automatic reruns**). Run 2: all 3 attempts
+  `broken` at Step 3 `wait_for_page_load` (name textbox 15 s) and the failure screenshot is the **Keycloak sign-in
+  page** — the session was bounced, nothing rendered. Run 3 and a full re-gate were 3/3 clean (~43 s, 13 steps).
+  **Tells, cheapest first:** the screenshot (the assertion names a textbox, not a login page — the #2074 rule again);
+  `current_permissions: []` (an authenticated user never has zero); 502 on endpoints unrelated to the test in
+  teardown. It is a raw uncaught error at a **precondition**, never a member of a sanctioned-RED set —
+  **re-gate from scratch, never accept 2-of-3, never raise a timeout.** ⚠️ The test's own `finally` cleanup hits the
+  same 403, so scratch entities can leak on DEV — sweep by prefix (`autotest_toolkit_*`, `autotest_tk_cred_*`)
+  after such a run (this time the rerun's cleanup had already removed them).
+- **UI-drift class — EL-6632 moved the credential status indicator OFF the selected value (2026-09-18,
+  ELITEA-1183/#2349, PR #2359)**: EliteaAI/EliteaUI@f73c22f7 (*hotfix/EL-6632/credential-select*, PR #1036) gates
+  `CredentialOptionLabel.jsx`'s `data-testid="credential-status-indicator"` on `isInvalid && !isSelected`, and
+  `CredentialsSelect.jsx` renders the displayed value with `isSelected: true`. So on any surface that binds the
+  indicator on the **selected** credential (toolkit detail, and anything else using `CredentialsSelect`) the icon
+  is unreachable at runtime while still present in source — a deterministic 3/3 red that looks like a promotion
+  gap and is not one. The invalid state now lives in three places: the combobox
+  (`<dataTestId>-combobox[aria-invalid="true"]`, produced via `ToolkitForm.jsx` `toolErrors` → `FormControl error`
+  → MUI `SelectInput`), the icon on the credential's **option in the open dropdown** (same testid, same
+  `aria-label`/tooltip), and the `credential-warning-banner` (warning variant, icon + tooltip). **The repaired
+  shape (copy it):** assert the row flag, open the dropdown, scope the icon to that option
+  (`get_saved_option(...).locator(CREDENTIAL_STATUS_INDICATOR)`), read the tooltip, close with Escape +
+  `aria-expanded="false"`; for the post-fix absence, wait for the option **visible first**, then
+  `to_have_count(0)` on the icon — the old page-level absence check was vacuous on a closed dropdown.
+  ⚠️ `ToolkitDetailPage`'s legacy `has_credential_status_indicator` / `get_credential_status_indicator_tooltip` /
+  `wait_for_no_status_indicator` now match nothing on a closed dropdown (silent `False`) — docstring-noted, not
+  removed; do not reach for them. The Pipeline/Agent sibling classes read the indicator on toolkit cards and were
+  untouched by the hotfix. Case text: ELITEA-1183 steps 10–11 reworded (onetest-ai-tm-Elitea#129); intent
+  confirmation is #2361 (non-blocking).
