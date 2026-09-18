@@ -1,0 +1,8 @@
+{
+ "2145": "[FIX][ELITEA-1869] timeout: Timeout clicking back navigation button from agent",
+ "2286": "[FIX][ELITEA-1899] assertion-failure: Agent icon change does not update the header icon ",
+ "2287": "[FIX][ELITEA-1901] assertion-failure: Imported agent model selector shows wrong default ",
+ "2290": "[FIX][ELITEA-1902] assertion-failure: Imported main agent's name does not match the expo",
+ "2296": "[FIX][ELITEA-2441] api-error: 502 Bad Gateway on /elitea_core/conversations/prom",
+ "2297": "[FIX][2 cases] timeout: Locator timeout caused by 502 Bad Gatewa"
+}
