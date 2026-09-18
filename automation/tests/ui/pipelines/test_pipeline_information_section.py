@@ -23,10 +23,13 @@ diagram — EliteaUI ``DiagramOutput.jsx`` runs ``initialize({startOnLoad:
 true})`` + ``contentLoaded()`` (→ ``mermaid.run()`` over its own ``.mermaid``
 container) alongside its explicit ``m.render``; whichever render lands last
 wins, and on a cold page (first mermaid import in the document — every fresh
-browser context, i.e. every CI attempt) ``run()`` lands last ~1 in 4 opens and
-wipes the SVG. Measured 5/22 cold opens on DEV, 2/8 on a pipeline created via
-the UI, so it is the product, not this test's API-seeded fixture (whose YAML
-is byte-identical to what the UI authors). Step 9 keeps asserting the CORRECT
+browser context, i.e. every CI attempt) ``run()`` lands last ~1 in 7 opens and
+wipes the SVG. Measured 2026-09-18 on DEV: 6 bombs / 40 cold opens (4/32
+API-seeded + 2/8 on a pipeline created via the UI), so it is the product, not
+this test's API-seeded fixture (whose YAML is byte-identical to what the UI
+authors). #2367's signature is BOTH Step-9 soft checks failing together
+(``.node`` count 0 AND ``.error-icon`` present); the node check failing ALONE
+is a different, unfiled cause. Step 9 keeps asserting the CORRECT
 expected behaviour (diagram nodes rendered, no error bomb) as ``expect.soft()``
 with ``# Known defect: #2367`` so the Axis-2 console check still runs and the
 red stays visible and correctly attributed — nothing is weakened; a raw
@@ -205,10 +208,10 @@ def test_pipeline_information_section(page, pipeline_with_llm_id):
         # once nodes are up, a bomb can only mean run() landed last — #2367).
         expect.soft(
             pipeline_page.get_diagram_nodes().first,
-            "Known defect: #2367 — Show-link modal should render at least one "
-            "Mermaid node (Start → LLM 1 → END); a 'Syntax error in text' bomb "
-            "here is DiagramOutput's startOnLoad/run() race, NOT a YAML or "
-            "fixture problem (the seeded YAML is byte-identical to UI-authored)",
+            "Show-link modal should render at least one Mermaid node (Start → LLM 1 → END). "
+            "This is known defect #2367 ONLY if the '.error-icon count 0' assertion below ALSO "
+            "failed (mermaid.run() race left the bomb). If this failed ALONE — empty container, "
+            "no bomb — it is a NEW cause: do not file under #2367.",
         ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
         expect.soft(
             pipeline_page.get_diagram_error_icons(),

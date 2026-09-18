@@ -206,17 +206,22 @@
    the component also calls `m.render(...)`; both go through mermaid's FIFO
    queue and every render starts with `container.innerHTML = ""`, so
    whichever lands LAST wins — on a cold page (first mermaid import in the
-   document; every fresh browser context) `run()` lands last ~1 in 4 opens,
+   document; every fresh browser context) `run()` lands last ~1 in 7 opens,
    wipes the SVG and leaves the bomb. No console error (mermaid swallows it
    at `logLevel: 5`), no red error text (`errorMessage` state never set).
-   Measured on DEV: 6 bombs / 40 cold opens, including **2/8 on a pipeline
-   created through the UI** whose YAML is byte-identical to the fixture's —
-   the product, not the API seed. Independent of mermaid version (reproduced
+   Measured 2026-09-18 on DEV: 6 bombs / 40 cold opens (4/32 API-seeded +
+   **2/8 on a pipeline created through the UI** whose YAML is byte-identical
+   to the fixture's) — the product, not the API seed. Independent of mermaid version (reproduced
    in isolation on 11.16.0 and 11.17.2). Sibling of #1368 (same modal,
    different mechanism — #1368's svg-pan-zoom error fires while the diagram
    DOES render). Handling: Step 9's diagram assertions are `expect.soft()` +
    `# Known defect: #2367` against the correct expected behaviour — red stays
-   visible; nothing weakened.
+   visible; nothing weakened. **Signature = BOTH soft checks failing
+   together** (`.node` count 0 AND `.error-icon` present). The `.node` check
+   failing ALONE — empty container, no bomb — is reachable by causes that are
+   NOT #2367 (mermaid chunk never loading, `DiagramOutput` throwing before
+   either render, the `errorMessage` text branch): treat it as a NEW cause,
+   do not file under #2367. The first soft message says exactly this.
 
 ## Blocked Steps
 - None. All 9 case steps were executed live and are covered above.

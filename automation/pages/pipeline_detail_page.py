@@ -2060,7 +2060,7 @@ class PipelineDetailPage(PipelineFormPage):
     def get_diagram_node_count(self) -> int:
         """Return the number of Mermaid diagram node elements currently rendered
         inside the Show-link preview modal (mirrors ChatPage.get_diagram_node_count)."""
-        return self.show_context_diagram_container.locator(self.MERMAID_NODE).count()
+        return self.get_diagram_nodes().count()
 
     @action("Open the Create version dialog")
     def open_save_as_version_dialog(self, timeout: int = 10000):
