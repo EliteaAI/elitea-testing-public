@@ -30,9 +30,6 @@ state:
   commit_sha:
     type: str
     value: ''
-  commit_message:
-    type: str
-    value: ''
   actor:
     type: str
     value: ''
@@ -90,9 +87,9 @@ state:
   delete_result:
     type: str
     value: ''
-  is_dev_stable:
-    type: str
-    value: 'false'
+  issue_fields:
+    type: dict
+    value: {}
   issue_title:
     type: str
     value: ''
@@ -123,6 +120,9 @@ state:
   issue_status:
     type: str
     value: ''
+  issue_number:
+    type: str
+    value: '0'
   label_result:
     type: str
     value: ''
@@ -144,10 +144,10 @@ nodes:
       value: |
         import json
 
-        # Default output
+        # Default output for invalid input
         out = {
             'run_id': 'unknown',
-            'repo': '',
+            'repo': 'EliteaAI/elitea-testing-public',
             'conclusion': 'skipped',
             'workflow_name': 'unknown',
             'workflow_name_short': 'unknown',
@@ -155,94 +155,47 @@ nodes:
             'run_number': '',
             'head_branch': 'main',
             'commit_sha': '',
-            'commit_message': '',
             'actor': '',
             'maintenance_file_path': 'unknown.json'
         }
 
         try:
+            # Input is well-formed JSON from test-ui-dev-stable.yml notify job
             raw = alita_state.get('input', '{}')
-            payload = {}
-            if isinstance(raw, str):
-                try:
-                    payload = json.loads(raw, strict=False)
-                except:
-                    raw_s = raw.strip()
-                    if raw_s.startswith('{'):
-                        depth, end_idx = 0, 0
-                        for i, c in enumerate(raw_s):
-                            if c == '{': depth += 1
-                            elif c == '}':
-                                depth -= 1
-                                if depth == 0:
-                                    end_idx = i + 1
-                                    break
-                        if end_idx > 0:
-                            payload = json.loads(raw_s[:end_idx], strict=False)
-            elif isinstance(raw, dict):
-                payload = raw
+            payload = json.loads(raw) if isinstance(raw, str) else raw
+            workflow_run = payload.get('workflow_run', {})
 
-            action = payload.get('action', '') or ''
-            workflow_run = payload.get('workflow_run') or {}
-            if not isinstance(workflow_run, dict):
-                workflow_run = {}
-
+            # Extract fields directly - no filtering needed (triggered from known workflow)
+            run_id = str(workflow_run.get('id', 'unknown'))
+            run_number = str(workflow_run.get('run_number', ''))
+            workflow_name = workflow_run.get('name', 'unknown') or 'unknown'
             workflow_path = workflow_run.get('path', '') or ''
-            actor_obj = workflow_run.get('actor') or {}
-            actor_login = actor_obj.get('login', '') if isinstance(actor_obj, dict) else ''
             conclusion = workflow_run.get('conclusion', '') or ''
-
-            # Get workflow name and create cleared version
-            workflow_name_full = workflow_run.get('name', 'unknown') or 'unknown'
-            # Clear name: replace ' ' and '_' with '-', remove '[' and ']', lowercase
-            workflow_name_cleared = workflow_name_full.lower().replace(' ', '-').replace('_', '-').replace('[', '').replace(']', '')
-
-            # Check if workflow name contains allowed patterns
-            # Normalize name for matching: remove spaces and hyphens
-            name_normalized = workflow_name_full.lower().replace(' ', '').replace('-', '')
-            # Patterns also normalized (no separators)
-            allowed_patterns = ['devstable', 'stage1', 'stage2', 'stage3', 'next']
-            matches_pattern = any(p in name_normalized for p in allowed_patterns)
-
-            should_process = (
-                action == 'completed' and
-                matches_pattern and
-                conclusion in ('failure', 'success')
-            )
-
-            head_commit = workflow_run.get('head_commit') or {}
-
-            workflow_name_short = workflow_path.replace('.github/workflows/', '').replace('.yml', '') if workflow_path else 'unknown'
-
-            run_id_val = workflow_run.get('id', 'unknown')
             head_sha = workflow_run.get('head_sha', '') or ''
-            commit_msg = head_commit.get('message', '') or ''
-            repo_obj = payload.get('repository') or {}
-            if not isinstance(repo_obj, dict):
-                repo_obj = {}
+            actor_obj = workflow_run.get('actor', {})
 
-            run_id_str = str(run_id_val) if run_id_val else 'unknown'
-            run_num_str = str(workflow_run.get('run_number', '') or 'unknown')
-            # Filename: [CLEARED_NAME]_[RUN_NUM]_[RUN_ID].json
-            maintenance_file = f"{workflow_name_cleared}_{run_num_str}_{run_id_str}.json"
+            # Extract total_tests from payload (passed by workflow from JUnit artifacts)
+            total_tests = workflow_run.get('total_tests', 0)
+            if isinstance(total_tests, str):
+                total_tests = int(total_tests) if total_tests.isdigit() else 0
 
-            # Check if this is dev-stable workflow (for real issue creation)
-            is_dev_stable = 'devstable' in name_normalized
+            # Build maintenance filename: [CLEARED_NAME]_[RUN_NUM]_[RUN_ID].json
+            workflow_name_cleared = workflow_name.lower().replace(' ', '-').replace('_', '-').replace('[', '').replace(']', '')
+            maintenance_file = f"{workflow_name_cleared}_{run_number}_{run_id}.json"
 
             out = {
-                'run_id': run_id_str,
-                'repo': repo_obj.get('full_name', 'EliteaAI/elitea-testing-public') if should_process else '',
-                'conclusion': conclusion if should_process else 'skipped',
-                'workflow_name': workflow_name_full,
-                'workflow_name_short': workflow_name_short,
+                'run_id': run_id,
+                'repo': payload.get('repository', {}).get('full_name', 'EliteaAI/elitea-testing-public'),
+                'conclusion': conclusion,
+                'workflow_name': workflow_name,
+                'workflow_name_short': workflow_path.replace('.github/workflows/', '').replace('.yml', '') or 'unknown',
                 'run_url': workflow_run.get('html_url', '') or '',
-                'run_number': str(workflow_run.get('run_number', '') or ''),
+                'run_number': run_number,
                 'head_branch': workflow_run.get('head_branch', 'main') or 'main',
                 'commit_sha': head_sha[:7] if head_sha else '',
-                'commit_message': commit_msg[:100] if commit_msg else '',
-                'actor': actor_login,
+                'actor': actor_obj.get('login', '') if isinstance(actor_obj, dict) else '',
                 'maintenance_file_path': maintenance_file,
-                'is_dev_stable': 'true' if is_dev_stable else 'false'
+                'total_tests': str(total_tests)
             }
         except:
             pass
@@ -260,10 +213,9 @@ nodes:
       - run_number
       - head_branch
       - commit_sha
-      - commit_message
       - actor
       - maintenance_file_path
-      - is_dev_stable
+      - total_tests
     structured_output: true
     transition: CheckFailure
 
@@ -272,71 +224,14 @@ nodes:
     input:
       - conclusion
     condition: |
-      {% if conclusion == 'failure' %}
-      FetchWorkflowDetails
-      {% elif conclusion == 'success' %}
-      HandleSuccessRun
-      {% else %}
-      SkipNonFailure
-      {% endif %}
+      {% if conclusion == 'failure' or conclusion == 'success' %}FetchWorkflowDetails{% else %}END{% endif %}
     routes:
       - FetchWorkflowDetails
-      - HandleSuccessRun
-      - SkipNonFailure
-    default_output: SkipNonFailure
-
-  - id: SkipNonFailure
-    type: code
-    code:
-      type: fixed
-      value: |
-        try:
-            conclusion = alita_state.get('conclusion', 'unknown') or 'unknown'
-            workflow_name = alita_state.get('workflow_name', '') or ''
-            out = {'skip_reason': f'Skipped: conclusion={conclusion}, workflow={workflow_name}'}
-        except:
-            out = {'skip_reason': 'Skipped due to error'}
-        out
-    input:
-      - conclusion
-      - workflow_name
-    output:
-      - skip_reason
-    structured_output: true
-    transition: END
-
-  - id: HandleSuccessRun
-    type: code
-    code:
-      type: fixed
-      value: |
-        import json
-
-        # For success runs, create empty tests array and skip to file commit
-        # Note: total_tests will be 0 for success runs (logs not fetched)
-        out = {
-            'classified_tests': '[]',
-            'maintenance_json': '{"total": 0, "details": []}',
-            'issue_groups': '[]',
-            'total_groups': '0',
-            'created_issues': '[]',
-            'total_tests': '0'
-        }
-        out
-    input: []
-    output:
-      - classified_tests
-      - maintenance_json
-      - issue_groups
-      - total_groups
-      - created_issues
-      - total_tests
-    structured_output: true
-    transition: BuildFullFilePath
+    default_output: END
 
   - id: FetchWorkflowDetails
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: get_workflow_status
     input:
       - run_id
@@ -351,7 +246,7 @@ nodes:
 
   - id: FetchWorkflowLogs
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: get_workflow_logs
     input:
       - run_id
@@ -378,7 +273,10 @@ nodes:
         import json
         import re
 
-        out = {'failed_jobs': '- No job details available', 'failed_tests': '[]', 'total_tests': '0'}
+        # total_tests comes from webhook payload (extracted from JUnit by GHA workflow)
+        # We only parse logs for failed test names now (using failed_only: true)
+        total_from_payload = alita_state.get('total_tests', '0') or '0'
+        out = {'failed_jobs': '- No job details available', 'failed_tests': '[]', 'total_tests': total_from_payload}
 
         try:
             details_raw = alita_state.get('workflow_details', '{}')
@@ -421,18 +319,6 @@ nodes:
             elif isinstance(logs, str):
                 log_content = logs
 
-            # Extract total test count from pytest summary line
-            # Examples: "===== 73 passed, 2 failed in 45.23s ====="
-            #           "===== 71 passed, 2 failed, 1 skipped in 50.12s ====="
-            total_tests = 0
-            summary_matches = re.findall(r'=+ ([\d\w\s,]+) in [\d.]+s =+', log_content)
-            for summary in summary_matches:
-                run_total = 0
-                for match in re.finditer(r'(\d+) (passed|failed|skipped|error|xfailed|xpassed)', summary):
-                    run_total += int(match.group(1))
-                if run_total > total_tests:
-                    total_tests = run_total
-
             # Pattern 1: "FAILED tests/ui/..." - pytest summary format (captures up to space or dash)
             failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+?)(?:\s+-\s+|\s+$|\s+\[)')
             # Pattern 2: "tests/ui/... FAILED" - alternate format
@@ -470,7 +356,7 @@ nodes:
                     seen_tests.add(dotted)
                     failed_tests.append({'automation_test_id': dotted, 'raw_path': test_path})
 
-            out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests), 'total_tests': str(total_tests)}
+            out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests), 'total_tests': total_from_payload}
         except:
             pass
 
@@ -478,6 +364,7 @@ nodes:
     input:
       - workflow_details
       - workflow_logs
+      - total_tests
     output:
       - failed_jobs
       - failed_tests
@@ -505,20 +392,30 @@ nodes:
     code:
       type: fixed
       value: |
-        try:
-            workflow_name = alita_state.get('workflow_name', '') or ''
-            run_number = alita_state.get('run_number', '') or ''
-            out = {'skip_reason': f'No failed tests found in logs for {workflow_name} #{run_number}'}
-        except:
-            out = {'skip_reason': 'No failed tests found'}
+        import json
+
+        # No failed tests - prepare empty state for file update path
+        # total_tests was already extracted in ParseFailedTests
+        total_tests = alita_state.get('total_tests', '0') or '0'
+
+        out = {
+            'classified_tests': '[]',
+            'maintenance_json': json.dumps({'total': int(total_tests) if total_tests.isdigit() else 0, 'details': []}),
+            'issue_groups': '[]',
+            'total_groups': '0',
+            'created_issues': '[]'
+        }
         out
     input:
-      - workflow_name
-      - run_number
+      - total_tests
     output:
-      - skip_reason
+      - classified_tests
+      - maintenance_json
+      - issue_groups
+      - total_groups
+      - created_issues
     structured_output: true
-    transition: END
+    transition: BuildFullFilePath
 
   - id: FetchTMSIndex
     type: toolkit
@@ -605,7 +502,7 @@ nodes:
 
   - id: SearchExistingIssues
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: search_issues
     input: []
     input_mapping:
@@ -646,7 +543,7 @@ nodes:
 
   - id: ReadPreviousRunFile
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: read_file
     input:
       - md_report_path
@@ -838,7 +735,6 @@ nodes:
       - workflow_name
       - run_number
       - head_branch
-      - commit_message
       - failed_jobs
       - workflow_logs
       - classified_tests
@@ -893,7 +789,6 @@ nodes:
           Workflow: {workflow_name}
           Run: #{run_number}
           Branch: {head_branch}
-          Commit: {commit_message}
 
           Failed Jobs:
           {failed_jobs}
@@ -1050,7 +945,6 @@ nodes:
             run_url = alita_state.get('run_url', '') or ''
             head_branch = alita_state.get('head_branch', '') or 'main'
             commit_sha = alita_state.get('commit_sha', '') or ''
-            commit_message = alita_state.get('commit_message', '') or ''
             actor = alita_state.get('actor', '') or ''
             failed_jobs = alita_state.get('failed_jobs', '') or ''
             failure_analysis = alita_state.get('failure_analysis', '') or ''
@@ -1119,7 +1013,7 @@ nodes:
                     f"- Workflow: {workflow_name}",
                     f"- Run: #{run_number} ([View on GitHub]({run_url}))",
                     f"- Branch: `{head_branch}`",
-                    f"- Commit: `{commit_sha}` - {commit_message}",
+                    f"- Commit: `{commit_sha}`",
                     f"- Triggered by: @{actor}",
                     "",
                     "## Affected Tests",
@@ -1233,7 +1127,6 @@ nodes:
       - run_url
       - head_branch
       - commit_sha
-      - commit_message
       - actor
       - failed_jobs
       - failure_analysis
@@ -1308,23 +1201,12 @@ nodes:
     type: router
     input:
       - issue_status
-      - is_dev_stable
     condition: |
-      {% if issue_status == 'skip' %}
-      SkipAndNext
-      {% elif is_dev_stable != 'true' %}
-      MockIssueForNonDevStable
-      {% elif issue_status == 'Todo' %}
-      CreateIssueTodo
-      {% else %}
-      CreateIssuePromoted
-      {% endif %}
+      {% if issue_status == 'skip' %}SkipAndNext{% else %}PrepareIssueFields{% endif %}
     routes:
       - SkipAndNext
-      - MockIssueForNonDevStable
-      - CreateIssueTodo
-      - CreateIssuePromoted
-    default_output: CreateIssuePromoted
+      - PrepareIssueFields
+    default_output: PrepareIssueFields
 
   - id: SkipAndNext
     type: code
@@ -1340,63 +1222,34 @@ nodes:
     structured_output: true
     transition: CheckMoreGroups
 
-  - id: MockIssueForNonDevStable
+  - id: PrepareIssueFields
     type: code
     code:
       type: fixed
       value: |
-        import json
-
-        out = {'created_issues': '[]', 'current_group_index': '0'}
-
-        try:
-            run_number = alita_state.get('run_number', '0') or '0'
-            created_raw = alita_state.get('created_issues', '[]')
-            idx = int(alita_state.get('current_group_index', '0'))
-            groups_raw = alita_state.get('issue_groups', '[]')
-
-            created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
-            if not isinstance(created, list):
-                created = []
-
-            groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
-
-            # Use mock issue ID for non-dev-stable runs
-            mock_issue_id = f"ISSUES_{run_number}"
-
-            # Store the mock issue with its tests
-            if idx < len(groups):
-                group = groups[idx]
-                created.append({
-                    'issue_url': mock_issue_id,
-                    'tests': group.get('tests', []),
-                    'title': group.get('title', '')
-                })
-
-            # Increment index for next iteration
-            out = {'created_issues': json.dumps(created), 'current_group_index': str(idx + 1)}
-        except:
-            pass
-
+        # Build the fields object with dynamic Status from issue_status
+        # Pass as dict directly - NOT json.dumps() - toolkit expects dict not string
+        status = alita_state.get('issue_status', 'Todo') or 'Todo'
+        # Map internal status to board column name
+        if status not in ('Todo', 'Approved'):
+            status = 'Todo'
+        out = {'issue_fields': {'Status': status}}
         out
     input:
-      - run_number
-      - created_issues
-      - current_group_index
-      - issue_groups
+      - issue_status
     output:
-      - created_issues
-      - current_group_index
+      - issue_fields
     structured_output: true
-    transition: CheckMoreGroups
+    transition: CreateIssue
 
-  - id: CreateIssueTodo
+  - id: CreateIssue
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: create_issue_on_project
     input:
       - issue_title
       - issue_body
+      - issue_fields
     input_mapping:
       board_repo:
         type: fixed
@@ -1411,41 +1264,8 @@ nodes:
         type: variable
         value: issue_body
       fields:
-        type: fixed
-        value:
-          Status: Todo
-      issue_repo:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
-    output:
-      - issue_result
-    structured_output: true
-    transition: ExtractIssueNumber
-
-  - id: CreateIssuePromoted
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: create_issue_on_project
-    input:
-      - issue_title
-      - issue_body
-    input_mapping:
-      board_repo:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
-      project_title:
-        type: fixed
-        value: Test Automation Factory
-      title:
         type: variable
-        value: issue_title
-      body:
-        type: variable
-        value: issue_body
-      fields:
-        type: fixed
-        value:
-          Status: Approved
+        value: issue_fields
       issue_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
@@ -1524,7 +1344,7 @@ nodes:
 
   - id: AddLabelMaintenance
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: update_issue
     input:
       - issue_number_int
@@ -1546,7 +1366,7 @@ nodes:
 
   - id: AddLabelMapping
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: update_issue
     input:
       - issue_number_int
@@ -1658,9 +1478,10 @@ nodes:
                     test_to_issue[test_id] = issue_url
 
             # Update maintenance tests with their tracking issues
-            tests = maintenance.get('tests', [])
-            if isinstance(tests, list):
-                for test in tests:
+            # Schema uses 'details' not 'tests'
+            details = maintenance.get('details', [])
+            if isinstance(details, list):
+                for test in details:
                     if isinstance(test, dict):
                         auto_id = test.get('automation_test_id', '')
                         if auto_id in test_to_issue:
@@ -1681,7 +1502,7 @@ nodes:
 
   - id: ReadExistingFile
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: read_file
     input:
       - full_file_path
@@ -1802,7 +1623,7 @@ nodes:
 
   - id: DeleteMaintenanceFile
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: delete_file
     input:
       - full_file_path
@@ -1823,7 +1644,7 @@ nodes:
 
   - id: CreateMaintenanceFile
     type: toolkit
-    toolkit_name: GitHub_Tools
+    toolkit_name: GitHubTools
     tool: create_file
     input:
       - full_file_path
