@@ -25,6 +25,7 @@ from pages.base_page import BasePage
 from pages.chat_page import ChatPage
 from pages.credential_create_page import CredentialCreatePage
 from pages.toolkit_creation_page import ToolkitCreationPage
+from pages.toolkit_detail_page import ToolkitDetailPage
 from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
@@ -528,10 +529,25 @@ class TestToolkitTestSettings:
     def test_toolkit_test_settings(
         self, page, toolkit_config: ToolkitConfig, managed_toolkit: dict,
     ):
-        """Run a tool via the Test Settings panel on the toolkit detail page."""
+        """Run a tool via the Test Toolkit surface reached from the toolkit detail page.
+
+        UI DRIFT (EliteaUI EL-6277, PRs #796/#803, 2026-08-20 — card
+        elitea-testing-public#2358): the whole Test surface (``ToolkitTestPanel``
+        → ``ToolkitTestEmptyState``, which carries
+        ``toolkit-test-empty-tool-select``) moved OFF the detail view onto its
+        own route, ``/toolkits/{tab}/{id}/test``. The detail view now shows the
+        Indexes side panel and an action-bar **Test** button
+        (``toolkit-test-button``); the empty-state tool select is unreachable
+        from ``/toolkits/all/{id}`` — present on ``main``, never mounted there.
+        Step 2 now opens the Test surface through the product's own button
+        (:meth:`ToolkitDetailPage.open_test_surface`, the elitea-testing-public#1616
+        shape), never a forced URL, so the navigation stays exercised rather
+        than substituted. Every downstream assertion is unchanged.
+        """
         cfg = toolkit_config
         tk_id = managed_toolkit["id"]
         base_url = settings.app_base_url
+        toolkit_detail = ToolkitDetailPage(page)
         test_settings = ToolkitTestSettingsPage(page)
 
         with allure.step("Step 1 — Navigate to toolkit detail page"):
@@ -544,12 +560,23 @@ class TestToolkitTestSettings:
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
 
-        with allure.step("Step 2 — Open the Tool select on the Test-Tools empty state"):
+        with allure.step("Step 2 — Open the Test Toolkit surface via the action-bar Test button"):
+            # NEW STEP (EliteaUI EL-6277 / elitea-testing-public#2358). The TEST
+            # SETTINGS surface has LEFT the toolkit detail view: it lives on its
+            # own route, /toolkits/{tab}/{id}/test, reached via the detail
+            # action-bar `toolkit-test-button` (useToolkitDetailNavigation
+            # → goToTest). Without this navigation Steps 3-9 cannot pass at
+            # all — the empty-state tool select never mounts on the detail
+            # route. Same shape as the ELITEA-1866 spec's Step 24b (#1616):
+            # the product's own button + URL wait, never a forced URL.
+            toolkit_detail.open_test_surface(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step("Step 3 — Open the Tool select on the Test-Tools empty state"):
             # ORDER CHANGE (EliteaUI EL-5947). The toolkit detail page no longer
             # opens on the Test Settings panel: TestTools.jsx now early-returns
             # `<TestToolsEmptyState/>` while `!selectedTool`, and the panel — with
             # its 'Test Settings' heading and Tool dropdown — only mounts AFTER a
-            # tool is chosen. Waiting for the panel first (the old Step 2) is
+            # tool is chosen. Waiting for the panel first (the pre-EL-5947 step) is
             # therefore unsatisfiable: the panel cannot appear until this select
             # is used. Selecting first, asserting the panel second.
             #
@@ -559,7 +586,7 @@ class TestToolkitTestSettings:
             # `.agents/testing.md` § Locator policy.
             test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step(f"Step 3 — Select tool: {cfg.test_tool_name}"):
+        with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
             visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
             visible_search.fill(cfg.test_tool_name)
             page.wait_for_timeout(500)
@@ -570,17 +597,17 @@ class TestToolkitTestSettings:
             )
             assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
 
-        with allure.step("Step 4 — Verify the Test Settings panel is now shown"):
+        with allure.step("Step 5 — Verify the Test Settings panel is now shown"):
             # Anchored on the panel's Tool dropdown testid rather than the
             # 'Test Settings' heading text (raw-text handles are policy-forbidden).
             test_settings.wait_for_panel(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step("Step 5 — Fill tool-specific parameters"):
+        with allure.step("Step 6 — Fill tool-specific parameters"):
             if cfg.test_tool_params:
                 for field_label, value in cfg.test_tool_params.items():
                     _fill_test_settings_param(page, field_label, value)
 
-        with allure.step("Step 6 — Click the Run Test button"):
+        with allure.step("Step 7 — Click the Run Test button"):
             # Dismiss any popups (NPS survey, banners) that may block the button
             BasePage(page).dismiss_popups()
 
@@ -599,7 +626,7 @@ class TestToolkitTestSettings:
             # previous force-click, will not fire while the form is invalid.
             test_settings.run_tool(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step("Step 7 — Wait for tool execution result"):
+        with allure.step("Step 8 — Wait for tool execution result"):
             success_locator = page.locator(f'text="{cfg.test_tool_result_indicator}"')
             error_locator = page.locator('text="Error debugging info"')
 
@@ -617,7 +644,7 @@ class TestToolkitTestSettings:
 
             page.wait_for_timeout(2000)
 
-        with allure.step("Step 8 — Verify tool execution success"):
+        with allure.step("Step 9 — Verify tool execution success"):
             if error_locator.is_visible():
                 error_locator.click()
                 page.wait_for_timeout(500)
