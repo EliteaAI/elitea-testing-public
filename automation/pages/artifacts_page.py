@@ -698,6 +698,15 @@ class ArtifactsPage(BasePage):
         "toggle, no language select, no CodeMirror editor coexist with it.",
     )
 
+    buckets_heading = LocatorDescriptor(
+        testid="artifacts-buckets-heading",
+        description="'Buckets' heading in the left-panel header. The DOM text "
+        "is 'Buckets' — case texts writing 'BUCKETS' describe the CSS "
+        "text-transform, not the content. (The testid itself is pre-existing "
+        "and already used inline by :meth:`wait_for_page_load`; this field is "
+        "the class-level handle ELITEA-1803 asserts the TEXT through.)",
+    )
+
     # Scoped sub-selector for CodeMirror's own internal per-line render
     # nodes — #579 sanctioned exception, MUST stay chained off
     # file_preview_code_content (whose `.cm-content` node is these lines'
