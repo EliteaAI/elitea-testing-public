@@ -3,6 +3,7 @@ name: A clean cherry-pick to main can still be broken — hidden symbol dependen
 description: Git auto-merging a page object cleanly proves nothing about the SYMBOLS the picked method bodies reference; run the spec once locally before gating, or grep every `self.<field>` against main. Fix = promote the whole sibling commit, never hand-patch the field.
 type: feedback
 created: 2026-09-16
+updated: 2026-09-18
 tags: [area/promotion, area/git, area/promotion-gap]
 ---
 
@@ -37,3 +38,26 @@ pick's hunks never touch the field's region, so the merge had nothing to flag.
 
 Cost of missing it: a 3× DEV gate thrown away plus a session. Cost of the check:
 one local invocation.
+
+## Second occurrence — and when rule 2 does NOT fit (#2345, ELITEA-1866, PR #2347, 2026-09-18)
+
+Same mechanism, different sibling shape: `556d39edf`'s `navigate_to_artifacts` reads
+`self.buckets_heading`, defined only by `08163b6c0` (artifacts-w01, PR #1625 — **8 cases**,
+unpromoted). I skipped the check above and paid for it: 3/3 deterministic `AttributeError`
+on the candidate gate (~5.5 min) before the one-command symbol scan found it:
+`git show <repair> -- <files> | grep -oE 'self\.[a-zA-Z_]+' | sort -u`, each grepped
+against `origin/main`'s files. **Do this BEFORE the first candidate gate, every time.**
+
+Rule 2 assumes the sibling is a single, already-`Ready` repair. When the sibling is a
+**multi-case wave commit**, promoting it whole means N new node ids on DEV Stable plus
+their testid provenance — not a dependency, a second batch. Lesser evil taken: a
+**verbatim** port of the one class field via a fix-only implementer dispatch, with the
+origin SHA in the commit body (traceability kept), byte-diffed against base.
+
+**Trap the port creates on the main→base sync:** git auto-merges the ported field as a
+*second* definition (base has its own copy 30 lines away; no hunk overlap ⇒ no conflict
+marker). Silent — Python keeps the last one. After resolving the sync, ALWAYS
+`git diff origin/automation/base -- <page object>`; expect empty; if not,
+`git checkout origin/automation/base -- <file>` (base is the superset). Same trap will
+fire for whoever later cherry-picks `08163b6c0` onto `main` individually — Mode A
+whole-state promote is clean.
