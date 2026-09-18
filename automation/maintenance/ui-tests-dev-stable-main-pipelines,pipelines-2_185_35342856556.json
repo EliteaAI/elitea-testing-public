@@ -1,0 +1,30 @@
+{
+  "runs": {
+    "20260918132003": {
+      "total": 102,
+      "details": [
+        {
+          "id": "ELITEA-2036",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2342"
+        },
+        {
+          "id": "ELITEA-2051",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2343"
+        },
+        {
+          "id": "ELITEA-2056",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2366",
+          "failure_type": "element-not-found",
+          "failure_summary": "Timeout waiting for Information section 'Show' link to appear (10000ms exceeded, all 3 retries failed)",
+          "reasoning": "The test failed all 3 retry attempts with the same error: 'Locator.wait_for: Timeout 10000ms exceeded' when trying to click the Information section's 'Show' link. This is a consistent, reproducible failure (not flaky \u2014 every retry fails identically), indicating the UI element is genuinely missing or the Information section feature is broken/changed in the current build. This warrants investigation as a real product regression."
+        }
+      ]
+    }
+  }
+}
