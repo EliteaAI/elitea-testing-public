@@ -51,7 +51,16 @@ class TestToolkitCredentialIndicators:
         credential_api,
         toolkit_api,
     ):
-        """E2E test: verify all indicators and fix invalid credentials on Toolkit."""
+        """E2E test: verify all indicators and fix invalid credentials on Toolkit.
+
+        Adjusted 2026-09-18 for EliteaUI EL-6632 (EliteaAI/EliteaUI@f73c22f7, PR #1036,
+        Refs #2349): the attention icon (``credential-status-indicator``) no longer
+        renders on the SELECTED credential value — the row is flagged via the
+        combobox's ``aria-invalid`` + warning underline, and the icon-with-tooltip
+        now renders only on the credential's own DROPDOWN OPTION. Steps 4 and 13
+        therefore open the dropdown (transit) and assert the icon/tooltip there,
+        scoped to this test's credential; what is verified is unchanged.
+        """
         if not settings.jira_api_key or not settings.jira_username:
             pytest.skip("JIRA_USERNAME and JIRA_API_KEY not set in .env.test - required for e2e test")
 
@@ -103,13 +112,20 @@ class TestToolkitCredentialIndicators:
                 toolkit_page.navigate_to_toolkit(toolkit_id)
 
             with allure.step("Step 4 — Verify status indicator with error tooltip"):
-                assert toolkit_page.has_credential_status_indicator(timeout=15000), (
-                    "Expected status indicator for invalid credential"
+                # EL-6632: the credential row itself is flagged invalid (aria-invalid +
+                # warning underline) and the attention icon lives on the dropdown option.
+                toolkit_page.wait_for_credential_select_invalid_state("jira", invalid=True, timeout=15000)
+                toolkit_page.open_credential_dropdown("jira")
+                assert toolkit_page.has_saved_option_status_indicator(
+                    cred["elitea_title"], private=True, timeout=15000
+                ), "Expected status indicator for invalid credential"
+                status_tooltip = toolkit_page.get_saved_option_status_indicator_tooltip(
+                    cred["elitea_title"], private=True
                 )
-                status_tooltip = toolkit_page.get_credential_status_indicator_tooltip()
                 assert status_tooltip and any(
                     err in status_tooltip for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
                 ), f"Status tooltip should contain error message, got: '{status_tooltip}'"
+                toolkit_page.close_credential_dropdown("jira")
                 logger.info("Status indicator verified: %s", status_tooltip)
 
             with allure.step("Step 5 — Verify warning message"):
@@ -183,7 +199,14 @@ class TestToolkitCredentialIndicators:
                 logger.info("Clicked reload button")
 
             with allure.step("Step 13 — Verify indicators disappear after fix"):
-                toolkit_page.wait_for_no_status_indicator(timeout=15000)
+                # Row-level invalid state clears first (toolkit re-validation), then the
+                # option-scoped icon must be gone — asserted where Step 4 read it.
+                toolkit_page.wait_for_credential_select_invalid_state("jira", invalid=False, timeout=15000)
+                toolkit_page.open_credential_dropdown("jira")
+                toolkit_page.wait_for_no_saved_option_status_indicator(
+                    cred["elitea_title"], private=True, timeout=15000
+                )
+                toolkit_page.close_credential_dropdown("jira")
                 logger.info("Status indicator disappeared")
 
                 assert not toolkit_page.has_authentication_warning(timeout=3000), (
