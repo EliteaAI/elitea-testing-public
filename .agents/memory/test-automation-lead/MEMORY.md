@@ -209,3 +209,4 @@
 - [Clean cherry-pick to main, hidden symbol dependency on sibling repair](cherry_pick_to_main_hidden_symbol_dependency_on_sibling_repair.md) — clean page-object auto-merge ≠ dependency proof; run spec once / `git log -S'<field>'` before gating; promote the whole sibling commit, never hand-patch the field (#2330)
 - [intake_approved_status_is_not_a_human_ruling](intake_approved_status_is_not_a_human_ruling.md) — a [FIX] card in Approved was placed there by the intake routine (yml:1219), not a human; cannot override a survivor's dedupe instruction
 - [Foreground `sleep N; tail` is blocked — wait with a bounded `until` loop](foreground_sleep_is_blocked_use_a_bounded_until_loop.md) — one `until grep -q GATE_DONE …; do sleep 5; done` loop per Bash call (n-capped <600 s), never Monitor, never a bare sleep (#2337)
+- [UI-drift triage: bracket main by last-green/first-red dates, git log -S the gate line](ui_drift_bracket_by_pass_fail_dates.md)

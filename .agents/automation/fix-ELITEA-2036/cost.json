@@ -1,7 +1,7 @@
 {
  "v": 1,
  "batch": "fix-ELITEA-2036",
- "generatedAt": "2026-09-16T21:15:02.022Z",
+ "generatedAt": "2026-09-16T21:15:34.452Z",
  "sources": {
   "window": {
    "start": "2026-09-15T14:08:20.100Z",
@@ -27,62 +27,62 @@
   ]
  },
  "totals": {
-  "costUsd": 6.33,
-  "tokens": 5276127,
+  "costUsd": 6.56,
+  "tokens": 5644395,
   "tokensSplit": {
-   "input": 68,
-   "output": 29614,
-   "cacheRead": 4933959,
-   "cacheWrite": 312486
+   "input": 72,
+   "output": 30578,
+   "cacheRead": 5299296,
+   "cacheWrite": 314449
   },
   "tokensByModel": {
    "claude-opus-5": {
-    "input": 68,
-    "output": 29614,
-    "cacheRead": 4933959,
-    "cacheWrite": 312486
+    "input": 72,
+    "output": 30578,
+    "cacheRead": 5299296,
+    "cacheWrite": 314449
    }
   },
-  "activeMin": 7,
+  "activeMin": 8,
   "dispatches": 0,
   "sessions": 2,
-  "turns": 34,
-  "toolCalls": 32,
+  "turns": 36,
+  "toolCalls": 33,
   "toolErrors": 2,
   "skills": []
  },
  "byRole": {
   "test-automation-lead": {
-   "costUsd": 6.33,
-   "tokens": 5276127,
+   "costUsd": 6.56,
+   "tokens": 5644395,
    "tok": {
-    "input": 68,
-    "output": 29614,
-    "cacheRead": 4933959,
-    "cacheWrite": 312486
+    "input": 72,
+    "output": 30578,
+    "cacheRead": 5299296,
+    "cacheWrite": 314449
    },
-   "activeMin": 7,
+   "activeMin": 8,
    "dispatches": 0,
-   "toolCalls": 32,
+   "toolCalls": 33,
    "toolErrors": 2
   }
  },
  "overhead": {
   "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
-  "costUsd": 6.33,
+  "costUsd": 6.56,
   "sharePct": 100,
   "lead": {
-   "costUsd": 6.33,
-   "tokens": 5276127,
+   "costUsd": 6.56,
+   "tokens": 5644395,
    "tok": {
-    "input": 68,
-    "output": 29614,
-    "cacheRead": 4933959,
-    "cacheWrite": 312486
+    "input": 72,
+    "output": 30578,
+    "cacheRead": 5299296,
+    "cacheWrite": 314449
    },
-   "activeMin": 7,
+   "activeMin": 8,
    "dispatches": 0,
-   "toolCalls": 32,
+   "toolCalls": 33,
    "toolErrors": 2
   },
   "stages": {
@@ -133,9 +133,9 @@
     "toolErrors": 0
    },
    "loaded": {
-    "costUsd": 6.33,
-    "tokens": 5276127,
-    "activeMin": 7
+    "costUsd": 6.56,
+    "tokens": 5644395,
+    "activeMin": 8
    }
   }
  ],
@@ -145,17 +145,17 @@
   "directTokens": null,
   "directActiveMin": null,
   "loadedCostUsd": {
-   "avg": 6.33,
-   "median": 6.33,
-   "min": 6.33,
-   "max": 6.33,
+   "avg": 6.56,
+   "median": 6.56,
+   "min": 6.56,
+   "max": 6.56,
    "n": 1
   },
   "loadedActiveMin": {
-   "avg": 7,
-   "median": 7,
-   "min": 7,
-   "max": 7,
+   "avg": 8,
+   "median": 8,
+   "min": 8,
+   "max": 8,
    "n": 1
   }
  },
