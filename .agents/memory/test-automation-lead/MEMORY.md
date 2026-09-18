@@ -1,4 +1,5 @@
 # Memory index — test-automation-lead
+- [EL-6532 SDK JSON drift + uncarded setup ERRORs](sdk_el6532_json_serialization_drifts_every_repr_captured_oracle.md) — an assertion that PASTES a healthy payload = stale oracle, re-capture; sibling params ERROR at setup and intake files nothing for ERROR; #2362/#2365
 - [Sync testids BEFORE a FIX control run](a_fix_card_red_can_be_hidden_on_localhost_until_testids_is_synced.md) — localhost lagged main by 50 commits incl. the causing hotfix (EL-6632); an unsynced control run passes and mis-classes Class A as D; intake's ELITEA-id comes from automation_test_id lists; #2349
 - [DEV auth blip signature](dev_auth_blip_403_empty_permissions_then_502_then_login_page.md) — 403 `current_permissions: []` + 502 teardown + Keycloak login-page screenshot at a precondition = re-gate, never the signature; #2349
 - [Second toast within the first's window reads as the first](a_second_toast_within_the_first_toasts_window_is_read_as_the_first.md) — single-slot ToastProvider replace-in-place; fix = retrying expect anchored to THIS click's text; never a dismissal wait or timeout raise; #2321/#2329
