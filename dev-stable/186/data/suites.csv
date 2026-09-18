@@ -1,0 +1,269 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Fri Sep 18 13:31:14 UTC 2026","Fri Sep 18 13:31:25 UTC 2026","11272","tests.ui.toolkits","test_credential_required_fields_validation","TestCredentialRequiredFieldsValidation","","","test_create_credential_required_fields_validation","Save reflects required-field state; Display Name clearing is a known defect."
+"passed","Fri Sep 18 13:31:27 UTC 2026","Fri Sep 18 13:31:51 UTC 2026","24134","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
+        TC-1917
+        "
+"passed","Fri Sep 18 13:31:51 UTC 2026","Fri Sep 18 13:32:16 UTC 2026","25317","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_sync","TC3: Settings Synchronization from Personalization to Chat.
+        TC-1916
+        Personalization settings are baseline defaults that apply to Chat.
+        Chat changes are temporary/session-only and do NOT sync back to Personalization.
+        "
+"passed","Fri Sep 18 13:34:12 UTC 2026","Fri Sep 18 13:34:20 UTC 2026","8220","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[github]","Create a credential through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:36:01 UTC 2026","Fri Sep 18 13:36:18 UTC 2026","16359","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[jira]","Run a tool via the Test Toolkit surface reached from the toolkit detail page.
+
+        UI DRIFT (EliteaUI EL-6277, PRs #796/#803, 2026-08-20 — card
+        elitea-testing-public#2358): the whole Test surface (``ToolkitTestPanel``
+        → ``ToolkitTestEmptyState``, which carries
+        ``toolkit-test-empty-tool-select``) moved OFF the detail view onto its
+        own route, ``/toolkits/{tab}/{id}/test``. The detail view now shows the
+        Indexes side panel and an action-bar **Test** button
+        (``toolkit-test-button``); the empty-state tool select is unreachable
+        from ``/toolkits/all/{id}`` — present on ``main``, never mounted there.
+        Step 2 now opens the Test surface through the product's own button
+        (:meth:`ToolkitDetailPage.open_test_surface`, the elitea-testing-public#1616
+        shape), never a forced URL, so the navigation stays exercised rather
+        than substituted. Every downstream assertion is unchanged.
+        "
+"passed","Fri Sep 18 13:36:58 UTC 2026","Fri Sep 18 13:37:18 UTC 2026","20574","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[jira]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"passed","Fri Sep 18 13:32:31 UTC 2026","Fri Sep 18 13:32:44 UTC 2026","13102","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_not_visible_by_default","TC5: Voice settings are NOT displayed in Chat by default.
+
+        Regression test for bug #5235: Read-out control was inappropriately
+        visible in default Chat window state.
+
+        Expected:
+            Voice settings controls should only appear when Read-out and
+            Voice mode features are explicitly activated.
+
+        Related:
+            - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
+        "
+"skipped","Fri Sep 18 13:35:25 UTC 2026","Fri Sep 18 13:35:25 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[bitbucket]","Create a toolkit through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:32:17 UTC 2026","Fri Sep 18 13:32:30 UTC 2026","13751","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
+        TC-1914
+        "
+"skipped","Fri Sep 18 13:36:18 UTC 2026","Fri Sep 18 13:36:18 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[gitlab]","Run a tool via the Test Toolkit surface reached from the toolkit detail page.
+
+        UI DRIFT (EliteaUI EL-6277, PRs #796/#803, 2026-08-20 — card
+        elitea-testing-public#2358): the whole Test surface (``ToolkitTestPanel``
+        → ``ToolkitTestEmptyState``, which carries
+        ``toolkit-test-empty-tool-select``) moved OFF the detail view onto its
+        own route, ``/toolkits/{tab}/{id}/test``. The detail view now shows the
+        Indexes side panel and an action-bar **Test** button
+        (``toolkit-test-button``); the empty-state tool select is unreachable
+        from ``/toolkits/all/{id}`` — present on ``main``, never mounted there.
+        Step 2 now opens the Test surface through the product's own button
+        (:meth:`ToolkitDetailPage.open_test_surface`, the elitea-testing-public#1616
+        shape), never a forced URL, so the navigation stays exercised rather
+        than substituted. Every downstream assertion is unchanged.
+        "
+"passed","Fri Sep 18 13:35:11 UTC 2026","Fri Sep 18 13:35:24 UTC 2026","12916","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[jira]","Create a toolkit through the UI form for any toolkit type."
+"skipped","Fri Sep 18 13:35:25 UTC 2026","Fri Sep 18 13:35:25 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[gitlab]","Create a toolkit through the UI form for any toolkit type."
+"skipped","Fri Sep 18 13:37:19 UTC 2026","Fri Sep 18 13:37:19 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[gitlab]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"broken","Fri Sep 18 13:36:19 UTC 2026","Fri Sep 18 13:36:19 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[confluence]","Run a tool via the Test Toolkit surface reached from the toolkit detail page.
+
+        UI DRIFT (EliteaUI EL-6277, PRs #796/#803, 2026-08-20 — card
+        elitea-testing-public#2358): the whole Test surface (``ToolkitTestPanel``
+        → ``ToolkitTestEmptyState``, which carries
+        ``toolkit-test-empty-tool-select``) moved OFF the detail view onto its
+        own route, ``/toolkits/{tab}/{id}/test``. The detail view now shows the
+        Indexes side panel and an action-bar **Test** button
+        (``toolkit-test-button``); the empty-state tool select is unreachable
+        from ``/toolkits/all/{id}`` — present on ``main``, never mounted there.
+        Step 2 now opens the Test surface through the product's own button
+        (:meth:`ToolkitDetailPage.open_test_surface`, the elitea-testing-public#1616
+        shape), never a forced URL, so the navigation stays exercised rather
+        than substituted. Every downstream assertion is unchanged.
+        "
+"passed","Fri Sep 18 13:35:26 UTC 2026","Fri Sep 18 13:35:42 UTC 2026","15796","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[confluence]","Create a toolkit through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:31:06 UTC 2026","Fri Sep 18 13:31:27 UTC 2026","20185","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_selection_from_chat","TC1: Voice Selection via TTS Controls in Chat.
+        TC-1918, TC-1915
+        "
+"skipped","Fri Sep 18 13:34:37 UTC 2026","Fri Sep 18 13:34:37 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[gitlab]","Create a credential through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:33:03 UTC 2026","Fri Sep 18 13:33:27 UTC 2026","24544","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline."
+"passed","Fri Sep 18 13:35:43 UTC 2026","Fri Sep 18 13:36:00 UTC 2026","16547","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[github]","Run a tool via the Test Toolkit surface reached from the toolkit detail page.
+
+        UI DRIFT (EliteaUI EL-6277, PRs #796/#803, 2026-08-20 — card
+        elitea-testing-public#2358): the whole Test surface (``ToolkitTestPanel``
+        → ``ToolkitTestEmptyState``, which carries
+        ``toolkit-test-empty-tool-select``) moved OFF the detail view onto its
+        own route, ``/toolkits/{tab}/{id}/test``. The detail view now shows the
+        Indexes side panel and an action-bar **Test** button
+        (``toolkit-test-button``); the empty-state tool select is unreachable
+        from ``/toolkits/all/{id}`` — present on ``main``, never mounted there.
+        Step 2 now opens the Test surface through the product's own button
+        (:meth:`ToolkitDetailPage.open_test_surface`, the elitea-testing-public#1616
+        shape), never a forced URL, so the navigation stays exercised rather
+        than substituted. Every downstream assertion is unchanged.
+        "
+"broken","Fri Sep 18 13:37:20 UTC 2026","Fri Sep 18 13:37:20 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[confluence]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"skipped","Fri Sep 18 13:34:37 UTC 2026","Fri Sep 18 13:34:37 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[bitbucket]","Create a credential through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:34:37 UTC 2026","Fri Sep 18 13:34:54 UTC 2026","16193","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[confluence]","Create a credential through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:34:54 UTC 2026","Fri Sep 18 13:35:10 UTC 2026","15676","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[github]","Create a toolkit through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:33:28 UTC 2026","Fri Sep 18 13:34:10 UTC 2026","41765","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
+"passed","Fri Sep 18 13:36:25 UTC 2026","Fri Sep 18 13:36:56 UTC 2026","31171","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[github]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"passed","Fri Sep 18 13:31:26 UTC 2026","Fri Sep 18 13:32:35 UTC 2026","69050","tests.ui.toolkits","test_toolkit_creation_create_bucket_verify_list_files","TestToolkitCreationCreateBucketVerifyListFiles","","","Create an Artifact toolkit (creates a bucket as a side effect), run List files, verify the bucket in Artifacts","Create my-artifact-toolkit/new-bucket via the Save path, verify
+        List files, verify the new bucket in Artifacts — with mandatory
+        pre/post cleanup for the case's own literal test data.
+        "
+"skipped","Fri Sep 18 13:36:18 UTC 2026","Fri Sep 18 13:36:18 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[bitbucket]","Run a tool via the Test Toolkit surface reached from the toolkit detail page.
+
+        UI DRIFT (EliteaUI EL-6277, PRs #796/#803, 2026-08-20 — card
+        elitea-testing-public#2358): the whole Test surface (``ToolkitTestPanel``
+        → ``ToolkitTestEmptyState``, which carries
+        ``toolkit-test-empty-tool-select``) moved OFF the detail view onto its
+        own route, ``/toolkits/{tab}/{id}/test``. The detail view now shows the
+        Indexes side panel and an action-bar **Test** button
+        (``toolkit-test-button``); the empty-state tool select is unreachable
+        from ``/toolkits/all/{id}`` — present on ``main``, never mounted there.
+        Step 2 now opens the Test surface through the product's own button
+        (:meth:`ToolkitDetailPage.open_test_surface`, the elitea-testing-public#1616
+        shape), never a forced URL, so the navigation stays exercised rather
+        than substituted. Every downstream assertion is unchanged.
+        "
+"passed","Fri Sep 18 13:34:21 UTC 2026","Fri Sep 18 13:34:36 UTC 2026","15806","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[jira]","Create a credential through the UI form for any toolkit type."
+"passed","Fri Sep 18 13:32:35 UTC 2026","Fri Sep 18 13:33:02 UTC 2026","26247","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit.
+
+        Adjusted 2026-09-18 for EliteaUI EL-6632 (EliteaAI/EliteaUI@f73c22f7, PR #1036,
+        Refs #2349): the attention icon (``credential-status-indicator``) no longer
+        renders on the SELECTED credential value — the row is flagged via the
+        combobox's ``aria-invalid`` + warning underline, and the icon-with-tooltip
+        now renders only on the credential's own DROPDOWN OPTION. Steps 4 and 13
+        therefore open the dropdown (transit) and assert the icon/tooltip there,
+        scoped to this test's credential; what is verified is unchanged.
+        "
+"skipped","Fri Sep 18 13:37:19 UTC 2026","Fri Sep 18 13:37:19 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[bitbucket]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
