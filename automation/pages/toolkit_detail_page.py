@@ -127,6 +127,16 @@ class ToolkitDetailPage(BasePage):
     # which CredentialsSelect.jsx sets to the raw group title).
     SELECT_GROUP_HEADER = '[data-testid="select-group-header-{}"]'
 
+    # Attention icon rendered by CredentialOptionLabel.jsx's attentionIconBox
+    # (aria-label + Tooltip = the credential-validation message). Since
+    # EliteaUI EL-6632 (EliteaAI/EliteaUI@f73c22f7, PR #1036) it is gated on
+    # `isInvalid && !isSelected`: the SELECTED value (cloneElement'd with
+    # isSelected=true) no longer carries it — only the credential's own
+    # DROPDOWN OPTION does. Always scope it under a SELECT_OPTION locator
+    # (see :meth:`get_saved_option_status_indicator`); a page-level match
+    # is vacuous now.
+    CREDENTIAL_STATUS_INDICATOR = '[data-testid="credential-status-indicator"]'
+
     credential_select_refresh_button = LocatorDescriptor(
         testid="credential-select-refresh-button",
         description="'Refresh the configurations' button inside the Saved "
@@ -458,6 +468,11 @@ class ToolkitDetailPage(BasePage):
 
         Falls back to aria-label prefix selectors for backward compatibility.
 
+        .. note:: Stale since EliteaUI EL-6632 (2026-09-17): the selected value
+           no longer renders the icon, so this page-level locator matches
+           nothing on a closed dropdown. Use the option-scoped
+           :meth:`get_saved_option_status_indicator` family instead.
+
         Returns:
             Locator matching the credential status indicator icon.
         """
@@ -729,3 +744,88 @@ class ToolkitDetailPage(BasePage):
         red/error mismatched-credential state (``aria-invalid="true"``).
         """
         return self.credential_select_trigger(credential_type).get_attribute("aria-invalid") == "true"
+
+    def wait_for_credential_select_invalid_state(
+        self, credential_type: str, invalid: bool, timeout: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Wait until the Configuration dropdown trigger's ``aria-invalid`` state matches *invalid*.
+
+        ``CredentialsSelect.jsx`` passes ``error={hasSelectError}`` (toolkit
+        validation error OR credential mismatch) to the underlying MUI Select,
+        which exposes it as ``aria-invalid="true"`` on the combobox and, since
+        EliteaUI EL-6632, paints the warning-orange ``Mui-error`` underline.
+        This is the row-level "credential is invalid" state after the attention
+        icon moved off the selected value.
+
+        Auto-retrying — safe to call right after a Reload, when the state flips
+        in place once the toolkit re-validates.
+        """
+        trigger = self.credential_select_trigger(credential_type)
+        if invalid:
+            expect(trigger).to_have_attribute("aria-invalid", "true", timeout=timeout)
+        else:
+            expect(trigger).not_to_have_attribute("aria-invalid", "true", timeout=timeout)
+        logger.info("Configuration dropdown type=%s aria-invalid state is %s", credential_type, invalid)
+
+    def close_credential_dropdown(self, credential_type: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Press Escape and wait for the Configuration dropdown for *credential_type* to close.
+
+        Waits on the trigger's own ``aria-expanded="false"`` rather than on the
+        listbox vanishing, so the caller can hover the row again straight away
+        (MUI keeps the menu backdrop mounted for its exit transition).
+        """
+        self.page.keyboard.press("Escape")
+        expect(self.credential_select_trigger(credential_type)).to_have_attribute(
+            "aria-expanded", "false", timeout=timeout
+        )
+        logger.info("Closed the Configuration dropdown for type=%s", credential_type)
+
+    def get_saved_option_status_indicator(self, elitea_title: str, private: bool) -> Locator:
+        """Return the attention-icon Locator scoped to the saved-credential option *elitea_title*/*private*.
+
+        Requires the dropdown to be open (:meth:`open_credential_dropdown`).
+        Scoped under the option's own ``select-option-…`` testid so other
+        (invalid) credentials in the project cannot satisfy the check.
+        """
+        return self.get_saved_option(elitea_title, private).locator(self.CREDENTIAL_STATUS_INDICATOR)
+
+    def has_saved_option_status_indicator(self, elitea_title: str, private: bool, timeout: int = 5000) -> bool:
+        """Return whether the saved-credential option carries the invalid-credential attention icon.
+
+        Waits for the option itself first, then for the icon inside it, so a
+        not-yet-rendered menu never reads as "no indicator".
+        """
+        try:
+            self.get_saved_option(elitea_title, private).wait_for(state="visible", timeout=timeout)
+            self.get_saved_option_status_indicator(elitea_title, private).wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_saved_option_status_indicator_tooltip(
+        self, elitea_title: str, private: bool, timeout: int = UI_ELEMENT_TIMEOUT
+    ) -> str | None:
+        """Return the option-scoped attention icon's tooltip text (its ``aria-label``), or ``None``.
+
+        ``CredentialOptionLabel.jsx`` sets the same ``invalidMessage`` string as
+        both the MUI ``Tooltip`` title and the icon box's ``aria-label``.
+        """
+        indicator = self.get_saved_option_status_indicator(elitea_title, private)
+        try:
+            indicator.wait_for(state="visible", timeout=timeout)
+            return indicator.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def wait_for_no_saved_option_status_indicator(
+        self, elitea_title: str, private: bool, timeout: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Wait until the saved-credential option is rendered WITHOUT the attention icon.
+
+        Ordering is load-bearing: the option must be visible FIRST — a
+        ``to_have_count(0)`` on its own is satisfied by a menu that has not
+        rendered yet, which would pass for the wrong reason.
+        """
+        self.get_saved_option(elitea_title, private).wait_for(state="visible", timeout=timeout)
+        expect(self.get_saved_option_status_indicator(elitea_title, private)).to_have_count(0, timeout=timeout)
+        logger.info("Saved option %s (private=%s) carries no status indicator", elitea_title, private)
