@@ -139,6 +139,9 @@ TOOLKIT_CONFIGS = {
         # tool_output, followed by agent_exception. Tier 1 (0 frames) rejects
         # it before this pattern is ever consulted; the pattern rejects the
         # traceback text as well (elitea1140_agent_tool_end_jira_auth_failure.json).
+        # `[]` is classified FAILED by design (the old prose pattern admitted
+        # "Found 0 projects:"; confluence's pattern deliberately admits `[]`) —
+        # triage a future `[]` red as a data precondition, not an oracle bug.
         tool_output_success_pattern=r'^\[\s*\{\s*"id"\s*:\s*"[^"]*",\s*"key"\s*:',
     ),
 

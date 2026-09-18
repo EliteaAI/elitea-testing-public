@@ -259,6 +259,8 @@ def test_every_shipped_pattern_rejects_every_captured_failure_payload(toolkit_ke
     This is the property the oracle exists for, checked exhaustively over the
     shipped registry x every captured failure — so a future loosening of ANY
     row (say, to `^\[` "because it is all JSON now") dies here.
+    (The `jira_auth_empty_tool_output` cells are trivially None — a `^`-anchored
+    non-empty pattern never matches `""` — so 9 of the 12 cells are substantive.)
     """
     assert tool_output_matches_success(
         CAPTURED_FAILURE_PAYLOADS[failure_name], SHIPPED_PATTERNS[toolkit_key]
@@ -293,6 +295,10 @@ def test_github_and_confluence_patterns_admitting_jiras_new_shape_is_harmless_by
     assert find_tool_end_frames(
         [FRAME_C2_JIRA_SUCCESS], tool_name="list_pages_with_label"
     ) == []
+    # The overlap itself, test-enforced: if a sibling row is re-captured and
+    # the overlap disappears, this goes red so the docstring gets corrected.
+    assert tool_output_matches_success(SAMPLE_C2_JIRA_SUCCESS, GITHUB_PATTERN) is True
+    assert tool_output_matches_success(SAMPLE_C2_JIRA_SUCCESS, CONFLUENCE_PATTERN) is True
 
 
 def test_patterns_are_anchored_at_the_start_of_the_output():

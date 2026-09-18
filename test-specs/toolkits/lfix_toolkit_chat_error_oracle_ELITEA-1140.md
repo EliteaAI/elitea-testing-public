@@ -1387,6 +1387,8 @@ absorb the next flip-flop silently instead of surfacing it as drift.
 |---|---|---|
 | `jira` | `r'^\[\s*\{\s*"id"\s*:\s*"[^"]*",\s*"key"\s*:'` | **verified live** 2026-09-18 — derived from the capture above; anchored; names the first TWO observed keys so it admits neither confluence's `[{"id": …, "title": …}]` nor github's `[{"name": …}]` |
 
+**Declared narrowing:** `[]` is classified FAILED by design — the old `^Found \d+ projects:` admitted `Found 0 projects:`, and confluence's pattern deliberately admits `[]` (Sample E); this row does not, because the fixed epamelitea instance holds 6 projects and Test Settings expects `project`. Triage a future `[]` red as a data precondition, not an oracle bug.
+
 ### Negative control — Jira auth FAILURE (2026-09-18, real rejection)
 
 Captured by creating the credential with a corrupted API key (`<real key>-INVALID`) and running the same
@@ -1423,7 +1425,7 @@ harness bug.
 
 - **Load-bearing (new, exhaustive):** every shipped `tool_output_success_pattern` rejects every captured
   failure payload — github 401, confluence auth prose, jira auth traceback, jira empty `tool_output`
-  (`test_every_shipped_pattern_rejects_every_captured_failure_payload`, 12 cells).
+  (`test_every_shipped_pattern_rejects_every_captured_failure_payload`, 12 cells — 9 substantive + 3 trivially-empty, since `^`-anchored patterns never match `""`).
 - **Cross-toolkit success distinctness is documentation, not the safety property.** It still holds for
   jira→{github, confluence} and github↔confluence, and is kept. It no longer holds for
   github→jira and confluence→jira: both admit the new Jira array (it is a JSON array whose objects carry
