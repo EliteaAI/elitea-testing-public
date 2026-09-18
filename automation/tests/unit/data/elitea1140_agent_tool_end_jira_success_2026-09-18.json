@@ -1,0 +1,48 @@
+{
+  "type": "agent_tool_end",
+  "stream_id": "da6da02a-24a7-49b5-b88b-92ae0e600f64",
+  "message_id": "e01293d6-73d5-4bf0-a617-e0dc19e90e5e",
+  "question_id": "4681afea-304c-4634-8eed-f3f90cb088a6",
+  "content": "[\n  {\n    \"id\": \"10165\",\n    \"key\": \"AIPSDLC\",\n    \"name\": \"AI PDLC/SDLC Demo \",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10066\",\n    \"key\": \"AT\",\n    \"name\": \"AI tests\",\n    \"type\": \"business\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10099\",\n    \"key\": \"DA\",\n    \"name\": \"Demo AI\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10198\",\n    \"key\": \"EDP\",\n    \"name\": \"Elitea Demo Playground\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10033\",\n    \"key\": \"EL\",\n    \"name\": \"EliteaTest\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10000\",\n    \"key\": \"SCRUM\",\n    \"name\": \"test_project\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  }\n]",
+  "thinking": null,
+  "response_metadata": {
+    "tool_name": "list_projects",
+    "tool_run_id": "01a0b47b-2602-7143-bd0c-ac529bbc0ae2",
+    "tool_meta": {
+      "name": "list_projects",
+      "description": "Jira instance: https://epamelitea.atlassian.net\nToolkit: JiraToolkit1789734344\n List all projects in Jira. ",
+      "metadata": {
+        "toolkit_name": "JiraToolkit1789734344",
+        "toolkit_type": "jira",
+        "display_name": "Jira Toolkit 1789734344"
+      }
+    },
+    "metadata": {
+      "thread_id": "da6da02a-24a7-49b5-b88b-92ae0e600f64",
+      "ls_integration": "langgraph",
+      "langgraph_step": 2,
+      "langgraph_node": "agent",
+      "langgraph_triggers": "('branch:to:agent',)",
+      "langgraph_path": "('__pregel_pull', 'agent')",
+      "langgraph_checkpoint_ns": "agent:42a8e0b2-507d-416b-1234-bb4f5d590d39",
+      "toolkit_name": "JiraToolkit1789734344",
+      "toolkit_type": "jira",
+      "tool_name": "list_projects",
+      "display_name": "Jira Toolkit 1789734344",
+      "toolkit_id": 3881,
+      "checkpoint_ns": "agent:42a8e0b2-507d-416b-1234-bb4f5d590d39"
+    },
+    "finish_reason": "stop",
+    "tool_output": "[\n  {\n    \"id\": \"10165\",\n    \"key\": \"AIPSDLC\",\n    \"name\": \"AI PDLC/SDLC Demo \",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10066\",\n    \"key\": \"AT\",\n    \"name\": \"AI tests\",\n    \"type\": \"business\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10099\",\n    \"key\": \"DA\",\n    \"name\": \"Demo AI\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10198\",\n    \"key\": \"EDP\",\n    \"name\": \"Elitea Demo Playground\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10033\",\n    \"key\": \"EL\",\n    \"name\": \"EliteaTest\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  },\n  {\n    \"id\": \"10000\",\n    \"key\": \"SCRUM\",\n    \"name\": \"test_project\",\n    \"type\": \"software\",\n    \"style\": \"\"\n  }\n]",
+    "timestamp_start": "2026-09-18T12:26:04.674082+00:00",
+    "timestamp_finish": "2026-09-18T12:26:05.082686+00:00"
+  },
+  "references": [],
+  "sio_event": "chat_predict",
+  "created_at": "2026-09-18T12:26:05.082988Z",
+  "parent_message_id": null,
+  "agent_name": null,
+  "execution_generation": "8238f1c2-5d59-40ad-9b6f-50d31c83a757",
+  "event": "chat_predict",
+  "_direction": "received"
+}

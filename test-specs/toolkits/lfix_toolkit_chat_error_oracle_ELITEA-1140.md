@@ -352,7 +352,7 @@ Populated **only from live capture**, never guessed:
 
 | toolkit | pattern | provenance |
 |---|---|---|
-| `jira` | `r"^Found \d+ projects:"` | **verified live** 2026-08-27, 3 runs |
+| `jira` | ~~`r"^Found \d+ projects:"`~~ → `r'^\[\s*\{\s*"id"\s*:\s*"[^"]*",\s*"key"\s*:'` | 2026-08-27 capture **superseded by product change** (EliteaAI/elitea-sdk@fe3377278, EL-6532) — re-captured 2026-09-18, see § Adjustment 2026-09-18 |
 | `github` | ~~`r"^Branches in \S+:"`~~ | **REFUTED by capture** — see § Q1; shipped value is `r'^\[\s*\{[^}]*"name"\s*:'` |
 | `confluence` | `r'^\[\s*(\]\|\{\s*"id"\s*:)'` | **verified live R1** 2026-08-27 — see § Amendment R1 |
 
@@ -1205,7 +1205,7 @@ The Tier-2 table is replaced by:
 
 | toolkit | pattern | provenance |
 |---|---|---|
-| `jira` | `r"^Found \d+ projects:"` | **verified live** 2026-08-27, 3 runs (prior pass) — unchanged |
+| `jira` | ~~`r"^Found \d+ projects:"`~~ | **drifted 2026-09-07** (EL-6532) — replaced by the § Adjustment 2026-09-18 row |
 | `github` | `r'^\[\s*\{[^}]*"name"\s*:'` | **verified live** 2026-08-27, 3 runs — captured from a real `list_branches_in_repo` success via an **anonymous** GitHub credential on a public repo. Auth mode is the only unobserved variable (§ Q1 residual gap). |
 
 The prior pass's ⚠️ caveat block (options (a) ship-empty / (b) ship-and-confirm) is
@@ -1341,3 +1341,98 @@ The Tier-1 message is what made this a 5-second diagnosis instead of a bisect:
 `0 of 39` separates it from `0 of 0` (a capture/harness failure) without a
 re-run. If the rate proves high in CI, the fix is a bounded re-ask of
 `cfg.chat_message`, not a weaker assertion.
+
+---
+
+## Adjustment 2026-09-18 — Jira `list_projects` output shape drifted (card #2362, Class A)
+
+| field | value |
+|---|---|
+| **Card** | [#2362](https://github.com/EliteaAI/elitea-testing-public/issues/2362) — `[FIX]` intake from DEV Stable run 35328700042 (`main` @ `2d634d6`) |
+| **Triage class** | **A — tool-output drift** (deterministic; NOT a Jira connectivity failure, NOT an LLM non-call: the `agent_tool_end` for `list_projects` WAS captured and its `tool_output` is a successful project list in a new shape) |
+| **Upstream change** | EliteaAI/elitea-sdk@fe3377278 — *fix: [EL-6532] serialize tool results as JSON instead of a Python repr (#598)*, 2026-09-07. `list_projects` now returns `List[dict]` (was `"Found " + str(len(...)) + " projects:\n" + str(list)`), and the platform serialises it as a JSON array. Named for traceability only — **the re-capture is the authority, not the changelog.** |
+| **Implementer** | test-automation-engineer, 2026-09-18, live against `http://localhost:5173` → DEV backend (capture) + `https://dev.elitea.ai` via the `-p devenv` harness (gate) |
+| **Expected-result changes** | **none** — the case still verifies that the Jira toolkit's `list_projects` tool ran and returned the project list; only the *shape* the oracle matches moved with the product |
+| **Handles** | none touched (no page-object change; no testid) |
+
+### Re-captured SUCCESS — `agent_tool_end` for `list_projects` (2026-09-18, real call)
+
+Stored verbatim as `automation/tests/unit/data/elitea1140_agent_tool_end_jira_success_2026-09-18.json`
+(`tool_run_id` `01a0b47b-2602-7143-bd0c-ac529bbc0ae2`, `timestamp_start` `2026-09-18T12:26:04.674082+00:00`,
+toolkit `Jira Toolkit 1789734344`). `tool_output` head:
+
+```
+[
+  {
+    "id": "10165",
+    "key": "AIPSDLC",
+    "name": "AI PDLC/SDLC Demo ",
+    "type": "software",
+    "style": ""
+  },
+  {
+    "id": "10066",
+    "key": "AT",
+    …
+```
+
+Pretty-printed JSON array (6 objects, keys in order `id, key, name, type, style`).
+The 2026-08-27 sample (`elitea1140_agent_tool_end_jira_success.json`, prose `Found 6 projects:\n[{'id': …}]`)
+is kept as **history** and is pinned as *no longer a success* — an alternation admitting both shapes would
+absorb the next flip-flop silently instead of surfacing it as drift.
+
+### New Tier-2 row
+
+| toolkit | pattern | provenance |
+|---|---|---|
+| `jira` | `r'^\[\s*\{\s*"id"\s*:\s*"[^"]*",\s*"key"\s*:'` | **verified live** 2026-09-18 — derived from the capture above; anchored; names the first TWO observed keys so it admits neither confluence's `[{"id": …, "title": …}]` nor github's `[{"name": …}]` |
+
+**Declared narrowing:** `[]` is classified FAILED by design — the old `^Found \d+ projects:` admitted `Found 0 projects:`, and confluence's pattern deliberately admits `[]` (Sample E); this row does not, because the fixed epamelitea instance holds 6 projects and Test Settings expects `project`. Triage a future `[]` red as a data precondition, not an oracle bug.
+
+### Negative control — Jira auth FAILURE (2026-09-18, real rejection)
+
+Captured by creating the credential with a corrupted API key (`<real key>-INVALID`) and running the same
+chat flow — Jira really rejected it; nothing was fabricated. Stored verbatim as
+`automation/tests/unit/data/elitea1140_agent_tool_end_jira_auth_failure.json`.
+
+**What the wire actually shows is NOT a `list_projects` frame with an error string.** The SDK validates
+Jira credentials at toolkit **construction** (`JiraClient.__init__ → _validate_credentials →
+ToolException: Authentication failed: Invalid username or API key.`), before any tool can run. The
+received frames were: `start_task, agent_start, injection_ready, parallel_hitl_ready, agent_tool_start,
+agent_tool_end, agent_exception, injection_consumed_report, chat_message_sync` — and the single
+`agent_tool_end` is:
+
+```
+response_metadata: {tool_name: "Agent Exception Stacktrace", tool_run_id: "a5c4b622-…", finish_reason: "stop"}
+                   (NO tool_output key)
+content: "Traceback (most recent call last):\n  File \"/data/plugins/indexer_worker/methods/indexer_predict_agent.py\" …
+          … langchain_core.tools.base.ToolException: Authentication failed: Invalid username or API key."
+agent_exception.response_metadata.human_readable: "An unexpected error occurred while processing your request"
+```
+
+**Consequence for the oracle's rejection guarantee on Jira:** it rests on **Tier 1** — zero
+`agent_tool_end` frames for `list_projects` of this toolkit (`0 of N`, "the model never called the tool /
+the toolkit never came up") — and on Tier 1's second half (`get_tool_output` → `""`). Tier 2 is never
+reached; the new pattern rejects the traceback text as well, pinned as defence in depth. Observed in the
+live failure run, the spec in fact dies one step earlier: Step 4's `wait_for_ai_response` raised
+`TimeoutError: AI response did not complete within 120000ms — Copy button appeared but content was
+transient` (the agent_exception path renders no completed answer). Either way the run is an honest red
+that names the wrong subsystem; a `0 of N` or a Step-4 timeout on `[jira]` should be read as *"the
+toolkit never constructed"* before anything else. Out of scope here; recorded so nobody chases it as a
+harness bug.
+
+### Unit-suite invariants after this adjustment (`tests/unit/test_toolkit_chat_error_oracle.py`)
+
+- **Load-bearing (new, exhaustive):** every shipped `tool_output_success_pattern` rejects every captured
+  failure payload — github 401, confluence auth prose, jira auth traceback, jira empty `tool_output`
+  (`test_every_shipped_pattern_rejects_every_captured_failure_payload`, 12 cells — 9 substantive + 3 trivially-empty, since `^`-anchored patterns never match `""`).
+- **Cross-toolkit success distinctness is documentation, not the safety property.** It still holds for
+  jira→{github, confluence} and github↔confluence, and is kept. It no longer holds for
+  github→jira and confluence→jira: both admit the new Jira array (it is a JSON array whose objects carry
+  `"id"` first and `"name"` later). That is harmless by construction — Tier 1 pins the frame to the
+  expected tool AND toolkit before any pattern is consulted — and is pinned as such
+  (`test_github_and_confluence_patterns_admitting_jiras_new_shape_is_harmless_by_construction`).
+  **github's and confluence's patterns were NOT tightened**: a tightening not driven by a capture of their
+  own output would be inference, the exact thing this brief forbids.
+- The frame-selection tests now use the 2026-09-18 Jira sample; the 2026-08-27 sample is referenced only
+  by `test_jira_pre_drift_prose_shape_is_history_and_no_longer_a_success`.
