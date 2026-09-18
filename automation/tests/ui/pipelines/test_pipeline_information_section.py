@@ -13,8 +13,29 @@ modal rendering the pipeline as a Mermaid diagram. Opening that modal on a
 single-node pipeline deterministically throws a console error from
 svg-pan-zoom's resetZoom (filed
 https://github.com/EliteaAI/elitea-testing-public/issues/1368, sibling of
-#1045) — soft-asserted here per # Known defect, the modal/diagram assertions
-themselves are NOT masked.
+#1045) — filtered from the console-error axis per # Known defect, the
+modal/diagram assertions themselves are NOT masked.
+
+Known defect #2367 (https://github.com/EliteaAI/elitea-testing-public/issues/2367,
+found via [FIX] card #2366, DEV Stable run #185): the same modal
+INTERMITTENTLY renders Mermaid's "Syntax error in text" bomb instead of the
+diagram — EliteaUI ``DiagramOutput.jsx`` runs ``initialize({startOnLoad:
+true})`` + ``contentLoaded()`` (→ ``mermaid.run()`` over its own ``.mermaid``
+container) alongside its explicit ``m.render``; whichever render lands last
+wins, and on a cold page (first mermaid import in the document — every fresh
+browser context, i.e. every CI attempt) ``run()`` lands last ~1 in 4 opens and
+wipes the SVG. Measured 5/22 cold opens on DEV, 2/8 on a pipeline created via
+the UI, so it is the product, not this test's API-seeded fixture (whose YAML
+is byte-identical to what the UI authors). Step 9 keeps asserting the CORRECT
+expected behaviour (diagram nodes rendered, no error bomb) as ``expect.soft()``
+with ``# Known defect: #2367`` so the Axis-2 console check still runs and the
+red stays visible and correctly attributed — nothing is weakened; a raw
+``Locator.wait_for`` timeout on ".node" (the pre-repair shape) named the wrong
+subsystem ("element-not-found") and cost a triage session.
+
+Fidelity: the pipeline under test is seeded via ``PipelineAPI`` (transit only —
+the case precondition is "an existing pipeline"; every Step-9 observable is
+produced by the live UI/Mermaid, nothing is stubbed).
 """
 
 import logging
@@ -169,8 +190,33 @@ def test_pipeline_information_section(page, pipeline_with_llm_id):
         assert pipeline_page.show_context_diagram_container.is_visible(), (
             "Show-link modal should render the pipeline as a Mermaid diagram"
         )
-        node_count = pipeline_page.get_diagram_node_count()
-        assert node_count >= 1, "Mermaid diagram should render at least one node"
+        # Known defect: https://github.com/EliteaAI/elitea-testing-public/issues/2367
+        # DiagramOutput.jsx's startOnLoad/contentLoaded() `mermaid.run()` race
+        # intermittently wipes the rendered SVG and leaves Mermaid's "Syntax
+        # error in text" bomb (no console error, no error text — mermaid
+        # swallows it at logLevel 5). Both checks below are the case's OWN
+        # Step-9 observable ("visual representation" rendered), asserted as
+        # the correct expected behaviour and soft so the Axis-2 console check
+        # still runs — an expect.soft failure IS a red (§ Merge gate). The
+        # retrying `expect` matters: in the GOOD ordering the bomb flashes for
+        # ~1 ms before the real render lands, so a one-shot read of either
+        # locator would false-red; the node check first (converges when the
+        # real render lands) and the bomb-absence check second (terminal:
+        # once nodes are up, a bomb can only mean run() landed last — #2367).
+        expect.soft(
+            pipeline_page.get_diagram_nodes().first,
+            "Known defect: #2367 — Show-link modal should render at least one "
+            "Mermaid node (Start → LLM 1 → END); a 'Syntax error in text' bomb "
+            "here is DiagramOutput's startOnLoad/run() race, NOT a YAML or "
+            "fixture problem (the seeded YAML is byte-identical to UI-authored)",
+        ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+        expect.soft(
+            pipeline_page.get_diagram_error_icons(),
+            "Known defect: #2367 — Mermaid must not have replaced the rendered "
+            "diagram with its error bomb (mermaid.run() landing after the "
+            "component's own render)",
+        ).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+        logger.info("Show-link modal rendered %d Mermaid node(s)", pipeline_page.get_diagram_node_count())
 
         # Side-channel check across the whole flow (Axis 2 addition, AFS
         # § Coverage Map): zero UNEXPECTED console errors — the deterministic

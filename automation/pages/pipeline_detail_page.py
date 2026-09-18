@@ -200,6 +200,18 @@ class PipelineDetailPage(PipelineFormPage):
     # path, same sanctioned pattern, applied here per ELITEA-2056 review.
     MERMAID_NODE = ".node"
 
+    # Mermaid's OWN error diagram (the "bomb" — `<path class="error-icon">` ×6
+    # + `<text class="error-text">Syntax error in text</text>`, drawn by
+    # mermaid's errorRenderer into the SAME container when a render fails).
+    # Same sanctioned #579 exception as MERMAID_NODE: a third-party (Mermaid.js)
+    # render node inside the testid parent, not app JSX — no testid can be
+    # placed on it. Scoped under show_context_diagram_container only; do NOT
+    # extend this to any element that could carry a testid. Referenced by the
+    # ELITEA-2056 spec's absence assertion (`to_have_count(0)`) — product
+    # defect #2367 (DiagramOutput.jsx `startOnLoad`/`contentLoaded()` race)
+    # replaces the rendered diagram with this bomb on ~1 in 4 cold opens.
+    MERMAID_ERROR_ICON = ".error-icon"
+
     # --- Version management (Save As Version / VERSION selector, ELITEA-2002).
     # `save_as_version_button` itself is inherited from PipelineFormPage.
     # Same shared components AgentDetailPage's version-management fields
@@ -1998,22 +2010,52 @@ class PipelineDetailPage(PipelineFormPage):
 
         Opens ``StyledShowContextModal`` (NOT a navigation — confirmed live,
         ELITEA-2056 exploration) rendering the pipeline's YAML as a Mermaid
-        diagram via ``show_context_diagram_container``. Waits for the
-        container itself AND for the diagram's Mermaid nodes to actually
-        render (mirrors ChatPage.wait_for_diagram_rendered, ELITEA-2088) —
-        the container becomes visible before Mermaid populates it, so a
-        node-count check right after only the container wait can race.
+        diagram via ``show_context_diagram_container``. Waits for the modal's
+        diagram container only. The "diagram actually rendered" condition is
+        deliberately NOT waited for here any more (#2366 repair, 2026-09-18):
+        it is the case's own Step-9 observable, and product defect #2367
+        (``DiagramOutput.jsx`` ``initialize({startOnLoad: true})`` +
+        ``contentLoaded()`` → ``mermaid.run()`` re-scans this very container
+        and, on a cold page, wipes the freshly rendered SVG and leaves
+        Mermaid's "Syntax error in text" bomb) makes it fail on ~1 in 4 cold
+        opens. Waiting for it inside this action surfaced that defect as a raw
+        ``Locator.wait_for`` TimeoutError naming ".node" — an
+        "element-not-found" that mis-attributed the failure (card #2366's own
+        title). Callers assert the render via :meth:`get_diagram_nodes` /
+        :meth:`get_diagram_error_icons` with retrying ``expect`` assertions
+        that name the defect.
 
         Args:
             timeout: Maximum wait time in milliseconds for the diagram
-                container (and its first rendered node) to become visible.
+                container to become visible.
         """
         self.information_show_link.click()
         self.show_context_diagram_container.wait_for(state="visible", timeout=timeout)
-        self.show_context_diagram_container.locator(self.MERMAID_NODE).first.wait_for(
-            state="attached", timeout=timeout
-        )
         logger.info("Information section 'Show' link opened the diagram preview modal")
+
+    def get_diagram_nodes(self) -> Locator:
+        """Return the Locator of Mermaid node elements (``<g class="node">``)
+        rendered inside the Show-link preview modal — for retrying ``expect``
+        assertions (``.first`` visible ⇔ at least one node rendered).
+
+        Sanctioned #579 scoped raw handle (Mermaid.js-rendered SVG subtree
+        under the ``chat-mermaid-diagram-svg-container`` testid parent), same
+        shape as :meth:`get_diagram_node_count`.
+        """
+        return self.show_context_diagram_container.locator(self.MERMAID_NODE)
+
+    def get_diagram_error_icons(self) -> Locator:
+        """Return the Locator of Mermaid's error-diagram icon paths
+        (``<path class="error-icon">``) inside the Show-link preview modal.
+
+        Mermaid draws its "Syntax error in text" bomb into the SAME container
+        the diagram renders into, so ``expect(...).to_have_count(0)`` on this
+        Locator is the terminal "the diagram was not replaced by the bomb"
+        check (product defect #2367). Sanctioned #579 scoped raw handle —
+        third-party render node, scoped under the testid parent, cannot carry
+        a testid.
+        """
+        return self.show_context_diagram_container.locator(self.MERMAID_ERROR_ICON)
 
     def get_diagram_node_count(self) -> int:
         """Return the number of Mermaid diagram node elements currently rendered

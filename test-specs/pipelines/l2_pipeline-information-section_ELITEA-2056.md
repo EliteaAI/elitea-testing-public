@@ -100,6 +100,15 @@
      console-cleanliness portion only — the modal-open/diagram-visible
      assertions themselves are NOT masked; only the "zero console errors"
      side-channel check is scoped to exclude this known, filed defect.
+   - **Known defect #2367 (2026-09-18 adjustment, see § Adjustment below):**
+     the diagram render itself is INTERMITTENTLY replaced by Mermaid's own
+     error diagram ("Syntax error in text" bomb, `<path class="error-icon">`
+     ×6 inside the same container, 0 `.node`s, no console error). Assert the
+     CORRECT expected behaviour — `.node` (first) visible AND `.error-icon`
+     count 0 — as `expect.soft()` with `# Known defect: #2367`, retrying
+     (the bomb also flashes for ~1 ms in the GOOD ordering, so a one-shot
+     read of either handle would false-red). The soft failure is still a red
+     (§ Merge gate); it only keeps the Axis-2 console check running.
 
 ## Expected Results
 - The Information section (expanded by default) shows Pipeline ID, Version
@@ -123,7 +132,7 @@
 | 6 Verify "Pipeline:" shows a "Show" link | "Show" link visible | step 6 | `step 6`: `information_show_link` visible, text == "Show" | asserted |
 | 7 Click "Copy ID" — verify copied to clipboard | Pipeline ID copied (toast/clipboard) | step 7 | `step 7`: toast text + `navigator.clipboard.readText()` | asserted |
 | 8 Click "Copy version ID" — verify copied to clipboard | Version ID copied (toast/clipboard) | step 8 | `step 8`: toast text + clipboard content | asserted |
-| 9 Click "Show" link — verify it navigates to pipeline YAML or visual representation | Navigation occurs to the pipeline representation | step 9 | `step 9`: modal opens, Mermaid diagram renders | asserted *(live-contract correction — see clarification below: the product does NOT navigate; it opens a modal with a Mermaid-rendered "visual representation" branch of the case's own either/or wording)* |
+| 9 Click "Show" link — verify it navigates to pipeline YAML or visual representation | Navigation occurs to the pipeline representation | step 9 | `step 9`: modal opens (hard assert), Mermaid diagram renders — `.node` first visible + `.error-icon` count 0, both `expect.soft()` + `# Known defect: #2367` | asserted *(live-contract correction — see clarification below: the product does NOT navigate; it opens a modal with a Mermaid-rendered "visual representation" branch of the case's own either/or wording)* |
 
 **Axis 2 — Analyst additions.**
 - `step 9` also captures a genuine, deterministic console-error defect
@@ -146,6 +155,7 @@
 | Trigger row | `PipelineDetailPage.information_trigger_row` (testid `information-trigger-row`) | pre-existing (ELITEA-2041) |
 | "Show" link | **testid needed** — confirmed live via `document.querySelectorAll`: the "Show" `Typography` (`ApplicationInformation.jsx`, `showPipeline` conditional block, same guard shape as the pre-existing `information-trigger-row`) had NO `data-testid` at all. | **Resolved during ELITEA-2056 implementation:** added `data-testid="pipeline-information-show-link"` to `EliteaUI/src/pages/Applications/Components/Applications/ApplicationInformation.jsx`, committed + pushed to `automation/testids` (`EliteaAI/EliteaUI@22184211`). `PipelineDetailPage.information_show_link` added. |
 | Show-link modal's diagram | **No new testid needed** — the modal (`StyledShowContextModal.jsx`, shared with Agents' AgentModal) has no testid of its own, but its Mermaid content reuses the pre-existing `chat-mermaid-diagram-svg-container` testid (hardcoded inside the shared `MermaidDiagramOutput/DiagramOutput.jsx` — same tech-debt naming already flagged by the ELITEA-2053 digest entry for chat starters; not fixed opportunistically here). Confirmed live: resolves to exactly 1 element inside the opened dialog, containing 6 `<svg>` nodes. | `PipelineDetailPage.show_context_diagram_container` added (same testid literal already used by `ChatPage.diagram_svg_container` — cross-page duplication precedent already exists for `copy-id`/`copy-version-id`/`agent-information-section` between `AgentDetailPage` and `PipelineDetailPage`). |
+| Mermaid's error diagram inside the Show-link modal (the "bomb") | **No testid possible** — `<path class="error-icon">` ×6 + `<text class="error-text">` are drawn by Mermaid.js's own errorRenderer into the SAME `chat-mermaid-diagram-svg-container` element; third-party render nodes, not app JSX. Sanctioned #579 scoped raw handle, same as the pre-existing `MERMAID_NODE = ".node"`. PROVENANCE: parent testid `on-main ✓` (shared `DiagramOutput.jsx`). | **Added during the #2366 repair (2026-09-18):** `PipelineDetailPage.MERMAID_ERROR_ICON = ".error-icon"` + `get_diagram_error_icons()` / `get_diagram_nodes()` Locator accessors, referenced by Step 9's absence assertion. |
 | Copy success toast | `PipelineDetailPage.get_toast_alert("info")` + `PipelineDetailPage.toast_message` (testid `toast-alert` + `data-severity="info"`, testid `toast-message`) | pre-existing, shared app-wide toast. Text read via auto-retrying `expect(...).to_contain_text` per step (not the one-shot `get_toast_text()`) — single replace-in-place toast slot, see step 8's mechanism note. |
 
 ## Network Behavior
@@ -186,8 +196,61 @@
    **read-only preview**) — filed separately per the dedup policy, not
    merged into #1045.
 
+3. **BUG, filed [`EliteaAI/elitea-testing-public#2367`](https://github.com/EliteaAI/elitea-testing-public/issues/2367)**
+   (2026-09-18, found via `[FIX]` card #2366 / DEV Stable run #185, 3/3 attempts)
+   — the Show-link modal INTERMITTENTLY renders Mermaid's "Syntax error in
+   text / mermaid version 11.17.2" bomb instead of the pipeline diagram, for
+   a perfectly valid pipeline. Root cause (source-verified in
+   `DiagramOutput.jsx`): `initialize({startOnLoad: true})` + `contentLoaded()`
+   fires `mermaid.run()` over the component's OWN `.mermaid` container while
+   the component also calls `m.render(...)`; both go through mermaid's FIFO
+   queue and every render starts with `container.innerHTML = ""`, so
+   whichever lands LAST wins — on a cold page (first mermaid import in the
+   document; every fresh browser context) `run()` lands last ~1 in 4 opens,
+   wipes the SVG and leaves the bomb. No console error (mermaid swallows it
+   at `logLevel: 5`), no red error text (`errorMessage` state never set).
+   Measured on DEV: 6 bombs / 40 cold opens, including **2/8 on a pipeline
+   created through the UI** whose YAML is byte-identical to the fixture's —
+   the product, not the API seed. Independent of mermaid version (reproduced
+   in isolation on 11.16.0 and 11.17.2). Sibling of #1368 (same modal,
+   different mechanism — #1368's svg-pan-zoom error fires while the diagram
+   DOES render). Handling: Step 9's diagram assertions are `expect.soft()` +
+   `# Known defect: #2367` against the correct expected behaviour — red stays
+   visible; nothing weakened.
+
 ## Blocked Steps
 - None. All 9 case steps were executed live and are covered above.
+
+## Adjustment (2026-09-18, `[FIX]` #2366 — implementer: test-automation-engineer)
+- **Triage class: B — new product bug** (#2367). NOT drift (the Show link, the
+  modal and the container are all found; `click_information_show_link` and
+  the spec are byte-identical on `origin/main` and `origin/automation/base`,
+  so not a promotion gap either), NOT data (the fixture's `instructions` YAML
+  is byte-identical to what the DEV UI authors for one LLM node → END and is
+  stored by the backend verbatim), NOT infra (the same CI job had 45+ passes).
+- **What changed (how, not what):** the `.node` wait moved OUT of the
+  `click_information_show_link` page-object action (it surfaced #2367 as a
+  raw `Locator.wait_for` TimeoutError on ".node" — an "element-not-found"
+  that named the wrong subsystem and titled card #2366 wrongly) and INTO the
+  spec as two retrying `expect.soft()` assertions naming the defect:
+  `get_diagram_nodes().first` visible, then `get_diagram_error_icons()`
+  count 0. Added `MERMAID_ERROR_ICON` (#579 scoped raw handle, declared).
+- **Expected-result changes: none.** Step 9 still asserts modal open (hard)
+  + Mermaid diagram rendered with ≥1 node (soft, #2367) and additionally
+  asserts the absence of Mermaid's error diagram (a strictly stronger check
+  of the same observable).
+- **Rerun semantics (for the lead):** the pre-repair TimeoutError matched
+  `--only-rerun "TimeoutError"`, so `--reruns=2` absorbed most lost races
+  (#169 passed on rerun); the soft `AssertionError` does NOT match, so every
+  lost race is now a visible red for this spec (~15–23 % of cold attempts on
+  DEV, bursty — run #185 lost 3/3). This is the honest signal of an
+  intermittent product defect, not a sanctioned deterministic RED.
+- **Fidelity Declaration:** `pipeline_with_llm_id` (API seed via
+  `PipelineAPI.create_pipeline_with_llm_node`) is a **transit** substitution
+  for the case precondition "an existing pipeline is open"; every Step-9
+  observable (modal, Mermaid nodes, error icons) is produced by the live
+  UI. Verified 2026-09-18 that the seeded YAML equals the UI-authored YAML
+  byte for byte, so the seed cannot change the observable.
 
 ## Automation Hints
 - Framework: Playwright/pytest, `PipelineDetailPage`
