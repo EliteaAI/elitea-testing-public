@@ -1,4 +1,4 @@
-"""Pins the ELITEA-1140 / #1817 toolkit-chat error oracle against REAL payloads.
+r"""Pins the ELITEA-1140 / #1817 toolkit-chat error oracle against REAL payloads.
 
 The repaired test (`tests/ui/toolkits/test_toolkit_parameterized.py::
 TestChatWithToolkit::test_chat_with_toolkit`) used to judge a toolkit tool
@@ -17,11 +17,28 @@ on the toolkit's own ``tool_output`` (``utils/toolkit_output``), and these tests
 are what stop anyone reintroducing a substring scan.
 
 **Every payload here was captured from the running system** — the failures from a
-real GitHub 401 (expired PAT, issue #1673) and a real Confluence authorization
-rejection, the successes from real ``list_branches_in_repo`` / ``list_projects``
+real GitHub 401 (expired PAT, issue #1673), a real Confluence authorization
+rejection and a real Jira credential rejection (corrupted API key, card #2362),
+the successes from real ``list_branches_in_repo`` / ``list_projects``
 / ``list_pages_with_label`` calls — and is stored under ``data/``. Reading
 recorded product output back is observation; authoring a payload would be
 substitution (``.agents/testing.md`` § Fidelity policy).
+
+**What the shipped patterns guarantee — and what they do not.** The
+load-bearing property of ``tool_output_success_pattern`` is that, for the row
+it is applied to, it separates that toolkit's SUCCESS shape from that toolkit's
+FAILURE shape(s) — every captured failure payload, of every toolkit, must be
+rejected by every shipped pattern (``test_every_shipped_pattern_rejects_every_
+captured_failure_payload``). Cross-toolkit distinctness of the *success* shapes
+was only ever a proxy for "the pattern is not vacuous", and since
+EliteaAI/elitea-sdk@fe3377278 (EL-6532, 2026-09-07) it no longer holds in every
+direction: Jira's ``list_projects`` now returns a JSON array whose objects carry
+``"id"`` first and ``"name"`` later, so github's ``^\[\s*\{[^}]*"name"\s*:`` and
+confluence's ``^\[\s*(\]|\{\s*"id"\s*:)`` both admit it. That is not a defect:
+the frame the pattern is applied to has ALREADY been pinned to the expected
+tool AND toolkit by Tier 1 (``find_tool_end_frames``), so a pattern only ever
+sees its own toolkit's output. The distinctness assertions kept below are the
+ones that still hold, stated as documentation, never as the safety property.
 
 One provenance nuance, so nobody re-litigates it while diffing against #1817:
 the ``agent_tool_end`` samples are byte-verbatim wire frames, but **Sample A is
@@ -64,11 +81,29 @@ SAMPLE_A_CHAT_MESSAGE = (
 ).read_text().strip()
 
 # Sample B — real FAILURE: github `list_branches_in_repo` on the expired PAT
-# (localhost, 2026-08-27). Sample C — real SUCCESS: jira `list_projects`.
-# Sample D — real SUCCESS: github `list_branches_in_repo` via anonymous auth.
+# (localhost, 2026-08-27). Sample D — real SUCCESS: github
+# `list_branches_in_repo` via anonymous auth.
 FRAME_B_GITHUB_401 = _frame("github_401_failure")
-FRAME_C_JIRA_SUCCESS = _frame("jira_success")
 FRAME_D_GITHUB_SUCCESS = _frame("github_success")
+
+# Jira `list_projects`, all real calls against epamelitea.atlassian.net:
+#   C  — SUCCESS as captured 2026-08-27: the PRE-DRIFT prose shape
+#        "Found 6 projects:\n[{'id': …}]". Kept as HISTORY only — it is no
+#        longer what the product emits (EliteaAI/elitea-sdk@fe3377278,
+#        EL-6532) and the shipped pattern must NOT accept it.
+#   C2 — SUCCESS as captured 2026-09-18 (card #2362, after CI run
+#        35328700042 went red on the drift): a pretty-printed JSON array of
+#        {"id", "key", "name", "type", "style"} objects. THE oracle sample.
+#   H  — FAILURE, captured 2026-09-18 with a corrupted API key. The SDK
+#        validates Jira credentials at toolkit CONSTRUCTION
+#        (JiraClient.__init__ -> _validate_credentials -> ToolException
+#        "Authentication failed: Invalid username or API key."), so the agent
+#        never reaches `list_projects`: the only agent_tool_end on the wire is
+#        tool_name "Agent Exception Stacktrace", with NO tool_output and the
+#        traceback in `content`, followed by an agent_exception frame.
+FRAME_C_JIRA_SUCCESS_PRE_DRIFT = _frame("jira_success")
+FRAME_C2_JIRA_SUCCESS = _frame("jira_success_2026-09-18")
+FRAME_H_JIRA_AUTH_FAILURE = _frame("jira_auth_failure")
 
 # Confluence, captured live 2026-08-27 against epamelitea.atlassian.net / space
 # AT (all three real `list_pages_with_label` calls, nothing authored):
@@ -84,7 +119,8 @@ FRAME_F_CONFLUENCE_SUCCESS = _frame("confluence_success")
 FRAME_G_CONFLUENCE_AUTH_FAILURE = _frame("confluence_auth_failure")
 
 SAMPLE_B_GITHUB_401 = get_tool_output(FRAME_B_GITHUB_401)
-SAMPLE_C_JIRA_SUCCESS = get_tool_output(FRAME_C_JIRA_SUCCESS)
+SAMPLE_C_JIRA_SUCCESS_PRE_DRIFT = get_tool_output(FRAME_C_JIRA_SUCCESS_PRE_DRIFT)
+SAMPLE_C2_JIRA_SUCCESS = get_tool_output(FRAME_C2_JIRA_SUCCESS)
 SAMPLE_D_GITHUB_SUCCESS = get_tool_output(FRAME_D_GITHUB_SUCCESS)
 SAMPLE_E_CONFLUENCE_SUCCESS_EMPTY = get_tool_output(FRAME_E_CONFLUENCE_SUCCESS_EMPTY)
 SAMPLE_F_CONFLUENCE_SUCCESS = get_tool_output(FRAME_F_CONFLUENCE_SUCCESS)
@@ -135,17 +171,128 @@ def test_real_github_401_does_not_pass_any_other_toolkit_pattern():
 
 
 # ---------------------------------------------------------------------------
-# Patterns must not cross-match — a pattern loose enough to match another
-# toolkit's payload is loose enough to re-admit the original bug
+# Jira — the row that drifted (card #2362, CI run 35328700042)
 # ---------------------------------------------------------------------------
 
-def test_jira_success_matches_only_the_jira_pattern():
-    assert tool_output_matches_success(SAMPLE_C_JIRA_SUCCESS, JIRA_PATTERN) is True
-    assert tool_output_matches_success(SAMPLE_C_JIRA_SUCCESS, GITHUB_PATTERN) is False
+def test_jira_success_is_a_json_array_of_projects_and_matches_the_jira_pattern():
+    """The 2026-09-18 capture IS the oracle: JSON, first keys "id" then "key".
+
+    ``list_projects`` returns ``List[dict]`` since EliteaAI/elitea-sdk@fe3377278
+    and the platform serialises it as a pretty-printed JSON array. The pattern
+    names the first two observed keys, nothing more — it is derived from this
+    payload, not from the SDK changelog.
+    """
+    projects = json.loads(SAMPLE_C2_JIRA_SUCCESS)
+    assert isinstance(projects, list) and projects, "captured sample must be a non-empty array"
+    assert list(projects[0].keys())[:2] == ["id", "key"]
+    assert FRAME_C2_JIRA_SUCCESS["response_metadata"]["tool_name"] == "list_projects"
+    assert tool_output_matches_success(SAMPLE_C2_JIRA_SUCCESS, JIRA_PATTERN) is True
 
 
-def test_github_success_does_not_match_the_jira_pattern():
+def test_jira_pre_drift_prose_shape_is_history_and_no_longer_a_success():
+    """Documents the drift instead of hiding it in an alternation.
+
+    The 2026-08-27 sample began ``Found 6 projects:`` — the product does not
+    emit that any more, so the shipped pattern must not accept it: a pattern
+    that admitted both shapes would silently absorb the next flip-flop instead
+    of surfacing it as the Class-A drift it is.
+    """
+    assert SAMPLE_C_JIRA_SUCCESS_PRE_DRIFT.startswith("Found 6 projects:")
+    assert tool_output_matches_success(SAMPLE_C_JIRA_SUCCESS_PRE_DRIFT, JIRA_PATTERN) is False
+
+
+def test_jira_auth_failure_never_produces_a_list_projects_frame():
+    """The negative control, and where Jira's rejection guarantee really rests.
+
+    A corrupted API key is rejected by the SDK at toolkit CONSTRUCTION, before
+    any tool runs, so the honest failure signal is NOT a ``list_projects``
+    frame with an error string — it is the ABSENCE of that frame. Tier 1
+    (``find_tool_end_frames``) therefore rejects this run with ``0 of N``
+    frames; the pattern is never consulted. Pinned here so nobody "fixes" a
+    future ``0 of N`` on Jira by loosening Tier 1.
+    """
+    metadata = FRAME_H_JIRA_AUTH_FAILURE["response_metadata"]
+    assert metadata["tool_name"] == "Agent Exception Stacktrace"
+    assert "tool_output" not in metadata
+    assert FRAME_H_JIRA_AUTH_FAILURE["content"].rstrip().endswith(
+        "ToolException: Authentication failed: Invalid username or API key."
+    ), "the captured frame must be a REAL credential rejection, not a harness error"
+
+    assert find_tool_end_frames([FRAME_H_JIRA_AUTH_FAILURE], tool_name="list_projects") == []
+    # Tier 1's second half — an empty tool_output — rejects it as well.
+    assert get_tool_output(FRAME_H_JIRA_AUTH_FAILURE) == ""
+
+
+def test_jira_pattern_rejects_the_auth_failure_traceback_as_defence_in_depth():
+    """If a future SDK ever routed that traceback through a `list_projects`
+    frame's tool_output, Tier 2 would still say FAILED."""
+    traceback_text = FRAME_H_JIRA_AUTH_FAILURE["content"]
+    assert traceback_text.startswith("Traceback (most recent call last):")
+    assert tool_output_matches_success(traceback_text, JIRA_PATTERN) is False
+
+
+# ---------------------------------------------------------------------------
+# The load-bearing invariant: no shipped pattern admits ANY captured failure
+# ---------------------------------------------------------------------------
+
+CAPTURED_FAILURE_PAYLOADS = {
+    "github_401": SAMPLE_B_GITHUB_401,
+    "confluence_auth_failure": SAMPLE_G_CONFLUENCE_AUTH_FAILURE,
+    # Jira's failure carries no tool_output at all (see above); its traceback
+    # text is the closest thing to a payload and is included so the matrix is
+    # complete for every toolkit that ships a pattern.
+    "jira_auth_traceback": FRAME_H_JIRA_AUTH_FAILURE["content"],
+    "jira_auth_empty_tool_output": get_tool_output(FRAME_H_JIRA_AUTH_FAILURE),
+}
+SHIPPED_PATTERNS = {
+    key: cfg.tool_output_success_pattern
+    for key, cfg in TOOLKIT_CONFIGS.items()
+    if cfg.tool_output_success_pattern
+}
+
+
+@pytest.mark.parametrize("failure_name", sorted(CAPTURED_FAILURE_PAYLOADS))
+@pytest.mark.parametrize("toolkit_key", sorted(SHIPPED_PATTERNS))
+def test_every_shipped_pattern_rejects_every_captured_failure_payload(toolkit_key, failure_name):
+    r"""A pattern that a failure payload satisfies is a pattern that masks.
+
+    This is the property the oracle exists for, checked exhaustively over the
+    shipped registry x every captured failure — so a future loosening of ANY
+    row (say, to `^\[` "because it is all JSON now") dies here.
+    """
+    assert tool_output_matches_success(
+        CAPTURED_FAILURE_PAYLOADS[failure_name], SHIPPED_PATTERNS[toolkit_key]
+    ) is False
+
+
+# ---------------------------------------------------------------------------
+# Cross-toolkit distinctness — the assertions that STILL hold, kept as
+# documentation of each pattern's specificity (see the module docstring for
+# the two directions that no longer hold since EL-6532, and why that is fine)
+# ---------------------------------------------------------------------------
+
+def test_jira_pattern_admits_neither_github_nor_confluence_success():
+    """Naming "id" THEN "key" is what keeps the jira pattern specific."""
     assert tool_output_matches_success(SAMPLE_D_GITHUB_SUCCESS, JIRA_PATTERN) is False
+    assert tool_output_matches_success(SAMPLE_F_CONFLUENCE_SUCCESS, JIRA_PATTERN) is False
+    assert tool_output_matches_success(SAMPLE_E_CONFLUENCE_SUCCESS_EMPTY, JIRA_PATTERN) is False
+
+
+def test_github_and_confluence_patterns_admitting_jiras_new_shape_is_harmless_by_construction():
+    """States the post-EL-6532 truth so nobody re-derives it under review.
+
+    github's and confluence's patterns DO match the new Jira array (it is a
+    JSON array whose objects carry both "id" first and "name" later). The
+    frame a pattern is applied to was already selected by tool name AND
+    toolkit display name, so a github row can never be handed Jira output:
+    the same frames, filtered for github's tool, yield nothing.
+    """
+    assert find_tool_end_frames(
+        [FRAME_C2_JIRA_SUCCESS], tool_name="list_branches_in_repo"
+    ) == []
+    assert find_tool_end_frames(
+        [FRAME_C2_JIRA_SUCCESS], tool_name="list_pages_with_label"
+    ) == []
 
 
 def test_patterns_are_anchored_at_the_start_of_the_output():
@@ -155,7 +302,8 @@ def test_patterns_are_anchored_at_the_start_of_the_output():
     rather than a substring hunt in the other direction.
     """
     assert tool_output_matches_success("Failed: " + SAMPLE_D_GITHUB_SUCCESS, GITHUB_PATTERN) is False
-    assert tool_output_matches_success("Error. " + SAMPLE_C_JIRA_SUCCESS, JIRA_PATTERN) is False
+    assert tool_output_matches_success("Error. " + SAMPLE_C2_JIRA_SUCCESS, JIRA_PATTERN) is False
+    assert tool_output_matches_success("Error. " + SAMPLE_F_CONFLUENCE_SUCCESS, CONFLUENCE_PATTERN) is False
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +325,7 @@ def test_empty_pattern_raises_instead_of_silently_passing():
 # ---------------------------------------------------------------------------
 
 def test_finds_the_agent_tool_end_frame_for_the_expected_tool_and_toolkit():
-    frames = [FRAME_B_GITHUB_401, FRAME_C_JIRA_SUCCESS, FRAME_D_GITHUB_SUCCESS]
+    frames = [FRAME_B_GITHUB_401, FRAME_C2_JIRA_SUCCESS, FRAME_D_GITHUB_SUCCESS]
     display_name = FRAME_D_GITHUB_SUCCESS["response_metadata"]["metadata"]["display_name"]
 
     found = find_tool_end_frames(
@@ -203,7 +351,7 @@ def test_another_toolkits_tool_call_is_not_accepted_as_evidence():
 
 def test_a_tool_that_never_ran_yields_no_frames():
     """The hole Tier 1 closes: a model answering from memory calls nothing."""
-    assert find_tool_end_frames([FRAME_C_JIRA_SUCCESS], tool_name="list_branches_in_repo") == []
+    assert find_tool_end_frames([FRAME_C2_JIRA_SUCCESS], tool_name="list_branches_in_repo") == []
 
 
 def test_sent_frames_and_protocol_noise_are_ignored():
@@ -261,10 +409,13 @@ def test_both_captured_confluence_success_branches_match():
     assert tool_output_matches_success(SAMPLE_F_CONFLUENCE_SUCCESS, CONFLUENCE_PATTERN) is True
 
 
-def test_confluence_pattern_does_not_admit_the_other_toolkits_payloads():
-    """Both are JSON arrays, so the anchor names confluence's observed key."""
+def test_confluence_and_github_patterns_do_not_admit_each_other():
+    """Both are JSON arrays; the anchors name each toolkit's observed first key.
+
+    (Jira's new array is admitted by both — documented above; Tier 1 makes
+    that unreachable in practice.)
+    """
     assert tool_output_matches_success(SAMPLE_D_GITHUB_SUCCESS, CONFLUENCE_PATTERN) is False
-    assert tool_output_matches_success(SAMPLE_C_JIRA_SUCCESS, CONFLUENCE_PATTERN) is False
     assert tool_output_matches_success(SAMPLE_F_CONFLUENCE_SUCCESS, GITHUB_PATTERN) is False
     assert tool_output_matches_success(SAMPLE_F_CONFLUENCE_SUCCESS, JIRA_PATTERN) is False
 
@@ -321,7 +472,7 @@ def test_observed_frame_kinds_separates_a_harness_failure_from_a_missing_call():
     assert observed_frame_kinds([]) == []
     assert observed_frame_kinds(None) == []
 
-    kinds = observed_frame_kinds([FRAME_F_CONFLUENCE_SUCCESS, FRAME_C_JIRA_SUCCESS])
+    kinds = observed_frame_kinds([FRAME_F_CONFLUENCE_SUCCESS, FRAME_C2_JIRA_SUCCESS])
     assert ("agent_tool_end", "list_pages_with_label") in kinds
     assert ("agent_tool_end", "list_projects") in kinds
     assert kinds == sorted(kinds)

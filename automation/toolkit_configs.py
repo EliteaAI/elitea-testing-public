@@ -120,9 +120,26 @@ TOOLKIT_CONFIGS = {
         test_tool_result_content="project",
         chat_message="List all Jira projects",
         chat_response_keywords=["project", "jira"],
-        # Captured live 2026-08-27 (3 runs): list_projects returns
-        # "Found <n> projects:\n[{...}]".
-        tool_output_success_pattern=r"^Found \d+ projects:",
+        # Captured live 2026-09-18 (localhost:5173 -> DEV backend, card #2362):
+        # list_projects returns a pretty-printed JSON array of project objects
+        # whose keys are, in order, "id", "key", "name", "type", "style":
+        #   [\n  {\n    "id": "10165",\n    "key": "AIPSDLC",\n    "name": …
+        # The anchor names the first TWO observed keys so it admits neither
+        # confluence's `[{"id": …, "title": …}]` nor github's `[{"name": …}]`.
+        # HISTORY: until EliteaAI/elitea-sdk@fe3377278 (EL-6532, 2026-09-07)
+        # the tool returned the prose "Found <n> projects:\n[{'id': …}]"
+        # (captured 2026-08-27, still pinned as history in
+        # tests/unit/data/elitea1140_agent_tool_end_jira_success.json); CI run
+        # 35328700042 went red on that drift, and this pattern follows the
+        # 2026-09-18 capture, not the changelog.
+        # FAILURE shape (captured 2026-09-18 with a corrupted API key): the SDK
+        # validates Jira credentials at toolkit CONSTRUCTION, so no
+        # `list_projects` frame is emitted at all — the agent_tool_end that
+        # arrives is tool_name "Agent Exception Stacktrace" with NO
+        # tool_output, followed by agent_exception. Tier 1 (0 frames) rejects
+        # it before this pattern is ever consulted; the pattern rejects the
+        # traceback text as well (elitea1140_agent_tool_end_jira_auth_failure.json).
+        tool_output_success_pattern=r'^\[\s*\{\s*"id"\s*:\s*"[^"]*",\s*"key"\s*:',
     ),
 
     "gitlab": ToolkitConfig(
