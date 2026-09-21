@@ -13,13 +13,13 @@
 
 ## Test Results Matrix
 
-| Test Case | #160 | #170 | #179 | #187 | #188 | Tracking Issue |
-|-----------|--------|--------|--------|--------|--------|----------------|
-| **Total executed** | - | - | 26 | 26 | 26 | - |
+| Test Case | #160 | #170 | #179 | #187 | #188 | #189 | Tracking Issue |
+|-----------|--------|--------|--------|--------|--------|--------|----------------|
+| **Total executed** | - | - | 26 | 26 | 26 | 26 | - |
 
 ## Summary
 
-- **Runs Shown:** 5 (max 10)
+- **Runs Shown:** 6 (max 10)
 - **Total Test Cases:** 0
 - **With Tracking Issues:** 0
 
