@@ -11,9 +11,15 @@ state:
   project_items:
     type: str
     value: '[]'
-  milestone_issues:
+  debug_fetch:
     type: str
-    value: '[]'
+    value: ''
+  debug_filter:
+    type: str
+    value: ''
+  debug_prepare:
+    type: str
+    value: ''
   verified_tickets:
     type: str
     value: '[]'
@@ -52,32 +58,9 @@ nodes:
     structured_output: true
     transition: FetchProjectItems
 
-  # Step 1: Fetch items with "Verified on DEV Env" status from project board
+  # Fetch issues with milestone R-2.0.7 using GitHub Issues API
+  # Then filter by checking board status from issue projectItems
   - id: FetchProjectItems
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: search_project_issues
-    input: []
-    input_mapping:
-      board_repo:
-        type: fixed
-        value: EliteaAI/elitea_issues
-      project_number:
-        type: fixed
-        value: 1
-      search_query:
-        type: fixed
-        value: 'status:"Verified on DEV Env"'
-      items_count:
-        type: fixed
-        value: 100
-    output:
-      - project_items
-    structured_output: true
-    transition: FetchMilestoneIssues
-
-  # Step 2: Fetch issues with milestone R-2.0.7
-  - id: FetchMilestoneIssues
     type: toolkit
     toolkit_name: GitHub_Tools
     tool: search_issues
@@ -91,13 +74,63 @@ nodes:
         value: EliteaAI/elitea_issues
       max_count:
         type: fixed
-        value: 100
+        value: 150
     output:
-      - milestone_issues
+      - project_items
+    structured_output: true
+    transition: DebugFetchResult
+
+  # DEBUG: Show what FetchProjectItems returned
+  - id: DebugFetchResult
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {'debug_fetch': ''}
+
+        try:
+            items_raw = alita_state.get('project_items', '[]')
+
+            debug_info = {
+                'raw_type': str(type(items_raw)),
+                'raw_preview': str(items_raw)[:500] if items_raw else 'EMPTY',
+                'raw_length': len(str(items_raw)) if items_raw else 0
+            }
+
+            if isinstance(items_raw, str):
+                try:
+                    parsed = json.loads(items_raw, strict=False)
+                    debug_info['parsed_type'] = str(type(parsed))
+                    debug_info['parsed_length'] = len(parsed) if isinstance(parsed, list) else 'not_a_list'
+                    if isinstance(parsed, list) and len(parsed) > 0:
+                        debug_info['first_item_keys'] = list(parsed[0].keys()) if isinstance(parsed[0], dict) else str(type(parsed[0]))
+                        debug_info['first_item_preview'] = str(parsed[0])[:300]
+                except Exception as pe:
+                    debug_info['parse_error'] = str(pe)
+            elif isinstance(items_raw, list):
+                debug_info['already_list'] = True
+                debug_info['list_length'] = len(items_raw)
+                if len(items_raw) > 0:
+                    debug_info['first_item_keys'] = list(items_raw[0].keys()) if isinstance(items_raw[0], dict) else str(type(items_raw[0]))
+            elif isinstance(items_raw, dict):
+                debug_info['is_dict'] = True
+                debug_info['dict_keys'] = list(items_raw.keys())
+
+            out = {'debug_fetch': json.dumps(debug_info, indent=2)}
+        except Exception as e:
+            out = {'debug_fetch': f'DEBUG ERROR: {str(e)}'}
+
+        out
+    input:
+      - project_items
+    output:
+      - debug_fetch
     structured_output: true
     transition: FilterVerifiedTickets
 
-  # Step 3: Intersect - keep only items that are BOTH verified AND in milestone
+  # Convert to expected format
   - id: FilterVerifiedTickets
     type: code
     code:
@@ -105,66 +138,88 @@ nodes:
       value: |
         import json
 
-        out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0'}
+        out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0', 'debug_filter': ''}
 
         try:
-            # Get project board items (Verified on DEV Env status)
-            project_raw = alita_state.get('project_items', '{}')
-            project_data = json.loads(project_raw, strict=False) if isinstance(project_raw, str) else project_raw
-            if not isinstance(project_data, dict):
-                project_data = {}
+            items_raw = alita_state.get('project_items', '[]')
 
-            project_items = project_data.get('items', [])
-            if not isinstance(project_items, list):
-                project_items = []
+            # Parse items - handle string or list input
+            if isinstance(items_raw, str):
+                items = json.loads(items_raw, strict=False)
+            else:
+                items = items_raw
 
-            # Get milestone issues
-            milestone_raw = alita_state.get('milestone_issues', '[]')
-            milestone_issues = json.loads(milestone_raw, strict=False) if isinstance(milestone_raw, str) else milestone_raw
-            if not isinstance(milestone_issues, list):
-                milestone_issues = []
+            if not isinstance(items, list):
+                items = []
 
-            # Build set of issue numbers in milestone R-2.0.7
-            milestone_numbers = set()
-            for issue in milestone_issues:
-                num = issue.get('id')
-                if num:
-                    milestone_numbers.add(int(num))
+            # Convert search_issues format to expected structure
+            # Each item might be a dict or a JSON string - handle both
+            formatted_items = []
+            parse_errors = []
 
-            # Filter project items: keep only those with Verified status AND in milestone
-            TARGET_STATUS = 'Verified on DEV Env'
-            filtered_items = []
+            for idx, item in enumerate(items):
+                # If item is a string, try to parse it as JSON
+                if isinstance(item, str):
+                    try:
+                        item = json.loads(item, strict=False)
+                    except Exception as e:
+                        parse_errors.append(f'Item {idx}: {str(e)[:50]}')
+                        continue
 
-            for item in project_items:
-                # Check status
-                field_values = item.get('fieldValues', [])
-                is_verified = False
-                for fv in field_values:
-                    if isinstance(fv, dict):
-                        field_info = fv.get('field', {})
-                        fname = field_info.get('name', '') if isinstance(field_info, dict) else ''
-                        if fname == 'Status':
-                            fval = fv.get('name', '') or fv.get('optionName', '')
-                            if fval == TARGET_STATUS:
-                                is_verified = True
-                            break
-
-                if not is_verified:
+                if not isinstance(item, dict):
+                    parse_errors.append(f'Item {idx}: not a dict, type={type(item)}')
                     continue
 
-                # Check if issue number is in milestone
-                content = item.get('content', {})
-                issue_number = content.get('number')
-                if issue_number and int(issue_number) in milestone_numbers:
-                    filtered_items.append(item)
+                formatted_items.append({
+                    'id': item.get('id'),
+                    'type': item.get('entity_type', 'Issue'),
+                    'content': {
+                        'id': item.get('id'),
+                        'number': item.get('id'),
+                        'title': item.get('title', ''),
+                        'url': item.get('url', ''),
+                        'state': item.get('status', ''),
+                        'body': item.get('description', ''),
+                        'labels': [],
+                        'assignees': []
+                    },
+                    'fieldValues': []
+                })
+
+            # Build debug info with more details
+            sample_titles = []
+            for item in items[:3]:
+                if isinstance(item, str):
+                    sample_titles.append(f'STRING: {item[:60]}...')
+                elif isinstance(item, dict):
+                    sample_titles.append(item.get('title', 'no-title')[:60])
+                else:
+                    sample_titles.append(f'TYPE: {type(item)}')
+
+            debug_info = {
+                'items_raw_type': str(type(items_raw)),
+                'items_type': str(type(items)),
+                'input_count': len(items),
+                'output_count': len(formatted_items),
+                'first_item_type': str(type(items[0])) if items else 'empty',
+                'sample_titles': sample_titles,
+                'parse_errors': parse_errors[:5] if parse_errors else []
+            }
 
             out = {
-                'verified_tickets': json.dumps(filtered_items),
+                'verified_tickets': json.dumps(formatted_items),
                 'current_ticket_index': '0',
-                'total_tickets': str(len(filtered_items))
+                'total_tickets': str(len(formatted_items)),
+                'debug_filter': json.dumps(debug_info)
             }
         except Exception as e:
-            out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0'}
+            import traceback
+            out = {
+                'verified_tickets': '[]',
+                'current_ticket_index': '0',
+                'total_tickets': '0',
+                'debug_filter': f'ERROR: {str(e)} | TB: {traceback.format_exc()[:200]}'
+            }
 
         out
     input:
@@ -176,6 +231,7 @@ nodes:
     structured_output: true
     transition: CheckMoreTickets
 
+  # DEBUG: Set max_process to limit iterations (0 = no limit)
   - id: CheckMoreTickets
     type: router
     input:
@@ -184,7 +240,8 @@ nodes:
     condition: |
       {% set idx = current_ticket_index | int %}
       {% set total = total_tickets | int %}
-      {% if idx < total %}
+      {% set max_process = 3 %}
+      {% if idx < total and (max_process == 0 or idx < max_process) %}
       PrepareCurrentTicket
       {% else %}
       FinalSummary
@@ -200,20 +257,60 @@ nodes:
       type: fixed
       value: |
         import json
+        import re
 
-        out = {'current_ticket': '{}'}
+        out = {'current_ticket': '{}', 'debug_prepare': ''}
 
         try:
             tickets_raw = alita_state.get('verified_tickets', '[]')
             idx = int(alita_state.get('current_ticket_index', '0'))
 
-            tickets = json.loads(tickets_raw, strict=False) if isinstance(tickets_raw, str) else tickets_raw
+            debug = {
+                'tickets_raw_type': str(type(tickets_raw)),
+                'tickets_raw_len': len(str(tickets_raw)) if tickets_raw else 0,
+                'idx': idx
+            }
+
+            # Parse with multiple fallback strategies for escape issues
+            tickets = None
+            if isinstance(tickets_raw, list):
+                tickets = tickets_raw
+                debug['parse_method'] = 'already_list'
+            elif isinstance(tickets_raw, str):
+                # Try standard parse first
+                try:
+                    tickets = json.loads(tickets_raw, strict=False)
+                    debug['parse_method'] = 'standard'
+                except json.JSONDecodeError:
+                    # Fix invalid escapes by escaping lone backslashes
+                    try:
+                        fixed = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', tickets_raw)
+                        tickets = json.loads(fixed, strict=False)
+                        debug['parse_method'] = 'fixed_escapes'
+                    except:
+                        # Last resort: use ast.literal_eval for Python dict repr
+                        try:
+                            import ast
+                            tickets = ast.literal_eval(tickets_raw)
+                            debug['parse_method'] = 'ast_eval'
+                        except:
+                            debug['parse_method'] = 'FAILED'
+
+            if tickets is None:
+                tickets = []
+
+            debug['parsed_len'] = len(tickets) if isinstance(tickets, list) else 'not_list'
+
             if isinstance(tickets, list) and idx < len(tickets):
-                # Each item from search_project_issues has structure:
-                # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
-                out = {'current_ticket': json.dumps(tickets[idx])}
-        except:
-            pass
+                ticket = tickets[idx]
+                debug['ticket_type'] = str(type(ticket))
+                debug['ticket_keys'] = list(ticket.keys()) if isinstance(ticket, dict) else 'not_dict'
+                out = {'current_ticket': json.dumps(ticket, ensure_ascii=False), 'debug_prepare': json.dumps(debug)}
+            else:
+                debug['error'] = f'idx {idx} >= len {len(tickets) if isinstance(tickets, list) else "?"}'
+                out = {'current_ticket': '{}', 'debug_prepare': json.dumps(debug)}
+        except Exception as e:
+            out = {'current_ticket': '{}', 'debug_prepare': f'ERROR: {str(e)}'}
 
         out
     input:
@@ -221,6 +318,7 @@ nodes:
       - current_ticket_index
     output:
       - current_ticket
+      - debug_prepare
     structured_output: true
     transition: ProcessTicket
 
@@ -293,13 +391,14 @@ nodes:
             ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
             processed = json.loads(processed_raw, strict=False) if isinstance(processed_raw, str) else processed_raw
 
-            # search_project_issues item structure:
-            # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
+            # Structure: {id, type, content: {...}, fieldValues}
+            # OR direct: {id, title, description, status, url, entity_type}
             content = ticket.get('content', {})
 
-            title = content.get('title', 'Unknown')
-            number = content.get('number', 0)
-            url = content.get('url', '')
+            # Try content first, fall back to direct ticket fields
+            title = content.get('title') or ticket.get('title', 'Unknown')
+            number = content.get('number') or content.get('id') or ticket.get('id', 0)
+            url = content.get('url') or ticket.get('url', '')
             labels = content.get('labels', [])
 
             # Build automation issue title
@@ -449,23 +548,40 @@ nodes:
 
             ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
 
-            # search_project_issues item structure:
-            # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
+            # Structure: {id, type, content: {id, number, title, url, state, ...}, fieldValues}
+            # OR direct: {id, title, description, status, url, entity_type}
             content = ticket.get('content', {})
 
+            # Try content first, fall back to direct fields
+            source_number = content.get('number') or content.get('id') or ticket.get('id', 0)
+            source_title = content.get('title') or ticket.get('title', '')
+            source_url = content.get('url') or ticket.get('url', '')
+
+            # DEBUG: capture what we're seeing
+            debug_info = {
+                'ticket_type': str(type(ticket)),
+                'ticket_keys': list(ticket.keys()) if isinstance(ticket, dict) else 'not_dict',
+                'content_keys': list(content.keys()) if isinstance(content, dict) else 'not_dict',
+                'extracted': {'number': source_number, 'title': source_title[:50] if source_title else 'EMPTY'}
+            }
+
             created.append({
-                'source_number': content.get('number', 0),
-                'source_title': content.get('title', ''),
-                'source_url': content.get('url', ''),
-                'automation_issue': issue_result
+                'source_number': source_number,
+                'source_title': source_title,
+                'source_url': source_url,
+                'automation_issue': issue_result,
+                'debug': debug_info
             })
 
             out = {
                 'created_issues': json.dumps(created),
                 'current_ticket_index': str(idx + 1)
             }
-        except:
-            pass
+        except Exception as e:
+            out = {
+                'created_issues': json.dumps([{'error': str(e)}]),
+                'current_ticket_index': str(idx + 1) if 'idx' in dir() else '1'
+            }
 
         out
     input:
@@ -491,6 +607,9 @@ nodes:
         try:
             created_raw = alita_state.get('created_issues', '[]')
             total = alita_state.get('total_tickets', '0')
+            debug_fetch = alita_state.get('debug_fetch', '')
+            debug_filter = alita_state.get('debug_filter', '')
+            debug_prepare = alita_state.get('debug_prepare', '')
 
             created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
             if not isinstance(created, list):
@@ -510,6 +629,27 @@ nodes:
                 "",
             ]
 
+            # DEBUG SECTION
+            lines.extend([
+                "### DEBUG: Pipeline State",
+                "",
+                "**FetchProjectItems output:**",
+                "```json",
+                debug_fetch if debug_fetch else "N/A",
+                "```",
+                "",
+                "**FilterVerifiedTickets debug:**",
+                "```json",
+                debug_filter if debug_filter else "N/A",
+                "```",
+                "",
+                "**PrepareCurrentTicket debug (last iteration):**",
+                "```json",
+                debug_prepare if debug_prepare else "N/A",
+                "```",
+                "",
+            ])
+
             if is_dry_run:
                 lines.append("### ⚠️ DRY RUN MODE - No issues were actually created")
                 lines.append("")
@@ -523,31 +663,35 @@ nodes:
             if created:
                 lines.append("### Issues to Create" if is_dry_run else "### Created Issues")
                 lines.append("")
-                for idx, item in enumerate(created, 1):
+                for idx, item in enumerate(created[:10], 1):
                     source = item.get('source_number', '?')
                     source_title = item.get('source_title', 'Unknown')
                     result_raw = item.get('automation_issue', '')
+                    item_debug = item.get('debug', {})
 
-                    lines.append(f"**{idx}. Source Ticket #{source}:** {source_title}")
+                    lines.append(f"**{idx}. Source Ticket #{source}:** {source_title if source_title else '(no title)'}")
 
-                    # Parse the result to show details
+                    # Show debug info for this item
+                    if item_debug:
+                        lines.append(f"   - **Debug:** {json.dumps(item_debug)}")
+
                     try:
                         result = json.loads(result_raw) if isinstance(result_raw, str) else result_raw
                         if is_dry_run and 'would_create' in result:
                             wc = result['would_create']
-                            lines.append(f"   - **Title:** {wc.get('title', 'N/A')}")
-                            lines.append(f"   - **Target Repo:** {wc.get('repo', 'N/A')}")
-                            lines.append(f"   - **Project:** {wc.get('project', 'N/A')}")
-                            lines.append(f"   - **Labels:** {', '.join(wc.get('labels', []))}")
-                            lines.append(f"   - **Status:** {wc.get('status', 'N/A')}")
+                            lines.append(f"   - **Would Create Title:** {wc.get('title', 'N/A')[:80]}")
                         else:
-                            lines.append(f"   - Result: {str(result)[:150]}...")
+                            lines.append(f"   - Result: {str(result)[:100]}...")
                     except:
-                        lines.append(f"   - Result: {result_raw[:150]}...")
+                        lines.append(f"   - Result: {str(result_raw)[:100]}...")
 
                     lines.append("")
 
-            if is_dry_run:
+                if len(created) > 10:
+                    lines.append(f"... and {len(created) - 10} more issues")
+                    lines.append("")
+
+            if is_dry_run and created:
                 lines.extend([
                     "---",
                     "**To create these issues for real:** Edit the pipeline YAML and uncomment the `GitHub_Tools.create_issue_on_project` toolkit node.",
@@ -561,6 +705,9 @@ nodes:
     input:
       - created_issues
       - total_tickets
+      - debug_fetch
+      - debug_filter
+      - debug_prepare
     output:
       - summary
     structured_output: true
