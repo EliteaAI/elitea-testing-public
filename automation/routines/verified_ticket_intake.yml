@@ -11,7 +11,13 @@ state:
   project_items:
     type: str
     value: '[]'
+  tms_test_cases:
+    type: str
+    value: '[]'
   debug_fetch:
+    type: str
+    value: ''
+  debug_tms:
     type: str
     value: ''
   debug_filter:
@@ -78,9 +84,27 @@ nodes:
     output:
       - project_items
     structured_output: true
+    transition: FetchTMSTestCases
+
+  # Step 2: Fetch index_automated.json from TMS repo (has priority, id, module fields)
+  - id: FetchTMSTestCases
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: read_file
+    input: []
+    input_mapping:
+      file_path:
+        type: fixed
+        value: index_automated.json
+      repo_name:
+        type: fixed
+        value: EliteaAI/onetest-ai-tm-Elitea
+    output:
+      - tms_test_cases
+    structured_output: true
     transition: DebugFetchResult
 
-  # DEBUG: Show what FetchProjectItems returned
+  # DEBUG: Show what FetchProjectItems and TMS returned
   - id: DebugFetchResult
     type: code
     code:
@@ -88,87 +112,142 @@ nodes:
       value: |
         import json
 
-        out = {'debug_fetch': ''}
+        out = {'debug_fetch': '', 'debug_tms': ''}
 
         try:
+            # Debug project_items
             items_raw = alita_state.get('project_items', '[]')
-
             debug_info = {
                 'raw_type': str(type(items_raw)),
-                'raw_preview': str(items_raw)[:500] if items_raw else 'EMPTY',
                 'raw_length': len(str(items_raw)) if items_raw else 0
             }
 
-            if isinstance(items_raw, str):
-                try:
-                    parsed = json.loads(items_raw, strict=False)
-                    debug_info['parsed_type'] = str(type(parsed))
-                    debug_info['parsed_length'] = len(parsed) if isinstance(parsed, list) else 'not_a_list'
-                    if isinstance(parsed, list) and len(parsed) > 0:
-                        debug_info['first_item_keys'] = list(parsed[0].keys()) if isinstance(parsed[0], dict) else str(type(parsed[0]))
-                        debug_info['first_item_preview'] = str(parsed[0])[:300]
-                except Exception as pe:
-                    debug_info['parse_error'] = str(pe)
-            elif isinstance(items_raw, list):
+            if isinstance(items_raw, list):
                 debug_info['already_list'] = True
                 debug_info['list_length'] = len(items_raw)
                 if len(items_raw) > 0:
                     debug_info['first_item_keys'] = list(items_raw[0].keys()) if isinstance(items_raw[0], dict) else str(type(items_raw[0]))
-            elif isinstance(items_raw, dict):
-                debug_info['is_dict'] = True
-                debug_info['dict_keys'] = list(items_raw.keys())
 
-            out = {'debug_fetch': json.dumps(debug_info, indent=2)}
+            out['debug_fetch'] = json.dumps(debug_info, indent=2)
+
+            # Debug TMS index - parse index_automated.json and extract critical priority IDs
+            tms_raw = alita_state.get('tms_test_cases', '')
+            tms_debug = {
+                'raw_type': str(type(tms_raw)),
+                'raw_length': len(str(tms_raw)) if tms_raw else 0
+            }
+
+            # Parse index_automated.json
+            critical_ids = []
+            all_ids = []
+            try:
+                if isinstance(tms_raw, str):
+                    index_data = json.loads(tms_raw)
+                else:
+                    index_data = tms_raw
+
+                cases = index_data.get('cases', []) if isinstance(index_data, dict) else []
+                all_ids = [c.get('id') for c in cases if c.get('id')]
+                critical_ids = [c.get('id') for c in cases if c.get('priority') == 'critical']
+
+                tms_debug['total_cases'] = len(cases)
+                tms_debug['critical_cases'] = len(critical_ids)
+                tms_debug['sample_critical_ids'] = critical_ids[:15]
+            except Exception as parse_err:
+                tms_debug['parse_error'] = str(parse_err)
+                tms_debug['raw_preview'] = str(tms_raw)[:300]
+
+            out['debug_tms'] = json.dumps(tms_debug, indent=2)
         except Exception as e:
-            out = {'debug_fetch': f'DEBUG ERROR: {str(e)}'}
+            out['debug_fetch'] = f'DEBUG ERROR: {str(e)}'
+            out['debug_tms'] = f'DEBUG ERROR: {str(e)}'
 
         out
     input:
       - project_items
+      - tms_test_cases
     output:
       - debug_fetch
+      - debug_tms
     structured_output: true
     transition: FilterVerifiedTickets
 
-  # Convert to expected format
+  # TEST MODE: Process first 3 issues; for ODD ones without links, use mock IDs
   - id: FilterVerifiedTickets
     type: code
     code:
       type: fixed
       value: |
         import json
+        import re
 
         out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0', 'debug_filter': ''}
 
+        # TEST MODE CONFIG
+        MAX_ISSUES = 3
+        MOCK_TEST_CASE_IDS = ['ELITEA-2671', 'ELITEA-2672']
+
         try:
             items_raw = alita_state.get('project_items', '[]')
+            tms_raw = alita_state.get('tms_test_cases', '')
 
-            # Parse items - handle string or list input
+            # Parse items
             if isinstance(items_raw, str):
                 items = json.loads(items_raw, strict=False)
             else:
                 items = items_raw
-
             if not isinstance(items, list):
                 items = []
 
-            # Convert search_issues format to expected structure
-            # Each item might be a dict or a JSON string - handle both
-            formatted_items = []
-            parse_errors = []
+            # Parse TMS index and extract CRITICAL priority test case IDs
+            tms_critical_ids = set()
+            tms_parse_error = None
+            try:
+                if isinstance(tms_raw, str) and tms_raw.strip():
+                    index_data = json.loads(tms_raw)
+                    cases = index_data.get('cases', []) if isinstance(index_data, dict) else []
+                    for c in cases:
+                        if c.get('priority') == 'critical' and c.get('id'):
+                            tms_critical_ids.add(c.get('id'))
+            except Exception as te:
+                tms_parse_error = str(te)
 
-            for idx, item in enumerate(items):
-                # If item is a string, try to parse it as JSON
+            # Process first MAX_ISSUES items
+            formatted_items = []
+            real_links = 0
+            mocked_links = 0
+
+            for idx, item in enumerate(items[:MAX_ISSUES]):
                 if isinstance(item, str):
                     try:
                         item = json.loads(item, strict=False)
-                    except Exception as e:
-                        parse_errors.append(f'Item {idx}: {str(e)[:50]}')
+                    except:
                         continue
-
                 if not isinstance(item, dict):
-                    parse_errors.append(f'Item {idx}: not a dict, type={type(item)}')
                     continue
+
+                # Find ELITEA-XXXX IDs in issue
+                description = item.get('description', '') or ''
+                title = item.get('title', '') or ''
+                issue_elitea_ids = set(re.findall(r'ELITEA-\d+', f"{title} {description}"))
+
+                # Check for real critical test case links
+                linked_critical = issue_elitea_ids & tms_critical_ids
+
+                # Determine test cases: real link, or mock for ODD index
+                if linked_critical:
+                    test_cases = list(linked_critical)
+                    is_mocked = False
+                    real_links += 1
+                elif idx % 2 == 1:
+                    # ODD index - use mock
+                    test_cases = MOCK_TEST_CASE_IDS
+                    is_mocked = True
+                    mocked_links += 1
+                else:
+                    # EVEN index without link - still include but with empty
+                    test_cases = []
+                    is_mocked = False
 
                 formatted_items.append({
                     'id': item.get('id'),
@@ -179,38 +258,32 @@ nodes:
                         'title': item.get('title', ''),
                         'url': item.get('url', ''),
                         'state': item.get('status', ''),
-                        'body': item.get('description', ''),
+                        'body': item.get('description', '')[:500],
                         'labels': [],
                         'assignees': []
                     },
+                    'linked_test_cases': test_cases,
+                    'is_mocked': is_mocked,
                     'fieldValues': []
                 })
 
-            # Build debug info with more details
-            sample_titles = []
-            for item in items[:3]:
-                if isinstance(item, str):
-                    sample_titles.append(f'STRING: {item[:60]}...')
-                elif isinstance(item, dict):
-                    sample_titles.append(item.get('title', 'no-title')[:60])
-                else:
-                    sample_titles.append(f'TYPE: {type(item)}')
-
             debug_info = {
-                'items_raw_type': str(type(items_raw)),
-                'items_type': str(type(items)),
-                'input_count': len(items),
+                'mode': 'TEST_MODE',
+                'max_issues': MAX_ISSUES,
+                'input_total': len(items),
                 'output_count': len(formatted_items),
-                'first_item_type': str(type(items[0])) if items else 'empty',
-                'sample_titles': sample_titles,
-                'parse_errors': parse_errors[:5] if parse_errors else []
+                'tms_critical_count': len(tms_critical_ids),
+                'tms_parse_error': tms_parse_error,
+                'real_links': real_links,
+                'mocked_links': mocked_links,
+                'issues': [{'idx': i, 'id': f['id'], 'title': f['content']['title'][:40], 'cases': f['linked_test_cases'], 'mocked': f['is_mocked']} for i, f in enumerate(formatted_items)]
             }
 
             out = {
                 'verified_tickets': json.dumps(formatted_items),
                 'current_ticket_index': '0',
                 'total_tickets': str(len(formatted_items)),
-                'debug_filter': json.dumps(debug_info)
+                'debug_filter': json.dumps(debug_info, indent=2)
             }
         except Exception as e:
             import traceback
@@ -218,12 +291,13 @@ nodes:
                 'verified_tickets': '[]',
                 'current_ticket_index': '0',
                 'total_tickets': '0',
-                'debug_filter': f'ERROR: {str(e)} | TB: {traceback.format_exc()[:200]}'
+                'debug_filter': f'ERROR: {str(e)} | TB: {traceback.format_exc()[:300]}'
             }
 
         out
     input:
       - project_items
+      - tms_test_cases
     output:
       - verified_tickets
       - current_ticket_index
@@ -231,7 +305,7 @@ nodes:
     structured_output: true
     transition: CheckMoreTickets
 
-  # DEBUG: Set max_process to limit iterations (0 = no limit)
+  # Process all filtered issues (limit applied in FilterVerifiedTickets)
   - id: CheckMoreTickets
     type: router
     input:
@@ -240,8 +314,7 @@ nodes:
     condition: |
       {% set idx = current_ticket_index | int %}
       {% set total = total_tickets | int %}
-      {% set max_process = 3 %}
-      {% if idx < total and (max_process == 0 or idx < max_process) %}
+      {% if idx < total %}
       PrepareCurrentTicket
       {% else %}
       FinalSummary
@@ -608,6 +681,7 @@ nodes:
             created_raw = alita_state.get('created_issues', '[]')
             total = alita_state.get('total_tickets', '0')
             debug_fetch = alita_state.get('debug_fetch', '')
+            debug_tms = alita_state.get('debug_tms', '')
             debug_filter = alita_state.get('debug_filter', '')
             debug_prepare = alita_state.get('debug_prepare', '')
 
@@ -633,12 +707,17 @@ nodes:
             lines.extend([
                 "### DEBUG: Pipeline State",
                 "",
-                "**FetchProjectItems output:**",
+                "**FetchProjectItems (issues):**",
                 "```json",
                 debug_fetch if debug_fetch else "N/A",
                 "```",
                 "",
-                "**FilterVerifiedTickets debug:**",
+                "**FetchTMSTestCases (test case index):**",
+                "```json",
+                debug_tms if debug_tms else "N/A",
+                "```",
+                "",
+                "**FilterVerifiedTickets (matching issues with test cases):**",
                 "```json",
                 debug_filter if debug_filter else "N/A",
                 "```",
@@ -706,6 +785,7 @@ nodes:
       - created_issues
       - total_tickets
       - debug_fetch
+      - debug_tms
       - debug_filter
       - debug_prepare
     output:
