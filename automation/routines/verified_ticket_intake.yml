@@ -23,28 +23,28 @@ state:
   debug_filter:
     type: str
     value: ''
-  debug_prepare:
-    type: str
-    value: ''
   verified_tickets:
     type: str
     value: '[]'
-  current_ticket_index:
+  grouped_issues:
+    type: str
+    value: '[]'
+  current_group_index:
     type: str
     value: '0'
-  total_tickets:
+  total_groups:
     type: str
     value: '0'
-  current_ticket:
-    type: str
-    value: '{}'
-  processed_result:
-    type: str
-    value: ''
   issue_title:
     type: str
     value: ''
   issue_body:
+    type: str
+    value: ''
+  issue_fields:
+    type: dict
+    value: {}
+  issue_result:
     type: str
     value: ''
   created_issues:
@@ -65,7 +65,6 @@ nodes:
     transition: FetchProjectItems
 
   # Fetch issues with milestone R-2.0.7 using GitHub Issues API
-  # Then filter by checking board status from issue projectItems
   - id: FetchProjectItems
     type: toolkit
     toolkit_name: GitHub_Tools
@@ -86,7 +85,7 @@ nodes:
     structured_output: true
     transition: FetchTMSTestCases
 
-  # Step 2: Fetch index_automated.json from TMS repo (has priority, id, module fields)
+  # Fetch short index with id, priority, path
   - id: FetchTMSTestCases
     type: toolkit
     toolkit_name: GitHub_Tools
@@ -95,7 +94,7 @@ nodes:
     input_mapping:
       file_path:
         type: fixed
-        value: index_automated.json
+        value: index_automated_all_short.json
       repo_name:
         type: fixed
         value: EliteaAI/onetest-ai-tm-Elitea
@@ -104,7 +103,7 @@ nodes:
     structured_output: true
     transition: DebugFetchResult
 
-  # DEBUG: Show what FetchProjectItems and TMS returned
+  # DEBUG: Show what we fetched
   - id: DebugFetchResult
     type: code
     code:
@@ -115,7 +114,6 @@ nodes:
         out = {'debug_fetch': '', 'debug_tms': ''}
 
         try:
-            # Debug project_items
             items_raw = alita_state.get('project_items', '[]')
             debug_info = {
                 'raw_type': str(type(items_raw)),
@@ -123,44 +121,27 @@ nodes:
             }
 
             if isinstance(items_raw, list):
-                debug_info['already_list'] = True
                 debug_info['list_length'] = len(items_raw)
-                if len(items_raw) > 0:
-                    debug_info['first_item_keys'] = list(items_raw[0].keys()) if isinstance(items_raw[0], dict) else str(type(items_raw[0]))
 
             out['debug_fetch'] = json.dumps(debug_info, indent=2)
 
-            # Debug TMS index - parse index_automated.json and extract critical priority IDs
             tms_raw = alita_state.get('tms_test_cases', '')
-            tms_debug = {
-                'raw_type': str(type(tms_raw)),
-                'raw_length': len(str(tms_raw)) if tms_raw else 0
-            }
+            tms_debug = {'raw_type': str(type(tms_raw)), 'raw_length': len(str(tms_raw)) if tms_raw else 0}
 
-            # Parse index_automated.json
-            critical_ids = []
-            all_ids = []
             try:
-                if isinstance(tms_raw, str):
+                if isinstance(tms_raw, str) and tms_raw.strip():
                     index_data = json.loads(tms_raw)
-                else:
-                    index_data = tms_raw
-
-                cases = index_data.get('cases', []) if isinstance(index_data, dict) else []
-                all_ids = [c.get('id') for c in cases if c.get('id')]
-                critical_ids = [c.get('id') for c in cases if c.get('priority') == 'critical']
-
-                tms_debug['total_cases'] = len(cases)
-                tms_debug['critical_cases'] = len(critical_ids)
-                tms_debug['sample_critical_ids'] = critical_ids[:15]
-            except Exception as parse_err:
-                tms_debug['parse_error'] = str(parse_err)
-                tms_debug['raw_preview'] = str(tms_raw)[:300]
+                    cases = index_data.get('cases', []) if isinstance(index_data, dict) else []
+                    tms_debug['total_cases'] = len(cases)
+                    critical = [c for c in cases if c.get('priority') == 'critical']
+                    tms_debug['critical_cases'] = len(critical)
+                    tms_debug['sample_ids'] = [c.get('id') for c in critical[:10]]
+            except Exception as e:
+                tms_debug['parse_error'] = str(e)
 
             out['debug_tms'] = json.dumps(tms_debug, indent=2)
         except Exception as e:
-            out['debug_fetch'] = f'DEBUG ERROR: {str(e)}'
-            out['debug_tms'] = f'DEBUG ERROR: {str(e)}'
+            out['debug_fetch'] = f'ERROR: {str(e)}'
 
         out
     input:
@@ -170,10 +151,10 @@ nodes:
       - debug_fetch
       - debug_tms
     structured_output: true
-    transition: FilterVerifiedTickets
+    transition: FilterAndGroupTickets
 
-  # TEST MODE: Process first 3 issues; for ODD ones without links, use mock IDs
-  - id: FilterVerifiedTickets
+  # Filter issues and group by module/feature for batch issue creation
+  - id: FilterAndGroupTickets
     type: code
     code:
       type: fixed
@@ -181,7 +162,7 @@ nodes:
         import json
         import re
 
-        out = {'verified_tickets': '[]', 'current_ticket_index': '0', 'total_tickets': '0', 'debug_filter': ''}
+        out = {'verified_tickets': '[]', 'grouped_issues': '[]', 'current_group_index': '0', 'total_groups': '0', 'debug_filter': ''}
 
         # TEST MODE CONFIG
         MAX_ISSUES = 3
@@ -199,21 +180,32 @@ nodes:
             if not isinstance(items, list):
                 items = []
 
-            # Parse TMS index and extract CRITICAL priority test case IDs
+            # Parse TMS index - build lookup: id -> {priority, path, module}
+            tms_lookup = {}
             tms_critical_ids = set()
-            tms_parse_error = None
             try:
                 if isinstance(tms_raw, str) and tms_raw.strip():
                     index_data = json.loads(tms_raw)
                     cases = index_data.get('cases', []) if isinstance(index_data, dict) else []
                     for c in cases:
-                        if c.get('priority') == 'critical' and c.get('id'):
-                            tms_critical_ids.add(c.get('id'))
-            except Exception as te:
-                tms_parse_error = str(te)
+                        case_id = c.get('id')
+                        if case_id:
+                            path = c.get('path', '')
+                            # Extract module from path: tests/automated-full-regression-ui/<module>/...
+                            module_match = re.search(r'tests/automated-full-regression-ui/([^/]+)/', path)
+                            module = module_match.group(1) if module_match else 'unknown'
+                            tms_lookup[case_id] = {
+                                'priority': c.get('priority', 'medium'),
+                                'path': path,
+                                'module': module
+                            }
+                            if c.get('priority') == 'critical':
+                                tms_critical_ids.add(case_id)
+            except:
+                pass
 
-            # Process first MAX_ISSUES items
-            formatted_items = []
+            # Process first MAX_ISSUES items and collect test cases
+            verified = []
             real_links = 0
             mocked_links = 0
 
@@ -226,7 +218,6 @@ nodes:
                 if not isinstance(item, dict):
                     continue
 
-                # Find ELITEA-XXXX IDs in issue
                 description = item.get('description', '') or ''
                 title = item.get('title', '') or ''
                 issue_elitea_ids = set(re.findall(r'ELITEA-\d+', f"{title} {description}"))
@@ -234,65 +225,80 @@ nodes:
                 # Check for real critical test case links
                 linked_critical = issue_elitea_ids & tms_critical_ids
 
-                # Determine test cases: real link, or mock for ODD index
+                # Determine test cases
                 if linked_critical:
                     test_cases = list(linked_critical)
                     is_mocked = False
                     real_links += 1
                 elif idx % 2 == 1:
-                    # ODD index - use mock
                     test_cases = MOCK_TEST_CASE_IDS
                     is_mocked = True
                     mocked_links += 1
                 else:
-                    # EVEN index without link - still include but with empty
                     test_cases = []
                     is_mocked = False
 
-                formatted_items.append({
-                    'id': item.get('id'),
-                    'type': item.get('entity_type', 'Issue'),
-                    'content': {
-                        'id': item.get('id'),
-                        'number': item.get('id'),
-                        'title': item.get('title', ''),
-                        'url': item.get('url', ''),
-                        'state': item.get('status', ''),
-                        'body': item.get('description', '')[:500],
-                        'labels': [],
-                        'assignees': []
-                    },
-                    'linked_test_cases': test_cases,
-                    'is_mocked': is_mocked,
-                    'fieldValues': []
+                verified.append({
+                    'issue_id': item.get('id'),
+                    'issue_title': title,
+                    'issue_url': item.get('url', ''),
+                    'test_cases': test_cases,
+                    'is_mocked': is_mocked
                 })
+
+            # Group test cases by module
+            module_groups = {}
+            for v in verified:
+                for tc_id in v.get('test_cases', []):
+                    tc_info = tms_lookup.get(tc_id, {'module': 'unknown', 'priority': 'medium', 'path': ''})
+                    module = tc_info['module']
+                    if module not in module_groups:
+                        module_groups[module] = {
+                            'module': module,
+                            'cases': [],
+                            'source_issues': []
+                        }
+                    module_groups[module]['cases'].append({
+                        'id': tc_id,
+                        'priority': tc_info['priority'],
+                        'path': tc_info['path']
+                    })
+                    if v['issue_id'] not in [s['id'] for s in module_groups[module]['source_issues']]:
+                        module_groups[module]['source_issues'].append({
+                            'id': v['issue_id'],
+                            'title': v['issue_title'],
+                            'url': v['issue_url']
+                        })
+
+            grouped = list(module_groups.values())
 
             debug_info = {
                 'mode': 'TEST_MODE',
                 'max_issues': MAX_ISSUES,
-                'input_total': len(items),
-                'output_count': len(formatted_items),
-                'tms_critical_count': len(tms_critical_ids),
-                'tms_parse_error': tms_parse_error,
+                'input_issues': len(items),
+                'verified_count': len(verified),
+                'tms_cases_found': len(tms_lookup),
+                'critical_cases': len(tms_critical_ids),
                 'real_links': real_links,
                 'mocked_links': mocked_links,
-                'issues': [{'idx': i, 'id': f['id'], 'title': f['content']['title'][:40], 'cases': f['linked_test_cases'], 'mocked': f['is_mocked']} for i, f in enumerate(formatted_items)]
+                'groups_by_module': len(grouped),
+                'groups': [{
+                    'module': g['module'],
+                    'case_count': len(g['cases']),
+                    'cases': [c['id'] for c in g['cases'][:5]]
+                } for g in grouped]
             }
 
             out = {
-                'verified_tickets': json.dumps(formatted_items),
-                'current_ticket_index': '0',
-                'total_tickets': str(len(formatted_items)),
+                'verified_tickets': json.dumps(verified),
+                'grouped_issues': json.dumps(grouped),
+                'current_group_index': '0',
+                'total_groups': str(len(grouped)),
                 'debug_filter': json.dumps(debug_info, indent=2)
             }
         except Exception as e:
             import traceback
-            out = {
-                'verified_tickets': '[]',
-                'current_ticket_index': '0',
-                'total_tickets': '0',
-                'debug_filter': f'ERROR: {str(e)} | TB: {traceback.format_exc()[:300]}'
-            }
+            out['debug_filter'] = f'ERROR: {str(e)} | {traceback.format_exc()[:200]}'
 
         out
     input:
@@ -300,301 +306,165 @@ nodes:
       - tms_test_cases
     output:
       - verified_tickets
-      - current_ticket_index
-      - total_tickets
+      - grouped_issues
+      - current_group_index
+      - total_groups
+      - debug_filter
     structured_output: true
-    transition: CheckMoreTickets
+    transition: CheckMoreGroups
 
-  # Process all filtered issues (limit applied in FilterVerifiedTickets)
-  - id: CheckMoreTickets
+  # Loop through groups
+  - id: CheckMoreGroups
     type: router
     input:
-      - current_ticket_index
-      - total_tickets
+      - current_group_index
+      - total_groups
     condition: |
-      {% set idx = current_ticket_index | int %}
-      {% set total = total_tickets | int %}
+      {% set idx = current_group_index | int %}
+      {% set total = total_groups | int %}
       {% if idx < total %}
-      PrepareCurrentTicket
+      PrepareGroupIssue
       {% else %}
       FinalSummary
       {% endif %}
     routes:
-      - PrepareCurrentTicket
+      - PrepareGroupIssue
       - FinalSummary
     default_output: FinalSummary
 
-  - id: PrepareCurrentTicket
+  # Prepare issue for current group (format like #1400)
+  - id: PrepareGroupIssue
     type: code
     code:
       type: fixed
       value: |
         import json
-        import re
 
-        out = {'current_ticket': '{}', 'debug_prepare': ''}
+        out = {'issue_title': '', 'issue_body': '', 'issue_fields': {'Status': 'Promoted'}}
 
         try:
-            tickets_raw = alita_state.get('verified_tickets', '[]')
-            idx = int(alita_state.get('current_ticket_index', '0'))
+            groups_raw = alita_state.get('grouped_issues', '[]')
+            idx = int(alita_state.get('current_group_index', '0'))
 
-            debug = {
-                'tickets_raw_type': str(type(tickets_raw)),
-                'tickets_raw_len': len(str(tickets_raw)) if tickets_raw else 0,
-                'idx': idx
-            }
-
-            # Parse with multiple fallback strategies for escape issues
-            tickets = None
-            if isinstance(tickets_raw, list):
-                tickets = tickets_raw
-                debug['parse_method'] = 'already_list'
-            elif isinstance(tickets_raw, str):
-                # Try standard parse first
-                try:
-                    tickets = json.loads(tickets_raw, strict=False)
-                    debug['parse_method'] = 'standard'
-                except json.JSONDecodeError:
-                    # Fix invalid escapes by escaping lone backslashes
-                    try:
-                        fixed = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', tickets_raw)
-                        tickets = json.loads(fixed, strict=False)
-                        debug['parse_method'] = 'fixed_escapes'
-                    except:
-                        # Last resort: use ast.literal_eval for Python dict repr
-                        try:
-                            import ast
-                            tickets = ast.literal_eval(tickets_raw)
-                            debug['parse_method'] = 'ast_eval'
-                        except:
-                            debug['parse_method'] = 'FAILED'
-
-            if tickets is None:
-                tickets = []
-
-            debug['parsed_len'] = len(tickets) if isinstance(tickets, list) else 'not_list'
-
-            if isinstance(tickets, list) and idx < len(tickets):
-                ticket = tickets[idx]
-                debug['ticket_type'] = str(type(ticket))
-                debug['ticket_keys'] = list(ticket.keys()) if isinstance(ticket, dict) else 'not_dict'
-                out = {'current_ticket': json.dumps(ticket, ensure_ascii=False), 'debug_prepare': json.dumps(debug)}
+            groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
+            if not isinstance(groups, list) or idx >= len(groups):
+                out = {'issue_title': '', 'issue_body': '', 'issue_fields': {'Status': 'Promoted'}}
             else:
-                debug['error'] = f'idx {idx} >= len {len(tickets) if isinstance(tickets, list) else "?"}'
-                out = {'current_ticket': '{}', 'debug_prepare': json.dumps(debug)}
-        except Exception as e:
-            out = {'current_ticket': '{}', 'debug_prepare': f'ERROR: {str(e)}'}
+                group = groups[idx]
+                module = group.get('module', 'unknown')
+                cases = group.get('cases', [])
+                source_issues = group.get('source_issues', [])
 
-        out
-    input:
-      - verified_tickets
-      - current_ticket_index
-    output:
-      - current_ticket
-      - debug_prepare
-    structured_output: true
-    transition: ProcessTicket
+                # Count by priority
+                critical = [c for c in cases if c.get('priority') == 'critical']
+                high = [c for c in cases if c.get('priority') == 'high']
+                medium = [c for c in cases if c.get('priority') == 'medium']
+                low = [c for c in cases if c.get('priority') == 'low']
 
-  - id: ProcessTicket
-    type: code
-    code:
-      type: fixed
-      value: |
-        # DUMMY NODE - Replace with actual processing logic
-        # This node should:
-        # 1. Analyze the ticket content
-        # 2. Extract test requirements
-        # 3. Determine automation scope
-        # 4. Generate test specification draft
+                # Build title like #1400
+                title = f"[Automate][{module}] {len(cases)} test cases from verified tickets"
 
-        import json
+                # Build body
+                lines = [
+                    "## What this covers",
+                    "",
+                    f"Automate **{len(cases)} test cases** in the `{module}` area from verified R-2.0.7 tickets.",
+                    "",
+                    "| | |",
+                    "|---|---:|",
+                    f"| Cases in `{module}` | {len(cases)} |",
+                    f"| Critical priority | {len(critical)} |",
+                    f"| High priority | {len(high)} |",
+                    f"| Medium priority | {len(medium)} |",
+                    f"| Low priority | {len(low)} |",
+                    "",
+                    "**Source:** Verified tickets from milestone R-2.0.7",
+                    "",
+                    "---",
+                    "",
+                    "## Source Tickets",
+                    "",
+                ]
 
-        out = {'processed_result': 'processed'}
+                for si in source_issues[:10]:
+                    lines.append(f"- [{si.get('title', 'Unknown')[:60]}...]({si.get('url', '')})")
 
-        try:
-            ticket_raw = alita_state.get('current_ticket', '{}')
-            ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
+                lines.extend([
+                    "",
+                    "---",
+                    "",
+                    f"## Test Cases ({len(cases)})",
+                    "",
+                    "| # | Case | Title | Pri |",
+                    "|---:|---|---|---|",
+                ])
 
-            # search_project_issues item structure:
-            # {id, type, content: {id, number, title, url, state, labels, assignees}, fieldValues}
-            content = ticket.get('content', {})
+                for i, c in enumerate(cases[:20], 1):
+                    case_id = c.get('id', 'N/A')
+                    path = c.get('path', '')
+                    priority = c.get('priority', 'medium')
+                    # Extract title from path (last segment without extension)
+                    title_from_path = path.split('/')[-1].replace('.md', '').replace(f'{case_id}_', '').replace('-', ' ')[:50]
+                    case_url = f"https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/{path}"
+                    lines.append(f"| {i} | [{case_id}]({case_url}) | {title_from_path} | {priority} |")
 
-            title = content.get('title', 'Unknown')
-            number = content.get('number', 0)
-            url = content.get('url', '')
-            state = content.get('state', '')
-            labels = content.get('labels', [])
-            assignees = content.get('assignees', [])
+                if len(cases) > 20:
+                    lines.append(f"| ... | +{len(cases) - 20} more | | |")
 
-            out = {
-                'processed_result': json.dumps({
-                    'status': 'processed',
-                    'title': title,
-                    'number': number,
-                    'url': url,
-                    'state': state,
-                    'labels': labels,
-                    'assignees': assignees
-                })
-            }
-        except:
-            pass
+                lines.extend([
+                    "",
+                    "---",
+                    "",
+                    "<sub>Generated by Verified Ticket Intake Pipeline</sub>",
+                ])
 
-        out
-    input:
-      - current_ticket
-    output:
-      - processed_result
-    structured_output: true
-    transition: PrepareAutomationIssue
-
-  - id: PrepareAutomationIssue
-    type: code
-    code:
-      type: fixed
-      value: |
-        import json
-
-        out = {'issue_title': '', 'issue_body': ''}
-
-        try:
-            ticket_raw = alita_state.get('current_ticket', '{}')
-            processed_raw = alita_state.get('processed_result', '{}')
-
-            ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
-            processed = json.loads(processed_raw, strict=False) if isinstance(processed_raw, str) else processed_raw
-
-            # Structure: {id, type, content: {...}, fieldValues}
-            # OR direct: {id, title, description, status, url, entity_type}
-            content = ticket.get('content', {})
-
-            # Try content first, fall back to direct ticket fields
-            title = content.get('title') or ticket.get('title', 'Unknown')
-            number = content.get('number') or content.get('id') or ticket.get('id', 0)
-            url = content.get('url') or ticket.get('url', '')
-            labels = content.get('labels', [])
-
-            # Build automation issue title
-            issue_title = f"[Automate] {title}"
-
-            # Format labels
-            label_names = [l.get('name', '') for l in labels if l.get('name')]
-            labels_str = ', '.join(label_names) if label_names else 'None'
-
-            # Build automation issue body
-            lines = [
-                "## Source Ticket",
-                "",
-                f"- **Original Issue:** [{title}]({url})",
-                f"- **Issue Number:** #{number}",
-                f"- **Status:** Verified on DEV Env",
-                f"- **Labels:** {labels_str}",
-                "",
-                "## Automation Scope",
-                "",
-                "<!-- TODO: Define test scenarios -->",
-                "",
-                "## Instructions",
-                "",
-                "1. **Branch from main** - Create fix branch from `main`: `git checkout main && git pull && git checkout -b AI_AQA/automate-<feature>`",
-                "2. **Commit prefix** - All commits MUST start with `AI_AQA:`",
-                "3. **Create PR to main** - Submit PR targeting `main` branch",
-                "4. **Link to source** - Reference the original issue in PR description",
-                "",
-                "---",
-                f"Auto-generated by Verified Ticket Intake Pipeline | Source: #{number}",
-            ]
-
-            out = {
-                'issue_title': issue_title[:256],
-                'issue_body': chr(10).join(lines)
-            }
-        except Exception as e:
-            out = {'issue_title': 'Error', 'issue_body': str(e)}
-
-        out
-    input:
-      - current_ticket
-      - processed_result
-    output:
-      - issue_title
-      - issue_body
-    structured_output: true
-    transition: CreateAutomationIssue
-
-  # DEBUG MODE: Collect issues without creating them
-  # To enable real issue creation, replace this code node with the toolkit node below:
-  # ---
-  # - id: CreateAutomationIssue
-  #   type: toolkit
-  #   toolkit_name: GitHub_Tools
-  #   tool: create_issue_on_project
-  #   input:
-  #     - issue_title
-  #     - issue_body
-  #   input_mapping:
-  #     board_repo:
-  #       type: fixed
-  #       value: EliteaAI/elitea-testing-public
-  #     project_title:
-  #       type: fixed
-  #       value: Test Automation Factory
-  #     title:
-  #       type: variable
-  #       value: issue_title
-  #     body:
-  #       type: variable
-  #       value: issue_body
-  #     labels:
-  #       type: fixed
-  #       value: '["aqa:intake"]'
-  #     fields:
-  #       type: fixed
-  #       value:
-  #         Status: Approved
-  #     issue_repo:
-  #       type: fixed
-  #       value: EliteaAI/elitea-testing-public
-  #   output:
-  #     - issue_result
-  #   structured_output: true
-  #   transition: StoreAndNext
-  # ---
-
-  - id: CreateAutomationIssue
-    type: code
-    code:
-      type: fixed
-      value: |
-        import json
-
-        # DEBUG MODE: Simulate issue creation without actually creating
-        out = {'issue_result': ''}
-
-        try:
-            title = alita_state.get('issue_title', '')
-            body = alita_state.get('issue_body', '')
-
-            # Build a mock result that shows what WOULD be created
-            mock_result = {
-                'mode': 'DRY_RUN',
-                'would_create': {
-                    'repo': 'EliteaAI/elitea-testing-public',
-                    'project': 'Test Automation Factory',
-                    'title': title,
-                    'labels': ['aqa:intake'],
-                    'status': 'Approved',
-                    'body_preview': body[:200] + '...' if len(body) > 200 else body
+                out = {
+                    'issue_title': title[:256],
+                    'issue_body': chr(10).join(lines),
+                    'issue_fields': {'Status': 'Promoted'}
                 }
-            }
-            out = {'issue_result': json.dumps(mock_result)}
         except Exception as e:
-            out = {'issue_result': json.dumps({'error': str(e)})}
+            out = {'issue_title': f'Error: {str(e)}', 'issue_body': '', 'issue_fields': {'Status': 'Promoted'}}
 
         out
     input:
+      - grouped_issues
+      - current_group_index
+    output:
       - issue_title
       - issue_body
+      - issue_fields
+    structured_output: true
+    transition: CreateIssue
+
+  # Create issue on board #9 in 'Promoted' column
+  - id: CreateIssue
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: create_issue_on_project
+    input:
+      - issue_title
+      - issue_body
+      - issue_fields
+    input_mapping:
+      board_repo:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      project_title:
+        type: fixed
+        value: Test Automation Factory
+      title:
+        type: variable
+        value: issue_title
+      body:
+        type: variable
+        value: issue_body
+      fields:
+        type: variable
+        value: issue_fields
+      issue_repo:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
     output:
       - issue_result
     structured_output: true
@@ -606,67 +476,60 @@ nodes:
       type: fixed
       value: |
         import json
+        import re
 
-        out = {'created_issues': '[]', 'current_ticket_index': '0'}
+        out = {'created_issues': '[]', 'current_group_index': '0'}
 
         try:
             issue_result = alita_state.get('issue_result', '')
             created_raw = alita_state.get('created_issues', '[]')
-            idx = int(alita_state.get('current_ticket_index', '0'))
-            ticket_raw = alita_state.get('current_ticket', '{}')
+            idx = int(alita_state.get('current_group_index', '0'))
+            groups_raw = alita_state.get('grouped_issues', '[]')
+            issue_title = alita_state.get('issue_title', '')
 
             created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
             if not isinstance(created, list):
                 created = []
 
-            ticket = json.loads(ticket_raw, strict=False) if isinstance(ticket_raw, str) else ticket_raw
+            groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
 
-            # Structure: {id, type, content: {id, number, title, url, state, ...}, fieldValues}
-            # OR direct: {id, title, description, status, url, entity_type}
-            content = ticket.get('content', {})
+            # Extract issue number from result
+            issue_url = ''
+            if issue_result:
+                match = re.search(r"issue with number ['\"]?(\d+)['\"]?", str(issue_result), re.IGNORECASE)
+                if match:
+                    issue_url = f"https://github.com/EliteaAI/elitea-testing-public/issues/{match.group(1)}"
 
-            # Try content first, fall back to direct fields
-            source_number = content.get('number') or content.get('id') or ticket.get('id', 0)
-            source_title = content.get('title') or ticket.get('title', '')
-            source_url = content.get('url') or ticket.get('url', '')
-
-            # DEBUG: capture what we're seeing
-            debug_info = {
-                'ticket_type': str(type(ticket)),
-                'ticket_keys': list(ticket.keys()) if isinstance(ticket, dict) else 'not_dict',
-                'content_keys': list(content.keys()) if isinstance(content, dict) else 'not_dict',
-                'extracted': {'number': source_number, 'title': source_title[:50] if source_title else 'EMPTY'}
-            }
-
+            group = groups[idx] if idx < len(groups) else {}
             created.append({
-                'source_number': source_number,
-                'source_title': source_title,
-                'source_url': source_url,
-                'automation_issue': issue_result,
-                'debug': debug_info
+                'module': group.get('module', 'unknown'),
+                'case_count': len(group.get('cases', [])),
+                'issue_url': issue_url,
+                'title': issue_title
             })
 
             out = {
                 'created_issues': json.dumps(created),
-                'current_ticket_index': str(idx + 1)
+                'current_group_index': str(idx + 1)
             }
         except Exception as e:
             out = {
                 'created_issues': json.dumps([{'error': str(e)}]),
-                'current_ticket_index': str(idx + 1) if 'idx' in dir() else '1'
+                'current_group_index': str(int(alita_state.get('current_group_index', '0')) + 1)
             }
 
         out
     input:
       - issue_result
       - created_issues
-      - current_ticket_index
-      - current_ticket
+      - current_group_index
+      - grouped_issues
+      - issue_title
     output:
       - created_issues
-      - current_ticket_index
+      - current_group_index
     structured_output: true
-    transition: CheckMoreTickets
+    transition: CheckMoreGroups
 
   - id: FinalSummary
     type: code
@@ -675,119 +538,83 @@ nodes:
       value: |
         import json
 
-        out = {'summary': 'No tickets processed'}
+        out = {'summary': 'No groups processed'}
 
         try:
             created_raw = alita_state.get('created_issues', '[]')
-            total = alita_state.get('total_tickets', '0')
+            total_groups = alita_state.get('total_groups', '0')
             debug_fetch = alita_state.get('debug_fetch', '')
             debug_tms = alita_state.get('debug_tms', '')
             debug_filter = alita_state.get('debug_filter', '')
-            debug_prepare = alita_state.get('debug_prepare', '')
 
             created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
             if not isinstance(created, list):
                 created = []
 
-            # Check if we're in dry run mode
-            is_dry_run = False
-            if created and isinstance(created[0].get('automation_issue'), str):
-                try:
-                    first_result = json.loads(created[0]['automation_issue'])
-                    is_dry_run = first_result.get('mode') == 'DRY_RUN'
-                except:
-                    pass
-
             lines = [
                 "## Verified Ticket Intake Summary",
                 "",
-            ]
-
-            # DEBUG SECTION
-            lines.extend([
                 "### DEBUG: Pipeline State",
                 "",
-                "**FetchProjectItems (issues):**",
+                "**FetchProjectItems:**",
                 "```json",
                 debug_fetch if debug_fetch else "N/A",
                 "```",
                 "",
-                "**FetchTMSTestCases (test case index):**",
+                "**FetchTMSTestCases:**",
                 "```json",
                 debug_tms if debug_tms else "N/A",
                 "```",
                 "",
-                "**FilterVerifiedTickets (matching issues with test cases):**",
+                "**FilterAndGroupTickets:**",
                 "```json",
                 debug_filter if debug_filter else "N/A",
                 "```",
                 "",
-                "**PrepareCurrentTicket debug (last iteration):**",
-                "```json",
-                debug_prepare if debug_prepare else "N/A",
-                "```",
+                "---",
                 "",
-            ])
+                f"**Total groups:** {total_groups}",
+                f"**Issues created:** {len(created)}",
+                "",
+                "### Created Issues",
+                "",
+            ]
 
-            if is_dry_run:
-                lines.append("### ⚠️ DRY RUN MODE - No issues were actually created")
-                lines.append("")
+            total_cases = 0
+            for i, item in enumerate(created, 1):
+                module = item.get('module', 'unknown')
+                case_count = item.get('case_count', 0)
+                issue_url = item.get('issue_url', '')
+                title = item.get('title', '')
+                total_cases += case_count
+
+                if issue_url:
+                    lines.append(f"{i}. **{module}** ({case_count} cases): [{title[:50]}...]({issue_url})")
+                else:
+                    lines.append(f"{i}. **{module}** ({case_count} cases): {title[:50]}... (URL not available)")
+
+            if not created:
+                lines.append("- No issues created")
 
             lines.extend([
-                f"**Total verified tickets found:** {total}",
-                f"**Issues {'collected (not created)' if is_dry_run else 'created'}:** {len(created)}",
                 "",
+                f"**Total test cases covered:** {total_cases}",
+                "",
+                "---",
+                "Issues posted to board #9 in 'Promoted' column.",
             ])
-
-            if created:
-                lines.append("### Issues to Create" if is_dry_run else "### Created Issues")
-                lines.append("")
-                for idx, item in enumerate(created[:10], 1):
-                    source = item.get('source_number', '?')
-                    source_title = item.get('source_title', 'Unknown')
-                    result_raw = item.get('automation_issue', '')
-                    item_debug = item.get('debug', {})
-
-                    lines.append(f"**{idx}. Source Ticket #{source}:** {source_title if source_title else '(no title)'}")
-
-                    # Show debug info for this item
-                    if item_debug:
-                        lines.append(f"   - **Debug:** {json.dumps(item_debug)}")
-
-                    try:
-                        result = json.loads(result_raw) if isinstance(result_raw, str) else result_raw
-                        if is_dry_run and 'would_create' in result:
-                            wc = result['would_create']
-                            lines.append(f"   - **Would Create Title:** {wc.get('title', 'N/A')[:80]}")
-                        else:
-                            lines.append(f"   - Result: {str(result)[:100]}...")
-                    except:
-                        lines.append(f"   - Result: {str(result_raw)[:100]}...")
-
-                    lines.append("")
-
-                if len(created) > 10:
-                    lines.append(f"... and {len(created) - 10} more issues")
-                    lines.append("")
-
-            if is_dry_run and created:
-                lines.extend([
-                    "---",
-                    "**To create these issues for real:** Edit the pipeline YAML and uncomment the `GitHub_Tools.create_issue_on_project` toolkit node.",
-                ])
 
             out = {'summary': chr(10).join(lines)}
         except Exception as e:
-            out = {'summary': f'Error generating summary: {e}'}
+            out = {'summary': f'Error: {str(e)}'}
 
         out
     input:
       - created_issues
-      - total_tickets
+      - total_groups
       - debug_fetch
       - debug_tms
       - debug_filter
-      - debug_prepare
     output:
       - summary
     structured_output: true
