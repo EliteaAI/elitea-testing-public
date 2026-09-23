@@ -670,6 +670,14 @@ jobs:
     needs: [prepare, test]
     if: always()
     runs-on: ubuntu-latest
+    # gh-pages is published as a single force-pushed commit, so two workflows
+    # publishing concurrently would silently lose one report (the loser's push
+    # is rejected, or overwrites). test-ui-stage1 and test-ui-stage2 are BOTH on
+    # `0 12 * * *`, so that collision is a daily occurrence today.
+    # cancel-in-progress: false — queue behind the other publish, never drop a report.
+    concurrency:
+      group: gh-pages-publish
+      cancel-in-progress: false
     steps:
       - name: Install Allure CLI
         run: |
@@ -715,39 +723,169 @@ jobs:
         with:
           ref: gh-pages
           path: gh-pages
+          # gh-pages is kept at a single commit (see "Publish to gh-pages" below),
+          # so full depth costs the same as depth 1 — and a non-shallow checkout
+          # cannot hit "shallow update not allowed" when we push the orphan commit.
+          fetch-depth: 0
 
-      - name: Deploy report and prune old runs
+      - name: Deploy report
         env:
           ENV_NAME: ${{ needs.prepare.outputs.env-name }}
           RUN_NUMBER: ${{ github.run_number }}
-          KEEP_RUNS: 5
         run: |
+          set -euo pipefail
+
           # Copy this run's allure-report into gh-pages/{env}/{run}/
           DEST="gh-pages/$ENV_NAME/$RUN_NUMBER"
           mkdir -p "$DEST"
           cp -r combined-report/. "$DEST/" 2>/dev/null || echo "Warning: No combined report to copy"
 
-          # Prune: keep only the KEEP_RUNS most recent run directories
-          if [ -d "gh-pages/$ENV_NAME" ]; then
-            RUN_DIRS=$(ls -1 "gh-pages/$ENV_NAME" | grep -E '^[0-9]+$' | sort -n)
-            COUNT=$(echo "$RUN_DIRS" | wc -l)
-            if [ "$COUNT" -gt "$KEEP_RUNS" ]; then
-              TO_DELETE=$(echo "$RUN_DIRS" | head -n $(( COUNT - KEEP_RUNS )))
-              for d in $TO_DELETE; do
-                rm -rf "gh-pages/$ENV_NAME/$d"
-                echo "Deleted old run: $ENV_NAME/$d"
-              done
-            fi
-          fi
+          # Stamp the publish time for the retention pass below. This has to live
+          # IN THE TREE: actions/checkout rewrites every file's mtime to checkout
+          # time, so the filesystem cannot tell us how old a published run is.
+          date +%s > "$DEST/.published-at"
 
-      - name: Push to gh-pages
+      # Retention. The previous version of this step pruned only the working tree
+      # and then made an ordinary commit, so every deleted report stayed reachable
+      # in gh-pages history forever — 540 commits held 10.34 GiB of .webm blobs
+      # while the tip was ~1.5 GB. The prune below is paired with the orphan-commit
+      # publish in the next step, which is what actually reclaims the space.
+      - name: Prune old reports
+        shell: python
+        env:
+          KEEP_RUNS: 3
+          MAX_AGE_DAYS: 2
+          # Tripwire only — warns, never fails (see below).
+          SIZE_WARN_MB: 1500
         run: |
+          import json
+          import os
+          import shutil
+          import time
+
+          ROOT = "gh-pages"
+          KEEP = int(os.environ["KEEP_RUNS"])
+          MAX_AGE_DAYS = float(os.environ["MAX_AGE_DAYS"])
+          MAX_AGE = MAX_AGE_DAYS * 86400
+          WARN_MB = float(os.environ["SIZE_WARN_MB"])
+          NOW = time.time()
+
+
+          def published_at(run_dir):
+              """Age of a published run, in epoch seconds, or None if unknown.
+
+              NOT from the filesystem: actions/checkout sets every file's mtime to
+              checkout time, so mtime always looks like "a few seconds old".
+              """
+              try:
+                  with open(os.path.join(run_dir, ".published-at")) as fh:
+                      return float(fh.read().strip())
+              except (OSError, ValueError):
+                  pass
+              # Reports published before .published-at existed: Allure records the
+              # run's own start time here, in milliseconds.
+              try:
+                  with open(os.path.join(run_dir, "widgets", "summary.json")) as fh:
+                      started = json.load(fh).get("time", {}).get("start")
+                  if isinstance(started, (int, float)) and started > 0:
+                      return started / 1000.0
+              except (OSError, ValueError, KeyError, AttributeError):
+                  pass
+              return None  # immune to the age rule; the count cap still applies
+
+
+          def run_dirs(parent):
+              try:
+                  names = os.listdir(parent)
+              except OSError:
+                  return []
+              return sorted(
+                  (n for n in names
+                   if n.isdigit() and os.path.isdir(os.path.join(parent, n))),
+                  key=int,
+              )
+
+
+          def prune(parent, label):
+              runs = run_dirs(parent)
+              if not runs:
+                  return
+              # 1. Hard count cap: keep the newest KEEP run numbers.
+              doomed = runs[:-KEEP] if len(runs) > KEEP else []
+              survivors = runs[len(doomed):]
+              # 2. Age cap on the survivors — but never the newest one, so an env
+              #    that has stopped running still keeps one browsable report
+              #    instead of silently becoming a 404.
+              for run in survivors[:-1]:
+                  stamp = published_at(os.path.join(parent, run))
+                  if stamp is not None and (NOW - stamp) > MAX_AGE:
+                      doomed.append(run)
+              for run in doomed:
+                  shutil.rmtree(os.path.join(parent, run))
+                  print(f"pruned {label}/{run}")
+
+
+          # Every env, not just the one publishing. A dead env's reports are never
+          # pruned by its own workflow, because that workflow no longer runs — which
+          # is exactly how month-old stage1/stage2 reports piled up. Whichever env
+          # publishes next cleans up for all of them.
+          for name in sorted(os.listdir(ROOT)):
+              path = os.path.join(ROOT, name)
+              if name.startswith(".") or name == ".git" or not os.path.isdir(path):
+                  continue
+              prune(path, name)
+
+          # Run dirs sitting at the gh-pages ROOT, published by an older revision of
+          # this workflow that omitted the env segment. The per-env prune above can
+          # never reach them, so they were unreachable garbage by construction.
+          for run in run_dirs(ROOT):
+              shutil.rmtree(os.path.join(ROOT, run))
+              print(f"pruned stray /{run}")
+
+          total = 0
+          for dirpath, dirnames, filenames in os.walk(ROOT):
+              dirnames[:] = [d for d in dirnames if d != ".git"]
+              for name in filenames:
+                  path = os.path.join(dirpath, name)
+                  if not os.path.islink(path):
+                      try:
+                          total += os.path.getsize(path)
+                      except OSError:
+                          pass
+          size_mb = total / (1024 * 1024)
+          line = (f"gh-pages content: {size_mb:.0f} MB "
+                  f"(keep {KEEP} runs/env, age cap {MAX_AGE_DAYS:g}d)")
+          print(line)
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a") as fh:
+                  fh.write(f"- {line}\n")
+
+          # Warn, never fail: failing here would throw away the report this run just
+          # built. The point is that a retention regression becomes visible the day
+          # it happens instead of at 10 GB.
+          if size_mb > WARN_MB:
+              print(f"::warning::gh-pages content is {size_mb:.0f} MB, above the "
+                    f"{WARN_MB:.0f} MB tripwire. Check that retention is still "
+                    f"working (KEEP_RUNS / MAX_AGE_DAYS / .published-at stamps).")
+
+      # Publish as a SINGLE PARENTLESS COMMIT and force-push. gh-pages carries no
+      # history by design: it is generated output, every commit of it is ~3-330 MB
+      # of .webm, and an ordinary commit stream makes pruning cosmetic — the blobs
+      # stay reachable and the repo grows forever (it reached 10.4 GiB this way).
+      # With one commit, `git clone` size is bounded by the CURRENT report set.
+      - name: Publish to gh-pages
+        run: |
+          set -euo pipefail
           cd gh-pages
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git diff --cached --quiet || git commit -m "report: ${{ needs.prepare.outputs.env-name }} run ${{ github.run_number }}"
-          git push origin gh-pages
+          # --orphan keeps the working tree and index, drops the parent
+          git checkout --orphan publish -q
+          git add -A
+          git commit -q -m "report: ${{ needs.prepare.outputs.env-name }} run ${{ github.run_number }}"
+          git push --force origin publish:gh-pages
 
   publish-tms:
     name: Publish JUnit to OneTest TMS
