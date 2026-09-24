@@ -1,0 +1,27 @@
+{
+  "runs": {
+    "20260924012912": {
+      "total": 26,
+      "details": [
+        {
+          "id": "ELITEA-1862",
+          "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_image_restricted_controls.TestArtifactFilePreviewImageRestrictedControls.test_image_file_opens_directly_with_restricted_controls",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2376",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for locator when opening image file in preview/edit editor",
+          "reasoning": "Failed all 3 retry attempts with the same error: 'Locator.wait_for: Timeout 10000ms exceeded' at step 'Open file in preview/edit editor'. The 404 errors during teardown (bucket not found) suggest the bucket/file setup may be failing or the image preview UI element is not rendering. Consistent failure across all retries indicates a real product issue, not flakiness."
+        },
+        {
+          "id": "ELITEA-1826",
+          "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_multiple_files.TestArtifactsUploadMultipleFiles.test_upload_multiple_files_at_once",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2377",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout clicking element in native file picker during multiple file upload",
+          "reasoning": "Failed all 3 retry attempts with the same error: 'Locator.click: Timeout 10000ms exceeded' at step 'Select files via native file picker'. The 404 teardown errors confirm buckets were never successfully created. Consistent failure across all retries with the same step indicates a real product or UI regression in the file upload flow, not a flaky test."
+        }
+      ]
+    }
+  }
+}
