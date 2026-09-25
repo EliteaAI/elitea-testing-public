@@ -1,0 +1,13 @@
+{
+  "batch": "fix-2345",
+  "source": "scope",
+  "session": "36b51990-9fc3-422d-aee5-44a74a2077d4",
+  "generatedAt": "2026-09-18T07:03:27.885Z",
+  "note": "synthesized by factory/tokenomics/batch-page.mjs from the session's declared scope — no workflow receipt existed",
+  "cases": [
+    {
+      "id": "ELITEA-1866",
+      "outcome": "automated"
+    }
+  ]
+}

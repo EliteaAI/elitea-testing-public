@@ -1,0 +1,13 @@
+{
+  "batch": "fix-2333",
+  "source": "scope",
+  "session": "22997908-f2d3-4c72-a025-b64b12cefbf6",
+  "generatedAt": "2026-09-16T16:00:32.230Z",
+  "note": "synthesized by factory/tokenomics/batch-page.mjs from the session's declared scope — no workflow receipt existed",
+  "cases": [
+    {
+      "id": "ELITEA-2051",
+      "outcome": "blocked"
+    }
+  ]
+}

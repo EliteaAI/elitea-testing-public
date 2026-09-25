@@ -1,0 +1,11 @@
+{
+  "batch": "fix-2366",
+  "source": "scope",
+  "session": "43d2a7d7-73e2-419b-a94a-718b4b1319df",
+  "generatedAt": "2026-09-18T16:20:00.000Z",
+  "note": "hand-written by the lead at close — [FIX] card #2366 (ELITEA-2056) ran as direct dispatches (adjust-automated-test), not the batch workflow; repair PR #2368 merged to main ef7ca9988 + automation/base a8cc63d17; product bug #2367; canon question #2369",
+  "cases": [
+    { "id": "ELITEA-2056", "outcome": "automated", "note": "intermittent product race #2367 soft-asserted with known-defect link; lead gate 2 green + 1 red on the #2367 signature (declared, #2369)" }
+  ],
+  "gate": { "target": "https://dev.elitea.ai/app", "runs": [ {"n":1,"result":"passed","seconds":23.17,"reruns":{}}, {"n":2,"result":"passed","seconds":22.29,"reruns":{}}, {"n":3,"result":"failed","seconds":42.06,"reruns":{},"signature":"#2367 two-message (.node 0 AND .error-icon present)"} ] }
+}

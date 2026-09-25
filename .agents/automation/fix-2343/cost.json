@@ -1,0 +1,207 @@
+{
+ "v": 1,
+ "batch": "fix-2343",
+ "generatedAt": "2026-09-16T21:33:20.227Z",
+ "sources": {
+  "window": {
+   "start": "2026-09-15T21:16:23.153Z",
+   "end": "2026-09-17T21:32:34.754Z",
+   "source": "scopes"
+  },
+  "sessions": 1,
+  "sessionIds": [
+   "claude:1e49b882-7231-4ee6-ae6f-d5f8d57bfb50"
+  ],
+  "hosts": [
+   "claude"
+  ],
+  "users": [
+   "alexander-bychinskiy"
+  ],
+  "costSources": [
+   "ccusage-metered"
+  ],
+  "models": [
+   "claude-opus-5"
+  ]
+ },
+ "totals": {
+  "costUsd": 19.24,
+  "tokens": 29925439,
+  "tokensSplit": {
+   "input": 338,
+   "output": 59581,
+   "cacheRead": 29482818,
+   "cacheWrite": 382702
+  },
+  "tokensByModel": {
+   "claude-opus-5": {
+    "input": 338,
+    "output": 59581,
+    "cacheRead": 29482818,
+    "cacheWrite": 382702
+   }
+  },
+  "activeMin": 27,
+  "dispatches": 1,
+  "sessions": 1,
+  "turns": 28,
+  "toolCalls": 167,
+  "toolErrors": 4,
+  "skills": [
+   "adjust-automated-test"
+  ]
+ },
+ "byRole": {
+  "qa-engineer": {
+   "costUsd": 14.83,
+   "tokens": 25616234,
+   "tok": {
+    "input": 282,
+    "output": 31244,
+    "cacheRead": 25366506,
+    "cacheWrite": 218202
+   },
+   "activeMin": 10,
+   "dispatches": 1,
+   "toolCalls": 140,
+   "toolErrors": 3
+  },
+  "test-automation-lead": {
+   "costUsd": 4.41,
+   "tokens": 4309205,
+   "tok": {
+    "input": 56,
+    "output": 28337,
+    "cacheRead": 4116312,
+    "cacheWrite": 164500
+   },
+   "activeMin": 17,
+   "dispatches": 0,
+   "toolCalls": 27,
+   "toolErrors": 1
+  }
+ },
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": 4.41,
+  "sharePct": 23,
+  "lead": {
+   "costUsd": 4.41,
+   "tokens": 4309205,
+   "tok": {
+    "input": 56,
+    "output": 28337,
+    "cacheRead": 4116312,
+    "cacheWrite": 164500
+   },
+   "activeMin": 17,
+   "dispatches": 0,
+   "toolCalls": 27,
+   "toolErrors": 1
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 1
+ },
+ "delivered": 0,
+ "gate": null,
+ "records": {
+  "note": "script-authored gate verdicts (gate-runs.jsonl) + declared session outcomes (work-scope) vs the receipt — drift means report.json needs a write-back, records never overwrite it",
+  "declaredOutcomes": {
+   "ELITEA-2051": "blocked"
+  }
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2051",
+   "outcome": "blocked",
+   "findings": 0,
+   "direct": {
+    "costUsd": 14.83,
+    "tokens": 25616234,
+    "tok": {
+     "input": 282,
+     "output": 31244,
+     "cacheRead": 25366506,
+     "cacheWrite": 218202
+    },
+    "activeMin": 10,
+    "dispatches": 1,
+    "fixRounds": 0,
+    "toolCalls": 140,
+    "toolErrors": 3
+   },
+   "loaded": {
+    "costUsd": 19.24,
+    "tokens": 29925439,
+    "activeMin": 27
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": {
+   "avg": 14.83,
+   "median": 14.83,
+   "min": 14.83,
+   "max": 14.83,
+   "n": 1
+  },
+  "directTokens": {
+   "avg": 25616234,
+   "median": 25616234,
+   "min": 25616234,
+   "max": 25616234,
+   "n": 1
+  },
+  "directActiveMin": {
+   "avg": 10,
+   "median": 10,
+   "min": 10,
+   "max": 10,
+   "n": 1
+  },
+  "loadedCostUsd": {
+   "avg": 19.24,
+   "median": 19.24,
+   "min": 19.24,
+   "max": 19.24,
+   "n": 1
+  },
+  "loadedActiveMin": {
+   "avg": 27,
+   "median": 27,
+   "min": 27,
+   "max": 27,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": {
+   "costUsd": 14.83,
+   "note": "avg direct spend of an attributed case — excludes batch overhead"
+  }
+ },
+ "coverage": {
+  "casesAttributed": 1,
+  "casesUnattributed": [],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

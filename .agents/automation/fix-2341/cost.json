@@ -1,0 +1,172 @@
+{
+ "v": 1,
+ "batch": "fix-2341",
+ "generatedAt": "2026-09-16T16:43:35.608Z",
+ "sources": {
+  "window": {
+   "start": "2026-09-15T16:41:42.573Z",
+   "end": "2026-09-17T16:43:07.878Z",
+   "source": "scopes"
+  },
+  "sessions": 1,
+  "sessionIds": [
+   "claude:ca82d710-a331-4b38-af5a-432b026b4e1e"
+  ],
+  "hosts": [
+   "claude"
+  ],
+  "users": [
+   "alexander-bychinskiy"
+  ],
+  "costSources": [
+   "ccusage-metered"
+  ],
+  "models": [
+   "claude-opus-5"
+  ]
+ },
+ "totals": {
+  "costUsd": 2.27,
+  "tokens": 1545749,
+  "tokensSplit": {
+   "input": 22,
+   "output": 9505,
+   "cacheRead": 1402846,
+   "cacheWrite": 133376
+  },
+  "tokensByModel": {
+   "claude-opus-5": {
+    "input": 22,
+    "output": 9505,
+    "cacheRead": 1402846,
+    "cacheWrite": 133376
+   }
+  },
+  "activeMin": 2,
+  "dispatches": 0,
+  "sessions": 1,
+  "turns": 11,
+  "toolCalls": 10,
+  "toolErrors": 1,
+  "skills": []
+ },
+ "byRole": {
+  "test-automation-lead": {
+   "costUsd": 2.27,
+   "tokens": 1545749,
+   "tok": {
+    "input": 22,
+    "output": 9505,
+    "cacheRead": 1402846,
+    "cacheWrite": 133376
+   },
+   "activeMin": 2,
+   "dispatches": 0,
+   "toolCalls": 10,
+   "toolErrors": 1
+  }
+ },
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": 2.27,
+  "sharePct": 100,
+  "lead": {
+   "costUsd": 2.27,
+   "tokens": 1545749,
+   "tok": {
+    "input": 22,
+    "output": 9505,
+    "cacheRead": 1402846,
+    "cacheWrite": 133376
+   },
+   "activeMin": 2,
+   "dispatches": 0,
+   "toolCalls": 10,
+   "toolErrors": 1
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 1
+ },
+ "delivered": 0,
+ "gate": null,
+ "records": {
+  "note": "script-authored gate verdicts (gate-runs.jsonl) + declared session outcomes (work-scope) vs the receipt — drift means report.json needs a write-back, records never overwrite it",
+  "declaredOutcomes": {
+   "ELITEA-2051": "blocked"
+  }
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2051",
+   "outcome": "blocked",
+   "findings": 0,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": 2.27,
+    "tokens": 1545749,
+    "activeMin": 2
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": {
+   "avg": 2.27,
+   "median": 2.27,
+   "min": 2.27,
+   "max": 2.27,
+   "n": 1
+  },
+  "loadedActiveMin": {
+   "avg": 2,
+   "median": 2,
+   "min": 2,
+   "max": 2,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2051"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

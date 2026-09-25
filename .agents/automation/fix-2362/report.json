@@ -1,0 +1,10 @@
+{
+  "batch": "fix-2362",
+  "source": "scope",
+  "session": "9bb72ab1-9eb6-413b-a71d-048b98b0c33c",
+  "generatedAt": "2026-09-18T13:00:22Z",
+  "note": "lead-written receipt for [FIX] card #2362 (ELITEA-1140 test_chat_with_toolkit[jira]) — sequential dispatches, no workflow run; repair PR #2364 → main dacc398d7, base d11a7db5e; lead 3x DEV gate green",
+  "cases": [
+    { "id": "ELITEA-1140", "outcome": "automated", "issue": 2362, "pr": 2364, "gate": { "runs": 3, "passed": 3, "target": "https://dev.elitea.ai/app", "durations_s": [38.48, 38.95, 40.86] } }
+  ]
+}
