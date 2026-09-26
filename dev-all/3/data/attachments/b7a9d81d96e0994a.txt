@@ -1,0 +1,26 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open Create New Agent canvas — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("plus-menu-button")
+    - locator resolved to <button tabindex="0" type="button" variant="elitea" aria-label="plus menu" data-testid="plus-menu-button" class="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorSecondary MuiIconButton-sizeMedium css-1xiq32l">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div tabindex="-1" role="presentation" class="MuiDialog-container MuiDialog-scrollPaper css-fh1hs4">…</div> from <div role="presentation" class="MuiDialog-root MuiModal-root css-1egf66k">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div tabindex="-1" role="presentation" class="MuiDialog-container MuiDialog-scrollPaper css-fh1hs4">…</div> from <div role="presentation" class="MuiDialog-root MuiModal-root css-1egf66k">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    19 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <div tabindex="-1" role="presentation" class="MuiDialog-container MuiDialog-scrollPaper css-fh1hs4">…</div> from <div role="presentation" class="MuiDialog-root MuiModal-root css-1egf66k">…</div> subtree intercepts pointer events
+     - retrying click action
+       - waiting 500ms

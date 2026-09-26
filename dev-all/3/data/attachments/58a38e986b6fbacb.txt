@@ -1,0 +1,2 @@
+WARNING  elitea.pages.chat:chat_page.py:5950 Folder 9: dot-menu 'Delete' item (FOLDER_MENU_DELETE_ITEM) did not appear within 10000ms — testid regressed dead again (EliteaAI/elitea-testing-public#1309); falling back to API delete
+WARNING  elitea.pages.chat:chat_page.py:5950 Folder 8: dot-menu 'Delete' item (FOLDER_MENU_DELETE_ITEM) did not appear within 10000ms — testid regressed dead again (EliteaAI/elitea-testing-public#1309); falling back to API delete
