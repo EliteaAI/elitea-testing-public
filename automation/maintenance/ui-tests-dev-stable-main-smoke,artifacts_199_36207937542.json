@@ -1,0 +1,21 @@
+{
+  "runs": {
+    "20260926013213": {
+      "total": 26,
+      "details": [
+        {
+          "id": "ELITEA-1862",
+          "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_image_restricted_controls.TestArtifactFilePreviewImageRestrictedControls.test_image_file_opens_directly_with_restricted_controls",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2376"
+        },
+        {
+          "id": "ELITEA-1826",
+          "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_multiple_files.TestArtifactsUploadMultipleFiles.test_upload_multiple_files_at_once",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2377"
+        }
+      ]
+    }
+  }
+}
