@@ -13,11 +13,11 @@
 
 ## Test Results Matrix
 
-| Test Case | #160 | #170 | #179 | #187 | #188 | #189 | #192 | #195 | #197 | #198 | Tracking Issue |
+| Test Case | #170 | #179 | #187 | #188 | #189 | #192 | #195 | #197 | #198 | #199 | Tracking Issue |
 |-----------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|----------------|
-| ELITEA-1826 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | [#2377](https://github.com/EliteaAI/elitea-testing-public/issues/2377) |
-| ELITEA-1862 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | [#2376](https://github.com/EliteaAI/elitea-testing-public/issues/2376) |
-| **Total executed** | - | - | 26 | 26 | 26 | 26 | 26 | 26 | 26 | 26 | - |
+| ELITEA-1826 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | 🟠 | [#2377](https://github.com/EliteaAI/elitea-testing-public/issues/2377) |
+| ELITEA-1862 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | 🟠 | [#2376](https://github.com/EliteaAI/elitea-testing-public/issues/2376) |
+| **Total executed** | - | 26 | 26 | 26 | 26 | 26 | 26 | 26 | 26 | 26 | - |
 
 ## Summary
 
