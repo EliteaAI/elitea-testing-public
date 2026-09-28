@@ -13,10 +13,10 @@
 
 ## Test Results Matrix
 
-| Test Case | #179 | #187 | #188 | #189 | #192 | #195 | #197 | #198 | #199 | #200 | Tracking Issue |
+| Test Case | #187 | #188 | #189 | #192 | #195 | #197 | #198 | #199 | #200 | #201 | Tracking Issue |
 |-----------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|----------------|
-| ELITEA-1826 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | 🟠 | 🟠 | [#2377](https://github.com/EliteaAI/elitea-testing-public/issues/2377) |
-| ELITEA-1862 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | 🟠 | 🟠 | [#2376](https://github.com/EliteaAI/elitea-testing-public/issues/2376) |
+| ELITEA-1826 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | 🟠 | 🟠 | 🟠 | [#2377](https://github.com/EliteaAI/elitea-testing-public/issues/2377) |
+| ELITEA-1862 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟠 | 🟠 | 🟠 | 🟠 | [#2376](https://github.com/EliteaAI/elitea-testing-public/issues/2376) |
 | **Total executed** | 26 | 26 | 26 | 26 | 26 | 26 | 26 | 26 | 26 | 26 | - |
 
 ## Summary
