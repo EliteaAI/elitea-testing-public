@@ -216,3 +216,4 @@
 - [UI-drift triage: bracket main by last-green/first-red dates, git log -S the gate line](ui_drift_bracket_by_pass_fail_dates.md)
 - [devenv gate still uses local test-data tokens](devenv_gate_still_uses_local_test_data_tokens.md) — a tool-payload 401 on a DEV gate is expired workspace test data (#1941), not the diff; cite the healthy CI neighbour, merge on the counterfactual, record a named residual; #2358
 - [DEV-drift red: diff main first](dev_drift_red_diff_main_before_grepping_testids.md) — presence in source ≠ in the DOM; automation/testids gate is blind to it; differential-triage the same job
+- [Sibling FIX cards share one commit](sibling_fix_cards_from_one_ci_run_share_one_cause.md) — read same-run cards
