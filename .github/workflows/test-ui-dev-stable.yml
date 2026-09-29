@@ -66,24 +66,21 @@ jobs:
           REPORT_URL="${{ github.server_url }}/${{ github.repository }}/blob/automation/maintenance/automation/maintenance/${REPORT_PATH}.md"
           DASHBOARD_URL="${{ github.server_url }}/EliteaAI/onetest-ai-tm-Elitea/blob/main/reports/dashboard.md"
 
-          if [ "$RESULTS_PROCESSING" = "true" ]; then
-            REPORT_NOTE="⏳ Cumulative for all runs named \`${RUN_NAME}\`. Will be updated 10-20 minutes after this run completes."
-          else
-            REPORT_NOTE="⚠️ Cumulative for all runs named \`${RUN_NAME}\`. Results processing is disabled, so this run will not be added."
-          fi
-          if [ "$PUBLISH_TO_TMS" = "true" ]; then
-            DASHBOARD_NOTE="⏳ Regenerated when results are published to TMS. Snapshot for this run is linked in the *Publish JUnit to OneTest TMS* summary."
-          else
-            DASHBOARD_NOTE="⚠️ Publishing to TMS is disabled, so the dashboard will not be updated by this run."
-          fi
-
           {
             echo "## 📑 Run reports"
             echo ""
-            echo "| Report | Note |"
-            echo "|--------|------|"
-            echo "| 🛠️ [Maintenance report](${REPORT_URL}) | ${REPORT_NOTE} |"
-            echo "| 📊 [Test dashboard](${DASHBOARD_URL}) | ${DASHBOARD_NOTE} |"
+            echo "- 🛠️ [Maintenance report](${REPORT_URL}) (cumulative for all runs named \`${RUN_NAME}\`)"
+            echo "- 📊 [Test dashboard](${DASHBOARD_URL})"
+            echo ""
+            echo "> ⏳ Reports will be updated within minutes after the run completes and all results are processed and uploaded."
+            if [ "$RESULTS_PROCESSING" != "true" ]; then
+              echo ">"
+              echo "> ⚠️ Results processing is disabled for this run, so it will not be added to the maintenance report."
+            fi
+            if [ "$PUBLISH_TO_TMS" != "true" ]; then
+              echo ">"
+              echo "> ⚠️ Publishing to TMS is disabled for this run, so the dashboard will not be updated."
+            fi
           } >> $GITHUB_STEP_SUMMARY
 
   test:
