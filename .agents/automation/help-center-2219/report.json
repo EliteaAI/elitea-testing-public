@@ -1,0 +1,25 @@
+{
+  "batch": "help-center-2219",
+  "source": "lead",
+  "session": "276e304d-55a0-4c0f-aa2b-77574fba4e55",
+  "generatedAt": "2026-09-29T00:00:00.000Z",
+  "note": "Hand-authored by the lead: ZERO dispatches, so no workflow receipt exists to rebuild from. The batch never entered the run phase — the container has no execution environment (#2378), and a greenfield case is blocked on a second axis (no npm/npx, /opt not writable, so no EliteaUI clone on automation/testids and no Vite HMR) which #2378's remediation list does not name. An AFS produced without live verification is unverifiable by construction, so the analyst was deliberately not dispatched.",
+  "cases": [
+    {
+      "id": "ELITEA-2219",
+      "issue": 2382,
+      "outcome": "blocked",
+      "blockedOn": ["#2378"],
+      "dispatches": 0,
+      "branch": null,
+      "pr": null,
+      "gate": "not run — unrunnable (no .venv, no browsers, no credentials, no localhost:5173)",
+      "findings": [
+        "ui/ResourceCard.jsx carries ZERO testids on origin/main AND origin/automation/testids — the card body's estimate (sidebar icon + subtitle/description only) understates the testid work",
+        "help-center-version-label / -version-info-icon / -version-info-tooltip / -version-info-copy-button are on automation/testids but NOT on main — pre-existing promotion gap, independent of this case",
+        "main...origin/automation/testids = 158/497 and the page component is renamed on main (resources/index.jsx -> ResourcesPage.jsx + new barrels), so the human cherry-pick conflicts by construction; sync testids<-main before adding testids on this surface",
+        "#998 (four-vs-five resource cards) re-confirmed in source as case-text drift, five RESOURCE_CARD_CONFIGS entries — not blocking; #1492 (Release Notes link 404) out of scope"
+      ]
+    }
+  ]
+}

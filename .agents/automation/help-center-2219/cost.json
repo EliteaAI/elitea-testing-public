@@ -1,0 +1,164 @@
+{
+ "v": 1,
+ "batch": "help-center-2219",
+ "generatedAt": "2026-09-29T16:06:30.459Z",
+ "sources": {
+  "window": {
+   "start": "2026-09-28T15:55:41.729Z",
+   "end": "2026-09-30T16:06:27.186Z",
+   "source": "scopes"
+  },
+  "sessions": 1,
+  "sessionIds": [
+   "claude:276e304d-55a0-4c0f-aa2b-77574fba4e55"
+  ],
+  "hosts": [
+   "claude"
+  ],
+  "users": [
+   "automation-factory"
+  ],
+  "costSources": [],
+  "models": [
+   "claude-opus-5"
+  ]
+ },
+ "totals": {
+  "costUsd": null,
+  "tokens": 6303034,
+  "tokensSplit": {
+   "input": 7804,
+   "output": 28746,
+   "cacheRead": 5974832,
+   "cacheWrite": 291652
+  },
+  "tokensByModel": {
+   "claude-opus-5": {
+    "input": 7804,
+    "output": 28746,
+    "cacheRead": 5974832,
+    "cacheWrite": 291652
+   }
+  },
+  "activeMin": 11,
+  "dispatches": 0,
+  "sessions": 1,
+  "turns": 42,
+  "toolCalls": 42,
+  "toolErrors": 1,
+  "skills": []
+ },
+ "byRole": {
+  "test-automation-lead": {
+   "costUsd": null,
+   "tokens": 6303034,
+   "tok": {
+    "input": 7804,
+    "output": 28746,
+    "cacheRead": 5974832,
+    "cacheWrite": 291652
+   },
+   "activeMin": 11,
+   "dispatches": 0,
+   "toolCalls": 42,
+   "toolErrors": 1
+  }
+ },
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": null,
+  "sharePct": null,
+  "lead": {
+   "costUsd": null,
+   "tokens": 6303034,
+   "tok": {
+    "input": 7804,
+    "output": 28746,
+    "cacheRead": 5974832,
+    "cacheWrite": 291652
+   },
+   "activeMin": 11,
+   "dispatches": 0,
+   "toolCalls": 42,
+   "toolErrors": 1
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "blocked": 1
+ },
+ "delivered": 0,
+ "gate": null,
+ "records": {
+  "note": "script-authored gate verdicts (gate-runs.jsonl) + declared session outcomes (work-scope) vs the receipt — drift means report.json needs a write-back, records never overwrite it",
+  "declaredOutcomes": {
+   "ELITEA-2219": "blocked"
+  }
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2219",
+   "outcome": "blocked",
+   "findings": 4,
+   "direct": {
+    "costUsd": null,
+    "tokens": 0,
+    "tok": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "activeMin": 0,
+    "dispatches": 0,
+    "fixRounds": 0,
+    "toolCalls": 0,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": null,
+    "tokens": 6303034,
+    "activeMin": 11
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": null,
+  "directTokens": null,
+  "directActiveMin": null,
+  "loadedCostUsd": null,
+  "loadedActiveMin": {
+   "avg": 11,
+   "median": 11,
+   "min": 11,
+   "max": 11,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": null,
+  "directPerCase": null
+ },
+ "coverage": {
+  "casesAttributed": 0,
+  "casesUnattributed": [
+   "ELITEA-2219"
+  ],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}
