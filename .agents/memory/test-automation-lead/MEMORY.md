@@ -188,6 +188,7 @@
 - [A fast clean DEV gate is normal](dev_gate_can_be_fast_and_clean_dont_distrust_it.md) — goto hazard spanned 3-of-3 and 0-of-3 on one spec in one day
 - [A cross-RUN repeat FIX card is not a duplicate filing](a_cross_run_fix_card_is_not_a_duplicate_filing.md) — same run id = intake artifact (dedup fixes it); different run id = true red re-detected, recurs nightly until promotion
 - [Ancestry check = 1st move on a FIX card](ancestry_check_is_the_first_move_on_a_fix_card.md) — scope to the CALL PATH via `-S"<symbol>"`; spec-only lies (#2175)
+- [Squash-promote hides it](a_squash_promoted_fix_still_shows_as_unpromoted_in_git_log.md) — diff content, not log
 - [Same CI commit, next nightly = same artifact re-detected](a_cross_run_fix_card_is_not_a_duplicate_filing.md) — #2276→#2277 both on `115a119`; when the commit AND the call-path delta are unchanged since your last certified gate, the whole delivery is the sibling-scan → message grep → ancestry → own 3× DEV gate loop (~20 min), nothing else
 - [A null-delta FIX card still owes a full gate](a_null_delta_card_still_owes_a_full_gate.md) — no dispatch, no review, but your own N×-green on the env the red came from is the delivery (#2173)
 - [Message-string grep beats the ancestry walk](message_string_grep_is_the_cheapest_promotion_gap_proof.md) — assertion text on `origin/main` but absent on `automation/base` ⇒ already repaired; no commit, no call-path list (#2180)

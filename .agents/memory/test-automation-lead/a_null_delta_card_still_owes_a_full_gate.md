@@ -5,7 +5,7 @@ type: feedback
 aliases: [zero delta delivery, nothing to fix but still gate, verify don't fix, promotion gap closure evidence]
 tags: [area/gate, area/triage, type/process]
 created: 2026-09-10
-updated: 2026-09-10
+updated: 2026-09-29
 ---
 
 ## The temptation
@@ -38,5 +38,24 @@ Detached script, `realpath` the symlink, `re.sub` the two lines, **`exit 2` unle
 `settings.app_base_url == https://dev.elitea.ai/app`**, `trap … EXIT INT TERM` restoring from a
 backup, and echo the resolved URL again after the restore. Reusable at
 `/tmp/gate_2173.sh` shape — the `exit 2` guard is the load-bearing half.
+
+## Two bounded exceptions — and the honest way to take them (#2274, 2026-09-29)
+
+"Still owes a gate" is the default, not an absolute. Two things can discharge or block it, and in
+both cases **the closure record must say so in words, never imply a gate you did not run.**
+
+1. **A sibling session already gated the IDENTICAL artifact on the same env.** #2287 promoted this
+   repair and gated it **9/9 invocations on `dev.elitea.ai`** (case signature 0 of 14 attempts).
+   Re-gating byte-identical content on the same env re-derives a result already on record — cite it
+   with its numbers instead. The test is *identical artifact*, not "someone gated something": verify
+   with `git diff origin/main origin/automation/base -- <path>` = 0, not with the PR title.
+2. **The container physically cannot run one.** A factory sandbox may have no `.venv`, no
+   playwright, no `automation/.env.test`, and no `../EliteaUI` / `../onetest-ai-tm-Elitea` siblings
+   (`curl dev.elitea.ai` still returns 302, so a working network proves nothing). Check for the
+   stack *before* planning a gate. Then state plainly "no fresh gate was run here, and why" — the
+   one thing that must not happen is a closure record that reads as though one was.
+
+Where a gate is neither discharged nor runnable and the card's disposition depends on it → that is
+a `Blocked` + `question` card, not a softly-worded close.
 
 Related: [[ancestry_check_is_the_first_move_on_a_fix_card]] · [[a_fix_card_can_have_no_work_in_it]] · [[a_delivered_card_is_not_verified_until_the_env_ran_it]]
