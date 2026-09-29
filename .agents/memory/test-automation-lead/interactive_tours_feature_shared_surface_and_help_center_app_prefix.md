@@ -57,3 +57,40 @@ content-specific assertions (tour step count/titles differ per variant).
 `test-specs/help-center/_surface.md` (analyst-written digest) and
 `test-specs/help-center/l2_sidebar-interactive-tour-completes_ELITEA-2227.md`
 (the AFS, § Automation Hints).
+
+## Help Center testid provenance — re-verified 2026-09-29 (#2382 / ELITEA-2219)
+
+Sizing ELITEA-2219 ("page loads successfully via sidebar icon") forced a fresh
+two-stage grep of both refs. **The reusability promise above holds for the tour
+chrome and NOT for the resources page itself** — correcting the optimistic
+reading a future case would otherwise make:
+
+| Handle | `main` | `automation/testids` |
+|---|---|---|
+| `help-center-page-header` | ✅ | ✅ |
+| `help-center-tour-link-<slug>` (runtime-composed) | ✅ | ✅ |
+| `help-center-version-label` / `-version-info-icon` / `-version-info-tooltip` / `-version-info-copy-button` | **no** | ✅ |
+| sidebar `?` Help Center entry (`ResourcesButton.jsx` — only `StyledTooltip title="Help Center"`) | **no** | **no** |
+| `Explore Help Center` subtitle (`ResourcesPage.jsx:97`) + description line | **no** | **no** |
+| `ui/ResourceCard.jsx` title / subtitle / icon | **ZERO testids** | **ZERO testids** |
+
+Three consequences for the next Help Center case:
+
+1. **`ResourceCard.jsx` is greenfield testid work**, not a footnote — any case
+   asserting per-card icon/title/subtitle/link pays for it.
+2. **Four `help-center-version-*` testids are on `automation/testids` but not on
+   `main`**, so any case using the existing page object's version helpers lands a
+   closure record whose promotability row is ⚠️ NOT promotable *independently of
+   what that case adds*. Check before promising otherwise.
+3. **The page component is RENAMED on `main`.** `src/[fsd]/pages/resources/index.jsx`
+   (on `automation/testids`) is `ResourcesPage.jsx` on `main`, plus new `index.js` /
+   `ui/index.js` barrels; `main...origin/automation/testids` = **158 / 497**. A testid
+   born on `automation/testids` therefore lands in a file `main` no longer has under
+   that name ⇒ the human cherry-pick **conflicts by construction**. Sync
+   `automation/testids ← main` *before* adding testids on this surface.
+
+Also confirmed in source: `RESOURCE_CARD_CONFIGS` holds exactly **five** entries
+(documentation, release notes, video library, tutorials, interactive tours), which
+settles the "four vs five cards" case-text drift tracked as **#998** — a case-text
+clarification, never a product defect. `#1492` (Release Notes link target 404s) is
+out of scope for any case that only asserts links are *displayed*.
