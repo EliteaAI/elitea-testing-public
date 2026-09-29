@@ -41,7 +41,53 @@ on:
         default: false
 
 jobs:
+  links:
+    # Runs first so its summary is shown at the top of the run page
+    name: Run reports
+    runs-on: ubuntu-latest
+    outputs:
+      run_name: ${{ steps.links.outputs.run_name }}
+    steps:
+      - name: Add report links to run summary
+        id: links
+        env:
+          SUITES: ${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || inputs.suite || 'all' }}
+          RESULTS_PROCESSING: ${{ github.event_name == 'schedule' || inputs.enable_results_processing == true }}
+          PUBLISH_TO_TMS: ${{ github.event_name == 'schedule' || inputs.publish_to_tms == true }}
+        run: |
+          # Build run name (github.run_name not available in called workflow context)
+          RUN_NAME="UI Tests DEV Stable [${{ github.ref_name }}] [${SUITES}]"
+          echo "run_name=$RUN_NAME" >> $GITHUB_OUTPUT
+
+          # Maintenance report name - same sanitization as ParseWebhook in
+          # automation/routines/test_failure_intake.yml: lower, ' '->'-', '_'->'-', drop '[' and ']'
+          REPORT_NAME=$(echo "$RUN_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g; s/_/-/g; s/[][]//g')
+          REPORT_PATH=$(jq -rn --arg s "$REPORT_NAME" '$s | split("/") | map(@uri) | join("/")')
+          REPORT_URL="${{ github.server_url }}/${{ github.repository }}/blob/automation/maintenance/automation/maintenance/${REPORT_PATH}.md"
+          DASHBOARD_URL="${{ github.server_url }}/EliteaAI/onetest-ai-tm-Elitea/blob/main/reports/dashboard.md"
+
+          if [ "$RESULTS_PROCESSING" = "true" ]; then
+            REPORT_NOTE="⏳ Cumulative for all runs named \`${RUN_NAME}\`. Will be updated 10-20 minutes after this run completes."
+          else
+            REPORT_NOTE="⚠️ Cumulative for all runs named \`${RUN_NAME}\`. Results processing is disabled, so this run will not be added."
+          fi
+          if [ "$PUBLISH_TO_TMS" = "true" ]; then
+            DASHBOARD_NOTE="⏳ Regenerated when results are published to TMS. Snapshot for this run is linked in the *Publish JUnit to OneTest TMS* summary."
+          else
+            DASHBOARD_NOTE="⚠️ Publishing to TMS is disabled, so the dashboard will not be updated by this run."
+          fi
+
+          {
+            echo "## 📑 Run reports"
+            echo ""
+            echo "| Report | Note |"
+            echo "|--------|------|"
+            echo "| 🛠️ [Maintenance report](${REPORT_URL}) | ${REPORT_NOTE} |"
+            echo "| 📊 [Test dashboard](${DASHBOARD_URL}) | ${DASHBOARD_NOTE} |"
+          } >> $GITHUB_STEP_SUMMARY
+
   test:
+    needs: links
     uses: ./.github/workflows/test-ui-custom.yml
     with:
       environment: dev-stable
@@ -101,7 +147,7 @@ jobs:
 
   notify:
     name: Notify intake pipeline
-    needs: test
+    needs: [links, test]
     if: always() && (github.event_name == 'schedule' || inputs.enable_results_processing == true)
     runs-on: ubuntu-latest
     steps:
@@ -130,9 +176,8 @@ jobs:
           MAINTENANCE_URL: ${{ secrets.MAINTENANCE_URL }}
           MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
         run: |
-          # Build run name (github.run_name not available in called workflow context)
-          SUITES="${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || inputs.suite || 'all' }}"
-          RUN_NAME="UI Tests DEV Stable [${{ github.ref_name }}] [${SUITES}]"
+          # Run name built once in the links job (defines the maintenance report file name)
+          RUN_NAME="${{ needs.links.outputs.run_name }}"
 
           # Build JSON payload using jq for proper escaping
           PAYLOAD=$(jq -cn \
