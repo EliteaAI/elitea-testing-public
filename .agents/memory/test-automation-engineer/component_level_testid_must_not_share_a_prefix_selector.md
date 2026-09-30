@@ -2,6 +2,9 @@
 name: Component-level testid must not share a prefix selector
 description: New dynamic testid on a shared component can accidentally match an existing prefix-based selector (^=), double-counting elements.
 type: feedback
+aliases: [prefix count, ^= selector overcounts, testid family count]
+tags: [area/testids, type/gotcha]
+updated: 2026-09-30
 ---
 
 When adding a **new** component-level dynamic testid to a shared component that
@@ -27,3 +30,23 @@ instead of tucking `-sort-icon` onto the end of the header-cell shape.
 `grep -n '\^="' automation/pages/<page>.py` (or the specific page object you're
 extending) — if a prefix selector exists, the new testid must not start with
 that same prefix unless it is semantically one of that selector's members.
+
+## The other direction: a prefix COUNT you write yourself (2026-09-30, ELITEA-2219)
+
+The same collision bites when you add a **family** of testids and then count them with
+`^=`. Naming a card root `help-center-card-{category}` plus sub-elements
+`-title` / `-description` / `-icon` makes `[data-testid^="help-center-card-"]` match
+**20 nodes for 5 cards**, not 5 — the AFS specified that selector for an "exactly 5
+cards" assertion and it was simply wrong (measured live).
+
+CSS cannot express "prefix but no further suffix", so the options are a `:not()` chain
+(`:not([data-testid$="-title"]):not(...)`, which must then be kept in sync with every
+sub-element you ever add) or a **1:1 proxy**. Proxy is better: count the `-title` nodes
+(`[data-testid^="help-center-card-"][data-testid$="-title"]` → exactly 5), since the
+component renders exactly one title per card by construction, and an extra testid added
+inside a card later cannot perturb it. Catch a RENAMED member with the per-member root
+assertions you already have, not with the count.
+
+**Rule of thumb:** a `^=` count is only as precise as the naming family beneath it. Before
+writing one, list every testid that shares the prefix — including the ones you are adding
+in the same commit.

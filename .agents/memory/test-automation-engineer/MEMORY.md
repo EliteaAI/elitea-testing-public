@@ -119,3 +119,4 @@
 - [git stash flag order pops a foreign stash](git_stash_flag_order_pops_a_foreign_stash.md) — `git stash -q push` stashes nothing; the chained pop applies stash@{0} from another branch
 
 - [Promotion cherry-pick hidden sibling dependency](promotion_cherry_pick_hidden_sibling_dependency.md) — clean page-object auto-merge still broke on main: grep new symbols vs main first
+- [Fallback text isn't a load gate](hardcoded_text_fallback_is_not_a_data_loaded_gate.md) — `x || DEFAULT` paints early
