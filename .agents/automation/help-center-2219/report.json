@@ -2,23 +2,31 @@
   "batch": "help-center-2219",
   "source": "lead",
   "session": "276e304d-55a0-4c0f-aa2b-77574fba4e55",
-  "generatedAt": "2026-09-29T00:00:00.000Z",
-  "note": "Hand-authored by the lead: ZERO dispatches, so no workflow receipt exists to rebuild from. The batch never entered the run phase — the container has no execution environment (#2378), and a greenfield case is blocked on a second axis (no npm/npx, /opt not writable, so no EliteaUI clone on automation/testids and no Vite HMR) which #2378's remediation list does not name. An AFS produced without live verification is unverifiable by construction, so the analyst was deliberately not dispatched.",
+  "generatedAt": "2026-09-30T00:00:00.000Z",
+  "note": "Run 2 of this card (run 1 parked Blocked on #2378 in an unprovisioned container; the human re-approved with 'Reprocess from the very beginning' and the container had since been provisioned). Sequential foreground dispatches, not the batch workflow: a single greenfield case preceded by a mandatory 183-commit EliteaUI sync whose 22 conflicts needed their own implementer dispatch.",
   "cases": [
     {
       "id": "ELITEA-2219",
       "issue": 2382,
-      "outcome": "blocked",
-      "blockedOn": ["#2378"],
-      "dispatches": 0,
-      "branch": null,
-      "pr": null,
-      "gate": "not run — unrunnable (no .venv, no browsers, no credentials, no localhost:5173)",
+      "outcome": "automated",
+      "afs": "test-specs/help-center/l3_help-center-page-loads-via-sidebar-icon_ELITEA-2219.md",
+      "spec": "automation/tests/ui/help_center/test_help_center_page_loads.py",
+      "automation_test_id": "tests.ui.help_center.test_help_center_page_loads.TestHelpCenterPageLoads.test_help_center_page_loads_via_sidebar_icon",
+      "pr": 2387,
+      "mergeCommit": "c89cd5f4",
+      "testidCommits": ["EliteaAI/EliteaUI@7a92fbc3", "EliteaAI/EliteaUI@bc82bc32"],
+      "tmsBackwrite": "EliteaAI/onetest-ai-tm-Elitea@d6f8a60",
+      "gate": "3/3 green, reruns.json {} each (11.38/11.26/11.41s) on PR head 6a513710; blast radius 11 passed / 1 failed = ELITEA-2221 pre-existing #1492 sanctioned-RED",
+      "promotable": false,
+      "promotionOwner": "human — cherry-pick 7a92fbc3 + bc82bc32 to EliteaUI main",
+      "dispatches": 4,
+      "reviewVerdict": "APPROVED (1 lead-requested fix round after approval: dropped the /chat transit that imported the ELITEA-2234 console-400 hazard; 25% faster)",
+      "defectsFiled": [],
       "findings": [
-        "ui/ResourceCard.jsx carries ZERO testids on origin/main AND origin/automation/testids — the card body's estimate (sidebar icon + subtitle/description only) understates the testid work",
-        "help-center-version-label / -version-info-icon / -version-info-tooltip / -version-info-copy-button are on automation/testids but NOT on main — pre-existing promotion gap, independent of this case",
-        "main...origin/automation/testids = 158/497 and the page component is renamed on main (resources/index.jsx -> ResourcesPage.jsx + new barrels), so the human cherry-pick conflicts by construction; sync testids<-main before adding testids on this surface",
-        "#998 (four-vs-five resource cards) re-confirmed in source as case-text drift, five RESOURCE_CARD_CONFIGS entries — not blocking; #1492 (Release Notes link 404) out of scope"
+        "#2385 question — declared-improvisation obligation: canon gap for build-flag-selected mutually-exclusive renders, plus the Step-1 adjacency scope judgement",
+        "#2383 post-sync locator drift: 4 UI-team changes break live locators",
+        "#2384 testid-loss guard has 4 structural blind spots",
+        "#2386 container provisioning gaps incl. build_index reporting the success of a 0-case index"
       ]
     }
   ]
