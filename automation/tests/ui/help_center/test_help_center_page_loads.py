@@ -19,6 +19,21 @@ state injection, no API seeding. The case is entirely read-only (no entity is
 created, edited or deleted), so there is no teardown and no shared state to
 leak.
 
+Transit: Step 1 navigates to ``/agents/all`` for one reason only — to be on a
+page OTHER than ``/help-center``, because ``ResourcesButton`` early-returns
+(``if (isOnResources) return;``) when it is already there, which would make the
+case's own click a silent no-op and leave every later step asserting a page it
+never actually opened. It is transit in the strict sense: it reaches the step
+under test and produces NONE of the case's observables, every one of which is
+read off the real Help Center page after the real click. A read-only list page
+is chosen over ``/chat`` deliberately — the agents list mutates nothing and
+holds no WebSocket, whereas ``/chat`` restores the shared test user's most
+recent conversation, and that restore path is the documented origin of
+unrelated background 4xx console errors (``.agents/testing.md``, ELITEA-2234)
+that this spec's console axis would red on for no coverage benefit. Measured
+locally 2026-09-30: ``/agents/all`` 2153 requests / 3.3s to settle vs ``/chat``
+2521 / 4.7s.
+
 Assertion choices that are deliberate, not shortcuts:
 
 * **Version string by REGEX, not literal.** The live value is
@@ -42,6 +57,19 @@ Assertion choices that are deliberate, not shortcuts:
   never CLICKS a link, so open defect #1492 (the Release Notes "latest" target
   404s) cannot turn this spec red — that target's reachability is
   ELITEA-2221's scope.
+* **The Interactive Tours link COUNT is deliberately NOT frozen.** TMS step 7
+  reads "Verify all the cards (e.g.INTERACTIVE TOURS) are visible with their
+  links: (e.g. 'Sidebar Interactive Tour' and 'Chat Interactive Tour')" — both
+  ``e.g.``s are exemplary, so the case's contract is "every card is visible with
+  its links", worked through one example. It never enumerates that card's link
+  set as exactly two, so an exact-count assertion would be an invariant this
+  spec invented rather than the case's. Nothing is lost by dropping it: a link
+  being REMOVED is still caught by the two literal named-link assertions, and a
+  named link rendering twice is caught by Playwright strict mode on those same
+  locators — the exact count's only unique catch is a link being ADDED, which on
+  a CMS-served list is a content change, not a defect. Freezing it would also
+  contradict this spec's own refusal to freeze the other 19 links, which arrive
+  in the very same ``useGetResourcesConfigQuery`` response.
 * **Card titles compared in SOURCE casing** ('Documentation', not
   'DOCUMENTATION'). Playwright's ``to_have_text`` compares ``textContent``,
   while the card title carries CSS ``text-transform: uppercase``; the case
@@ -83,12 +111,21 @@ pytestmark = [
     pytest.mark.new,
 ]
 
-# Transit target for Step 1. The case's click is only a real navigation from a
-# page OTHER than /help-center — `ResourcesButton` early-returns
-# (`if (isOnResources) return;`) when it is already there, making the click a
-# silent no-op that would leave every later step asserting a page it never
-# actually opened.
-TRANSIT_PATH = "/chat"
+# Transit target for Step 1 — rationale in the module docstring's Transit note.
+# Every requirement this target has to meet, and how each was established:
+#   * read-only, mutates nothing        — a list page only reads
+#   * no persistent WebSocket           — `base_page.py` names Chat and Skills as
+#                                         the WebSocket pages, so /skills/all is out
+#   * not /help-center                  — so `useMatch({path: HelpCenter})` leaves
+#                                         `isOnResources` null and the click really
+#                                         navigates rather than early-returning
+#   * the '?' control renders there     — route-INDEPENDENT: `SidebarBody` mounts
+#                                         `ResourcesButton` inside the app-shell
+#                                         `Drawer`, gated only on `!sideBarCollapsed`
+#                                         (expanded is the default and never persists)
+# Confirmed live on this exact target 2026-09-30: control visible, count 1, the
+# click lands on /help-center, zero console errors.
+TRANSIT_PATH = "/agents/all"
 
 EXPECTED_PAGE_HEADER = "Help Center"
 EXPECTED_INTRO_TITLE = "Explore Help Center"
@@ -118,8 +155,12 @@ INTERACTIVE_TOURS_LINKS = [
 ]
 
 # `Version: X.Y.Z (DD-Mon-YYYY)` — the case's literal format, asserted as shape
-# because the values are live deploy metadata (see module docstring).
-VERSION_LABEL_PATTERN = re.compile(r"^Version: \d+\.\d+\.\d+ \(\d{2}-[A-Za-z]{3}-\d{4}\)$")
+# because the values are live deploy metadata (see module docstring). The day is
+# `\d{1,2}`, NOT `\d{2}`: `resources_information_upgrade_date` is a free-text CMS
+# string and only ONE sample has ever been observed (`28-May-2026`), so a release
+# on day 1-9 emitted unpadded as `5-Jun-2026` must not red the spec. Shape,
+# field order and separators are still asserted in full.
+VERSION_LABEL_PATTERN = re.compile(r"^Version: \d+\.\d+\.\d+ \(\d{1,2}-[A-Za-z]{3}-\d{4}\)$")
 
 # Any non-empty href. The case verifies links are DISPLAYED, not that their
 # targets resolve — so this checks the link is a real anchor with a destination,
@@ -212,8 +253,10 @@ class TestHelpCenterPageLoads:
                     expect(link).to_have_attribute("href", NON_EMPTY_HREF)
                     expect(link).to_have_attribute("target", "_blank")
 
-            tours_links = help_center.card_links(INTERACTIVE_TOURS_CATEGORY)
-            expect(tours_links).to_have_count(len(INTERACTIVE_TOURS_LINKS))
+            # Both named links are asserted LITERALLY because the case names
+            # them; the card's link COUNT is deliberately not frozen — TMS step 7
+            # names them with "e.g.", as an example rather than an enumeration.
+            # See the module docstring for what that does and does not give up.
             for slug, link_title in INTERACTIVE_TOURS_LINKS:
                 # Scoped to the Interactive Tours card, so this is containment
                 # rather than page-wide presence.

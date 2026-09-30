@@ -55,9 +55,24 @@ findings' boundary call this is a fresh spec: **new file
 
 ## Test Steps
 
-1. **Transit** — navigate to a non-Help-Center page (`/chat`) and wait for the sidebar to
-   render.
+1. **Transit** — navigate to a non-Help-Center page (`/agents/all`) and wait for the
+   sidebar to render.
    - **Verify**: `sidebar-help-center-button` is visible.
+   - **AMENDED (implementer, 2026-09-30): the transit target was `/chat`, now `/agents/all`.**
+     The precondition is only "be on a page other than `/help-center`", and `/chat` was the
+     most expensive way to satisfy it: it restores the shared test user's most recent
+     conversation, and that restore path is the documented origin of unrelated background
+     4xx console errors (`.agents/testing.md`, ELITEA-2234) — a known flake class this
+     spec's console-error axis would red on for zero coverage benefit. The original `#1082`
+     rationale was over-motivated: `#1082` is about *mutating* shared conversations, which a
+     read-only `navigate()` never does. A read-only list page mutates nothing and holds no
+     WebSocket (`base_page.py` names Chat and Skills as the WebSocket pages, so
+     `/skills/all` is not a candidate). The control's presence is route-INDEPENDENT —
+     `SidebarBody` mounts `ResourcesButton` inside the app-shell `Drawer`, gated only on
+     `!sideBarCollapsed` — and `useMatch({path: HelpCenter})` leaves `isOnResources` null on
+     any other route, so the click really navigates. Verified live on `/agents/all`: control
+     visible, count 1, click lands on `/help-center`, zero console errors; 2153 requests /
+     3.3s to settle vs `/chat` 2521 / 4.7s.
 2. Click `sidebar-help-center-button`.
 3. **Verify** the Help Center page opened.
    - URL path is `/help-center` (assert the path, not the full URL — see § Automation Hints).
@@ -82,9 +97,20 @@ findings' boundary call this is a fresh spec: **new file
 7. **Verify** each card displays its links.
    - For each of the five cards: it contains **at least one** link, and every link in it
      has a non-empty `href` and `target="_blank"`.
-   - The Interactive Tours card additionally shows **exactly** the two links the case
-     names: `help-center-tour-link-sidebar-interactive-tour` ("Sidebar Interactive Tour")
-     and `help-center-tour-link-chat-interactive-tour` ("Chat Interactive Tour").
+   - The Interactive Tours card additionally shows the two links the case names, asserted
+     literally by testid **and** title: `help-center-tour-link-sidebar-interactive-tour`
+     ("Sidebar Interactive Tour") and `help-center-tour-link-chat-interactive-tour`
+     ("Chat Interactive Tour").
+   - **AMENDED (implementer, 2026-09-30): that card's link COUNT is no longer frozen at
+     exactly 2.** TMS step 7 names both the card and the two links with "e.g." — an example,
+     not an enumeration — so the case's contract is "every card is visible with its links",
+     which the two literal named-link assertions already carry in full. An exact-count
+     assertion was an invariant this spec invented, and its only unique catch is a link being
+     ADDED: on a CMS-served list that is a content change, not a defect. Nothing is given up
+     — a link being REMOVED still fails the named-link assertions, and a named link rendering
+     twice still fails Playwright strict mode on the same locators. Freezing it also
+     contradicted this AFS's own refusal to freeze the other 19 links, which arrive in the
+     same `useGetResourcesConfigQuery` response.
    - Link *titles/URLs of the other four cards are NOT frozen as literals* — they are
      backend-CMS data that legitimately changes per release (§ Automation Hints).
 8. **Verify** each card shows its icon, title, and subtitle description.
@@ -93,7 +119,12 @@ findings' boundary call this is a fresh spec: **new file
      (table below).
 9. **Verify** the application version and the "i" info icon in the top-right corner.
    - `help-center-version-label` is visible and its text matches
-     `^Version: \d+\.\d+\.\d+ \(\d{2}-[A-Za-z]{3}-\d{4}\)$`.
+     `^Version: \d+\.\d+\.\d+ \(\d{1,2}-[A-Za-z]{3}-\d{4}\)$`.
+     **AMENDED (implementer, 2026-09-30): the day is `\d{1,2}`, was `\d{2}`.**
+     `resources_information_upgrade_date` is a free-text CMS string with exactly one
+     observed sample (`28-May-2026`), so requiring a zero-padded day would false-red on a
+     release emitted as e.g. `5-Jun-2026`. Shape, field order and separators are still
+     asserted in full.
    - `help-center-version-info-icon` is visible.
    - Relational "top right vs top left": the version label's bounding-box `x` is greater
      than `help-center-page-header`'s `x` (Step 4's title is top-left, this is top-right),
@@ -129,7 +160,8 @@ ELITEA-2223/2224 collision fix). Reuse that field; do not add a parallel mapping
 - Header `Help Center`; intro title `Explore Help Center`; intro description
   `Guides, documentation, and release notes to support your work.`
 - Exactly 5 resource cards, each rendering an icon, its title, its description, and ≥1 link.
-- Interactive Tours card shows exactly the two named tour links.
+- Interactive Tours card shows both named tour links ("Sidebar Interactive Tour",
+  "Chat Interactive Tour"); its total link count is deliberately not frozen (see step 7).
 - Version label matches `Version: X.Y.Z (DD-Mon-YYYY)`; info icon visible immediately to
   its right, in the top-right of the header.
 - **No console errors** throughout (observed: zero, across 4 independent live runs).
@@ -148,7 +180,7 @@ ELITEA-2223/2224 collision fix). Reuse that field; do not add a parallel mapping
 | 4 Page title "Help Center" in the top-left header | title displayed | step 4 | `step 4`: exact text on `help-center-page-header` | asserted |
 | 5 Subtitle "Explore Help Center" + description "Guides, documentation, and release notes to support your work." | both displayed | step 5 | `step 5`: exact text on `help-center-intro-title` / `-intro-description` | asserted |
 | 6 "four resource cards" then names **five**: DOCUMENTATION, RELEASE NOTES, VIDEO LIBRARY, TUTORIALS, INTERACTIVE TOURS | all visible | step 6 | `step 6`: 5 card roots visible + exact titles + count == 5 | asserted *(the word "four" is a known case-text typo — already tracked as `question` #998; the live contract is FIVE, re-confirmed in source: `RESOURCE_CARD_CONFIGS` has exactly 5 entries, and live: 5 cards rendered. Not re-filed.)* |
-| 7 All cards visible with their links (e.g. INTERACTIVE TOURS → "Sidebar Interactive Tour", "Chat Interactive Tour") | links displayed | step 7 | `step 7`: ≥1 link per card + non-empty href + `target=_blank`; Interactive Tours card asserts exactly the two named links literally | asserted *(decomposed — other four cards' link titles/URLs deliberately not frozen; see § Automation Hints "CMS-driven link data")* |
+| 7 All cards visible with their links (e.g. INTERACTIVE TOURS → "Sidebar Interactive Tour", "Chat Interactive Tour") | links displayed | step 7 | `step 7`: ≥1 link per card + non-empty href + `target=_blank`; Interactive Tours card asserts both named links literally by testid + title, without freezing that card's link count (case step 7 says "e.g.", not an enumeration) | asserted *(decomposed — other four cards' link titles/URLs deliberately not frozen; see § Automation Hints "CMS-driven link data")* |
 | 8 Each card shows its icon, title, and subtitle description | icon + title + subtitle per card | step 8 | `step 8`: `-icon` visible, `-title` / `-description` exact text, ×5 | asserted |
 | 9 Version "Version: X.X.X (DD-Mon-YYYY)" top-right with "i" icon near it | as stated | step 9 | see row 1 | asserted |
 
