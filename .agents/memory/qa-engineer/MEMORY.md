@@ -84,3 +84,4 @@
 - [Union-over-terminal-renders settle](a_union_over_terminal_renders_is_a_sound_settle.md) — verify the loading branch has no testid
 - [Reviewing a removed wait](reviewing_a_removed_wait_ask_if_the_callers_read_retries.md) — judge the caller retrying read + terminality, not the missing wait
 - [Triage DEV CI failures against EliteaUI main](dev_ci_triage_check_eliteaui_main_first.md) — automation/testids is ~152 behind; localhost green can't validate a DEV fix
+- [200 != app booted](dev_server_200_does_not_mean_app_booted.md) — probe a real app element; EnvMissingPage serves 200

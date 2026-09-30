@@ -214,3 +214,107 @@ existing class (additive-only):
   carries both `p1` and `p2` — see that AFS's Automation Hints for the full
   reasoning. Future tour-case implementers hitting the same tension should
   reuse this reasoning rather than re-litigating it.
+
+## Resolved/added during ELITEA-2219 analysis (2026-09-30)
+
+First case on this surface to enter Help Center **via the sidebar control** rather than by
+URL. Executed live against `http://localhost:5173` (EliteaUI `automation/testids`
+@ `956d1fa3`, 0 behind `origin/main`). Zero defects, zero console errors across 4 runs.
+
+### ⚠️ DRIFT CORRECTIONS to this digest (the entries above are stale)
+
+- **Page source path moved**: the Help Center page is
+  `src/[fsd]/pages/resources/ResourcesPage.jsx`, **not** `…/resources/index.jsx` as the
+  "Feature location" section above says (`index.js` is a barrel re-export). The two `ui/`
+  components (`ResourceCard.jsx`, `ResourceVersionInfo.jsx`) are unchanged.
+- **"Sidebar nav items have no testids" is NO LONGER TRUE.** That section claims only 3
+  sidebar testids exist (`project-selector-trigger`, `sidebar-toggle`,
+  `sidebar-create-button`). The UI team has added many more in parallel. Live inventory
+  2026-09-30: `sidebar-menu-item-{chat,agents,pipelines,skills,toolkits,mcps,credentials,
+  applications,artifacts}` (via `SidebarMenuItem`'s `testId` prop — good precedent for the
+  caller-supplied-prop shape), `sidebar-settings-button`, `sidebar-agent-hub-button`,
+  `sidebar-notifications-button`, `sidebar-notifications-bell-icon`,
+  `sidebar-collapse-toggle-button`, `sidebar-socket-status-indicator`,
+  `sidebar-support-assistant-button`, plus the original 3. **Still missing: the Help Center
+  control itself** (`ResourcesButton.jsx` carries only `data-tour` + a `StyledTooltip`).
+  Re-grep before assuming any sidebar element is testid-free.
+- **`help-center-page-header` lives in `ResourceVersionInfo.jsx`**, not in the page
+  component — it is the `<Typography>` inside that sub-component's header `<Box>`, which
+  also holds the version label and info icon. Non-obvious when searching `ResourcesPage.jsx`.
+
+### The sidebar Help Center control — TWO mutually-exclusive renders (env-gated)
+
+`ResourcesButton.jsx` has two `return`s; `SidebarBody.jsx:292-314` picks between them on
+`onToggleAssistant`, which is `undefined` unless the build-time env var
+`VITE_ELITEA_ASSISTANT` is truthy (`SupportAssistant.jsx:22-33`, `constants.js:20`):
+
+| Env | Footer | Control shape (rect @1600×1000) |
+|---|---|---|
+| assistant **ON** | `sidebar-support-assistant-button` ("Support Bot") **then** the control | icon-only, `aria-label="Help Center"`, `innerText=""` — x=164 y=948 52×52 |
+| assistant **OFF** | control alone in `helpCenterFooter`, **no Support Bot at all** | icon + "Help Center" label, `aria-label=""` — x=16 y=960 184×32 |
+
+Both observed live (flag toggled to reach each); **both navigate to `/help-center` on
+click**. ELITEA-2219's case text ("the '?' icon … next to 'Support Bot'") describes the
+**assistant-ON** layout only. Consequence for any future case touching this control: the
+branch that renders is a *build* property that can differ between localhost and CI-on-DEV,
+so a testid must go on **both** returns with the **same value** (collision-impossible: one
+component, two exclusive paths — live-verified count == 1 in both configs). Full reasoning
++ the declared improvisation + the proposed canon addition:
+`l3_help-center-page-loads-via-sidebar-icon_ELITEA-2219.md` § Automation Hints.
+
+### The control is ABSENT when the sidebar is collapsed
+
+Both branches are additionally gated on `!sideBarCollapsed`. Verified live: expanded → 1
+element; **collapsed → 0** (Support Bot stays); after reload → 1 again. **Collapse state
+never persists** — `settings.sideBarCollapsed` initialises to a hardcoded `''`
+(`src/slices/settings.js:93`) and localStorage is only ever *written*, never read (no
+`getItem('sideBarCollapsed')` anywhere in `src/`; contrast `mode`, which *is* rehydrated).
+So expanded is the default on every page load and needs no test setup — but a "control not
+found" failure on this surface means a collapsed sidebar, not a missing testid.
+
+### `?react` SVG components DO spread unknown props onto the `<svg>`
+
+Useful for putting a testid on an icon without touching a shared wrapper.
+`ResourcesButton`'s `<HelpCenterIcon sx={styles.icon} />` renders as
+`<svg width="14" height="14" … sx="[object Object]">` — a prop the component never consumes
+reached the DOM verbatim. So `data-testid` can be passed at the call site on any
+`@/assets/*.svg?react` icon. Relevant because **`GradientIconWrapper`**
+(`src/[fsd]/shared/ui/icon/`) destructures only `{children, size, sx}` with **no
+rest-spread**, so it would otherwise need a new prop to carry an icon testid.
+
+### Live page composition (2026-09-30)
+
+- Intro block (no testids yet): title `Explore Help Center` (`headingLarge`), description
+  `Guides, documentation, and release notes to support your work.` (`bodyMedium`).
+- **Five** cards, re-confirming #998's "four" is the case-text typo — `RESOURCE_CARD_CONFIGS`
+  has exactly 5 entries and 5 render. Each card: 1 `<svg>` icon + title span + description
+  span + its links. `ResourceCard.jsx` still has **zero testids** (root carries only
+  `data-tour="resources-{category}-card"`).
+- Card titles/descriptions and the `testidCategory` values (`documentation`,
+  `release-notes`, `video-library`, `tutorials`, `interactive-tours`) are tabulated in the
+  ELITEA-2219 AFS. **Reuse `testidCategory`** for any card testid — don't invent a parallel
+  mapping.
+- **19 links total, 0 duplicate testids** page-wide (re-verified the ELITEA-2223/2224
+  `-more` collision fix still holds). Release Notes now: `release-2-0-2-latest`,
+  `release-2-0-1`, `release-2-0-0`, `release-2-0-0b2` — the archived three moved under
+  `docs.elitea.ai/release-notes/archived/…`.
+- Version label live value: **`Version: 2.0.3 (28-May-2026)`** (was 2.0.2-era when
+  ELITEA-2225 ran). Assert by regex `^Version: \d+\.\d+\.\d+ \(\d{2}-[A-Za-z]{3}-\d{4}\)$`,
+  never a literal — it is backend deploy metadata.
+- Header geometry: page title x=240 (top-left), version label x=1362 w=194, info icon
+  x=1562 — so "top right … with 'i' near it" is assertable relationally (label.x >
+  header.x, icon.x > label.x) without freezing pixel values.
+
+### ⚠️ A 200 from the dev server does NOT mean the app booted
+
+Cost ~6 turns this session. `curl localhost:5173` returned **200** while React rendered only
+`EnvMissingPage` — *"System env missing: `VITE_BASE_URI`, `VITE_PUBLIC_PROJECT_ID`"*
+(`constants.js:34-41`, which gates on `null`/`undefined` only, so an **empty string
+passes**). `EliteaUI/.env` had 4 of `.env.example`'s 12 keys and the documented master
+`<workspace>/.env` symlink target did not exist. **Probe a real app element**
+(`document.querySelectorAll('[data-testid]').length > 0`), never just the HTTP status.
+Resolved by appending to the git-ignored, untracked `EliteaUI/.env`: `VITE_BASE_URI=`
+(inert on localhost — `routes.js:160` returns `''` as the DEV router base regardless of this
+var, preserving `APP_PREFIX=""`), `VITE_PUBLIC_PROJECT_ID=1` (this env's value, recorded
+twice in project memory), and `VITE_ELITEA_ASSISTANT=true` (to reach the case-text footer
+layout). Backup: `/tmp/hc/env.backup`.
