@@ -71,7 +71,14 @@ findings' boundary call this is a fresh spec: **new file
 6. **Verify** all **five** resource cards are visible, each with its title.
    - For each `(category, title)` in the table below: `help-center-card-{category}` is
      visible and `help-center-card-{category}-title` has that exact text.
-   - Assert the card count is exactly 5 (`help-center-card-` prefix yields 5 elements).
+   - Assert the card count is exactly 5. **AMENDED (implementer, 2026-09-30):** the bare
+     `help-center-card-` prefix does **not** yield 5 elements — it matches each card's root
+     PLUS its `-icon`/`-title`/`-description` sub-elements, i.e. **20 nodes for 5 cards**
+     (measured live). The count oracle is the `-title` nodes
+     (`[data-testid^="help-center-card-"][data-testid$="-title"]` → exactly 5): `ResourceCard`
+     renders exactly one title per card by construction, so it is a 1:1 proxy, and unlike a
+     root-prefix `:not()` chain it cannot be perturbed by a future extra testid inside a card.
+     A renamed category is still caught by the per-category root assertions.
 7. **Verify** each card displays its links.
    - For each of the five cards: it contains **at least one** link, and every link in it
      has a non-empty `href` and `target="_blank"`.
@@ -105,6 +112,13 @@ findings' boundary call this is a fresh spec: **new file
 | `video-library` | Video Library | Product walkthroughs and recorded sessions |
 | `tutorials` | Tutorials | Step-by-step guides and use cases |
 | `interactive-tours` | Interactive Tours | Guided tours to explore key features and workflows |
+
+**Casing (implementer note, 2026-09-30):** the titles above are the **source** casing and
+are what the assertion must use. Playwright's `to_have_text()` compares `textContent`, while
+the card title carries CSS `text-transform: uppercase` from its `variant="subtitle"`
+typography — verified live: `textContent` `'Documentation'` vs `innerText` `'DOCUMENTATION'`.
+The case text's DOCUMENTATION / RELEASE NOTES spelling is that rendered form, not a different
+string. Do not "correct" the table to uppercase.
 
 `{category}` values are **not invented** — they are the existing `testidCategory` field
 already present on every `RESOURCE_CARD_CONFIGS` entry in `ResourcesPage.jsx` (added by the
@@ -285,34 +299,60 @@ CARD = '[data-testid="help-center-card-{}"]'
 CARD_ICON = '[data-testid="help-center-card-{}-icon"]'
 CARD_TITLE = '[data-testid="help-center-card-{}-title"]'
 CARD_DESCRIPTION = '[data-testid="help-center-card-{}-description"]'
-CARD_ANY = '[data-testid^="help-center-card-"]'          # for the count == 5 assertion
+# AMENDED: the proposed `CARD_ANY` prefix matches 20 nodes, not 5 — see Step 6. Shipped as:
+CARD_TITLE_ANY = '[data-testid^="help-center-card-"][data-testid$="-title"]'   # == 5
 CARD_LINK_ANY = '[data-testid^="help-center-tour-link-"]'
+CARD_LINKS = '[data-testid="help-center-card-{}"] [data-testid^="help-center-tour-link-"]'
+CARD_LINK = '[data-testid="help-center-card-{}"] [data-testid="help-center-tour-link-{}"]'
 ```
+
+`CARD_LINKS` / `CARD_LINK` were added beyond the AFS's list so Step 7 asserts each card
+*contains* its links (a containment relationship) rather than checking page-wide presence,
+which would pass even if a link rendered under the wrong card.
 
 The sidebar control is app-shell chrome, not Help Center page content. It belongs on the
-**sidebar** page object, not `HelpCenterPage` — `automation/pages/sidebar_header_page.py`
-already owns `sidebar-toggle` and the socket indicator, so add there:
+**sidebar** page object, not `HelpCenterPage`.
+
+**RESOLVED (implementer, 2026-09-30) — the home is `BasePage`, not `sidebar_header_page.py`.**
+The AFS flagged this for confirmation, and `SidebarHeaderPage`'s scope *is* narrower than
+expected: its own docstring scopes it to the sidebar **header row** (logo, socket dot,
+notification bell), while the Help Center control sits in the sidebar **footer**. `BasePage`
+already owns exactly that region — `sidebar_settings_button` and `sidebar_agent_hub_button`
+are both documented there as "entry at the bottom of the navigation sidebar", alongside
+`sidebar_collapse_toggle_button` and `SIDEBAR_MENU_ITEM`. So the footer sibling goes beside
+its siblings (this is the AFS's own named alternative). Purely additive — one new class
+field, no existing `BasePage` member touched.
 
 ```python
-help_center_button = LocatorDescriptor(testid="sidebar-help-center-button")
+# automation/pages/base_page.py — beside sidebar_settings_button / sidebar_agent_hub_button
+sidebar_help_center_button = LocatorDescriptor(testid="sidebar-help-center-button")
 ```
 
-…plus a `click_help_center()` action that clicks it and waits for the `/help-center` URL.
-Implementer: confirm `sidebar_header_page.py` is the right home (it is the existing sidebar
-object); if its scope is narrower than expected, the alternative is a small
-`SidebarPage`/`BasePage` field — either way the locator is a class-level
-`LocatorDescriptor`, never built in a method body.
+The click action lives on `HelpCenterPage` as `open_via_sidebar()` — the sibling of the
+existing `navigate()` (same destination, through the control a user clicks instead of a URL),
+using the inherited locator. It waits on the URL + header because `ResourcesButton` navigates
+client-side via react-router, so there is no document load to wait on.
 
 ## Network Behavior
 - `GET …/resources/config` (`useGetResourcesConfigQuery`) — supplies card titles,
   descriptions, link sets, and the version/date strings.
 - `GET …/system_info` (`useGetSystemInfoQuery`) — supplies the 6 component versions (only
   the *tooltip* needs these; this case never opens the tooltip).
-- Both resolve before the header renders — **no loading-state race was observed live**
-  across four runs (consistent with ELITEA-2225's finding on the same surface). Waiting on
-  `help-center-page-header` visible is a sufficient page-ready gate; `ResourcesPage` renders
-  `<Skeleton>` placeholders while `isConfigLoading`, so asserting a card's title implicitly
-  waits past the skeleton via Playwright's auto-retry.
+- ⚠️ **AMENDED (implementer, 2026-09-30) — the claim that a card title waits past the
+  skeleton is WRONG, and it was a latent flake in Step 7.** `help-center-page-header` and the
+  card titles are a sufficient gate for Steps 3-6 and 8 only. They are **not** a gate for the
+  card LINKS: the title falls back to a HARDCODED default
+  (`configValues[config.titleKey] || config.defaultTitle`), so it paints before
+  `resources/config` resolves. Measured live at the instant
+  `help-center-card-documentation-title` became visible: **16 `<Skeleton>`s and 0 links in the
+  DOM** (`document.querySelector('[data-testid^="help-center-tour-link-"]')` → `null`). A
+  one-shot `.count()` there reads **0**, which is exactly how Step 7 would have flaked.
+  The honest gate is the **first link becoming visible** — links exist only in
+  `ResourceCard`'s `!isConfigLoading && hasLinks` branch, so their presence IS the product
+  saying the config response landed. Implemented as
+  `HelpCenterPage.wait_for_resource_links_loaded()`. Not a sleep.
+  (The analyst's "no loading-state race observed" holds for what they asserted interactively;
+  the race only bites a programmatic read that fires within ~the config round-trip.)
 - **No mutation.** Nothing is POSTed/PUT/DELETEd by this case.
 
 ## Known Defects Found During Exploration
