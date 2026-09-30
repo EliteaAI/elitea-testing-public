@@ -191,6 +191,25 @@ class BasePage:
         "(EliteaAI/EliteaUI@9062dff0).",
     )
 
+    sidebar_help_center_button = LocatorDescriptor(
+        testid="sidebar-help-center-button",
+        description="Help Center ('?') entry at the BOTTOM of the navigation "
+        "sidebar, beside Support Bot — the sibling of sidebar_settings_button / "
+        "sidebar_agent_hub_button, which is why it lives here on BasePage rather "
+        "than on SidebarHeaderPage (that object is scoped by its own docstring to "
+        "the sidebar HEADER row: logo, socket dot, notification bell). "
+        "`ResourcesButton.jsx` renders this control through TWO mutually-exclusive "
+        "`return` statements selected by the BUILD-TIME `VITE_ELITEA_ASSISTANT` "
+        "flag — icon-only when the Support Assistant is enabled, icon + a 'Help "
+        "Center' label when it is not — so the SAME testid value is on both nodes "
+        "and exactly one ever mounts (declared canon gap, "
+        "EliteaAI/elitea-testing-public#2385; testid added "
+        "EliteaAI/EliteaUI@7a92fbc3). Rendered ONLY while the sidebar is expanded "
+        "(both branches are gated on `!sideBarCollapsed`); expanded is the default "
+        "on every page load and never persists, so no setup is needed. Added for "
+        "ELITEA-2219.",
+    )
+
     # Dynamic testid template — a navigation-sidebar menu entry, keyed by the
     # section's own `value` (NOT its label): chat, agents, pipelines, skills,
     # toolkits, mcps, credentials, applications, artifacts. Pre-existing in
