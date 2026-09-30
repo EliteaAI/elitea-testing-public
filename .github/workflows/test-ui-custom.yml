@@ -1334,3 +1334,11 @@ jobs:
           git diff --cached --quiet || \
             git commit -m "dashboard: update test metrics for ${RUN_ID}"
           git push
+
+          TMS_URL="${{ github.server_url }}/EliteaAI/onetest-ai-tm-Elitea/blob/main/reports"
+          {
+            echo "## 📊 Test dashboard"
+            echo ""
+            echo "- [Dashboard for this run](${TMS_URL}/dashboards/dashboard-${RUN_ID}.md)"
+            echo "- [Latest dashboard](${TMS_URL}/dashboard.md)"
+          } >> $GITHUB_STEP_SUMMARY
