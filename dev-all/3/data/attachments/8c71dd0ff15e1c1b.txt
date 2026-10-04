@@ -1,0 +1,86 @@
+[CLEANUP] Removing empty sensitive toolkit blocks
+[CLEANUP] DEBUG: Found 14 p.MuiTypography-root elements
+[CLEANUP] DEBUG: Label 0: 'Maintenance'
+[CLEANUP] DEBUG: Label 1: 'Banner'
+[CLEANUP] DEBUG: Label 2: 'MCP Servers'
+[CLEANUP] DEBUG: Label 3: 'Guardrails'
+[CLEANUP] DEBUG: Label 4: 'Observability'
+[CLEANUP] DEBUG: Label 5: 'Runtime'
+[CLEANUP] DEBUG: Label 6: 'Authentication'
+[CLEANUP] DEBUG: Label 7: 'Control platform-wide security policies, toolkit restrictions, and MCP exposure settings.'
+[CLEANUP] DEBUG: Label 8: 'Blocked Toolkits & Tools'
+[CLEANUP] DEBUG: Label 9: 'Sensitive Actions'
+[CLEANUP] DEBUG: Label 10: 'Sensitive Action Tools'
+[CLEANUP] DEBUG: Label 11: 'github'
+[CLEANUP] DEBUG: Label 12: 'Company Name for Policy Message'
+[CLEANUP] DEBUG: Label 13: 'Authorization Message Template'
+[CLEANUP] Found toolkit block: github
+[CLEANUP] Toolkit github has 0 tool chips
+[CLEANUP] Clicking trash icon for empty block: github
+[CLEANUP] ✓ Removed empty block: github
+[CLEANUP] Total removed: 1 empty blocks
+[CLEANUP] Removing empty sensitive toolkit blocks
+[CLEANUP] DEBUG: Found 14 p.MuiTypography-root elements
+[CLEANUP] DEBUG: Label 0: 'Maintenance'
+[CLEANUP] DEBUG: Label 1: 'Banner'
+[CLEANUP] DEBUG: Label 2: 'MCP Servers'
+[CLEANUP] DEBUG: Label 3: 'Guardrails'
+[CLEANUP] DEBUG: Label 4: 'Observability'
+[CLEANUP] DEBUG: Label 5: 'Runtime'
+[CLEANUP] DEBUG: Label 6: 'Authentication'
+[CLEANUP] DEBUG: Label 7: 'Control platform-wide security policies, toolkit restrictions, and MCP exposure settings.'
+[CLEANUP] DEBUG: Label 8: 'Blocked Toolkits & Tools'
+[CLEANUP] DEBUG: Label 9: 'Sensitive Actions'
+[CLEANUP] DEBUG: Label 10: 'Sensitive Action Tools'
+[CLEANUP] DEBUG: Label 11: 'github'
+[CLEANUP] DEBUG: Label 12: 'Company Name for Policy Message'
+[CLEANUP] DEBUG: Label 13: 'Authorization Message Template'
+[CLEANUP] Found toolkit block: github
+[CLEANUP] Toolkit github has 0 tool chips
+[CLEANUP] Clicking trash icon for empty block: github
+[CLEANUP] ✓ Removed empty block: github
+[CLEANUP] Total removed: 1 empty blocks
+[ADD_SENSITIVE] Checking toolkit 'github': found 0 existing blocks
+[ADD_SENSITIVE] Creating new toolkit block: github
+[ADD_SENSITIVE] Found input field, typing: github
+[ADD_SENSITIVE] Dropdown option found, clicking to create toolkit block
+[ADD_SENSITIVE] Toolkit block created via dropdown selection
+[CLEANUP] Running guardrails cleanup AFTER tests (finalizer)
+[CLEANUP] Starting guardrails cleanup...
+[CLEANUP] Navigated to guardrails page
+[CLEANUP] Cleaning up blocked toolkits
+[CLEANUP] Currently blocked toolkits: ['github']
+[CLEANUP] Checking toolkit 'github': blocked=True
+[CLEANUP] Removed blocked toolkit: github
+[CLEANUP] Checking toolkit 'github': blocked=False
+[CLEANUP] Checking toolkit 'GITHUB': blocked=False
+[CLEANUP] Checking toolkit 'Github': blocked=False
+[CLEANUP] Cleaning up blocked tools
+[CLEANUP] Removed blocked tool: get_ISSUE
+[CLEANUP] Removing empty toolkit containers
+[CLEANUP] Removed empty toolkit containers
+[CLEANUP] Cleaning up sensitive tools
+[CLEANUP] Could not remove sensitive tool get_ISSUE: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Could not remove sensitive tool get_issue: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Could not remove sensitive tool GET_ISSUE: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Could not remove sensitive tool Get_Issue: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Removing empty toolkit blocks from Sensitive Action Tools
+[CLEANUP] Removing empty sensitive toolkit blocks
+[CLEANUP] Could not remove empty sensitive toolkit blocks: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Checking if save is needed
+[CLEANUP] No changes to save (Save button not enabled)

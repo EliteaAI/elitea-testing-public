@@ -1,0 +1,8 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open file in preview/edit editor — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("artifacts-preview-save-button") to be visible
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:1728 Failed to delete artifact bucket 'autotest-test-image-file-opens-directly--215530': 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/artifacts/buckets/default/573/p--573.autotest-test-image-file-opens-directly--215530 — headers: {'Content-Length': '136', 'Content-Type': 'application/json', 'Date': 'Sun, 04 Oct 2026 02:33:58 GMT', 'Vary': 'Cookie'} — body: {'message': 'The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.'}
+ERROR    elitea.steps:actions.py:49 Step failed: Open file in preview/edit editor — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("artifacts-preview-save-button") to be visible
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:1728 Failed to delete artifact bucket 'autotest-test-image-file-opens-directly--244421': 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/artifacts/buckets/default/573/p--573.autotest-test-image-file-opens-directly--244421 — headers: {'Content-Length': '136', 'Content-Type': 'application/json', 'Date': 'Sun, 04 Oct 2026 02:34:26 GMT', 'Vary': 'Cookie'} — body: {'message': 'The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.'}

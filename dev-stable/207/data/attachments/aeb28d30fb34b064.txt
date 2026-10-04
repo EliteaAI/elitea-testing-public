@@ -1,0 +1,3 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — No 200 response from /artifacts/s3/ within 60000 ms while navigating to /artifacts. Statuses observed for that endpoint: none — the request never completed.
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — No 200 response from /artifacts/s3/ within 60000 ms while navigating to /artifacts. Statuses observed for that endpoint: none — the request never completed.
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — No 200 response from /artifacts/s3/ within 60000 ms while navigating to /artifacts. Statuses observed for that endpoint: none — the request never completed.
