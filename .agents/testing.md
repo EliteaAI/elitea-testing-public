@@ -2,6 +2,13 @@
 
 > Scout-generated 2026-07-10. Update when the framework, run commands, or
 > conventions change. Analyst and implementer read this before touching tests.
+>
+> **2026-10 cut-over — dev-targeted factory.** The factory analyses, builds and
+> gates against the **DEV env** with **ladder locators** (§ Locator policy); the
+> weekly `testid-migrator` alone touches localhost:5173 and EliteaUI. Where any
+> dated entry below (merge-gate corollaries, § Unconfirmed ledger) describes a
+> localhost run or a testid-only rule, it is **history** — keep it for the
+> mechanism it records, do not follow it as procedure.
 
 ## Framework
 
@@ -24,8 +31,16 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   `HEADLESS=true` for quiet runs. CI-on-deployed-envs uses the GHA workflows
   (`.github/workflows/test-ui-*.yml`) — not the local loop's concern.
 - **Local verification gate:** there is no CI on `automation/base`; a test must run
-  green locally against `http://localhost:5173` before its PR — that is the
+  green from this machine against the **DEV env** (`ELITEA_URL=https://dev.elitea.ai`,
+  `APP_PREFIX=/app` in `automation/.env.test`) before its PR — that is the
   *implementer's* gate. The *merge* gate is separate and stricter — see § Merge gate.
+  `http://localhost:5173` is **not** a factory target any more (2026-10) — only the
+  weekly `testid-migrator` uses it, for phase B (§ Locator policy).
+- **Browser exploration (Playwright MCP) on DEV:** the analyst/implementer MCP starts
+  with `--isolated --storage-state .playwright-mcp/dev-storage-state.json`. Refresh
+  that file at the start of every session, before the first browser call —
+  `cd automation && ../.venv/bin/python scripts/dev_storage_state.py` (Keycloak
+  sessions expire; the script prints only path/cookie-count/origin, never values).
 
 ## Merge gate (the section the workflow skill defers to — N and semantics)
 
@@ -131,8 +146,8 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   toolkits, artifacts, admin, voice, support_assistant, smoke), `tests/api/`, `tests/unit/`
 - `automation/pages/` — page objects (one class per page; `base_page.py` common nav)
 - `automation/components/` — reusable UI component helpers
-- `automation/fixtures/` + `conftest.py` — fixtures, `auth_state` (skips login on
-  localhost via `VITE_DEV_TOKEN`), screenshots on failure
+- `automation/fixtures/` + `conftest.py` — fixtures, `auth_state` (Keycloak API login
+  on DEV; skips login only on localhost via `VITE_DEV_TOKEN` — migrator runs), screenshots on failure
 - `automation/api/` — API clients: generic `APIClient` uses Bearer token;
   entity clients (`ConversationAPI`, `AgentAPI`) use cookie auth from browser state
 - `automation/utils/` — helpers grouped by topic
@@ -165,158 +180,105 @@ orchestrator's job** — implementers and analysts never write this field.
 ## Locator policy (AUTHORITATIVE — overrides any skill's example ladder)
 
 _This section is the "locator strategy" the `test-automation-workflow` skill
-defers to. **This project has no locator ladder — the ladder is one rung:
-`data-testid`.** The skill's `getByRole → testid → …` sequence is a generic
-example and does not apply here. See also `.agents/role-overrides.md`._
+defers to. **Rewritten 2026-10 for the dev-targeted factory.** It supersedes the
+2026-07 "testid-only, one rung" policy (PR #23) and every ruling, memory or AFS
+that assumes the factory adds testids. Mechanics live in
+`.claude/rules/page-objects.md` § Locator Strategy (auto-applied) — this section
+states the policy and who owns what. See also `.agents/role-overrides.md`._
 
-**Why (team goal):** the team wants `data-testid` on every element new tests
-touch, and **measures UI-automation coverage via testid presence**. A
-role/label/CSS handle isn't just brittle — it is invisible to the coverage
-metric. Every raw handle silently shrinks measured coverage. (Ruled by the team
-in PR #23, "Enforce testid-only locators"; confirmed by the operator 2026-07-14.)
+### Two processes, two owners
 
-**The inverse also holds — scope is load-bearing (team ruling 2026-07-14):**
-testids go ONLY on elements tests actually touch. Blanket-adding to untested
-elements is front-end noise and makes untested UI light up as "covered" in the
-presence-based visualization — it corrupts the metric from the other side.
-Coverage density (N testids / M components) is NOT a target; honest
-presence ≈ tested is.
+| | **Factory** (Tal → Sage → Axel → Sage-review) | **`testid-migrator`** (weekly, separate session) |
+|---|---|---|
+| Target | DEV env as deployed (`https://dev.elitea.ai`, `/app`) | localhost:5173 on `automation/testids` (phase B) + DEV (phase A verify) |
+| Locators | the **ladder** below, existing testid first | swaps ladder locators for testids once DEV serves them |
+| EliteaUI | **never touched** — no testid commits, no UI repo knowledge | owns every testid addition (`add-data-testid`) |
+| PRs per case | **one** — test repo → `automation/base` | one per weekly batch → `automation/base` |
 
-**"Referenced" = called on the test's actual code path (canon ruling #511,
-2026-07-22).** A testid wired into a page-object method or `LocatorDescriptor`
-field is NOT "referenced" unless the test invokes that method on its executed
-path. There is **no carve-out** for "reusable page-object scaffolding,"
-"parameterized method with other callers," or "plausible future case" — those
-are exactly the soft justifications the checklist was written to reject. If a
-sibling testid ends up in the same JSX array literal you're editing, add ONLY
-the one your test calls; leave the rest to the case that actually exercises
-them.
+A factory case never waits on, edits, or reasons about the UI repo. A missing
+testid is **not** factory work any more — it is recorded as a `suggested_testid=`
+hint and becomes a ledger row the migrator picks up.
 
-**Absence assertions count as references (canon ruling #511 extension,
-2026-07-22).** A testid used only in `expect(locator).to_have_count(0)` /
-`expect(locator).not_to_be_visible()` on the test's executed code path IS
-referenced. Negative assertions are first-class — the mechanical grep for
-`.locator(`/`get_by_*` catches them the same as positive ones.
+### The ladder (factory)
 
-**Same-element conditional pairs — `data-testid={cond ? A : B}` on a single
-JSX node (canon ruling #277, 2026-07-22).** When disambiguation forces two
-mutually-exclusive branches on the same element (e.g. `isOverflow ?
-'entity-card-tag-overflow' : 'entity-card-tag-chip'`), the compliant shapes
-are exactly two:
-  1. **Only the used branch is named**, the other is `undefined`:
-     `data-testid={isOverflow ? undefined : 'entity-card-tag-chip'}`. No
-     orphan testid — the used branch's locator is still collision-safe (the
-     other branch has no attribute to match). Preferred default.
-  2. **Both branches are named AND both are referenced** by locators on the
-     test's executed code path — the untested branch via an absence assertion
-     (`to_have_count(0)`/`not_to_be_visible()`) on the elements the test
-     exercises. This turns "the pair disambiguates cleanly" from a
-     documented assumption into a test-enforced invariant, catching any
-     future regression that drops the disambiguating prop.
+First rung that **uniquely and stably** identifies the element **on DEV** wins:
 
-Documentation-only carve-outs (naming the pair for self-documentation, then
-explaining in a docstring/AFS PROVENANCE row) are **not compliant** — docs
-don't execute, so an orphan testid still inflates the presence-based coverage
-metric. Same reasoning as #511: no soft justifications.
+1. `testid=` — the element already carries a `data-testid` on DEV (the UI team and
+   past migrations keep adding them — always check first)
+2. `role=` + `name=` — ARIA role + stable accessible name
+3. `label=` — form control with `<label>` / `aria-label`
+4. `css=` — stable `id` / attribute selector (`#id`, `[name="x"]`); third-party
+   library public classes (CodeMirror `.cm-content`, ReactFlow `.react-flow__node`)
+   count; MUI generated/structural classes (`css-*`, `Mui*-root`) do **not**
+5. `xpath=` — **declared last resort**, `description=` says why rungs 1–4 failed
 
-(Note: the state-switched testid anti-pattern of §"Testid = stable identity"
-below is a distinct case — a testid's VALUE flipping on the same rendered
-element as state changes. #277 covers the different case of two
-mutually-exclusive JSX renders through one component. The §-below rule still
-outlaws state-value-switched testids on the same live element.)
+Hard constraints (import-time enforced by `pages/locator_descriptor.py`, so a
+violation fails collection):
+- every locator is a **class-level** `LocatorDescriptor` / `OptionalLocatorDescriptor`
+  / `ScopedLocator` field, or an UPPER_CASE `[data-testid="…"]` constant — never
+  built in a method body, never chained raw off a field, never in a spec;
+- exactly one kind per declaration; **every non-testid declaration carries
+  `suggested_testid=`** (kebab-case `{section}-{element}-{type}`, call-site section,
+  dynamic ones end `-{}`) — the migrator's work order;
+- **no positional handles** — `:nth-child`, `[2]`, `last()`, `position()`,
+  absolute `/html/…`, `.nth(i)` sibling picks; scope to a declared parent instead;
+- `locator=` / `fallback=` are legacy-only — never in new or modified declarations.
 
-- **Testid-only via `LocatorDescriptor`** (`automation/pages/locator_descriptor.py`):
-  `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback=`
-  (dead code) or `locator=` (kept in the API for legacy only — forbidden in new
-  code per `.claude/rules/page-objects.md`).
-- **Locators live ONLY as page-object class fields** — `LocatorDescriptor` attributes
-  declared at class level. Never construct a locator inside a method body
-  (`page.locator(…)`, `get_by_*` calls in methods), never chain a raw selector off
-  an existing field (`self.x.locator(".css")`), and never in spec files. Scoped
-  sub-selectors: UPPER_CASE class constants containing `[data-testid="…"]` only.
-- **Dynamic (runtime-parameterized) testids — the canonical pattern.** A testid whose
-  value depends on data (`skill-tag-option-<name>`) cannot be a static field. The
-  compliant shape is the SAME class-constant mechanism, templated:
-  ```python
-  # class level — the testid pattern is part of the locator inventory
-  SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
-  # call site — format with test-generated data only
-  option = self.page.locator(self.SKILL_TAG_OPTION.format(tag_name))
-  ```
-  Inline `get_by_test_id(f"…{var}")` in a method body is NOT compliant — the pattern
-  must live at class level so the testid inventory stays greppable (coverage
-  tooling reads class-level `[data-testid=` strings). Dynamic testid naming:
-  `{section}-{element}-{param}` with the parameter as the suffix.
-  (Origin: #19 rework FAIL-1 — the canon was silent, the agent improvised; this
-  section closes that gap.)
-- **Testid = stable identity; state via `data-*` attributes (UI-team ruling,
-  EliteaUI PR #581 review, 2026-07-16).** Never add a testid whose presence or VALUE
-  changes with component state (`data-testid={!isExpanded ? id : undefined}` and
-  state-switched ternaries are both outlawed). The element keeps ONE testid; state is
-  a separate attribute (`data-expanded`, `data-state`). Automation asserts state by
-  filtering on that attribute — a testid-keyed selector with a `data-*` state filter
-  (`'[data-testid="x"][data-expanded="false"]'` as a class constant) IS compliant
-  testid-only locating, and is the required replacement for "click until the testid
-  disappears" loops. *Grandfathered:* the two-state import dialog
-  (`agent-import-preview-dialog`/`agent-import-complete-dialog`) predates this ruling
-  and stays until the UI team asks; do not add new testids in that shape.
-- **Shared components never hardcode feature-scoped testids (same ruling).** A
-  component under `src/components/` or `src/[fsd]/shared/` gets either a GENERIC
-  testid (`search-send-button`) or a caller-supplied `testId` prop wired at the
-  feature's call site. `{section}-{element}-{type}` naming refers to the CALL SITE's
-  section, never the shared component's first consumer (the `agent-search-clear-button`
-  -on-shared-SearchBar mistake — it leaked into skills and credentials pages).
-- **Testid prop naming: `testId` / `<part>TestId`** (`closeButtonTestId`), never a
-  `data` prefix (`dataTestId`, `closeButtonDataTestId`) — the prop always lands as
-  `data-testid`, the prefix is noise.
-- **Missing testid on the target? That is work to do, not a reason to rung down.**
-  The escalation test is OR, not AND: missing testid *alone* ⇒ add it to EliteaUI
-  via the `add-data-testid` skill (commit **and push `automation/testids`** — Vite HMR
-  picks it up live; a human promotes to `main`, no agent PR). Naming `{section}-{element}-{type}`,
-  e.g. `agent-form-save-button` vs `pipeline-form-save-button` — verify uniqueness
-  before adding. *(If the target lives in a **connected first-party repo** — e.g. the Support
-  Assistant — add the testid in THAT repo's source instead; see the connected-first-party-repo
-  bullet below.)*
-- **Stop+flag rule — sanctioned exceptions (#579, approved 2026-07-22):** ONLY if a
-  testid genuinely can't be placed, a **scoped raw handle** is allowed:
-  1. **Third-party widget subtrees** — element outside `EliteaUI/src` (e.g. ReactFlow's
-     `rf__wrapper`) where no testid can be placed on the library's internal nodes.
-  2. **Third-party editor library internal render nodes** — per-line/per-node elements
-     inside an editor widget (CodeMirror, Monaco, ProseMirror, etc.) whose DOM is
-     library-internal, not app JSX. Examples: CodeMirror's per-line `<div>` nodes
-     (`automation/pages/mcp_form_page.py:121` — `fill_raw_json_line()` uses
-     `self.raw_json_editor_content.get_by_text(...)` scoped inside the
-     `toolkit-raw-json-editor-content` testid parent to locate which line to edit).
-  
-  **Discipline (mandatory for both exceptions):**
-  - The parent container MUST have a real app testid (a `LocatorDescriptor(testid=...)`
-    class field).
-  - The raw handle MUST be scoped to that testid parent
-    (`self.testid_parent.locator(...)` / `.get_by_text(...)` chained off it), never a
-    free-floating page-level handle.
-  - Declare the exception explicitly in the method's docstring: which node, why a
-    testid cannot be placed, and the "do not extend it to any handle that COULD carry
-    a testid" boundary.
-  - Anything outside these two shapes escalates to the lead — don't ship brittle CSS.
-- **Connected first-party repos are NOT the third-party exception (2026-07-23, #705).**
-  A component we OWN but that ships from a separate repo (today: the Support Assistant,
-  `@eliteaai/elitea-assistant`, source in the `../elitea_assistant` sibling) is testid-able —
-  we control its source, so a missing testid there is *work to do in that repo*, NOT a #579
-  "testid can't be placed" waiver. Add it in the connected repo's own `src/` with the same
-  `add-data-testid` discipline + naming, on ITS `automation/testids` integration branch
-  (`.agents/workflow.md` § Connected repos has the local-source wiring + the extra promotion
-  hop). This **supersedes the #110 framing** that logged the Support Assistant as a third-party
-  scope exception — a mislabel (it's `@eliteaai/…`, our repo). Support-assistant tests still on
-  fallback locators are grandfathered tech debt to migrate, not precedent. #579 still governs the
-  connected repo's OWN third-party internals (its mermaid / react-markdown output), exactly as
-  inside EliteaUI.
-- **Existing raw handles in `automation/pages/` are tracked tech debt**
-  (issues #25/#42, ~350 call sites), not precedent. Never cite neighbors to
-  justify a new raw handle.
-- Authoritative rules: `.claude/rules/page-objects.md`, `.claude/rules/ui-tests.md`,
-  `.claude/rules/mui-patterns.md` (auto-applied; team-owned — where mui-patterns
-  shows non-testid workarounds, prefer adding the testid; the workaround is only
-  for elements that fail the stop+flag test).
+Scoped and dynamic handles use `ScopedLocator(..., suggested_testid=...)` and
+`.within(scope, *args)` (any rung) or a `[data-testid=…{}]` template constant
+(testid rung). Inline `get_by_*(f"…")` in a method is non-compliant on every rung.
+
+### The metric — locator debt (replaces "coverage = testid presence")
+
+`cd automation && ../.venv/bin/python scripts/locator_inventory.py scan` →
+**locator debt = non-testid declared locators / all declared locators**, plus
+**unmanaged handles** (raw calls in methods — pre-ladder legacy, never added to).
+Testid presence in EliteaUI is no longer the coverage measure; the factory
+**raises** debt by design and the migrator **burns it down**. Baseline at
+cut-over (2026-10): 1838 declared, 21 non-testid (1.14%), 389 unmanaged handles.
+
+### Testid-migrator rules (the 2026-07 testid canon now lives here)
+
+The migrator follows the full `add-data-testid` discipline. These rulings remain
+in force **for anyone adding a testid** — which, from 2026-10, is only the migrator:
+
+- **Ledger-driven, two-phase, deployment-gated.** `.agents/locator-migration/ledger.json`,
+  states `raw → testid-proposed → on-dev → migrated` (`removed` when a declaration
+  disappears). **Phase A**: entries `on-dev` → swap the declaration to `testid=`,
+  run the affected specs green on DEV, PR to `automation/base`, `sync-ledger` marks
+  them `migrated`. **Phase B**: next `raw` batch → add testids in EliteaUI on
+  `automation/testids` (localhost:5173, commit + push, human cherry-picks to
+  `main`) → `testid-proposed`; `check-ui-ref --ref origin/main` + a DEV DOM check
+  move them to `on-dev`. A declaration is never swapped before DEV serves its
+  testid — `LocatorDescriptor` has no fallback.
+- **Scope = the ledger.** Testids only on elements a test declares (a ledger row).
+  Blanket-adding untested elements is still forbidden.
+- **Testid = stable identity; state via `data-*` attributes (PR #581 ruling).** No
+  testid whose presence/value changes with state; filter state with
+  `'[data-testid="x"][data-expanded="false"]'`. The import-dialog pair stays grandfathered.
+- **Same-element conditional pairs (#277):** name only the used branch, or name both
+  and reference both (absence assertion counts as a reference, #511).
+- **Shared components never hardcode feature-scoped testids**; use a generic testid
+  or a caller-supplied `testId` / `<part>TestId` prop (never `dataTestId`).
+- **Zero functional impact** in the JSX (no new DOM nodes / hooks / replaced MUI
+  built-ins to host a testid) — `add-data-testid` § Step 5.5 greps.
+- **Connected first-party repos** (Support Assistant, `../elitea_assistant`) take
+  testids in their own source on their own `automation/testids` (workflow.md §
+  Connected repos); the extra EliteaUI dependency-bump hop gates phase A there.
+- **Third-party internals** (ReactFlow, CodeMirror/Monaco line nodes, mermaid /
+  react-markdown output) cannot take testids: their ledger rows are closed by the
+  migrator with a scoped `css=` rung under a testid parent and the hint removed —
+  the #579 exception, now a migrator decision, not a factory one.
+
+### Legacy
+
+Pre-ladder raw handles in `automation/pages/` (issues #25/#42) stay tracked debt
+(the "unmanaged handles" count) — never precedent. When a case touches a method
+that builds a locator inline, declare it at class level on the ladder as part of
+the change.
+
+- Authoritative mechanics: `.claude/rules/page-objects.md`, `.claude/rules/ui-tests.md`,
+  `.claude/rules/mui-patterns.md` (auto-applied, team-owned).
 
 ## Fidelity policy — the observable must be produced by the system (AUTHORITATIVE)
 
@@ -485,8 +447,8 @@ at" is `CHANGES_REQUESTED` regardless of its result.
 
 ## Hooks & fixtures
 
-- `conftest.py` wires auth (`auth_state` — Keycloak on deployed envs via
-  `input[name="username"]`; skipped entirely on localhost), screenshot-on-failure,
+- `conftest.py` wires auth (`auth_state` — Keycloak on DEV/deployed envs via
+  `input[name="username"]`; skipped only on localhost, i.e. migrator runs), screenshot-on-failure,
   report paths (JUnit XML + HTML paths set there, not pytest.ini).
 - AI responses arrive over WebSocket ~2s after send — use condition waits
   (`wait_for_response()` style), never sleeps.
@@ -529,6 +491,11 @@ without step wrapping is `CHANGES_REQUESTED` at review.
 - OneDrive slowness affects anything spawning many file ops.
 
 ## Unconfirmed
+
+> Historical ledger. Entries dated before 2026-10 were observed on the localhost
+> loop; their mechanisms (networkidle vs socket polling, dev-build React warnings,
+> `VITE_DEV_TOKEN` identity gaps) are still useful when diagnosing — the procedures
+> they prescribe are superseded by § Run commands / § Locator policy.
 
 - Known-flaky test list — first entry (2026-07-20, ELITEA-1835/#260 merge-gate run):
   `ArtifactsPage`'s shared `click_bucket_row` action (`@action("Navigate to bucket")`,

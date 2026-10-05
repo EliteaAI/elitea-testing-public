@@ -1,6 +1,11 @@
 # Elitea Test Automation
 
-Test automation for [Elitea AI Platform](https://stage.elitea.ai) using Playwright + pytest.
+Test automation for [Elitea AI Platform](https://dev.elitea.ai) using Playwright + pytest.
+
+**Target: the DEV env as deployed** (`ELITEA_URL=https://dev.elitea.ai`, `APP_PREFIX=/app`).
+Locators follow the ladder in `.claude/rules/page-objects.md` § Locator Strategy (existing
+testid → role+name → label → stable CSS → declared XPath; every non-testid one carries
+`suggested_testid=`). `localhost:5173` is used only by the weekly testid migrator.
 
 # Additional Instructions
 - Coding rules (auto-applied): @.claude/rules/page-objects.md, @.claude/rules/ui-tests.md, @.claude/rules/api-patterns.md, @.claude/rules/mui-patterns.md, @.claude/rules/api-tests.md
@@ -77,10 +82,11 @@ Tests are in `tests/ui/{domain}/`:
 
 ## Environment Variables
 
-Required in `.env.test`:
+Required in `.env.test` (template: `.env.test.example`):
 ```
-ELITEA_URL=https://stage.elitea.ai
-ELITEA_API_BASE=https://stage.elitea.ai/api/v2
+ELITEA_URL=https://dev.elitea.ai
+APP_PREFIX=/app
+ELITEA_API_BASE=https://dev.elitea.ai/api/v2
 ELITEA_PROJECT_ID=23
 TEST_USER_EMAIL=<keycloak username>
 TEST_USER_PASSWORD=<keycloak password>

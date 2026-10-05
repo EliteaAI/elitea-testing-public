@@ -1,0 +1,176 @@
+# Weekly locator → testid migration (testid-migrator, "Tess").
+#
+# Runs the migrate-locators-to-testids skill headless:
+#   phase A — swap `on-dev` ledger rows to testid=, verify on DEV, ONE PR → automation/base
+#   phase B — add the next batch of testids on EliteaAI/EliteaUI automation/testids
+#             (localhost:5173 dev server), commit + push; a human cherry-picks to main
+#
+# STAGED: workflow_dispatch only until the pilot run has been reviewed — then uncomment
+# the schedule. Procedure: .claude/skills/migrate-locators-to-testids/SKILL.md
+#
+# Secrets this workflow adds (beyond the existing *_DEV ones):
+#   ANTHROPIC_API_KEY        — Claude Code headless run
+#   MIGRATOR_GH_TOKEN        — PAT with push on EliteaAI/EliteaUI (+ elitea_assistant) and
+#                              repo/project on EliteaAI/elitea-testing-public (PR + report issue).
+#                              It is the tracker identity for this run — use a bot/operator
+#                              account, never the shared GITHUB_TOKEN.
+#   MIGRATOR_VITE_DEV_TOKEN  — VITE_DEV_TOKEN for the localhost dev server (phase B auth)
+#
+# Not persisted across runs: .agents/memory/testid-migrator/ (local-only by doctrine).
+
+name: Testid migrator (weekly)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max ledger rows per phase'
+        required: false
+        default: '25'
+      user_suffix:
+        description: 'DEV test-user index (1-9, ADMIN) — pick one no other job uses'
+        required: false
+        default: '1'
+  # schedule:
+  #   - cron: '17 3 * * 1'   # Mondays 03:17 UTC — enable once the pilot run is reviewed
+
+concurrency:
+  group: testid-migrator   # EXCLUSIVE: phase B owns the EliteaUI integration branch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      LIMIT: ${{ inputs.limit || '25' }}
+      SUFFIX: ${{ inputs.user_suffix || '1' }}
+    steps:
+      # Sibling layout is load-bearing: the skill reaches EliteaUI as ../EliteaUI.
+      - name: Checkout test repo (automation/base)
+        uses: actions/checkout@v4
+        with:
+          ref: automation/base
+          path: elitea-testing-public
+          fetch-depth: 0
+          token: ${{ secrets.MIGRATOR_GH_TOKEN }}
+
+      - name: Checkout EliteaUI (automation/testids)
+        uses: actions/checkout@v4
+        with:
+          repository: EliteaAI/EliteaUI
+          ref: automation/testids
+          path: EliteaUI
+          fetch-depth: 0          # never shallow — merges walk history
+          token: ${{ secrets.MIGRATOR_GH_TOKEN }}
+
+      - name: Checkout elitea_assistant (automation/testids)
+        uses: actions/checkout@v4
+        with:
+          repository: EliteaAI/elitea_assistant
+          ref: automation/testids
+          path: elitea_assistant
+          fetch-depth: 0
+          token: ${{ secrets.MIGRATOR_GH_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install test framework
+        working-directory: elitea-testing-public
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install pytest-rerunfailures
+          .venv/bin/pip install -e ".[reporting]"
+          .venv/bin/playwright install chromium
+
+      - name: Install EliteaUI dependencies + Claude Code
+        run: |
+          (cd EliteaUI && npm ci)
+          npm install -g @anthropic-ai/claude-code
+
+      - name: Write env files (DEV target, never echoed)
+        env:
+          ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
+          ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_DEV }}
+          PW_TEMPLATE: ${{ secrets.TEST_USER_PASSWORD_TEMPLATE }}
+          VITE_DEV_TOKEN: ${{ secrets.MIGRATOR_VITE_DEV_TOKEN }}
+          PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_DEV_{0}', inputs.user_suffix || '1')] }}
+          API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_DEV_{0}', inputs.user_suffix || '1')] }}
+        run: |
+          if [ "$SUFFIX" = "ADMIN" ]; then PW_SUFFIX="Admin"; USER_ID="admin"; else PW_SUFFIX="$SUFFIX"; USER_ID="$SUFFIX"; fi
+          PASSWORD="${PW_TEMPLATE}${PW_SUFFIX}"
+          echo "::add-mask::$PASSWORD"
+          umask 077
+          cat > elitea-testing-public/automation/.env.test <<EOF
+          ELITEA_URL=${ELITEA_URL}
+          ELITEA_API_BASE=${ELITEA_API_BASE}
+          APP_PREFIX=/app
+          ELITEA_PROJECT_ID=${PROJECT_ID}
+          ELITEA_API_TOKEN=${API_TOKEN}
+          TEST_USER_EMAIL=autotest_user_${USER_ID}
+          TEST_USER_PASSWORD=${PASSWORD}
+          HEADLESS=true
+          EOF
+          cat > EliteaUI/.env <<EOF
+          VITE_SERVER_URL=/api/v2/
+          VITE_DEV_SERVER=https://dev.elitea.ai
+          VITE_DEV_TOKEN=${VITE_DEV_TOKEN}
+          VITE_SOCKET_SERVER=https://dev.elitea.ai
+          EOF
+          # The DEV storage state for Playwright MCP (phase A verification)
+          cd elitea-testing-public/automation && ../.venv/bin/python scripts/dev_storage_state.py
+
+      - name: Configure git identity
+        run: |
+          for repo in elitea-testing-public EliteaUI elitea_assistant; do
+            git -C "$repo" config user.name  "testid-migrator[bot]"
+            git -C "$repo" config user.email "testid-migrator@users.noreply.github.com"
+          done
+
+      - name: Baseline locator debt
+        working-directory: elitea-testing-public/automation
+        run: ../.venv/bin/python scripts/locator_inventory.py scan | tee ../locator-scan-before.txt
+
+      - name: Run testid-migrator
+        working-directory: elitea-testing-public
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # gh writes (PR, report issue) run as the PAT identity; the doctrine's
+          # `env -u GITHUB_TOKEN` prefix is harmless here because GH_TOKEN wins.
+          GH_TOKEN: ${{ secrets.MIGRATOR_GH_TOKEN }}
+          GITHUB_TOKEN: ''
+          HEADLESS: 'true'
+        run: |
+          claude -p --agent testid-migrator --dangerously-skip-permissions \
+            "Weekly migration run — limit ${LIMIT}. Unattended (CI): follow factory/loops/EXAMPLE-testid-migrator.md for the guard, deltas and report issue." \
+            | tee migration-run.log
+
+      - name: Locator debt after
+        if: always()
+        working-directory: elitea-testing-public/automation
+        run: ../.venv/bin/python scripts/locator_inventory.py scan | tee ../locator-scan-after.txt
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testid-migrator-${{ github.run_number }}
+          path: |
+            elitea-testing-public/migration-run.log
+            elitea-testing-public/locator-scan-*.txt
+            elitea-testing-public/.agents/locator-migration/ledger.json
+            elitea-testing-public/automation/reports/allure-results/
+          if-no-files-found: ignore
+          retention-days: 30

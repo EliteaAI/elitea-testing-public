@@ -25,52 +25,39 @@ type: project
 - **Stay on the branch Tal created.** Don't switch, rebase, or touch git history
   unless `.agents/workflow.md` grants you commit authority for this project.
 
-## Elitea Project Specifics (seeded by scout 2026-07-10)
+## Elitea Project Specifics (seeded by scout 2026-07-10, revised 2026-10)
+
+> **2026-10 precedence:** the factory targets the **DEV env as deployed** with the locator
+> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Any pre-2026-10
+> testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
+> is **superseded**; testid creation belongs to the weekly `testid-migrator` only.
 
 - **Framework:** Playwright 1.61 + pytest 9.1, Python 3.13 repo-local `.venv`.
   Run from `automation/`: `../.venv/bin/pytest tests/ui/<feature>/test_x.py -v`.
   Headed is default; `HEADLESS=true` for quiet runs. `pip install -e ".[reporting]"`
   or pytest won't start (allure in addopts).
-- **Target `http://localhost:5173`** (start via `start-ui-localhost`). Green there is
-  the merge gate — no CI on `automation/base`.
-- **HARD OVERRIDE (`.agents/role-overrides.md`): this project has NO locator ladder —
-  testid only.** The `getByRole → testid → …` sequence in `test-automation-workflow`
-  is a generic example that does not apply here; the team measures UI coverage by
-  testid presence, so a role/CSS handle is invisible to the metric. Missing testid ⇒
-  run `add-data-testid` (OR-gate — missing alone is enough). Never amend an analyst's
-  `testid needed:` row into a role handle (the ELITEA-1735 pattern — out of contract).
-  Existing raw handles in pages/ are tech debt (#25/#42), never precedent.
-- **The per-test loop:** explore UI → missing testid? use `add-data-testid` →
-  `page-object-generator` → write test → green → PR to `automation/base` (never `main`).
-- **Testids live on `automation/testids` — commit + push, then STOP (current policy,
-  2026-07-16).** `EliteaAI/EliteaUI` is worked on directly. `automation/testids` is a
-  permanent **integration branch on the org repo** holding every testid — merged *and*
-  still in review; the dev server runs it, so you never wait on the UI team.
-  `add-data-testid` does the git flow for you:
-  1. edit `../EliteaUI/src` ONLY, commit **on `automation/testids`** (HMR live-reloads);
-  2. `git merge origin/main` then **push `automation/testids`** (plain FF). Done.
-  **You do NOT open a PR to EliteaUI `main`** — promotion is a human cherry-pick from
-  `automation/testids`, out of band. (The old per-case `testids/<case>-<slug>` draft-PR
-  flow is **suspended 2026-07-16** — see `.agents/_reverted/`.) **Never rebase or
-  force-push `automation/testids`**: shared org branch, merge `origin/main` into it.
-  Invariant: never let a test PR merge while its testids exist only locally — origin
-  `automation/testids` must cover origin `automation/base` tests.
-- **Testid conventions (PR #581 rulings, 2026-07-16):** stable identity + `data-*`
-  state attributes (never state-conditional testids; state filters like
-  `[data-testid="x"][data-expanded="false"]` are the compliant shape); shared
-  components take a `testId` prop, never a hardcoded feature-scoped value; props
-  named `testId`/`<part>TestId`, never `dataTestId`. Full rules:
-  `.agents/testing.md` § Locator policy + `add-data-testid` § Conventions.
-- **Locators: testid-only** `LocatorDescriptor(testid="…")` — `fallback` is dead code,
-  strictly never populate it. Locators are **class-level page-object fields only** —
-  never constructed inside method bodies, never in spec files.
-  Naming `{section}-{element}-{type}`; verify uniqueness first.
+- **Target DEV — `https://dev.elitea.ai/app`, as deployed** (`ELITEA_URL`/`APP_PREFIX`
+  in `.env.test`). Green there is the implementer's gate — no CI on `automation/base`.
+  Refresh `scripts/dev_storage_state.py` before browser exploration.
+- **Locators follow the ladder — HARD OVERRIDE (`.agents/role-overrides.md`,
+  `.claude/rules/page-objects.md`).** Use the AFS rung (climb higher if DEV allows):
+  existing testid → role+name → label → stable css → declared xpath. Never positional,
+  never MUI generated classes. Every non-testid declaration carries
+  `suggested_testid="{section}-{element}-{type}"` (import-time validated). Class-level
+  `LocatorDescriptor` / `OptionalLocatorDescriptor` / `ScopedLocator` / UPPER_CASE
+  `[data-testid=` constants only — never built in methods or specs; `fallback=` /
+  `locator=` are legacy, never in new code. Existing raw handles are tech debt
+  (#25/#42), never precedent.
+- **You never touch EliteaUI** (no `add-data-testid`, no `automation/testids` commits,
+  no localhost). Testids are added later by the weekly `testid-migrator`.
+- **The per-test loop:** explore DEV → `page-object-generator` (ladder declarations) →
+  write test → green on DEV → `locator_inventory.py scan` delta → PR to `automation/base`.
 - **Wrap every test step in `with allure.step("Step N — …"):`** — one per AFS step,
   assertions inside their step's block (pattern: `test_artifacts_multi_file.py`).
   Auto-applied rules: `.claude/rules/{page-objects,ui-tests,mui-patterns,api-*}.md`.
 - **Config:** `from config import settings`; `.env.test` BEATS shell exports — edit
-  the file. Page objects navigate with bare paths (`/skills/all`); `APP_PREFIX` empty
-  on localhost. localhost skips login (`auth_state`/`VITE_DEV_TOKEN`).
+  the file. Page objects navigate with bare paths (`/skills/all`); `APP_PREFIX=/app`
+  on DEV is injected by `settings.app_base_url`.
 - **WebSocket ~2s delay** on AI responses — condition waits, never sleeps.
 - **Traps:** OneDrive is slow (background npm/git); `npm install` looks hung — isn't;
   EliteaUI `.env` is a symlink, don't recreate; never shallow-clone.

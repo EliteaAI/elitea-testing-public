@@ -13,7 +13,7 @@ mcpServers:
   - playwright:
       type: stdio
       command: npx
-      args: ["@playwright/mcp@latest", "--image-responses", "omit", "--console-level", "error", "--snapshot-mode", "none"]
+      args: ["@playwright/mcp@latest", "--image-responses", "omit", "--console-level", "error", "--snapshot-mode", "none", "--isolated", "--storage-state", ".playwright-mcp/dev-storage-state.json"]
 metadata:
   authors:
     - Alexander Bychinskiy <alexander_bychinskiy@epam.com>

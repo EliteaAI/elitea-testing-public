@@ -51,13 +51,19 @@ type: project
 - **Roles & sample users:** capture the credential matrix / user sets the suite
   runs against (env-var keys, not secrets) in `.agents/profile.md`.
 
-## Elitea Project Specifics (seeded 2026-07-10)
+## Elitea Project Specifics (seeded 2026-07-10, revised 2026-10)
+
+> **2026-10 precedence:** the factory targets the **DEV env as deployed** with the locator
+> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Any pre-2026-10
+> testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
+> is **superseded**; testid creation belongs to the weekly `testid-migrator` only.
 
 - **Seed complete** — CLAUDE.md rewritten, AGENTS.md project sections added (bundle
   block preserved), full `.agents/*` set written, 4 memory briefings adjusted.
 - **Topology:** three siblings under the parent folder (NOT a git repo, don't init):
   this repo (`automation/base`), `../EliteaUI` (**`EliteaAI/EliteaUI` directly — no fork**;
-  `automation/testids` integration branch, push but no admin),
+  `automation/testids` integration branch, push but no admin — written only by the
+  weekly `testid-migrator` since 2026-10; the factory targets DEV),
   `../onetest-ai-tm-Elitea` (TMS, `.onetest/` cwd-relative).
 - **TMS = onetest** (custom adapter, MCP server `onetest-tms` in `.mcp.json`);
   intake/back-write policy in `.agents/test-automation.yaml`.

@@ -1,6 +1,10 @@
 # TMS + pipeline configuration — seeded by scout 2026-07-10.
 # Read by test-automation-lead (intake, back-write) and the pipeline skills.
 
+# 2026-10: the factory analyses + builds against the DEV env as deployed (ladder
+# locators, no EliteaUI changes); testids arrive via the weekly testid-migrator
+# (ledger: .agents/locator-migration/ledger.json). Nothing below changed.
+
 tms:
   # Custom adapter: onetest — markdown case files + GitHub-issue executions/defects.
   # Not one of the built-in adapters (zephyr/testrail/xray/azure/markdown); the

@@ -156,3 +156,27 @@ retired into it 2026-07-31).
   time-windowed); commit 4e1dee366 on `automation/base`.
 - Gaps: pre-2026-07-24 spend unrecoverable; Workflow-run history batches `n/a`; auto-close of
   scopes not implemented (bundle change requested); no scheduled report regeneration yet.
+
+## Revision — 2026-10: dev-targeted factory + weekly testid migrator
+
+Operator request: split test creation from testid creation.
+
+- **Factory** (Tal / Sage / Axel) analyses and builds against the **DEV env as deployed**
+  (`https://dev.elitea.ai/app`), with a **locator ladder** (existing testid → role+name →
+  label → stable css → declared xpath; every non-testid carries `suggested_testid=`,
+  validated at import in `automation/pages/locator_descriptor.py`). Factory PRs touch this
+  repo only — no EliteaUI change, no localhost.
+- **`testid-migrator`** (Tess, weekly) works a ledger
+  (`.agents/locator-migration/ledger.json`, states raw → testid-proposed → on-dev →
+  migrated) — phase A swaps locators whose testid is deployed on DEV (verified on DEV, PR →
+  `automation/base`); phase B adds testids for the next batch on EliteaUI
+  `automation/testids` (pushed; human promotes). Tooling: `automation/scripts/locator_inventory.py`.
+- **Metric:** locator debt (`locator_inventory.py scan`) replaces testid-presence coverage.
+  Baseline at rollout: 1838 declared (1817 testid / 21 non-testid, 1.14% debt), 389
+  unmanaged legacy handles.
+- **History:** the testid-only / dual-target sections above (2026-07-10 … 07-16) describe
+  the pre-2026-10 factory and are superseded where they conflict. Files updated:
+  `.agents/{workflow,testing,conventions,architecture,profile,team-comms,role-overrides,
+  test-automation.yaml}`, `.claude/rules/{page-objects,mui-patterns}.md`, `CLAUDE.md`,
+  `AGENTS.md`, `automation/CLAUDE.md`, role briefings + RULES, qa/impl AGENT.md MCP args,
+  new `testid-migrator` agent + `migrate-locators-to-testids` skill + weekly GHA job.

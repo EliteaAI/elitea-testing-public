@@ -32,7 +32,12 @@ type: project
   the system's own API / the adapter verbs directly — a missing optional skill is
   never a blocker, and no single TMS (Xray included) is assumed to be present.**
 
-## Elitea Project Specifics (seeded by scout 2026-07-10)
+## Elitea Project Specifics (seeded by scout 2026-07-10, revised 2026-10)
+
+> **2026-10 precedence:** the factory targets the **DEV env as deployed** with the locator
+> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Any pre-2026-10
+> testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
+> is **superseded**; testid creation belongs to the weekly `testid-migrator` only.
 
 - **Base branch is `automation/base`** — never `main`. There is NO CI on it. The merge
   gate is **yours and independent**: reviewer `APPROVED` + **your own 3 consecutive
@@ -40,13 +45,10 @@ type: project
   semantics in `.agents/testing.md` § Merge gate, incl. the sanctioned-RED
   isolated-defect exception. The implementer's green run is NOT the gate. You merge
   (squash) small PRs autonomously.
-- **Merge-gate extra check:** before merging a test PR, confirm its testids are
-  PUSHED to origin `automation/testids` (`cd ../EliteaUI && git fetch origin &&
-  git log origin/automation/testids..automation/testids` → must be empty). A merged
-  test whose testids live only on someone's laptop is red for everyone else. Note this
-  gates on the **integration branch**, not on EliteaUI `main` — a testid not yet on
-  `main` is fine for `automation/base`; getting it to `main` is a human cherry-pick
-  from `automation/testids` (agents open no `main` PR — suspended 2026-07-16).
+- **Merge gate runs against DEV** (`ELITEA_URL=https://dev.elitea.ai`, `APP_PREFIX=/app`).
+  Extra check: the PR diff touches this repo only (no EliteaUI dependency) and its
+  locator delta is declared (`locator_inventory.py scan` before/after; no new
+  unmanaged handles).
 - **Intake**: cases from `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`
   (tag `automated:UI:regression`, status `draft`). Rules in
   `.agents/test-automation.yaml` § intake: dedup by `[Automate][ELITEA-<id>]` title
@@ -60,26 +62,20 @@ type: project
   path>`, **`automation_pr: <merged PR URL>`** (#19 rework FAIL-4 = the fourth field
   forgotten).
 - **HARD OVERRIDES: `.agents/role-overrides.md` § Orchestrator slot** — dispatch-prompt
-  contract (every implementer/reviewer dispatch carries the testid-only policy line
-  verbatim; the workflow skill's example ladder does NOT apply on this project),
-  run `sync-base-branches` BEFORE the first case of a session (2026-07-14 audit:
-  0/11 sessions did), and closure-record promotability is a fact you VERIFY against
-  EliteaUI branches, never copy from the AFS (#35/#36/#37 shipped false rows).
-- **Closure record — the LAST comment on every automation issue, before you close it.**
-  Template + rules: `.agents/workflow.md` § Work tracking → Closure record. A bare
-  "✅ merged" is NOT a closure record — post the artifact index: test PR + sha, the
-  **testids on `automation/testids`** (committed + pushed), AFS path, defects filed.
-  Then the row people forget: **is it promotable?** A test can be merged to
-  `automation/base` while its testids are on `automation/testids` but **not yet on
-  `main`** — green on localhost, red on any deployed env. Getting them to `main` is a
-  **human** cherry-pick (agents open no `main` PR — suspended 2026-07-16,
-  `.agents/_reverted/`). That case ends in **`Ready`** (agent-terminal: delivered,
-  awaiting the human's testid promotion — NOT `Blocked`, nothing is stuck; NOT `Done`,
-  which is human-only like `Approved`): **post the record, leave the issue OPEN,
-  card → `Ready`**; the human moves to `Done` + closes once the testids are on `main`.
-  `Blocked` only for real blockers (`Waiting on #N`).
-  Fully-promotable delivery (all testids already on EliteaUI `main`, verified):
-  still `Ready` — `Done` remains the human's call.
+  contract (every analyst/implementer/reviewer dispatch carries the DEV-target +
+  ladder policy line verbatim — role-overrides.md § Orchestrator slot), sync
+  `automation/base` BEFORE the first case of a session, and the closure-record
+  locator delta is a fact you VERIFY (re-run `locator_inventory.py scan`), never copy
+  from the implementer (#35/#36/#37 shipped false rows by copying). Never dispatch
+  `testid-migrator` from a factory batch.
+- **Closure record — the LAST comment on every automation issue.** Template:
+  `.agents/workflow.md` § Closure record — factory cases (2026-10). A bare "✅ merged"
+  is NOT a closure record — post the artifact index: test PR + sha, AFS path, defects
+  filed, and the **Locators** row (`declared <D> (testid <T> · ladder <L>) · unmanaged
+  handles Δ <±U>`, verified). Post the record, leave the issue OPEN, card → **`Ready`**
+  (agent-terminal); `Done` is human-only like `Approved`. `Blocked` only for real
+  blockers (`Waiting on #N`). Ladder locators are NOT a blocker — the weekly
+  `testid-migrator` converts them.
 - **Board #9 (owner EliteaAI)** is the state machine — `Approved` is human-only;
   file new issues with NO status, unassigned.
 - **Identity rule (hard):** prefix EVERY tracker/board write with
@@ -91,16 +87,11 @@ type: project
   operator to log in — don't fall back to the shared token for writes.
 - **Dedup with the list API, never `--search`** (search index lags → duplicates like
   #17/#18): `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
-- **Batch promotion only on explicit user request** (with clarifications): DEV restart,
-  GHA runs, `automation/base → main` gate. Testids must be on EliteaUI `main` + deployed
-  BEFORE the tests that use them cross to `main` — ordered, and still the invariant.
-  **Testid promotion to `main` is a human cherry-pick from `automation/testids`**
-  (2026-07-16 — agents open no `main` PR; the old per-case draft-PR flow is suspended,
-  `.agents/_reverted/`). Promotion is the **`batch-promote`** skill (2026-07-31: absorbed
-  and retired `promote-automation-batch`): § Mode A promotes the whole state as-is,
-  § Mode B a cherry-picked subset. When the batch's testids are already on `main` it
-  verifies them and gates on a DEV run; when the batch *includes* the testids, a DEV gate
-  is impossible pre-merge, so it verifies on localhost and gates between the merges.
+- **Batch promotion only on explicit user request** (with clarifications): GHA runs,
+  `automation/base → main` gate (`batch-promote` skill, § Mode A whole state / § Mode B
+  subset). Factory tests are built on DEV, so they need no testid pre-promotion; only
+  testid-migrator swap PRs depend on testids, and those swap only after the testid is
+  deployed on DEV — the batch-promote testid check is a sanity check.
 - **onetest MCP write verbs** (`create_run`, `record_result`, `create_defect`, …)
   create REAL GitHub issues — never fire casually.
 
