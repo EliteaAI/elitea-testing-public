@@ -322,18 +322,22 @@ class ChatPage(BasePage):
     # (tool_key, accessible name) — DOM/case order, live-confirmed. "ask_user"
     # ("Ask User") added 2026-08-07 (ELITEA-2464 exploration) — live product
     # change post-dating ELITEA-2162's original 7-entry analysis (2026-08-03);
-    # see EliteaAI/elitea-testing-public#1293. Inserted in its live DOM
-    # position (between pyodide and swarm) — the 7 original entries are
-    # otherwise unchanged.
+    # see EliteaAI/elitea-testing-public#1293. EL-6540 (EliteaAI/EliteaUI@79fd2a55)
+    # then renamed "Image creation"/"Agents & Pipeline Builder"/"Smart Tool
+    # Selection", moved ask_user before planner, and added skill_builder +
+    # project_context_builder (rendered when MCP is visible — DEV/stage2 show
+    # all 10, confirmed in CI screenshots 2026-10-05).
     MODULE_TOGGLE_ORDER = (
-        ("image_generation", "Image creation"),
+        ("image_generation", "Image Creation"),
         ("data_analysis", "Data Analysis"),
-        ("internal_mcp", "Agents & Pipeline Builder"),
+        ("internal_mcp", "Agent & Pipeline Builder"),
+        ("skill_builder", "Skill Builder"),
+        ("project_context_builder", "Project Context Builder"),
+        ("ask_user", "Ask User"),
         ("planner", "Planner"),
         ("pyodide", "Python Sandbox"),
-        ("ask_user", "Ask User"),
         ("swarm", "Swarm Mode"),
-        ("lazy_tools_mode", "Smart Tool Selection"),
+        ("lazy_tools_mode", "Smart Tools Selection"),
     )
 
     # ------------------------------------------------------------------
@@ -3544,7 +3548,7 @@ class ChatPage(BasePage):
         return self.page.locator(self.MODULES_TOGGLE_SWITCH_PREFIX)
 
     def verify_module_toggle_order(self, timeout: int = 5000):
-        """Assert all 7 MODULE_TOGGLE_ORDER switches are visible, each with
+        """Assert all MODULE_TOGGLE_ORDER switches are visible, each with
         its expected accessible name, in DOM order.
 
         Must be called while the Modules panel is open (after
@@ -5669,7 +5673,7 @@ class ChatPage(BasePage):
 
         Args:
             tool_name: Accessible name of the tool
-                (e.g. "Image creation", "Data Analysis", "Planner")
+                (e.g. "Image Creation", "Data Analysis", "Planner")
 
         Returns:
             Playwright Locator for the switch element

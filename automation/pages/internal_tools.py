@@ -14,17 +14,23 @@ class ChatInternalTool(str, Enum):
     These tools appear in the Modules panel accessed via the plus menu
     → "Modules" in the chat input area.
 
-    Each value represents the exact display text in the UI.
+    Each value represents the exact display text in the UI — titles and order
+    follow EliteaUI ``src/[fsd]/shared/lib/constants/internalTools.constants.js``
+    (renamed in EL-6540: "Image Creation", "Agent & Pipeline Builder",
+    "Smart Tools Selection"; "Ask User" moved before "Planner").
     """
 
     # Image generation from text prompts
-    IMAGE_CREATION = "Image creation"
+    IMAGE_CREATION = "Image Creation"
 
     # Data analysis and visualization
     DATA_ANALYSIS = "Data Analysis"
 
-    # Agents & Pipeline Builder (replaces Elitea MCP Tools)
-    AGENTS_PIPELINE_BUILDER = "Agents & Pipeline Builder"
+    # Agent & Pipeline Builder (replaces Elitea MCP Tools)
+    AGENTS_PIPELINE_BUILDER = "Agent & Pipeline Builder"
+
+    # Interactive user input request
+    ASK_USER = "Ask User"
 
     # Task planning and breakdown
     PLANNER = "Planner"
@@ -32,14 +38,11 @@ class ChatInternalTool(str, Enum):
     # Python code execution environment
     PYTHON_SANDBOX = "Python Sandbox"
 
-    # Interactive user input request
-    ASK_USER = "Ask User"
-
     # Multi-agent collaboration mode
     SWARM_MODE = "Swarm Mode"
 
     # Automatic tool selection based on context
-    SMART_TOOLS = "Smart Tool Selection"
+    SMART_TOOLS = "Smart Tools Selection"
 
 
 # Canonical list of all Chat internal tools (for validation)
@@ -59,7 +62,7 @@ class AgentInternalTool(str, Enum):
     ATTACHMENTS = "Attachments"
 
     # Image generation from text prompts
-    IMAGE_CREATION = "Image creation"
+    IMAGE_CREATION = "Image Creation"
 
     # Data analysis and visualization
     DATA_ANALYSIS = "Data Analysis"
@@ -68,7 +71,7 @@ class AgentInternalTool(str, Enum):
     PLANNER = "Planner"
 
     # Python code execution environment
-    PYTHON_SANDBOX = "Python sandbox"
+    PYTHON_SANDBOX = "Python Sandbox"
 
     # Interactive user input request
     ASK_USER = "Ask User"
