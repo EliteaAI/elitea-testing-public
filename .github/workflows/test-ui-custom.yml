@@ -134,6 +134,11 @@ on:
         required: false
         type: boolean
         default: false
+      password_suffix_override:
+        description: 'Use this constant password suffix (TEMPLATE + suffix, e.g. "0") for every user (1-9, ADMIN, User B). Users/projects/tokens keep their own suffix. Empty = per-user suffix.'
+        required: false
+        type: string
+        default: ''
     secrets:
       ELITEA_URL:
         required: true
@@ -483,8 +488,12 @@ jobs:
         run: |
           # Construct password from template + suffix
           # For ADMIN suffix, use "Admin" (capitalized) instead of "ADMIN"
+          # password_suffix_override (if set) replaces the password suffix for every user
           SUFFIX="${{ matrix.suffix }}"
-          if [ "$SUFFIX" = "ADMIN" ]; then
+          OVERRIDE="${{ inputs.password_suffix_override }}"
+          if [ -n "$OVERRIDE" ]; then
+            PASSWORD_SUFFIX="$OVERRIDE"
+          elif [ "$SUFFIX" = "ADMIN" ]; then
             PASSWORD_SUFFIX="Admin"
           else
             PASSWORD_SUFFIX="$SUFFIX"
@@ -495,8 +504,8 @@ jobs:
           echo "::add-mask::$PASSWORD"
           echo "TEST_USER_PASSWORD=$PASSWORD" >> $GITHUB_ENV
 
-          # Secondary user (User B) password - always uses suffix 9
-          PASSWORD_B="${{ secrets.TEST_USER_PASSWORD_TEMPLATE }}9"
+          # Secondary user (User B) password - uses suffix 9 (or the override)
+          PASSWORD_B="${{ secrets.TEST_USER_PASSWORD_TEMPLATE }}${OVERRIDE:-9}"
           echo "::add-mask::$PASSWORD_B"
           echo "TEST_USER_B_PASSWORD=$PASSWORD_B" >> $GITHUB_ENV
 
