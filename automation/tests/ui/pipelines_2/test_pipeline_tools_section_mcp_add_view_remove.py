@@ -32,8 +32,8 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark
 UI_ELEMENT_TIMEOUT = 10_000
 
 # One of the fixture MCP's 3 real tools (read_wiki_structure, read_wiki_contents,
-# ask_question) — used to confirm the expanded "Show tools" list names an actual tool.
-_EXPECTED_TOOL = "ask_question"
+# ask_wiki_question) — used to confirm the expanded "Show tools" list names an actual tool.
+_EXPECTED_TOOL = "ask_wiki_question"
 
 
 @allure.issue(

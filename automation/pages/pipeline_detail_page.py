@@ -6341,7 +6341,7 @@ class PipelineDetailPage(PipelineFormPage):
 
         Args:
             toolkit_name: Toolkit/MCP name identifying the card.
-            tool_name: Raw tool name (schema key, e.g. ``ask_question``).
+            tool_name: Raw tool name (schema key, e.g. ``ask_wiki_question``).
             timeout: How long to wait for the item to appear.
 
         Returns:

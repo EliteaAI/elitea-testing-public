@@ -25,7 +25,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark
 UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 15_000
 
-# The two Input-mapping parameters "ask_question" requires (raw schema keys —
+# The two Input-mapping parameters "ask_wiki_question" requires (raw schema keys —
 # NOT the capitalized display labels the case text uses ("RepoName"/"Question");
 # see McpNode/InputMapping.jsx: variableName is a display-only capitalization
 # of these exact keys, and the AFS's recommended dynamic testid is keyed on
@@ -45,10 +45,10 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
     fixture = mcp_pipeline_with_toolkits
     pipeline_id = fixture["id"]
     node_id = fixture["node_id"]
-    initial_toolkit_name = fixture["toolkit_name"]  # "RemoteGithub"
-    initial_tool = fixture["tool"]  # "search_repositories"
+    initial_toolkit_name = fixture["toolkit_name"]  # the Context7 MCP's toolkit_name
+    initial_tool = fixture["tool"]  # "resolve-library-id"
     new_toolkit_name = fixture["other_toolkit_name"]  # the deepwiki MCP's toolkit_name
-    new_tools = set(fixture["other_tools"])  # {"read_wiki_structure", "read_wiki_contents", "ask_question"}
+    new_tools = set(fixture["other_tools"])  # {"read_wiki_structure", "read_wiki_contents", "ask_wiki_question"}
     project_id = str(settings.elitea_project_id)
 
     pipeline_page = PipelineDetailPage(page)
@@ -113,7 +113,7 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
     ):
         # Immediately after the Toolkit change and before opening the Tool
         # dropdown: the Tool select must show no stale value from the
-        # previous MCP (RemoteGithub's search_repositories).
+        # previous MCP (Context7's resolve-library-id).
         reset_tool_value = pipeline_page.get_mcp_node_tool_value(timeout=UI_ELEMENT_TIMEOUT)
         assert reset_tool_value == "", (
             f"Tool select should be visibly empty right after the Toolkit change, "
@@ -131,17 +131,17 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         )
 
     with allure.step("Step 7 — Select a tool from the new MCP's list; Tool combobox shows it"):
-        pipeline_page.select_open_listbox_option("ask_question", timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.select_open_listbox_option("ask_wiki_question", timeout=UI_ELEMENT_TIMEOUT)
         selected_tool = pipeline_page.get_mcp_node_tool_value()
-        assert selected_tool == "ask_question", (
-            f"Tool select should show 'ask_question' after selection, got {selected_tool!r}"
+        assert selected_tool == "ask_wiki_question", (
+            f"Tool select should show 'ask_wiki_question' after selection, got {selected_tool!r}"
         )
 
     with allure.step(
         "Step 8 — Input mapping (required 2) appears with the new tool's actual parameters"
     ):
         assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (required 2)' section should appear for ask_question's "
+            "'Input mapping (required 2)' section should appear for ask_wiki_question's "
             "2 required parameters (repoName, question)"
         )
         # Both Value fields for the new tool's parameters must be present —
@@ -182,8 +182,8 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         assert persisted_toolkit == new_toolkit_name, (
             f"Toolkit should persist as {new_toolkit_name!r} after reload, got {persisted_toolkit!r}"
         )
-        assert persisted_tool == "ask_question", (
-            f"Tool should persist as 'ask_question' after reload, got {persisted_tool!r}"
+        assert persisted_tool == "ask_wiki_question", (
+            f"Tool should persist as 'ask_wiki_question' after reload, got {persisted_tool!r}"
         )
         assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
             "Input mapping (required 2) section should still be present after reload"

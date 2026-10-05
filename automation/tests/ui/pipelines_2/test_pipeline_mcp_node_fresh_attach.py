@@ -36,7 +36,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark
 UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 15_000
 
-# The two Input-mapping parameters "ask_question" requires (raw schema keys —
+# The two Input-mapping parameters "ask_wiki_question" requires (raw schema keys —
 # NOT the capitalized display labels the case text uses ("RepoName"/"Question");
 # see McpNode/InputMapping.jsx: variableName is a display-only capitalization
 # of these exact keys — same precedent as the sibling ELITEA-1954/1955 tests).
@@ -193,14 +193,14 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         )
 
     with allure.step(
-        "Step 8 — Select 'ask_question' Tool; Input mapping (required 2) appears with repoName/question"
+        "Step 8 — Select 'ask_wiki_question' Tool; Input mapping (required 2) appears with repoName/question"
     ):
-        pipeline_page.select_mcp_node_tool("ask_question", timeout=UI_ELEMENT_TIMEOUT)
-        assert pipeline_page.get_mcp_node_tool_value() == "ask_question", (
-            "Tool select should show 'ask_question' after selection"
+        pipeline_page.select_mcp_node_tool("ask_wiki_question", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_mcp_node_tool_value() == "ask_wiki_question", (
+            "Tool select should show 'ask_wiki_question' after selection"
         )
         assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (required 2)' section should appear for ask_question's "
+            "'Input mapping (required 2)' section should appear for ask_wiki_question's "
             "2 required parameters (repoName, question)"
         )
         assert pipeline_page.is_mcp_node_input_mapping_value_visible(
@@ -248,8 +248,8 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.get_mcp_node_toolkit_value() == mcp_toolkit_name, (
             f"Toolkit should persist as {mcp_toolkit_name!r} after reload"
         )
-        assert pipeline_page.get_mcp_node_tool_value() == "ask_question", (
-            "Tool should persist as 'ask_question' after reload"
+        assert pipeline_page.get_mcp_node_tool_value() == "ask_wiki_question", (
+            "Tool should persist as 'ask_wiki_question' after reload"
         )
         assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
             "Input mapping (required 2) section should still be present after reload"

@@ -596,26 +596,29 @@ class TestSearchPipeline:
         console_errors = []
         page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
 
-        with allure.step("Step 1 — Create a pipeline whose name contains 'YAML' via API"):
-            yaml_pipeline_name = f"autotest_YAML_search_{uuid.uuid4().hex[:6]}"
-            pipeline = pipeline_api.create_pipeline(
-                name=yaml_pipeline_name,
-                description="ELITEA-2023 dashboard search filter/clear test",
-            )
-            pipeline_id = pipeline["id"]
-
+        created_pipeline_ids = []
         try:
+            with allure.step(
+                "Step 1 — Create a pipeline whose name contains 'YAML' and a "
+                "non-matching pipeline via API"
+            ):
+                # The non-matching pipeline is created rather than picked from the
+                # environment's existing rows — a fresh project (e.g. stage2) may
+                # hold no other pipeline, and its name must not contain "yaml".
+                suffix = uuid.uuid4().hex[:6]
+                yaml_pipeline_name = f"autotest_YAML_search_{suffix}"
+                non_matching_name = f"autotest_search_other_{suffix}"
+                for pipeline_name in (yaml_pipeline_name, non_matching_name):
+                    pipeline = pipeline_api.create_pipeline(
+                        name=pipeline_name,
+                        description="ELITEA-2023 dashboard search filter/clear test",
+                    )
+                    created_pipeline_ids.append(pipeline["id"])
+
             with allure.step(
                 "Step 2 — Navigate to Pipelines dashboard; verify full list loads "
                 "including the 'YAML' pipeline and a non-matching pipeline"
             ):
-                existing_rows = pipeline_api.list_pipelines().get("rows", [])
-                non_matching_name = next(
-                    row["name"]
-                    for row in existing_rows
-                    if "yaml" not in row.get("name", "").lower()
-                )
-
                 list_page = PipelinesListPage(page)
                 list_page.navigate()
 
@@ -623,7 +626,7 @@ class TestSearchPipeline:
                     f"Newly created pipeline '{yaml_pipeline_name}' should be visible on the dashboard"
                 )
                 assert list_page.pipeline_exists_in_list(non_matching_name, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"Pre-existing pipeline '{non_matching_name}' should be visible on the dashboard"
+                    f"Non-matching pipeline '{non_matching_name}' should be visible on the dashboard"
                 )
 
             with allure.step(
@@ -688,7 +691,8 @@ class TestSearchPipeline:
                     f"Unexpected console errors: {[m.text for m in console_errors]}"
                 )
         finally:
-            pipeline_api.delete_pipeline(pipeline_id)
+            for created_id in created_pipeline_ids:
+                pipeline_api.delete_pipeline(created_id)
 
 
 class TestPipelineIsolation:

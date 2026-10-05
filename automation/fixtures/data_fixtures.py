@@ -2078,7 +2078,7 @@ def github_toolkit_with_invalid_credential(
 
 # Public, auth-free MCP endpoint used to provision a throwaway MCP toolkit
 # with a real, non-empty tool list (3 tools: read_wiki_structure,
-# read_wiki_contents, ask_question). Picked over the environment's
+# read_wiki_contents, ask_wiki_question). Picked over the environment's
 # pre-existing placeholder-URL MCPs (which return zero tools) and over
 # "Remote Github" (whose live OAuth session is disconnected, though its
 # CACHED tool list still renders) — see
@@ -2086,12 +2086,14 @@ def github_toolkit_with_invalid_credential(
 # § Test Data for the full rationale.
 _MCP_DEEPWIKI_URL = "https://mcp.deepwiki.com/mcp"
 
-# The environment's pre-existing "Remote Github" MCP toolkit — reused (not
-# created/deleted by this fixture) because its cached tool list renders
-# client-side without a live OAuth reconnection (ELITEA-1954 AFS § Test Data).
-_REMOTE_GITHUB_TOOLKIT_NAME = "Remote Github"
-_REMOTE_GITHUB_TOOLKIT_YAML_NAME = "RemoteGithub"
-_REMOTE_GITHUB_TOOL = "search_repositories"
+# Second public, auth-free MCP endpoint (2 tools: resolve-library-id,
+# query-docs) — provisions the INITIAL toolkit of the ELITEA-1954 precondition
+# node. Replaced the environment's pre-existing "Remote Github" MCP (fixed id
+# `remote_github_mcp_toolkit_id`), which doesn't exist on every environment
+# (missing on stage2 → setup error). Its tool set is disjoint from DeepWiki's,
+# so the test's "no stale tool leakage" check stays meaningful.
+_MCP_CONTEXT7_URL = "https://mcp.context7.com/mcp"
+_MCP_CONTEXT7_PREFERRED_TOOL = "resolve-library-id"
 
 
 @pytest.fixture
@@ -2157,65 +2159,90 @@ def mcp_pipeline_with_toolkits(
     """Create a pipeline with an MCP node pre-configured with a Toolkit + Tool.
 
     Satisfies the ELITEA-1954 precondition: a pipeline with an MCP node
-    already configured (Toolkit=``RemoteGithub``, Tool=``search_repositories``),
-    with >=2 MCP toolkits attached in the pipeline's TOOLS section — both
-    with real, non-empty tool lists (the environment's pre-existing
-    "Remote Github" MCP, reused read-only, plus the fresh
-    ``mcp_toolkit_with_tools`` fixture).
+    already configured (Toolkit = a throwaway Context7 MCP, Tool =
+    ``resolve-library-id``), with >=2 MCP toolkits attached in the pipeline's
+    TOOLS section — both with real, non-empty, disjoint tool lists (the
+    Context7 MCP created here, plus the DeepWiki ``mcp_toolkit_with_tools``
+    fixture). Both toolkits are created and deleted by fixtures, so the
+    precondition holds on any environment.
 
     Yields:
         dict: ``{"id": int, "name": str, "node_id": str, "toolkit_name": str,
         "tool": str, "other_toolkit_name": str, "other_tools": list[str]}``
         — the "other" fields describe the toolkit/tools the test switches TO.
     """
-    # NOTE: not discovered via toolkit_api.list_all_toolkits() by name — that
-    # listing endpoint returns an empty list on this environment regardless
-    # of auth method (confirmed during ELITEA-1954 implementer Phase 2
-    # exploration; a real API/environment quirk). The toolkit id is a fixed,
-    # pre-existing environment resource instead (config.py
-    # `remote_github_mcp_toolkit_id`, overridable via env).
-    remote_github = toolkit_api.get_toolkit(settings.remote_github_mcp_toolkit_id)
-    assert remote_github.get("name") == _REMOTE_GITHUB_TOOLKIT_NAME, (
-        f"Environment precondition mismatch: toolkit id {settings.remote_github_mcp_toolkit_id} "
-        f"is {remote_github.get('name')!r}, expected {_REMOTE_GITHUB_TOOLKIT_NAME!r} — "
-        f"update `remote_github_mcp_toolkit_id` in config.py / .env.test if the environment's "
-        f"Remote Github MCP toolkit id has changed."
+    from api.helpers import sync_mcp_tools_with_retry
+
+    initial_name = f"autotest_mcp2_{request.node.name}"[:32]
+    initial_tools = sync_mcp_tools_with_retry(
+        toolkit_api,
+        _MCP_CONTEXT7_URL,
+        max_retries=3,
+        initial_delay=5,
+        timeout=60
     )
-    assert _REMOTE_GITHUB_TOOL in (remote_github.get("settings", {}).get("selected_tools") or []), (
-        f"{_REMOTE_GITHUB_TOOLKIT_NAME!r} toolkit no longer exposes tool {_REMOTE_GITHUB_TOOL!r} — "
-        f"pick a different initial tool for the fixture's precondition node"
+    assert initial_tools, f"mcp_sync_tools returned no tools for {_MCP_CONTEXT7_URL!r} — endpoint may be down"
+    initial_tool_names = [t["name"] for t in initial_tools]
+    assert not set(initial_tool_names) & set(mcp_toolkit_with_tools["tools"]), (
+        f"Initial and switched-to MCPs must expose disjoint tools for the stale-leakage check, "
+        f"got overlap {set(initial_tool_names) & set(mcp_toolkit_with_tools['tools'])!r}"
+    )
+    initial_tool = (
+        _MCP_CONTEXT7_PREFERRED_TOOL if _MCP_CONTEXT7_PREFERRED_TOOL in initial_tool_names else initial_tool_names[0]
     )
 
-    deepwiki_full = toolkit_api.get_toolkit(mcp_toolkit_with_tools["id"])
-
-    name = f"autotest_pl_{request.node.name}"[:32]
-    node_id = "MCP 1"
-    pipeline = pipeline_api.create_pipeline_with_mcp_node(
-        name=name,
-        description=f"Auto-created MCP pipeline for test {request.node.name}",
-        tools=[remote_github, deepwiki_full],
-        toolkit_name=_REMOTE_GITHUB_TOOLKIT_YAML_NAME,
-        tool=_REMOTE_GITHUB_TOOL,
-        node_id=node_id,
+    initial_toolkit = toolkit_api.create_remote_mcp_toolkit(
+        name=initial_name,
+        description=f"Auto-created MCP for test {request.node.name}",
+        url=_MCP_CONTEXT7_URL,
+        tools=initial_tools,
     )
-    pid = pipeline["id"]
-    logger.info("Created MCP pipeline %s (%s) for %s", pid, name, request.node.name)
+    initial_toolkit_id = initial_toolkit["id"]
+    initial_toolkit_name = initial_toolkit.get("toolkit_name", initial_name)
+    logger.info(
+        "Created MCP toolkit %s (%s) with %d tools for %s",
+        initial_toolkit_id, initial_name, len(initial_tools), request.node.name,
+    )
 
-    yield {
-        "id": pid,
-        "name": name,
-        "node_id": node_id,
-        "toolkit_name": _REMOTE_GITHUB_TOOLKIT_YAML_NAME,
-        "tool": _REMOTE_GITHUB_TOOL,
-        "other_toolkit_name": mcp_toolkit_with_tools["toolkit_name"],
-        "other_tools": mcp_toolkit_with_tools["tools"],
-    }
-
+    pid = None
     try:
-        pipeline_api.delete_pipeline(pid)
-        logger.info("Deleted MCP pipeline %s", pid)
-    except Exception as exc:
-        logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)
+        initial_full = toolkit_api.get_toolkit(initial_toolkit_id)
+        deepwiki_full = toolkit_api.get_toolkit(mcp_toolkit_with_tools["id"])
+
+        name = f"autotest_pl_{request.node.name}"[:32]
+        node_id = "MCP 1"
+        pipeline = pipeline_api.create_pipeline_with_mcp_node(
+            name=name,
+            description=f"Auto-created MCP pipeline for test {request.node.name}",
+            tools=[initial_full, deepwiki_full],
+            toolkit_name=initial_toolkit_name,
+            tool=initial_tool,
+            node_id=node_id,
+        )
+        pid = pipeline["id"]
+        logger.info("Created MCP pipeline %s (%s) for %s", pid, name, request.node.name)
+
+        yield {
+            "id": pid,
+            "name": name,
+            "node_id": node_id,
+            "toolkit_name": initial_toolkit_name,
+            "tool": initial_tool,
+            "other_toolkit_name": mcp_toolkit_with_tools["toolkit_name"],
+            "other_tools": mcp_toolkit_with_tools["tools"],
+        }
+    finally:
+        if pid is not None:
+            try:
+                pipeline_api.delete_pipeline(pid)
+                logger.info("Deleted MCP pipeline %s", pid)
+            except Exception as exc:
+                logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)
+        try:
+            toolkit_api.delete_toolkit(initial_toolkit_id)
+            logger.info("Deleted MCP toolkit %s", initial_toolkit_id)
+        except Exception as exc:
+            logger.warning("Failed to delete MCP toolkit %s: %s", initial_toolkit_id, exc)
 
 
 _HITL_RUNTIME_PRINTER_OUTPUT = "Final: pipeline approved"

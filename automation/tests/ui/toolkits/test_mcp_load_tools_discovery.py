@@ -26,7 +26,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p2, pytest.mark.
 
 MCP_URL = "https://mcp.deepwiki.com/mcp"
 EXPECTED_EMPTY_STATE_TEXT = 'No tools to display for now. To get tools from MCP press button “Load Tools”'
-EXPECTED_TOOL_NAMES = {"read_wiki_structure", "read_wiki_contents", "ask_question"}
+EXPECTED_TOOL_NAMES = {"read_wiki_structure", "read_wiki_contents", "ask_wiki_question"}
 
 
 @allure.issue(
@@ -118,12 +118,12 @@ def test_mcp_load_tools_discovery(page, toolkit_api: ToolkitAPI):
                 )
 
         with allure.step(
-            'Step 9 — Select "ask_question" in the Test Settings "Tool" dropdown; '
+            'Step 9 — Select "ask_wiki_question" in the Test Settings "Tool" dropdown; '
             "verify its parameter schema renders (CLARIFICATION issue #595, not a "
             "Tools-section pill click)"
         ):
-            form.select_test_tool("ask_question")
-            # ask_question's schema requires repoName (string or array-of-strings,
+            form.select_test_tool("ask_wiki_question")
+            # ask_wiki_question's schema requires repoName (string or array-of-strings,
             # anyOf) and question (string) — assert the rendered fields, which are
             # the schema-on-select proof (AFS step 9). Located via the dynamic
             # toolkit-test-param-{fieldKey} testid (EliteaUI automation/testids
@@ -132,11 +132,11 @@ def test_mcp_load_tools_discovery(page, toolkit_api: ToolkitAPI):
             # documented stop+flag exception, so a raw get_by_text() locator was
             # a testid-only policy violation (.agents/testing.md § Locator policy).
             assert form.is_test_param_field_visible("repoName"), (
-                "ask_question's 'repoName' parameter field should render after selecting "
+                "ask_wiki_question's 'repoName' parameter field should render after selecting "
                 "the tool in the Test Settings dropdown"
             )
             assert form.is_test_param_field_visible("question"), (
-                "ask_question's 'question' parameter field should render after selecting "
+                "ask_wiki_question's 'question' parameter field should render after selecting "
                 "the tool in the Test Settings dropdown"
             )
 
@@ -167,10 +167,10 @@ def test_mcp_load_tools_discovery(page, toolkit_api: ToolkitAPI):
                 assert "repoName" in schema_properties, (
                     f"{tool_name}'s args_schema should require 'repoName', got: {schema_properties!r}"
                 )
-            # Confirmed shapes (AFS step 10): ask_question also requires 'question'.
-            ask_question_properties = available_by_value["ask_question"]["args_schema"]["properties"]
-            assert "question" in ask_question_properties, (
-                f"ask_question's args_schema should require 'question', got: {ask_question_properties!r}"
+            # Confirmed shapes (AFS step 10): ask_wiki_question also requires 'question'.
+            ask_wiki_question_properties = available_by_value["ask_wiki_question"]["args_schema"]["properties"]
+            assert "question" in ask_wiki_question_properties, (
+                f"ask_wiki_question's args_schema should require 'question', got: {ask_wiki_question_properties!r}"
             )
 
         with allure.step(

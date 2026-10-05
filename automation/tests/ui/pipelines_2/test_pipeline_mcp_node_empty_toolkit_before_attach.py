@@ -27,7 +27,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p3, pytest.mark
 UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 15_000
 
-# The two Input-mapping parameters "ask_question" requires (raw schema keys,
+# The two Input-mapping parameters "ask_wiki_question" requires (raw schema keys,
 # same tool + fixture the sibling ELITEA-1954 test uses — see
 # pipeline_detail_page.fill_mcp_node_input_mapping_value docstring for why
 # these are the raw schema keys, not the capitalized display labels).
@@ -148,13 +148,13 @@ def test_mcp_node_empty_toolkit_before_attach(page, pipeline_id, mcp_toolkit_wit
         )
 
     with allure.step("Step 11 — Select a tool; Input mapping (required 2) renders with the tool's own params"):
-        pipeline_page.select_mcp_node_tool("ask_question", timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.select_mcp_node_tool("ask_wiki_question", timeout=UI_ELEMENT_TIMEOUT)
         selected_tool = pipeline_page.get_mcp_node_tool_value()
-        assert selected_tool == "ask_question", (
-            f"Tool select should show 'ask_question' after selection, got {selected_tool!r}"
+        assert selected_tool == "ask_wiki_question", (
+            f"Tool select should show 'ask_wiki_question' after selection, got {selected_tool!r}"
         )
         assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (required 2)' section should appear for ask_question's "
+            "'Input mapping (required 2)' section should appear for ask_wiki_question's "
             "2 required parameters (repoName, question)"
         )
         assert pipeline_page.is_mcp_node_input_mapping_value_visible(
@@ -190,8 +190,8 @@ def test_mcp_node_empty_toolkit_before_attach(page, pipeline_id, mcp_toolkit_wit
         assert persisted_toolkit == mcp_toolkit_name, (
             f"Toolkit should persist as {mcp_toolkit_name!r} after reload, got {persisted_toolkit!r}"
         )
-        assert persisted_tool == "ask_question", (
-            f"Tool should persist as 'ask_question' after reload, got {persisted_tool!r}"
+        assert persisted_tool == "ask_wiki_question", (
+            f"Tool should persist as 'ask_wiki_question' after reload, got {persisted_tool!r}"
         )
         assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
             "Input mapping (required 2) section should still be present after reload"
