@@ -27,6 +27,7 @@ import logging
 import pytest
 
 from api import AgentAPI
+from config import settings
 from pages.agent_page import AgentPage
 from pages.chat_page import ChatPage
 import allure
@@ -165,7 +166,7 @@ class TestAgentWithToolkitInChat:
             initial_count = chat.get_message_count()
             logger.info("Sending message to trigger toolkit (initial messages: %d)...", initial_count)
             chat.send_message(
-                "Use the GitHub toolkit to list all branches in the EliteaAI/elitea-testing repository. "
+                f"Use the GitHub toolkit to list all branches in the {settings.git_repo} repository. "
                 "Execute the tool and show me the actual branch names.",
                 use_enter=False
             )
@@ -184,7 +185,13 @@ class TestAgentWithToolkitInChat:
         # Step 8 — Verify response contains branch/repository data from toolkit
         # ------------------------------------------------------------------
         with allure.step("Step 8 — Verify response contains branch/repository data"):
-            last_content = chat.get_last_message_text()
+            # The model often renders the branch list as a Markdown table —
+            # table cells are outside the p/li body text get_last_message_text()
+            # reads, so fold the rendered table cells in as well.
+            table_text = "\n".join(
+                cell for row in chat.get_rendered_table_data() for cell in row.values()
+            )
+            last_content = "\n".join(filter(None, (chat.get_last_message_text(), table_text)))
             assert last_content, "Expected AI to respond with content"
             logger.info("AI response (%d chars): %s", len(last_content), last_content[:500])
 
