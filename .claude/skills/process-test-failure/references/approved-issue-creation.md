@@ -266,7 +266,7 @@ cat > /tmp/issue-body.md <<'EOF'
 
 ## Scope
 
-- Branch: <automation/base | main>
+- Branch: <automation/factory | main>
 - Target environment: <env>
 EOF
 

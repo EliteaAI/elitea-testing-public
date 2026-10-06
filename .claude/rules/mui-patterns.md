@@ -7,17 +7,17 @@ paths:
 
 # MUI / EliteAUI Interaction Patterns
 
-> **⚠️ Locator policy reconciliation (2026-07-14, testid-only ruling).** This file
-> teaches INTERACTION mechanics — waits, debounce, keyboard-vs-fill, overlay
-> clicks, hover flows. Those remain fully valid. But every raw selector shown in
-> the examples (`ul.MuiList-root`, `role="menuitem"`, `aria-label=…`, `css-*`
-> classes, bounding-box filtering) is **legacy illustration, not license**: in
-> new/modified code the element handle comes from a class-level
-> `LocatorDescriptor(testid=…)` or a `[data-testid=` template constant
-> (`.agents/testing.md` § Locator policy), and the mechanics below are applied
-> **to that handle**. Where a section documents "this area has no testids", the
-> correct action today is `add-data-testid` — the workaround applies only after
-> a stop+flag exception.
+> **Locator policy (2026-10, dev-targeted factory — `.claude/rules/page-objects.md`
+> § Locator Strategy).** This file teaches INTERACTION mechanics — waits,
+> debounce, keyboard-vs-fill, overlay clicks, hover flows; those stay valid. The
+> raw selectors in the examples are **illustrations of the DOM, not copy-paste
+> handles**: in new/modified code every handle is a class-level declaration on
+> the ladder (`testid=` if DEV already has one → `role=`+`name=` → `label=` →
+> stable `css=` → declared `xpath=`), each non-testid one carrying
+> `suggested_testid=`. MUI generated classes (`css-*`) and `Mui*-root` structural
+> classes are not "stable CSS" — prefer role/label; where structure is genuinely
+> the only handle, declare it as a `css=` rung with a hint so the testid
+> migrator replaces it. Positional picks (`.nth(i)`, "last button") are forbidden.
 
 ## Message Locators
 
@@ -238,59 +238,56 @@ page.wait_for_timeout(500)  # Smooth scroll settle
 
 ---
 
-## Stable Aria Labels Reference (LEGACY — do not use for new locators)
+## Stable Aria Labels Reference — ladder rungs 2/3
 
-> New code never locates by aria-label — add a testid instead. This table
-> remains ONLY as a map of what old code relies on, and as candidate elements
-> for testid backfill.
+These `aria-label`s are stable on DEV and are valid **`label=` / `role=`+`name=`
+rungs** (the accessible name of a button IS its aria-label). Declare them at
+class level with a `suggested_testid=`; check DEV for an existing testid first.
 
-Some elements have reliable `aria-label` attributes:
-
-| Element | aria-label | Notes |
+| Element | aria-label | Declaration (suggested hint) |
 |---------|-----------|-------|
-| Copy message | `Copy to clipboard` | Stable |
-| Create Conversation | `Create Conversation` | Stable |
-| Search conversations | `Search conversations` | Stable |
-| Send message | `send your question` | Stable |
-| Add agent (sidebar) | `Add agent` | Stable |
-| Add toolkit | `Add toolkit` | Stable |
-| Delete toolkit | `delete tool` | Stable |
-| Refresh agents | `Refresh the agents` | Stable |
+| Copy message | `Copy to clipboard` | `ScopedLocator(role="button", name="Copy to clipboard", suggested_testid="chat-message-copy-button")` |
+| Create Conversation | `Create Conversation` | `LocatorDescriptor(role="button", name="Create Conversation", suggested_testid="chat-create-conversation-button")` |
+| Search conversations | `Search conversations` | `LocatorDescriptor(label="Search conversations", suggested_testid="chat-conversations-search-input")` |
+| Send message | `send your question` | `LocatorDescriptor(role="button", name="send your question", suggested_testid="chat-send-button")` |
+| Add agent (sidebar) | `Add agent` | `LocatorDescriptor(role="button", name="Add agent", suggested_testid="chat-add-agent-button")` |
+| Add toolkit | `Add toolkit` | `LocatorDescriptor(role="button", name="Add toolkit", suggested_testid="agent-add-toolkit-button")` |
+| Delete toolkit | `delete tool` | `ScopedLocator(role="button", name="delete tool", suggested_testid="agent-toolkit-delete-button")` |
+| Refresh agents | `Refresh the agents` | `LocatorDescriptor(role="button", name="Refresh the agents", suggested_testid="chat-agents-refresh-button")` |
 
 **Elements WITHOUT aria-label:**
 
 | Element | How to locate | Notes |
 |---------|--------------|-------|
-| Delete message | Last button after hover | Order: Copy (0), Regenerate (1), Delete (2) |
-| Tab elements | `get_by_role("tab", name="Configuration")` | Use visible text |
-| View toggles | `get_by_role("button", name="Table view")` | Use visible text |
+| Delete message | **No stable rung by name** — legacy code picks the last button after hover (positional, forbidden in new code) | Use the testid if DEV has it; otherwise any verified non-positional rung (tooltip-provided accessible name, icon `aria-label`). If none exists, escalate to the lead as a `question` — an element with no non-positional handle is the migrator's priority testid |
+| Tab elements | `role="tab", name="Configuration"` | Visible text is the accessible name |
+| View toggles | `role="button", name="Table view"` | Visible text is the accessible name |
 
 ```python
-# ✅ For elements with aria-label
-copy_btn = page.get_by_label("Copy to clipboard")
+# ✅ Class-level declaration, resolved inside the hovered message
+class ChatPage(BasePage):
+    MESSAGE_COPY_BUTTON = ScopedLocator(
+        role="button", name="Copy to clipboard", suggested_testid="chat-message-copy-button"
+    )
 
-# ✅ For elements without aria-label - document strategy
-def delete_message(self, index: int):
-    """Delete message by hovering and clicking delete button.
-    
-    LOCATOR: Delete button has NO aria-label. Located as last button
-    after hover. Button order: Copy (0), Regenerate (1), Delete (2).
-    """
-    message = self.messages_container.nth(index)
-    message.hover()
-    page.wait_for_timeout(500)  # Hover effect animation
+    def copy_message(self, message: Locator) -> None:
+        message.hover()
+        self.MESSAGE_COPY_BUTTON.within(message).click(force=True)
+
+# ❌ WRONG — positional pick, built in the method
     buttons = message.locator('button')
-    buttons.last.click(force=True)  # Last button = Delete
+    buttons.last.click(force=True)
 ```
 
 ---
 
-## Test Settings Panel (Toolkit Detail Page) — TESTIDS NEEDED (stop+flag first)
+## Test Settings Panel (Toolkit Detail Page) — no accessible names
 
-> This section documents a legacy workaround for a panel that predates the
-> testid policy. In new work: run `add-data-testid` for the fields you touch
-> (or stop+flag if genuinely unplaceable) — do NOT copy the label-text +
-> bounding-box approach below into new code.
+> Legacy code below filters by label text + bounding box (positional — forbidden
+> in new code). In new work: use the testid if DEV has one; otherwise a declared
+> `xpath=` rung anchored on the label text and scoped to the panel's container
+> (non-positional), with a `suggested_testid=` — this is exactly the element class
+> the testid migrator should prioritise.
 
 Tool parameter fields have **NO accessible names** — must locate by label text.
 

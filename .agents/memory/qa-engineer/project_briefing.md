@@ -39,29 +39,30 @@ type: project
   system's own API / the adapter verbs directly — a missing optional skill is never
   a blocker, and no single TMS (Xray included) is assumed to be present.**
 
-## Elitea Project Specifics (seeded by scout 2026-07-10)
+## Elitea Project Specifics (seeded by scout 2026-07-10, revised 2026-10)
 
-- **Explore against `http://localhost:5173`** — `EliteaAI/EliteaUI` (no fork) on its
-  `automation/testids` **integration branch** (DEV backend). Start it with the
-  `start-ui-localhost` skill. That branch carries every testid the team ever created —
-  those already on EliteaUI `main` *and* those still only on `automation/testids`
-  (awaiting a human's cherry-pick to `main`) — so deployed envs always lag it.
-  **Never validate handles against dev/next.**
-- **State handles (PR #581 ruling, 2026-07-16):** spec element state as a stable
-  testid + `data-*` attribute filter (`[data-testid="x"][data-expanded="false"]`),
-  never a state-dependent testid; as reviewer, a state-conditional testid or a
-  feature-scoped testid hardcoded in a shared component in the UI diff is
-  `CHANGES_REQUESTED` (`.agents/testing.md` § Locator policy).
-- **Handles are testids only — HARD OVERRIDE, `.agents/role-overrides.md`.** If an
-  element lacks one, the AFS row is `testid needed: {section}-{element}-{type}` — the
-  implementer adds it via `add-data-testid`. Never spec CSS/text/role selectors as
-  primary handles, never soften a missing testid into a MINOR defect (issue #46
-  anti-pattern), and as reviewer: any ADDED non-testid handle in pages/tests is
-  `CHANGES_REQUESTED` — **neighborhood consistency is not a waiver** (the PR #41
-  "convention drift consistent with its neighbors" waiver is exactly how 40 raw
-  selectors merged in one day). Mechanical diff grep per role-overrides.md.
-- **Auth quirks:** localhost skips login entirely (`auth_state` + `VITE_DEV_TOKEN`);
-  Keycloak field on deployed envs is `input[name="username"]`, not email. AI responses
+> **2026-10 precedence:** the factory targets the **DEV env as deployed** with the locator
+> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Any pre-2026-10
+> testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
+> is **superseded**; testid creation belongs to the `testid-migrator` only.
+
+- **Explore against DEV — `https://dev.elitea.ai/app`, as deployed.** Run
+  `cd automation && ../.venv/bin/python scripts/dev_storage_state.py` before the first
+  browser call (the Playwright MCP loads that storage state; Keycloak sessions expire).
+  Never start the local UI and never touch EliteaUI — handles are validated on DEV.
+- **State handles:** spec element state as ARIA state (`aria-expanded`,
+  `aria-selected`) or a `data-*` attribute filter on the stable handle — never a
+  state-dependent testid (PR #581 ruling, still applies to the migrator's UI diffs).
+- **Handles follow the ladder — HARD OVERRIDE, `.agents/role-overrides.md`.** Handles
+  Reference columns: rung | handle | `suggested_testid` | provenance (`testid on DEV ✓` /
+  `ladder — no testid on DEV`). Existing DEV testid first, then role+name → label →
+  stable css → declared xpath; never positional, never MUI generated classes. An element
+  with no non-positional handle → `question` to the lead. `testid needed:` rows are
+  retired. As reviewer: run the ladder grep from role-overrides.md § Reviewer slot —
+  an undeclared or hint-less handle is `CHANGES_REQUESTED`; **neighborhood consistency
+  is not a waiver** (PR #41 lesson).
+- **Auth quirks:** `auth_state` logs in via the API on DEV; the Keycloak field is
+  `input[name="username"]`, not email. AI responses
   arrive over WebSocket ~2s late — evidence needs waits.
 - **Playwright MCP click gotcha (live UI exploration, analyst slot):**
   `mcp__playwright__browser_click` on the "Support Assistant" launcher (and other
@@ -79,8 +80,8 @@ type: project
   `elitea-toolkit` / `elitea-testing` cover pipelines, toolkits, predict/debug.
 - **Defects:** GitHub issue labelled `bug` in `EliteaAI/elitea-testing-public`,
   strict-per-bug, body names the case ID + originating task.
-- **Reviewer slot:** triangulate case file ↔ AFS ↔ PR diff; PRs target `automation/base`;
-  check: testid-only discipline, no `fallback` population, locators as page-class
+- **Reviewer slot:** triangulate case file ↔ AFS ↔ PR diff; PRs target `automation/factory`;
+  check: ladder discipline (declared rung + `suggested_testid=`), no `fallback`/`locator=`, locators as page-class
   fields only (none built inside methods/specs — **including a raw selector
   chained off an existing field inside a method, e.g.
   `self.some_field.locator(".css-class")`, which looks compliant at a glance but

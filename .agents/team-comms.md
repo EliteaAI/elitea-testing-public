@@ -8,21 +8,23 @@
 
 - **Host:** Claude Code (`.claude/agents/`).
 - **Dispatch:** host-native subagents via the built-in `Agent` tool.
-- **Installed personas:** 4 — see the roster below.
+- **Installed personas:** 5 — see the roster below.
 - **NOT in the roster:** `ui-test-orchestrator.md` and `failure-investigator.md` —
   installed for the **human** team's direct use only (operator ruling 2026-07-14).
   They bypass the pipeline's gates, so **no pipeline agent dispatches or defers to
   them**; their output enters only through the normal PR review gates. The skills
   they reference (`add-data-testid`, `page-object-generator`, `start-ui-localhost`)
-  stay active — mine those for context, never the agents.
+  stay active — mine those for context, never the agents. (`add-data-testid` and
+  `start-ui-localhost` are now used only by `testid-migrator`.)
 
 ## Team roster
 
 | Role | `subagent_type` | Hand off… |
 |------|-----------------|-----------|
-| Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, merge gate to `automation/base`, TMS intake/back-write, board #9 discipline, batch ops (on request) |
-| QA Engineer — Sage (analyst + reviewer) | `qa-engineer` | Analyst: execute case vs `localhost:5173`, emit AFS. Reviewer: FRESH session, adversarial review of automation PRs |
-| Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test through page objects; testid work via `add-data-testid` on `EliteaAI/EliteaUI` (`automation/testids`, committed + pushed; human promotes to `main`) |
+| Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, merge gate to `automation/factory`, TMS intake/back-write, board #9 discipline, batch ops (on request) |
+| QA Engineer — Sage (analyst + reviewer) | `qa-engineer` | Analyst: execute case vs DEV (`https://dev.elitea.ai/app`), emit AFS with ladder handles. Reviewer: FRESH session, adversarial review of automation PRs |
+| Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test on DEV through page objects, ladder locators with `suggested_testid=`; never touches EliteaUI |
+| Testid Migrator — Tess (on request) | `testid-migrator` | Ledger-driven locator → testid migration: phase A swaps deployed testids + verifies on DEV (PR → `automation/factory`); phase B adds testids on `EliteaAI/EliteaUI` `automation/testids` (pushed; human promotes). Started by request (a person or another party), never by a factory batch |
 | Scout — Kit | `scout` | Onboarding/seed refresh, retrospectives, optimization passes |
 
 Use the `subagent_type` value exactly — it must match a directory name in
@@ -33,6 +35,8 @@ Use the `subagent_type` value exactly — it must match a directory name in
 - **Automation work:** the user launches Tal directly —
   `claude --agent test-automation-lead` — with a case ID / batch / folder intake
   request. Tal is a top-level orchestrator, not a subagent.
+- **Locator migration:** `claude --agent testid-migrator` — runs on request, started
+  by a person or by another party.
 - **Seed refresh / retrospective:** `claude --agent scout`.
 
 ## How to hand off work (Claude Code)
@@ -47,7 +51,7 @@ context and sees none of your conversation — everything it needs goes in the
       subagent_type="qa-engineer",
       prompt="Analyst slot — analyse ELITEA-1739 per the test-case-analysis skill.
               Case file: ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/skills/....md
-              Target: http://localhost:5173 (start via start-ui-localhost skill).
+              Target: DEV https://dev.elitea.ai/app (run scripts/dev_storage_state.py first).
               Return the AFS path + status."
     )
 

@@ -2,23 +2,25 @@
 project: elitea-testing
 team: elitea-test-automation
 issue-tracker: https://github.com/EliteaAI/elitea-testing-public/issues
-default-branch: automation/base
+default-branch: automation/factory
 languages: [python]
 ---
 
 # Elitea Test Automation — project card
 
 Playwright/pytest suite automating onetest TMS cases against the Elitea platform,
-run locally against `EliteaAI/EliteaUI` on its `automation/testids` integration
-branch. **Team goal: `data-testid` on every element new tests touch — UI-automation
-coverage is measured by testid presence** (locator policy: `.agents/testing.md`).
+built and verified against the **DEV env as deployed** (2026-10). Locators follow a
+ladder (existing testid → role+name → label → css → xpath, each non-testid with a
+`suggested_testid=` hint); a separate **`testid-migrator`** converts them to testids
+once those are deployed. **Team goal: drive locator debt to zero** — measured by
+`automation/scripts/locator_inventory.py scan` (locator policy: `.agents/testing.md`).
 Currently UI-focused; API tests exist and
 other surfaces (mobile, perf) may be added later — nothing in this seed assumes
 UI-only.
 
 ## Tech Stack
 - Playwright 1.61.0 + pytest 9.1.1 (Python 3.13, repo-local `.venv`)
-- Page objects with testid-only `LocatorDescriptor`
+- Page objects with class-level `LocatorDescriptor` / `ScopedLocator` on the locator ladder
 - allure-pytest reporting (mandatory install extra)
 
 ## Build & Test
@@ -28,12 +30,14 @@ UI-only.
 
 ## Environment & access
 
-- **Primary base URL:** `http://localhost:5173` — `EliteaAI/EliteaUI` on `automation/testids`,
-  pointing at the DEV backend. `ELITEA_URL` in `.env.test` controls it; `APP_PREFIX`
-  empty on localhost, `/app` on deployed envs.
+- **Primary base URL:** `https://dev.elitea.ai` with `APP_PREFIX=/app` — the DEV env as
+  deployed. `ELITEA_URL` / `APP_PREFIX` in `.env.test` control it (template:
+  `automation/.env.test.example`).
 - **API base:** `ELITEA_API_BASE` (DEV backend).
-- Deployed envs `dev.elitea.ai` / `next.elitea.ai` exist but are **CI's job** — the
-  local pipeline never targets them for verification.
+- **Browser exploration auth:** `cd automation && ../.venv/bin/python scripts/dev_storage_state.py`
+  at session start — writes the Playwright MCP storage state (Keycloak sessions expire).
+- `http://localhost:5173` (EliteaUI `automation/testids`) is used **only by the
+  `testid-migrator`** in its phase B. `next.elitea.ai` / stage envs stay CI's job.
 
 ### Repo access map
 
@@ -41,7 +45,7 @@ UI-only.
 |---|---|---|
 | `EliteaAI/elitea-testing-public` | admin | this repo — tests, tracker, board |
 | `EliteaAI/onetest-ai-tm-Elitea` | admin | TMS — cases, runs, defects |
-| `EliteaAI/EliteaUI` | **push, no admin** | UI — testid work directly on `automation/testids`; `main` owned by the UI team |
+| `EliteaAI/EliteaUI` | **push, no admin** | UI — read-only for the factory; `testid-migrator` commits testids on `automation/testids`; `main` owned by the UI team |
 | `EliteaAI/elitea_assistant` | **push, no admin** | Support Assistant (connected repo, `@eliteaai/elitea-assistant`) — testids in ITS source on its own `automation/testids` integration branch; consumed by EliteaUI as a git-dep. See `.agents/workflow.md` § Connected repos. |
 | ~~`bermudas/EliteaUI`~~ (fork) | RETIRED 2026-07-13 | no longer part of the workflow — never push to it |
 
@@ -54,7 +58,7 @@ Env-var names only — **never secrets**. All resolve from `automation/.env.test
 |----------|---------|--------------------|
 | `${TEST_USER}` | Standard authenticated user (Keycloak) | `TEST_USER_EMAIL`, `TEST_USER_PASSWORD` |
 | API token | Direct API calls | `ELITEA_API_TOKEN` |
-| localhost dev auth | `auth_state` skips login on localhost | `VITE_DEV_TOKEN` (in `EliteaUI/.env`) |
+| localhost dev auth (migrator only) | `auth_state` skips login on localhost | `VITE_DEV_TOKEN` (in `EliteaUI/.env`) |
 | GitHub toolkit test data | Fed INTO the Elitea UI/API to create GitHub toolkits & credentials (toolkit tests, `github_credential` fixture, guardrails tests — they SKIP without it) | `GIT_HUB_TOKEN` (in `.env.test`) |
 | Jira toolkit test data | Same pattern for Jira toolkits | `JIRA_USERNAME`, `JIRA_API_KEY` |
 
@@ -161,7 +165,7 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   `expect.soft()` with ticket linked; blocking defect → natural fail + `blocked`
 - **Two trackers, two purposes** — do not conflate:
   - *This repo's `bug` issues* (`EliteaAI/elitea-testing-public`) — the lightweight,
-    localhost, filed-during-analysis defect notes above. **Unchanged — stays light;
+    filed-during-analysis defect notes above (observed on DEV since 2026-10). **Unchanged — stays light;
     analysis is not distracted by DEV verification.**
   - *Application-bug tracker* `EliteaAI/elitea_issues` — the externally-visible tracker
     the dev team reads. A defect reaches it only after DEV verification + an explicit ask.
@@ -185,25 +189,27 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Comment PR link on the originating issue**: yes — work-log comments
   (🔧 started / 📝 update / 🚫 blocked / ✅ done) + PR link on the tracking card
 - **Board tracking**: assign self, move to `In Progress` when starting; `Blocked` +
-  "Waiting on #N" when parked; `Done` only after merge + closure record (verified
-  promotability — see workflow.md; never copy the implementer's claim)
+  "Waiting on #N" when parked; `Ready` after merge + closure record (verified locator
+  delta — see workflow.md § Closure record; never copy the implementer's claim);
+  `Done` is human-only
 - **Gating**: no automated result reporters wired into pytest; back-writes are
   explicit orchestrator actions, never per-local-run
 
 ### Automation PR policy
-- **Base branch for automation PRs**: `automation/base` (long-lived, cut from `main`).
-  **Never** open a PR against `main`. Feature branches cut from `automation/base`,
+- **Base branch for automation PRs**: `automation/factory` (long-lived; cut 2026-10-05 from `automation/base` + the DEV-target factory split, kept current by merging `main`).
+  **Never** open a PR against `main`. Feature branches cut from `automation/factory`,
   one PR per test / feature area, small.
-- **Merge policy**: auto-merge into `automation/base` — the orchestrator merges once the
-  test ran green locally + review passed. There is NO CI on `automation/base`; the
-  green local run IS the gate.
-- **Testids to `EliteaAI/EliteaUI` `main`**: **agents do NOT open `main` PRs (suspended
-  2026-07-16 — `.agents/_reverted/`).** Testids are committed + **pushed** to
-  `automation/testids` and stop there; a **human** cherry-picks them to `main` out of band.
-- **Batch promotion is human-triggered only** (never autonomous): DEV restart, GHA runs,
-  `automation/base → main` gate PR. Testids are NOT batched any more — they promote
-  per-case. See `.agents/workflow.md` § Promotion.
-- **Squash / rebase / merge**: squash (default) for small PRs into `automation/base`.
+- **Merge policy**: auto-merge into `automation/factory` — the orchestrator merges once the
+  test ran green against DEV from this machine + review passed. There is NO CI on
+  `automation/factory`; that green run IS the gate.
+- **Factory PRs touch this repo only.** No EliteaUI change accompanies a case.
+- **Testids to `EliteaAI/EliteaUI` `main`** (migrator only): **agents do NOT open `main`
+  PRs (suspended 2026-07-16 — `.agents/_reverted/`).** The `testid-migrator` commits +
+  **pushes** to `automation/testids` and stops there; a **human** cherry-picks them to
+  `main` out of band. Its phase-A swap PR (one per migration run) targets `automation/factory`.
+- **Batch promotion is human-triggered only** (never autonomous): GHA runs,
+  `automation/factory → main` gate PR. See `.agents/workflow.md` § Promotion.
+- **Squash / rebase / merge**: squash (default) for small PRs into `automation/factory`.
 
 ### Additional notes
 - Parent folder of this clone = the workspace (plain directory, NOT a git
@@ -214,4 +220,4 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - Never shallow-clone any of the three repos (`test -f .git/shallow` to check;
   `git fetch --unshallow origin` to fix) — shallow clones break history-walking merges.
 - **`automation/testids` is a shared org branch: never rebase it, never force-push it.**
-  Sync with `git merge origin/main`.
+  Sync with `git merge origin/main`. (Only the `testid-migrator` writes to it.)

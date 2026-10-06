@@ -1,6 +1,10 @@
 # TMS + pipeline configuration — seeded by scout 2026-07-10.
 # Read by test-automation-lead (intake, back-write) and the pipeline skills.
 
+# 2026-10: the factory analyses + builds against the DEV env as deployed (ladder
+# locators, no EliteaUI changes); testids arrive via the testid-migrator
+# (ledger: .agents/locator-migration/ledger.json). Nothing below changed.
+
 tms:
   # Custom adapter: onetest — markdown case files + GitHub-issue executions/defects.
   # Not one of the built-in adapters (zephyr/testrail/xray/azure/markdown); the
@@ -91,7 +95,7 @@ backwrite_on_done:
     # ⚠ index.json is NOT auto-rebuilt (build-index CI is a stub). After editing case files,
     #   rebuild it (build_index MCP verb, or the packaged scripts/_index.py) or correlate_results
     #   reads the stale ref and still reports a gap.
-  automation_pr: URL of the merged automation/base PR (observed practice, now policy)
+  automation_pr: URL of the merged automation/factory PR (observed practice, now policy)
 
 reporting:
   # No pytest-wired TMS reporter exists and none should be added silently.

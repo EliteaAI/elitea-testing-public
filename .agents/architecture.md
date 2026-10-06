@@ -11,9 +11,9 @@ internal service architecture.
 ```
 <workspace>/                             (= parent folder of this clone; plain dir, NOT a repo)
 ├── .env  .env.test                      master secrets (symlink targets)
-├── elitea-testing-public/               THIS repo — tests · branch automation/base · admin
+├── elitea-testing-public/               THIS repo — tests · branch automation/factory · admin
 │   └── automation/.env.test → ../../.env.test
-├── EliteaUI/                            EliteaAI/EliteaUI (NO fork) · branch automation/testids
+├── EliteaUI/                            EliteaAI/EliteaUI (NO fork) · automation/testids · migrator-only
 │   ├── .env → ../.env                   (VITE_DEV_TOKEN etc.)
 │   └── origin = EliteaAI/EliteaUI       push, no admin · main owned by the UI team
 └── onetest-ai-tm-Elitea/                TMS repo ($OT_REPO_ROOT) · admin
@@ -21,24 +21,33 @@ internal service architecture.
     └── tests/automated-full-regression-ui/   case source (markdown + YAML frontmatter)
 ```
 
-## Runtime data flow (local test loop)
+## Runtime data flow (factory loop, 2026-10)
 
 ```
-pytest (automation/) ──drives──▶ EliteaUI dev server :5173 (automation/testids)
-                                        │  Vite, APP_PREFIX = ""
-                                        ▼
-                                 DEV backend (Elitea REST API + WebSocket)
-API tests (automation/api/) ────────────┘  (Bearer / cookie auth)
+pytest (automation/) ──drives──▶ DEV env https://dev.elitea.ai/app (as deployed)
+Playwright MCP (analyst/impl) ──▶     │  APP_PREFIX = "/app"
+  (storage state from                 ▼
+   scripts/dev_storage_state.py) DEV backend (Elitea REST API + WebSocket)
+API tests (automation/api/) ──────────┘  (Bearer / cookie auth)
 
 onetest-tms MCP (npx @onetest/tms) ──reads/writes──▶ onetest-ai-tm-Elitea
                                                       (cases, runs, defects → GitHub issues)
 ```
 
-- **Auth:** Keycloak on deployed envs (`input[name="username"]`); on localhost
-  `auth_state` bypasses login via `VITE_DEV_TOKEN`.
+**Migration loop (`testid-migrator`, runs on request)** — the only process that runs the local UI:
+
+```
+ledger (.agents/locator-migration/ledger.json) ◀── locator_inventory.py sync-ledger
+  phase B: localhost:5173 (EliteaUI automation/testids) ── add-data-testid ──▶ push
+           ┄┄ human cherry-pick → EliteaUI main → deployed to DEV
+  phase A: check-ui-ref sees testid on the deployed ref ──▶ swap descriptor
+           ──▶ run affected tests on DEV ──▶ PR → automation/factory
+```
+
+- **Auth:** Keycloak on DEV (`input[name="username"]`); `auth_state` bypasses login
+  via `VITE_DEV_TOKEN` only on localhost (migrator phase B).
 - **WebSocket:** AI responses arrive ~2s after send — condition waits required.
-- **Deployed environments** (`dev.elitea.ai`, `next.elitea.ai`, `/app` prefix) are
-  CI-only targets — reached by GHA workflows during batch gates, never by the local loop.
+- **Other deployed environments** (`next.elitea.ai`, stage) stay CI-only targets.
 
 ## Elitea application surfaces (sidebar navigation)
 
@@ -56,26 +65,28 @@ onetest-tms MCP (npx @onetest/tms) ──reads/writes──▶ onetest-ai-tm-Eli
 | Settings / Admin | Configuration, guardrails, voice | `tests/ui/admin/`, `tests/ui/voice/` |
 | Support Assistant | Chatbot widget | `tests/ui/support_assistant/` |
 
-## Coverage measurement (design driver)
+## Locator-debt measurement (design driver, 2026-10)
 
-The team measures **UI-automation coverage by `data-testid` presence**: every
-element a test touches must carry one, so covered UI is enumerable by grepping
-testids in EliteaUI and correlating with `LocatorDescriptor` usage. This is why
-the locator policy is testid-only with no fallback ladder (`.agents/testing.md`)
-and why testid creation is a mandatory step of every case, not an optimization.
+The team measures **locator debt** — non-testid declarations / all declarations,
+plus unmanaged raw handles in method bodies — via
+`automation/scripts/locator_inventory.py scan`. Because every locator is a
+class-level declaration and every non-testid one names its `suggested_testid`, the
+debt is enumerable and the migration is mechanical. This replaced the earlier
+"coverage = testid presence" metric, which forced testid creation into every case
+and coupled the factory to EliteaUI review latency.
 
-## Why the integration-branch design exists
+## Why the integration-branch design still exists (migrator)
 
-In one line: EliteaUI `main` is owned by the product UI team (review takes days),
-`LocatorDescriptor` has no fallback, so **`automation/testids` is a permanent
-integration branch accumulating every testid the team ever wrote** — the dev server
-runs it, and no agent ever waits on review latency.
+EliteaUI `main` is owned by the product UI team (review takes days), so
+**`automation/testids` remains a permanent integration branch accumulating every
+testid the team writes** — now written only by the `testid-migrator`. The
+migrator swaps a test to a testid only after that testid is deployed, so nothing in
+`automation/factory` ever depends on the integration branch.
 
-**→ `.agents/workflow.md` § The core problem this workflow solves / § Testid flow**
-is the single source for the mechanism (commit + push, terminal there; human
-cherry-picks to `main`; per-case draft PRs suspended 2026-07-16).
+**→ `.agents/workflow.md` § The two processes / § The migration loop / § Testid
+flow** is the single source for the mechanism.
 
-What lives *only* here — **why tests are batched but testids aren't:** testids are
-leaf additions that don't compose; test code is a layered shared substrate (page
-objects, fixtures, `conftest`), so a test branch must be cut from `automation/base`
-to see prior unpromoted work — and review already happens on the `automation/base` PR.
+What lives *only* here — **why the migration is batched:** a swap is only safe
+once its testid is on DEV, and deploys arrive in waves; batching the swaps per migration run
+amortises one DEV verification run and one review over many rows, and keeps the
+factory's per-case PRs free of cross-repo work.

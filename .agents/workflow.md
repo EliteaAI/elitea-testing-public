@@ -6,7 +6,12 @@ now lives on `EliteaAI/EliteaUI` directly. **Revised 2026-07-16 (current): agent
 longer open per-case draft PRs to EliteaUI `main`.** Testids terminate on
 `automation/testids` (committed + pushed); a **human** cherry-picks them to `main`.
 This is a suspended-not-deleted policy — restore notes in
-`.agents/_reverted/RESTORE-testid-draft-pr-flow.md`. Refresh when the process shifts._
+`.agents/_reverted/RESTORE-testid-draft-pr-flow.md`. **Revised 2026-10 (current):
+the factory and testid work are SPLIT.** The factory builds tests against the DEV env
+as deployed with a locator ladder and never touches EliteaUI; a separate
+`testid-migrator` swaps ladder locators for testids on already-green tests. Everything
+below that mentions `automation/testids`, localhost:5173 or `add-data-testid` now
+applies **only to the migrator**. Refresh when the process shifts._
 
 ## Git host
 
@@ -16,30 +21,40 @@ This is a suspended-not-deleted policy — restore notes in
   A stale `fork` remote (`bermudas/EliteaUI`) may still exist locally as a safety
   net; it is **not** part of the workflow. Never push to it.
 
-## The core problem this workflow solves
+## The two processes (2026-10)
 
-A test needs a stable locator → the locator is a `data-testid` in EliteaUI JSX →
-`main` is owned by the **product UI team**, whose review takes days → deployed envs
-lack new testids until that PR merges AND deploys.
-`LocatorDescriptor` has **no fallback** — a test bound to a new testid fails hard
-anywhere the testid isn't present. Therefore: **`automation/testids` is a permanent
-integration branch that accumulates every testid the team ever created** — both the
-ones already merged to `main` and the ones still sitting in review. The dev server
-runs that branch, so no test and no agent is ever blocked on review latency.
+| | **Factory** (Tal → Sage → Axel) | **`testid-migrator`** (on request) |
+|---|---|---|
+| Input | TMS cases | the locator ledger (`.agents/locator-migration/ledger.json`) — non-testid declarations of already-merged, green tests |
+| Target | DEV (`https://dev.elitea.ai`, `/app`) | phase B: localhost:5173 on `automation/testids` · phase A: DEV |
+| Locators | ladder — existing testid → role+name → label → css → xpath, each non-testid with `suggested_testid=` | swaps a ledger row to `testid=` only once the testid is **on DEV** |
+| Touches EliteaUI | **never** | yes — `add-data-testid` onto `automation/testids`, pushed; human cherry-picks to `main` |
+| Output | one PR per case → `automation/factory` | one PR per migration run → `automation/factory` (phase A) + testid commits (phase B) |
+
+**Why the split.** The old loop coupled every case to a second repo: a test needed a
+testid → the testid lived in EliteaUI JSX → `main` review took days → the factory ran
+against a local UI that served unmerged testids, and each case produced two PRs in two
+repos. Building on DEV with the ladder removes the coupling: a factory test is green on
+the env it targets the day it merges. Testid adoption is then a measured, batched
+refactor (`automation/scripts/locator_inventory.py` — locator-debt metric + ledger),
+and a test is migrated only after its testids are **deployed**, so a migrated test is
+never red on DEV. The ledger states are `raw → testid-proposed → on-dev → migrated`
+(`removed` when the declaration disappears).
 
 ## Branching
 
 | Repo | Long-lived branch | Rule |
 |---|---|---|
-| elitea-testing-public | `automation/base` (cut from `main`) | small PRs into it, one per test/feature area; **never PR `main` directly** |
-| EliteaAI/EliteaUI | `automation/testids` (integration) | **never PR it into `main`, and (since 2026-07-16) never open per-case `main` PRs at all.** Testid commits are born ON it, committed + pushed, and stop there. A human cherry-picks them to `main`. |
-| EliteaAI/elitea_assistant | `automation/testids` (integration) | Connected repo (Support Assistant). Same rule as EliteaUI — testids born on it, committed + pushed, human promotes to its `main`. See § Connected repos. |
+| elitea-testing-public | `automation/factory` (cut from `automation/base`; `main` merged in) | small PRs into it, one per test/feature area; **never PR `main` directly** |
+| EliteaAI/EliteaUI | `automation/testids` (integration) — **migrator only** | **never PR it into `main`, and (since 2026-07-16) never open per-case `main` PRs at all.** Testid commits are born ON it, committed + pushed, and stop there. A human cherry-picks them to `main`. |
+| EliteaAI/elitea_assistant | `automation/testids` (integration) — **migrator only** | Connected repo (Support Assistant). Same rule as EliteaUI — testids born on it, committed + pushed, human promotes to its `main`. See § Connected repos. |
 
-- There is **no CI on `automation/base`** — the green local run before PR is the
-  only verification. You are the CI.
+- There is **no CI on `automation/factory`** — the green run from this machine against
+  DEV before the PR is the only verification. You are the CI.
 - There is **no `pending_testid` marker**. Do not invent one.
-- Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/base`**.
-- Testid work: committed **straight onto `automation/testids`** and pushed — no
+- Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/factory`**.
+- Migrator batch branches: `locators/<yyyy-mm-dd>` (run date), cut from **`automation/factory`**.
+- Testid work (migrator only): committed **straight onto `automation/testids`** and pushed — no
   per-case branch, no PR (see § Testid flow below). *(Suspended 2026-07-16: the
   old `testids/<case-id>-<slug>` review branch + draft PR to `main` is on hold —
   `.agents/_reverted/`.)*
@@ -78,7 +93,7 @@ If a checkout genuinely must move while another agent depends on the current one
 (e.g. the EliteaUI dev server), that is a **coordination** problem: finish or park the
 in-flight work first (the `sync-base-branches` guard pattern), don't fork the tree.
 
-### Connected repos — testids in the Support Assistant (2026-07-23, #705)
+### Connected repos — testids in the Support Assistant (2026-07-23, #705) — migrator only
 
 Some UI ships from **separate repos we own** but consume as packages — today the **Support
 Assistant** (`@eliteaai/elitea-assistant`, source in the `../elitea_assistant` sibling). We add
@@ -100,7 +115,7 @@ testids there the SAME way as EliteaUI (§ Testid flow below), one repo outward:
   scoped-raw-handle exception still applies to the assistant's OWN third-party internals
   (its mermaid / react-markdown output), exactly as it does inside EliteaUI.
 
-### Testid flow — commit + push `automation/testids`, then stop
+### Testid flow — commit + push `automation/testids`, then stop — migrator only
 
 **Current policy (2026-07-16): a testid is committed once, straight onto
 `automation/testids`, and pushed. That is the agent's terminal step.** The dev
@@ -133,7 +148,7 @@ git merge origin/main && git push origin automation/testids
 > `.agents/_reverted/RESTORE-testid-draft-pr-flow.md`. Until then, **the human owns
 > the `automation/testids` → `main` promotion**; agents never create that PR.
 
-### Sync: `automation/testids` ← `main`
+### Sync: `automation/testids` ← `main` — migrator only
 
 **Merge. Never rebase, never force-push.** This branch is shared and lives on the org
 repo — rewriting its history can clobber a colleague. `--force`/`--force-with-lease`
@@ -146,7 +161,7 @@ git fetch origin && git merge origin/main
 git push origin automation/testids
 ```
 
-Do this before starting new test work. Conflicts are rare — testid edits are additive
+Do this before a migrator phase-B run. Conflicts are rare — testid edits are additive
 JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm install`
 (a bare version bump doesn't require it).
 
@@ -170,65 +185,79 @@ JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm 
 > prop-passed `testId="x"` form — `artifacts-delete-files-button` is wired via the
 > prop, so a `data-testid`-only check reports "no loss" while the test breaks.
 
-**Test repo ← main** (periodically): merge `main` into `automation/base`.
+**Test repo ← main** (periodically): merge `main` into `automation/factory`.
 
 **Never shallow clones.** Check `test -f .git/shallow`; fix with `git fetch --unshallow origin`.
 
-## The loop for one new test
+## The loop for one new test (factory)
 
-1. **Start the local UI** — `start-ui-localhost` skill, or
-   `cd ../EliteaUI && npm run dev` → `http://localhost:5173`. It's on
-   `automation/testids`, so every team-added testid is present — including ones
-   still in review.
-2. **Explore** the live UI (Playwright MCP) — find elements lacking testids.
-3. **`add-data-testid` skill — MANDATORY for every element the test touches that
-   lacks a testid.** There is no fallback rung: locator policy is testid-only
-   (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`) because the
-   team measures UI-automation coverage by testid presence — a role/CSS handle is
-   invisible to that metric. The skill edits JSX under `../EliteaUI/src` (ONLY files
-   under `src/`), commits **and pushes `automation/testids`** — and stops there
-   (no `main` PR; a human promotes). Vite HMR reloads — no restart.
-   Naming `{section}-{element}-{type}`; verify uniqueness first.
-4. **`page-object-generator` skill** — emit **testid-only** descriptors:
-   `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback`.
-5. **Write the test**, run it green against localhost, PR into `automation/base`.
+1. **Refresh DEV auth** — `cd automation && ../.venv/bin/python scripts/dev_storage_state.py`
+   (Playwright MCP runs `--isolated --storage-state .playwright-mcp/dev-storage-state.json`).
+2. **Explore DEV** (Playwright MCP on `https://dev.elitea.ai/app`) — for each element
+   the case touches, find the highest ladder rung that is unique: an existing testid
+   first, then role+name, label, stable css, declared xpath.
+3. **`page-object-generator` skill** — emit class-level declarations on that rung,
+   every non-testid one with `suggested_testid=` (`.claude/rules/page-objects.md`).
+4. **Write the test**, run it green against DEV, PR into `automation/factory`.
+5. **After merge**, `locator_inventory.py sync-ledger` registers the new non-testid
+   declarations as `raw` rows — the migrator's queue.
 
-Nothing in this loop waits on external review. That is the point.
+Nothing in this loop touches EliteaUI or waits on its review. That is the point.
+
+## The migration loop (`testid-migrator`)
+
+Full procedure: `.claude/skills/migrate-locators-to-testids/SKILL.md`. In short:
+
+1. `sync-ledger` + `queue` — split the ledger into **phase A** (testid already on
+   DEV → swap) and **phase B** (needs a testid added).
+2. **Phase A on DEV:** swap each `on-dev` row's declaration to `testid=`, run every
+   test that uses it green on DEV, PR the batch to `automation/factory`, mark `migrated`.
+3. **Phase B on localhost:** `add-data-testid` for the next batch of `raw` rows
+   (named by `suggested_testid`), commit + push `automation/testids`, mark
+   `testid-proposed`. A human cherry-picks to `main`; when `check-ui-ref` sees the
+   testid on the deployed ref, rows advance to `on-dev` and the next run's phase A
+   picks them up.
+
+A migrated test never depends on an undeployed testid — phase A only swaps what DEV
+already serves.
 
 ## Promotion — HUMAN-TRIGGERED ONLY
 
-Testid promotion to EliteaUI `main` is a **human** step (2026-07-16): the human
-cherry-picks from `automation/testids` when they choose. Agents don't gate on it and
-don't open that PR. What the lead performs — **only on explicit request**, never
-autonomously — is the batch promotion (`batch-promote` skill, § Mode A for an as-is
-whole-state promote, § Mode B for a cherry-picked subset):
+What the lead performs — **only on explicit request**, never autonomously — is the
+batch promotion (`batch-promote` skill): run the suite from GHA against the deployed
+env, then open the `automation/factory → main` gate PR (gate = green deployed run) and
+merge.
 
-1. Confirm the testids the batch depends on are **present on `EliteaAI/EliteaUI` `main`
-   and deployed** to the target env (a human will have promoted them from
-   `automation/testids`). Tests cannot cross into `main` ahead of their testids.
-2. Run the suite from GHA against the deployed env.
-3. Open the `automation/base → main` gate PR (gate = green deployed run) and merge.
+**Simplified by the split:** factory tests are built on DEV and migrated tests only
+reference testids that DEV already serves, so `automation/factory` never depends on an
+undeployed testid. The `batch-promote` testid-presence pre-check (Stage 6 sequencing)
+is now a sanity check, not a blocker — if it ever finds a missing testid, a migrator
+row skipped the `on-dev` gate; fix the ledger, don't sequence merges around it.
 
-**Ordering invariant, unchanged:** a testid must be merged upstream and deployed
-*before* the test that depends on it reaches `main`. Checked once per batch against a
-real environment — not per test.
+Testid promotion to EliteaUI `main` stays a **human** cherry-pick from
+`automation/testids` (2026-07-16); agents don't open that PR.
 
 ## Review gates (pipeline-internal)
 
-- Every automation PR into `automation/base`: adversarial review by `qa-engineer`
+- Every automation PR into `automation/factory`: adversarial review by `qa-engineer`
   (fresh session, `code-review` + triangulation vs TMS case and AFS) →
   `APPROVED` | `CHANGES_REQUESTED`; the lead merges.
-- **Dispatch-prompt contract (lead):** every implementer and reviewer dispatch
-  prompt carries the locator-policy line verbatim — see
+- **Dispatch-prompt contract (lead):** every analyst, implementer and reviewer dispatch
+  prompt carries the target + locator-policy line verbatim — see
   `.agents/role-overrides.md` § Orchestrator slot. The dispatch prompt is the gate.
-- **Reviewer mechanical check:** any non-testid handle *added* in
-  `automation/pages/` or `automation/tests/` is `CHANGES_REQUESTED` — grep the PR
-  diff for added `get_by_role|get_by_label|get_by_text|page.locator|.locator(`
-  lines; each hit must be a `[data-testid=` selector. Existing raw handles are
+- **Reviewer mechanical check:** the ladder grep in `.agents/role-overrides.md`
+  § Reviewer slot — every added handle is a class-level declaration (testid, or a
+  ladder rung with `suggested_testid=`); raw calls in methods/specs, `locator=` /
+  `fallback=`, and positional picks are `CHANGES_REQUESTED`. Existing raw handles are
   tracked tech debt (#25/#42), not precedent.
+- **Migrator batch review:** a fresh `qa-engineer` reviews the phase-A PR — every
+  swapped testid verified on DEV (`check-ui-ref` output pasted), every affected test
+  green on DEV — and the phase-B testid commits against the testid canon
+  (`.agents/testing.md` § Testid-migrator rules).
 - Commit authority: the implementer commits on the work branch the lead names
-  (or creates one from `automation/base` when dispatched standalone). Testid commits
-  to `automation/testids` are part of the implementer/analyst loop.
+  (or creates one from `automation/factory` when dispatched standalone). Factory roles
+  never commit to EliteaUI; testid commits to `automation/testids` belong to the
+  `testid-migrator` alone.
 
 ## Work tracking
 
@@ -258,7 +287,33 @@ same way as any blocker — with two cross-repo specifics:
   the card back to `Todo`, and comments "ready to resume" — a human re-approves.
   `Approved`/`Done` stay human-only.
 
-### Closure record — the last comment on every automation issue
+### Closure record — factory cases (2026-10)
+
+The lead posts this as the final comment on the automation issue. No testid row — the
+factory added none, so the case is promotable as soon as it is merged:
+
+```markdown
+🔗 **Closure record — <CASE-ID>**
+
+| Artifact | Where | State |
+|---|---|---|
+| Test | #<N> — `tests/<case>-<slug>` → `automation/factory` | ✅ merged (`<sha>`) |
+| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/factory` |
+| Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> | ledger: <L> new `raw` rows |
+| Defects filed | #<X>, #<Y> — or "none" | |
+
+**Status:** merged to `automation/factory` · green on DEV · promotable.
+**Still open:** <follow-ups, or "none">
+```
+
+The Locators row is the `locator_inventory.py scan` delta, **re-run by the lead on
+`automation/factory` after the merge and pasted** — never copied from the Run Report.
+The issue moves to **`Ready`**; `Done` stays human-only.
+
+### Closure record — testid-migrator batches (and pre-2026-10 cases)
+
+The block below is the migrator's promotability check for the testids its phase B
+pushed, and the historical record format for cases built under the localhost loop.
 
 The work-log comments posted during a run (Started → AFS ready → PR opened → review →
 merged) are a **narrative**. The closure record is the **artifact index**. Nobody
@@ -329,12 +384,12 @@ of the gap:
 
 | Artifact | Where | State |
 |---|---|---|
-| Test | #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
+| Test | #<N> — `tests/<case>-<slug>` → `automation/factory` | ✅ merged (`<sha>`) |
 | Testids | EliteaAI/EliteaUI@<sha> (+ EliteaAI/EliteaUI@<sha> …) on `automation/testids` | ✅ pushed — dev server serves them; **human cherry-picks to `main`** |
-| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/base` |
+| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/factory` |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
-**Status:** merged to `automation/base` · testids on `automation/testids` · ⚠️ NOT yet on `main` (awaiting human cherry-pick) → not deployable-env-promotable yet.
+**Status:** merged to `automation/factory` · testids on `automation/testids` · ⚠️ NOT yet on `main` (awaiting human cherry-pick) → not deployable-env-promotable yet.
 
 **Testid commit SHAs — MANDATORY, regardless of promotability status.** The Testids
 row must cite WHERE each testid was introduced (the originating commit SHA), whether
@@ -423,9 +478,11 @@ The rule stands: agents leave such issues OPEN; only a human may close early.)
 - OneDrive makes clones/fetches/installs slow — background long git/npm commands.
 - `.env.test` beats shell exports (`config.py` orders dotenv first) — edit the file.
 - Always run with cwd = `elitea-testing-public/` — that's what loads `.claude/skills`,
-  `.claude/rules`, `.mcp.json`, `CLAUDE.md`, and lets `add-data-testid` grep `../EliteaUI/src`.
+  `.claude/rules`, `.mcp.json`, `CLAUDE.md`, and lets the migrator's `add-data-testid` grep `../EliteaUI/src`.
+- Playwright MCP lands on the Keycloak login page ⇒ the storage state expired —
+  re-run `scripts/dev_storage_state.py` (it never types credentials into the browser).
 
 ## Unconfirmed
 
-- `automation/base` PR review-approval count (branch is new — no PR history yet;
+- `automation/factory` PR review-approval count (branch is new — no PR history yet;
   pipeline-internal review applies regardless).

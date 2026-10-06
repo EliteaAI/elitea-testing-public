@@ -3,9 +3,10 @@
 _This is the bundle's designed override channel. Where anything here conflicts
 with a skill's **defaults or examples** — including the
 `test-automation-workflow` "UI example" locator ladder — **this file wins.**
-Seeded by scout 2026-07-14 after the framework-alignment audit; the team's own
-ruling (elitea-testing-public PR #23, "Enforce testid-only locators") is the
-source of the locator policy._
+Seeded by scout 2026-07-14 after the framework-alignment audit. **Locator policy
+rewritten 2026-10 (dev-targeted factory):** the factory builds against DEV with a
+ladder and never touches EliteaUI; the `testid-migrator` owns testids. This
+supersedes the PR #23 "testid-only" ruling and every memory/AFS built on it._
 
 > ⚠️ **Delivery: this file reaches agents ONLY via the `@`-import block in
 > `CLAUDE.md`.** The bundle's hook *can* inject it, but this project sets
@@ -18,26 +19,46 @@ source of the locator policy._
 
 ## Every role — locator policy (the #1 override)
 
-**This project has NO locator ladder. The ladder is one rung: `data-testid`.**
-The `getByRole → testid → label → text → CSS` sequence in
-`test-automation-workflow` is a generic *example* that does **not** apply here.
+**The factory targets the DEV env as deployed and uses a locator LADDER; it never
+adds testids and never touches EliteaUI or localhost:5173.** The ladder is:
+existing testid on DEV → `role`+`name` → `label` → stable `css` → declared `xpath`,
+every non-testid declaration carrying `suggested_testid=`. The
+`test-automation-workflow` example ladder (which puts role first and allows text)
+does **not** apply — this one does.
 
 **→ The full policy is `.agents/testing.md` § Locator policy — the single source,
-and the authority the skill itself defers to. Read it; this section only states
-that it OVERRIDES the skill.** It covers, in full: why (coverage is measured by
-testid presence, so a raw handle is invisible to the metric); missing testid ⇒
-add it via `add-data-testid`, never rung down; the #579 sanctioned exceptions and
-their discipline; the blanket-add ban and the #511 "referenced = called on the
-executed path" ruling; #277 conditional pairs; dynamic-testid and state-attribute
-shapes; connected first-party repos; and why `automation/pages/`' ~350 pre-policy
-raw handles (#25/#42) are tech debt, never precedent.
+and the authority the skill itself defers to. Mechanics (enforced at import time)
+are in `.claude/rules/page-objects.md` § Locator Strategy.** It covers: the two
+processes and their owners (factory vs `testid-migrator`), the rung order, the
+class-level-only rule, the mandatory `suggested_testid=` hint, the positional
+ban, the locator-debt metric (`scripts/locator_inventory.py scan`), and the
+testid canon (#581 state attributes, #277 pairs, #511 scope, shared-component and
+connected-repo rules, #579 third-party internals) — which now binds **only the
+migrator**, the sole role that adds testids.
+
+**Precedence:** any memory, briefing, AFS, skill reference or historical ledger
+entry dated before 2026-10 that says "testid-only", "testid needed ⇒ add it",
+"run against localhost:5173" or "coverage = testid presence" is **superseded** for
+factory work. Pre-ladder raw handles in `automation/pages/` (#25/#42) remain debt,
+never precedent.
 
 The per-slot consequences are below (§ Analyst / § Implementer / § Reviewer slot).
 
+## Every role — the working branch is `automation/factory` (2026-10-05)
+
+The factory's long-lived working/base branch in this repo is **`automation/factory`**
+(cut from `automation/base` with the DEV-target split; the factory server checks it out
+via `FACTORY_WORK_BRANCH`). Every bundle skill, example, template, memory note or
+historical record that says `automation/base` **means `automation/factory`** for new
+work: test branches are cut from it, unit/batch PRs target it, `sync-base-branches`
+merges `main` into it, `batch-promote` gates `automation/factory → main`, the batch
+workflow's `base` argument is `automation/factory`. `automation/base` is frozen
+history — never branch from it, PR into it, or sync it.
+
 ## Every role — fresh ground truth (hard rule)
 
-Any verification against `origin/*` refs — promotability greps, "does this testid
-exist on main", branch-state checks — is preceded by `git fetch origin` in that
+Any verification against `origin/*` refs — branch-state checks, the migrator's
+"is this testid on main" (`locator_inventory.py check-ui-ref`) — is preceded by `git fetch origin` in that
 repo, **in the same command block**. A verification against a stale clone is not a
 verification (#19 rework shipped a false "0 of 12 on main" row exactly this way;
 truth was 5/12, added by the UI team's own EL-5400). Name the ref you checked and
@@ -66,10 +87,10 @@ declaring UI behavior broken, exhaust, in order:
 4. **Blur the field** (Tab out) — some inputs commit on blur.
 5. **Compare with the nearest working analog** in the app (e.g. how does the
    Agents list search behave?).
-6. **Read the source — this is the decisive step.** `../EliteaUI/src` is checked
-   out locally; the component's handlers state the INTENDED mode as fact:
-   `grep -rn "<placeholder or label text>" ../EliteaUI/src/` → open the
-   component → `onChange` handler filtering = live; `onKeyDown` + `Enter` /
+6. **Read the source — this is the decisive step.** Read it as DEV ships it —
+   `cd ../EliteaUI && git fetch origin && git grep -n "<placeholder or label text>" origin/main -- src/`
+   (read-only; never edit, never check out — the factory does not work in that
+   repo) → `git show origin/main:<path>` → `onChange` handler filtering = live; `onKeyDown` + `Enter` /
    an `onClick={onSearch}` button = explicit activation. (Worked example:
    #44 — SearchBar.jsx activates on Enter/icon-click, not on typing.)
 
@@ -94,7 +115,7 @@ The `pylon_main` `shared` plugin hosts:
 - `GET /shared/openapi/?all=true` — raw OpenAPI JSON (`?plugins=a,b` filters)
 - `GET /swagger/?all=true` — Swagger UI
 
-Same base URL as the app under test (localhost dev-proxy or the deployed env).
+Same base URL as the app under test — the DEV env (`https://dev.elitea.ai`).
 
 **Procedure when a UI action produces a 4xx/5xx:**
 1. Note the endpoint + full query/body from Playwright MCP's network capture.
@@ -150,6 +171,11 @@ lookup), never replace it.
   On "ref not found" / "not an input" / timeout: re-snapshot and retarget — never
   escalate to `browser_evaluate`/`run_code`, EXCEPT the documented overlay quirks
   (qa-engineer memory: e.g. Support Assistant launcher needs a JS-evaluate click).
+- **Session start: refresh the DEV storage state** —
+  `cd automation && ../.venv/bin/python scripts/dev_storage_state.py` — before the
+  first browser call. The MCP runs `--isolated --storage-state
+  .playwright-mcp/dev-storage-state.json`; a stale file lands you on the Keycloak
+  login page. Never type credentials into the browser, never print the file.
 - **Browser-driving Bash commands: timeout=600000 (10 min)** — the 120s default
   false-fails on Keycloak + SPA navigation + WebSocket AI waits (2–30s).
 
@@ -180,56 +206,63 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 
 ## Analyst slot (qa-engineer)
 
-- The AFS **Handles Reference must list testids as the only primary handles.** An
-  element without one is specced as `testid needed: {section}-{element}-{type}` —
-  never "resolve by accessible role/name", never a CSS/role handle as primary.
-- **Every handle row carries a PROVENANCE column**, verified at analysis time with
-  a fresh fetch (`cd ../EliteaUI && git fetch origin` first): `on-main ✓` /
-  `on-automation/testids only (awaiting human promotion to main)` / `needs-adding`.
-  The implementer and the
-  closure record inherit this verified data instead of re-deriving it — and the UI
-  team adds testids in parallel (75+ on main already), so never assume "we didn't
-  add it" means "it doesn't exist".
-- Do not soften a testid demand into a MINOR defect or a note; it is implementer
-  work, and the AFS is its work order.
-- **State is specced as a `data-*` attribute filter, never as a state-dependent
-  testid** (`.agents/testing.md` § Locator policy, PR #581 ruling). If the case
-  asserts an element's state (expanded/selected/disabled), the handle row names the
-  stable testid + the state attribute (`[data-testid="x"][data-expanded="false"]`)
-  — never `testid needed: x-expanded` / `x-collapsed` variants.
+- **Handles Reference = one row per element, verified on DEV at analysis time**
+  (Playwright MCP snapshot/DOM of `https://dev.elitea.ai`): `rung` | `handle` |
+  `suggested_testid` | `provenance`. Provenance is `testid on DEV ✓` (rung 1 — use
+  it) or `ladder — no testid on DEV` with the rung you verified **unique** on the
+  page/scope the test uses. Name the hint as the testid would be named
+  (`{section}-{element}-{type}`, call-site section, dynamic `-{}`).
+- **Never spec a testid as work.** `testid needed: …` rows are retired — the factory
+  does not add testids. A missing testid is a ladder rung + hint; the migrator picks
+  it up from the ledger.
+- **No positional handles in the AFS.** If the only way to reach an element is
+  "the 3rd button" / "last item", say so as a `question` for the lead (it becomes a
+  priority migrator row) rather than speccing a positional pick.
+- **State is specced as an attribute/ARIA-state filter, never as a state-dependent
+  handle** (`aria-expanded`, `aria-selected`, `disabled`, or a `data-*` attribute DEV
+  already renders) — never `x-expanded` / `x-collapsed` variants.
 
 ## Implementer slot (test-automation-engineer)
 
-- An AFS row saying `testid needed: X` means: run `add-data-testid`, add `X` to
-  EliteaUI, use `LocatorDescriptor(testid="X")`. Never substitute a role/text
-  handle "for now".
-- **Amending an analyst's testid request away** (the ELITEA-1735 pattern: "the
-  accessible name is stable, no testid needed") is out of contract — a testid
-  request is satisfied by a testid or escalated to the lead, never re-scoped down.
-- Locators are class-level `LocatorDescriptor(testid=…)` fields ONLY — no
+- **Use the AFS rung; climb if DEV allows.** Take the Handles Reference row as the
+  work order; if DEV now serves a testid for it, use `testid=` (rung 1 always wins).
+  Never descend below the AFS rung "for now" — a lower rung than specified is
+  escalated to the lead, not shipped.
+- **Never touch EliteaUI** — no `add-data-testid`, no commits on
+  `automation/testids`, no localhost runs. Your PR is the only artifact.
+- Locators are class-level `LocatorDescriptor` / `OptionalLocatorDescriptor` /
+  `ScopedLocator` fields (or UPPER_CASE `[data-testid="…"]` constants) ONLY — no
   `fallback=`, no `locator=`, nothing built in method bodies, no raw selector
-  chained off an existing field (`self.x.locator(".css")`). Scoped sub-selectors
-  and **dynamic testids** use UPPER_CASE `[data-testid="…"]` string/template
-  constants per `.claude/rules/page-objects.md` and `.agents/testing.md`
-  § Locator policy (inline `get_by_test_id(f"…")` is NOT the compliant shape).
+  chained off an existing field, no positional picks. Every non-testid one carries
+  `suggested_testid=` (import fails otherwise). Scoped/dynamic handles:
+  `ScopedLocator(...).within(scope, *args)` per `.claude/rules/page-objects.md`.
+- **Touching a legacy method that builds a locator inline?** Declare that handle at
+  class level on the ladder as part of the change (unmanaged handles never grow).
 - **Self-check before handoff:** run the reviewer's mechanical grep (below) on
-  your own diff and PASTE its output in the Run Report — an empty result is the
-  evidence, a missing paste is a gap. Catching your own hit costs minutes; a
-  review round costs a session.
+  your own diff, plus `cd automation && ../.venv/bin/python scripts/locator_inventory.py scan`
+  on the base and on your branch, and PASTE both in the Run Report (declared-total,
+  non-testid and unmanaged-handles deltas). Unmanaged handles must not increase.
 - **`locator_descriptor.py`'s `locator=`/`fallback=` params are LEGACY** — kept so
   old code imports; never valid in new code, whatever any docstring example shows.
 
 ## Reviewer slot (qa-engineer, fresh session)
 
-- **Any non-testid handle ADDED in `automation/pages/` or `automation/tests/` is
-  `CHANGES_REQUESTED`.** Not a nit, not a non-blocking tech-debt note, not waived
-  for neighborhood consistency. Mechanical check on every PR:
-  `git diff <base>... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\()'`
-  (`get_by_test_id` included: inline Playwright calls are also banned — locators are
-  class-level `LocatorDescriptor` fields)
-  — a hit is COMPLIANT only if the line contains a literal `[data-testid=` selector
-  OR references an UPPER_CASE class constant whose class-level definition is a
-  `[data-testid=` string/template (one-hop check — look it up). Everything else blocks.
+- **Locator mechanical check on every PR** (ladder policy, `.agents/testing.md`
+  § Locator policy):
+  `git diff <base>...HEAD -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\(|\.nth\(|locator=|fallback=)'`
+  A hit is COMPLIANT only if it (a) passes a literal `[data-testid=` selector or an
+  UPPER_CASE class constant whose definition is a `[data-testid=` string/template
+  (one-hop check), or (b) is `.nth(i)` **enumerating every match** of a declared
+  locator (a loop over its count) — never picking one. `locator=` / `fallback=`,
+  any raw call in a spec, and any raw call in a method body are `CHANGES_REQUESTED`.
+- **Declaration check (read every added `LocatorDescriptor(` / `ScopedLocator(`):**
+  the rung matches the AFS Handles Reference (or is higher); a non-testid rung
+  carries a well-formed, call-site-named `suggested_testid=`; `xpath=` has a
+  `description=` saying why rungs 1–4 failed; no MUI generated/structural classes
+  (`css-*`, `Mui*-root`) as a `css=` rung; no text that embeds user data, counts or
+  the selected model. Import-time validation catches syntax; you catch judgment.
+- **No EliteaUI in the diff.** A factory PR that changes or depends on a new
+  EliteaUI testid is `CHANGES_REQUESTED` — that is migrator work.
 - **Show your grep to the orchestrator.** Include the mechanical grep's actual
   command + output in the verdict you return to Tal — command (so scope/pattern
   is auditable) + result (hits verbatim, or explicit "0 hits / (no matches)" for
@@ -237,41 +270,11 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   a weak subset — the #19 FAIL-2 lesson. (The delivery audit does NOT require this
   paste to survive into the tracker: the auditor re-runs the grep itself. It's
   reviewer discipline, not a tracker-artifact gate.)
-- **Testid-convention check on any EliteaUI JSX in the case's diff** (PR #581
-  ruling, `.agents/testing.md` § Locator policy): a state-conditional testid
-  whose VALUE flips as component state changes on the SAME live element
-  (`data-testid={isExpanded ? A : B}` on an element that expands in place), a
-  feature-scoped testid hardcoded in a shared component (`src/components/`,
-  `src/[fsd]/shared/`), or a `dataTestId`-style prop name is `CHANGES_REQUESTED`.
-- **Same-element conditional pair check (canon ruling #277, 2026-07-22).** A
-  `data-testid={cond ? A : B}` on a single JSX node where `cond` is a per-mount
-  prop discriminating two mutually-exclusive JSX renders (e.g. `isOverflow` on
-  `CardTagSectionItem` — the same component renders EITHER a real tag chip OR
-  a "+N" overflow badge, never one that becomes the other) is distinct from
-  the PR #581 anti-pattern and MAY be compliant. Exactly two shapes pass:
-  (a) only the used branch is named, the other is `undefined`; OR (b) both
-  branches are named AND both are referenced by locators on the test's
-  executed code path — the untested branch via an absence assertion
-  (`to_have_count(0)`/`not_to_be_visible()`) on the elements the test
-  exercises. A documentation-only justification (docstring / AFS PROVENANCE
-  row explaining why the untested branch exists) is NOT compliant on its own
-  — `CHANGES_REQUESTED`. Absence assertions are caught by the existing
-  mechanical grep (they use `.locator(`/`get_by_*` the same as positive
-  assertions), so no new grep is needed.
-- **Zero-functional-impact check on any EliteaUI JSX in the diff (origin: EliteaUI PR
-  #753, 2026-08-11).** A new DOM node, a replaced MUI built-in, a new/moved hook call,
-  a render-prop form change, or product state frozen into `useState` — added in order to
-  host a testid — is `CHANGES_REQUESTED`. Mechanical check: run the three Step-5.5 greps
-  from `add-data-testid` § Step 5.5 on the PR diff and paste command + output (or explicit
-  "0 hits") per the existing reviewer paste discipline:
-  ```bash
-  git diff origin/main...HEAD -- src/ | grep -nE '^\+.*\buse(State|Effect|Memo|Callback|Ref)\('
-  git diff origin/main...HEAD -- src/ | grep -nE '^\+.*<(Box|div|span|Fragment)'
-  git diff origin/main...HEAD -- src/ | grep -nE '^-' | grep -vE 'testid|TestId'
-  ```
-  A hit is a blocker unless the commit body names the mandatory-plumbing exception
-  (`add-data-testid` § Mandatory-plumbing exceptions) and explains why it was unavoidable.
-  An undeclared hit is a violation (§ Declared-improvisation protocol).
+- **Testid canon checks (#581 state-switched testids, #277 conditional pairs,
+  shared-component scoping, `dataTestId` prop names, zero-functional-impact Step-5.5
+  greps) apply ONLY when reviewing a `testid-migrator` batch** — see
+  `.claude/skills/migrate-locators-to-testids/SKILL.md` § Review. Factory PRs carry
+  no JSX.
 - **Declared improvisations** (see § Every role): verify the reasoning and say so
   explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
   do not block solely for the gap the canon itself left.
@@ -280,21 +283,43 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 
 ## Orchestrator slot (test-automation-lead)
 
-- **Dispatch-prompt contract:** every implementer and reviewer dispatch prompt
-  MUST carry the line: *"Locator policy: testid-only (`.agents/role-overrides.md`
-  + `.agents/testing.md` § Locator policy). The workflow skill's example ladder
-  does not apply. New non-testid handles are CHANGES_REQUESTED."* The dispatch
-  prompt is the gate — put the policy where it cannot lose.
-- **Closure records state verified facts.** Before writing the promotability row:
-  `cd ../EliteaUI && git fetch origin` FIRST (a stale clone produced the #19
-  rework's false 0-of-12 row — truth was 5/12, the UI team's own EL-5400 testids),
-  then check which testids the case's tests use (`grep` the diff) against **main**
-  vs `automation/testids` (`git grep` both), and PASTE the output into the record
-  (verbatim block in `.agents/workflow.md` § Closure record). Never copy the
-  AFS/implementer's claim — #35/#36/#37 shipped false rows exactly that way.
-- Run `sync-base-branches` before dispatching the first case of a session, not
-  after the batch.
+- **Dispatch-prompt contract:** every analyst, implementer and reviewer dispatch
+  prompt MUST carry the line: *"Target: DEV (`https://dev.elitea.ai`, refresh
+  `scripts/dev_storage_state.py` first). Locator policy: ladder — existing testid →
+  role+name → label → stable css → declared xpath, every non-testid with
+  `suggested_testid=`, class-level only, no positional handles
+  (`.agents/testing.md` § Locator policy). Do not touch EliteaUI or localhost."*
+  The dispatch prompt is the gate — put the policy where it cannot lose.
+- **Closure records state verified facts.** The factory closure record has no
+  testid/promotability row any more — it cites the merged PR and the **locator
+  delta** (`locator_inventory.py scan` before/after, pasted) and confirms
+  `sync-ledger` registered the new non-testid declarations as `raw` rows. Never
+  copy the implementer's numbers — re-run the scan on `automation/factory` after merge.
+- Sync `automation/factory` with `main` (test repo only) before dispatching the first
+  case of a session. The EliteaUI half of `sync-base-branches` is the migrator's job.
+- **Never dispatch `testid-migrator` from a factory batch** — it runs on request, in its
+  own session (`.claude/skills/migrate-locators-to-testids`), on already-merged tests.
+  When a migrator phase-A PR lands on `automation/factory`, review it with a fresh
+  `qa-engineer` per that skill's § Review — not the factory reviewer checklist.
 - **Never dispatch `ui-test-orchestrator` or `failure-investigator`.** They are
   installed for the HUMAN team's direct use only — their flows bypass the pipeline's
   gates (AFS, fresh-session review, merge gate, closure record). Every stage they
   cover has a canonical owner in your pipeline.
+
+## Testid migrator slot (testid-migrator, 2026-10)
+
+The locator-migration agent (runs on request). Procedure: `.claude/skills/migrate-locators-to-testids/SKILL.md`.
+
+- **The only role that adds testids or touches `../EliteaUI` / `../elitea_assistant`.**
+  It follows the full testid canon in `.agents/testing.md` § Testid-migrator rules
+  and the `add-data-testid` skill (Step 5.5 zero-functional-impact greps included).
+- **Deployment gate:** a page-object declaration is swapped to `testid=` only for a
+  ledger row in state `on-dev` — testid on EliteaUI `main` (after `git fetch origin`,
+  same command block) **and** observed in the DEV DOM. Main is not DEV.
+- **Behaviour-preserving only:** phase A diffs touch `automation/pages/**` + the
+  ledger; specs, fixtures, conftest and assertions are out of bounds. A swap that
+  turns a test red is reverted and reported, never "fixed" in the spec.
+- **Every ledger move goes through `scripts/locator_inventory.py`** (`sync-ledger`,
+  `mark … --evidence`) — never a hand edit of `ledger.json`.
+- Testid commits land on `automation/testids` and are pushed (merge, never rebase /
+  force-push); a human cherry-picks to `main`. No EliteaUI `main` PR.
