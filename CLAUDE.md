@@ -9,8 +9,8 @@ platform. Working branch: **`automation/base`** (never PR `main` directly).
 <parent>/                        ← this repo's parent folder (sibling clones; no env var needed)
 ├── .env  .env.test              master secrets — NEVER commit, NEVER print
 ├── elitea-testing-public/       THIS repo · branch automation/base · .venv (Python 3.13)
-├── EliteaUI/                    EliteaAI/EliteaUI (NO fork) · branch automation/testids · npm run dev → :5173
-├── elitea_assistant/            EliteaAI/elitea_assistant · Support Assistant (connected repo — testids via its source)
+├── EliteaUI/                    EliteaAI/EliteaUI (NO fork) · automation/testids · testid-migrator only (:5173)
+├── elitea_assistant/            EliteaAI/elitea_assistant · Support Assistant (connected repo — migrator adds testids in its source)
 └── onetest-ai-tm-Elitea/        TMS repo (test cases as markdown + GitHub issues)
 ```
 
@@ -26,40 +26,46 @@ cd automation
 HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
 # Headed is the default (config.py: headless=False). HEADLESS=true for quiet runs.
 
-# Start local UI under test (or use the start-ui-localhost skill)
-cd ../EliteaUI && npm run dev                                    # → http://localhost:5173
+# Browser auth for Playwright MCP exploration of DEV — run at session start (sessions expire)
+../.venv/bin/python scripts/dev_storage_state.py
+# Locator-debt metric (non-testid declarations + unmanaged raw handles)
+../.venv/bin/python scripts/locator_inventory.py scan
 ```
 
 ## Critical Conventions
 
-- **Primary test target is `http://localhost:5173`** — `EliteaAI/EliteaUI` on
-  `automation/testids` (points at the DEV backend). Deployed envs (dev/next.elitea.ai)
-  are CI's job, not the local loop's.
+- **Test target is the DEV env as deployed** — `https://dev.elitea.ai`, `APP_PREFIX=/app`
+  (2026-10). The factory (analyst/implementer/reviewer/lead) never starts the local UI and
+  never touches EliteaUI; `localhost:5173` is used only by the `testid-migrator`.
+  `next.elitea.ai` / stage remain CI's job.
 - **Test PRs target `automation/base`**, never `main`.
-- **Testids: dual-target.** `automation/testids` is a permanent **integration branch
-  on `EliteaAI/EliteaUI`** (no fork) holding every testid — merged *and* still in
-  review; the dev server always serves them ALL. Commit testids **straight onto
-  `automation/testids`** (HMR live) and **push — that is the terminal step.** A
-  **human** cherry-picks them to `main` out of band; **agents open no `main` PR**
-  (per-case draft-PR flow suspended 2026-07-16 — `.agents/_reverted/`). Same rule for
-  the connected `elitea_assistant` repo (`.agents/workflow.md` § Connected repos).
+- **Two processes (2026-10).** Factory cases ship ladder locators against DEV, one PR
+  into this repo. The **`testid-migrator`** (`.claude/agents/testid-migrator/`,
+  skill `migrate-locators-to-testids`) works the ledger
+  `.agents/locator-migration/ledger.json`: phase A swaps locators whose testid is
+  deployed on DEV (verified on DEV, PR → `automation/base`); phase B adds testids on
+  `EliteaAI/EliteaUI` `automation/testids` (push is terminal; a **human** cherry-picks to
+  `main`; agents open no `main` PR). Same for `elitea_assistant`
+  (`.agents/workflow.md` § Connected repos).
 - **No git worktrees for regular work** — plain branching, one thing at a time. Read
   another branch with `git show <branch>:<path>` / `git diff <branch>...HEAD`, never a
   checkout. Worktrees only on an explicit human ask (`.agents/workflow.md` § Branching).
-- **Never rebase or force-push `automation/testids`** — it's a shared org branch.
+- **Never rebase or force-push `automation/testids`** (migrator only) — it's a shared org branch.
   Sync it with `git merge origin/main`. If review changes a testid, resolve the next
   merge **in favour of `main`**.
-- **Locators are testid-only — there is NO fallback ladder**: missing testid ⇒ add it
-  via `add-data-testid` (team measures UI coverage by testid presence).
-  `LocatorDescriptor(testid="agent-form-save-button")`; `fallback`/`locator` params are
-  forbidden. Naming: `{section}-{element}-{type}`. Locators live **only as page-object
-  class fields** — never inside methods or specs. Overrides: `.agents/role-overrides.md`.
+- **Locators follow the ladder** (`.claude/rules/page-objects.md`): existing testid on
+  DEV → `role`+`name` → `label` → stable `css` → declared `xpath`. Never positional.
+  Every non-testid declaration carries `suggested_testid="{section}-{element}-{type}"`
+  (enforced at import). `fallback`/`locator` params are forbidden. Locators live **only
+  as page-object class fields** (`LocatorDescriptor` / `ScopedLocator` / UPPER_CASE
+  `[data-testid=` constants) — never inside methods or specs. Team metric: locator debt.
+  Overrides: `.agents/role-overrides.md`.
 - **Test steps wrapped in `with allure.step("Step N — …"):`** so they reach reports.
 - **`.env.test` beats shell env vars** (`config.py` orders dotenv first). Edit the file,
   don't export.
-- `APP_PREFIX` is empty on localhost, `/app` on deployed envs.
-- Keycloak login field is `input[name="username"]`, NOT email. On localhost,
-  `auth_state` skips login entirely (uses `VITE_DEV_TOKEN`).
+- `APP_PREFIX` is `/app` on DEV and other deployed envs (empty only on localhost — migrator).
+- Keycloak login field is `input[name="username"]`, NOT email. `auth_state` logs in via
+  the API on DEV; only on localhost (migrator) does it skip login (`VITE_DEV_TOKEN`).
 - AI responses arrive over WebSocket with ~2s delay — use waits, never sleeps.
 - Never commit or print `.env` / `.env.test` contents.
 - **Tracker writes: prefix `env -u GITHUB_TOKEN gh …`** — the shared env token is the
@@ -70,7 +76,8 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
 ## Key Paths
 
 - Tests: `automation/tests/{ui,api,unit}/` — grouped by feature
-- Page objects: `automation/pages/` (testid-only `LocatorDescriptor`)
+- Page objects: `automation/pages/` (ladder `LocatorDescriptor` / `ScopedLocator`)
+- Locator migration: `.agents/locator-migration/ledger.json` + `automation/scripts/locator_inventory.py`
 - Config: `automation/config.py` + `automation/.env.test` (symlink to `../../.env.test`)
 - Markers: `automation/pytest.ini` (p0–p3, smoke, regression, per-feature)
 

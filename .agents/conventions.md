@@ -22,8 +22,9 @@ This file only records what those don't.
 - **Naming:** `snake_case` files/functions, `PascalCase` classes (`TestAgentConfiguration`),
   test files `test_*.py`, page objects `<surface>_page.py`.
 - **Selectors:** live in page objects ONLY — one `data-testid` appears in exactly one
-  file. No raw selectors in spec files. **Locators are class-level `LocatorDescriptor`
-  fields, never constructed inside method bodies.**
+  file. No raw selectors in spec files. **Locators are class-level `LocatorDescriptor` /
+  `ScopedLocator` fields on the ladder (2026-10), never constructed inside method
+  bodies; every non-testid one carries `suggested_testid=`** (validated at import).
 - **Step reporting:** test steps wrapped in `with allure.step("Step N — …"):` so they
   surface in Allure reports (see `.agents/testing.md` § Step reporting).
 - **Config:** everything through `from config import settings` (pydantic-settings);
@@ -41,7 +42,9 @@ This file only records what those don't.
   `automation/<case-id>-<slug>` branches exist historically — don't create new ones)
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
 - PRs: small, one per test/feature area, target `automation/base`, squash merge
-- Testid commits: land ON `automation/testids` (dev server runs it — HMR live) and are
+- Migrator batch branches: `locators/<yyyy-mm-dd>` (run date) from `automation/base`, one PR per migration run.
+- Testid commits (**`testid-migrator` only** — factory roles never commit to EliteaUI):
+  land ON `automation/testids` (dev server runs it — HMR live) and are
   **pushed** — that's the agent's terminal step. A human cherry-picks them to EliteaUI
   `main`; agents open no `main` PR (suspended 2026-07-16 — `.agents/_reverted/`). Message
   describing the testids added.

@@ -2,8 +2,9 @@
 
 Playwright/pytest test-automation suite for the Elitea AI platform. This team turns
 onetest TMS cases into merged, honest automated tests on the **`automation/base`**
-branch, run against a **local `EliteaAI/EliteaUI` checkout** on the `automation/testids`
-integration branch (→ DEV backend). No fork — the branch lives on the org repo.
+branch, built and verified against the **DEV env as deployed** (`https://dev.elitea.ai/app`,
+2026-10). A separate **`testid-migrator`** converts ladder locators to `data-testid`s
+(EliteaUI `automation/testids` on the org repo — no fork; human promotes to `main`).
 
 ## Tech Stack
 
@@ -12,8 +13,8 @@ integration branch (→ DEV backend). No fork — the branch lives on the org re
 - **Config:** pydantic-settings via `automation/config.py` + `automation/.env.test`
 - **Reporting:** allure-pytest (mandatory — `--alluredir` in `pytest.ini` addopts), pytest-html/json
 - **Lint/type:** ruff (line 120, py311 target), mypy
-- **System under test:** Elitea (React UI + REST API, Keycloak auth) — locally via
-  EliteaUI (`automation/testids`) on `http://localhost:5173`
+- **System under test:** Elitea (React UI + REST API, Keycloak auth) — the DEV env
+  `https://dev.elitea.ai/app` (localhost:5173 is the migrator's phase-B target only)
 
 ## Repository Structure
 
@@ -23,7 +24,7 @@ automation/
 ├── conftest.py          ← fixtures, auth_state, screenshots, report paths
 ├── pytest.ini           ← markers (p0–p3, smoke, regression, per-feature), allure addopts
 ├── api/                 ← REST API clients (Bearer + cookie-based)
-├── pages/               ← page objects — testid-only LocatorDescriptor
+├── pages/               ← page objects — class-level LocatorDescriptor / ScopedLocator on the ladder
 ├── components/          ← UI component helpers
 ├── fixtures/  utils/    ← shared fixtures & helpers
 └── tests/
@@ -50,8 +51,10 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v           # smoke suite (<5 min)
 ../.venv/bin/ruff check .                               # lint
 ```
 
-Local UI: `cd ../EliteaUI && npm run dev` → `http://localhost:5173`
-(or the `start-ui-localhost` skill).
+Browser auth for exploration (Playwright MCP): `cd automation && ../.venv/bin/python
+scripts/dev_storage_state.py` at session start. Locator debt:
+`../.venv/bin/python scripts/locator_inventory.py scan`. The local UI
+(`start-ui-localhost`) is started only by the `testid-migrator`.
 
 ## Environment
 
@@ -62,11 +65,12 @@ See `.agents/profile.md` § Roles & sample users.
 
 ## Testing & Conventions
 
-Full detail in `.agents/testing.md` (framework, run commands, **locator policy —
-testid-only, there is no ladder**, AFS conventions) and `.agents/conventions.md`
+Full detail in `.agents/testing.md` (framework, run commands, **locator policy — the
+ladder: existing testid → role+name → label → stable css → declared xpath, every
+non-testid with `suggested_testid=`**, AFS conventions) and `.agents/conventions.md`
 (pointers to `.claude/rules/*`). Hard per-role overrides: `.agents/role-overrides.md`
-— it wins over any skill's defaults/examples. Team goal: `data-testid` on every
-element new tests touch; UI-automation coverage is measured by testid presence.
+— it wins over any skill's defaults/examples. Team goal: drive **locator debt** to zero
+(`locator_inventory.py scan`) via the `testid-migrator`.
 Way of work — the two-branch dance, sync procedures, batch operations — in
 `.agents/workflow.md`. Three-repo topology in `.agents/architecture.md`.
 
@@ -75,7 +79,7 @@ Way of work — the two-branch dance, sync procedures, batch operations — in
 GitHub Actions workflows run the suite against deployed envs (`test-ui-dev.yml`,
 `test-ui-next.yml`, `test-ui-stage2.yml`, `test-api.yml`) — **that is not the local
 loop's job**. There is NO CI on `automation/base`: the engineer running tests green
-locally before PR is the only verification gate.
+against DEV from their machine before PR is the only verification gate.
 
 <!-- BUNDLE:test-automation START -->
 # Test Automation Team — shared conventions

@@ -57,3 +57,5 @@ If it is a task (routing, coordination, framework decision, automation merge):
 If it is a question: answer in your reply.
 
 NEVER return an empty response to a task — always name what you did (or why you couldn't).
+
+PROJECT PRECEDENCE (2026-10): the factory targets the DEV env as deployed with the locator ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Pre-2026-10 testid-only / localhost / testid-presence memories are superseded. Only `testid-migrator` adds testids or touches EliteaUI.
