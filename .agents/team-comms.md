@@ -13,9 +13,8 @@
   installed for the **human** team's direct use only (operator ruling 2026-07-14).
   They bypass the pipeline's gates, so **no pipeline agent dispatches or defers to
   them**; their output enters only through the normal PR review gates. The skills
-  they reference (`add-data-testid`, `page-object-generator`, `start-ui-localhost`)
-  stay active — mine those for context, never the agents. (`add-data-testid` and
-  `start-ui-localhost` are now used only by `testid-migrator`.)
+  they reference (notably `page-object-generator`) stay active — mine those for
+  context, never the agents.
 
 ## Team roster
 
@@ -23,8 +22,8 @@
 |------|-----------------|-----------|
 | Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, merge gate to `automation/factory`, TMS intake/back-write, board #9 discipline, batch ops (on request) |
 | QA Engineer — Sage (analyst + reviewer) | `qa-engineer` | Analyst: execute case vs DEV (`https://dev.elitea.ai/app`), emit AFS with ladder handles. Reviewer: FRESH session, adversarial review of automation PRs |
-| Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test on DEV through page objects, ladder locators with `suggested_testid=`; never touches EliteaUI |
-| Testid Migrator — Tess (on request) | `testid-migrator` | Ledger-driven locator → testid migration: phase A swaps deployed testids + verifies on DEV (PR → `automation/factory`); phase B adds testids on `EliteaAI/EliteaUI` `automation/testids` (pushed; human promotes). Started by request (a person or another party), never by a factory batch |
+| Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test on DEV through page objects, ladder locators with `suggested_testid=` |
+| Testid Migrator — Tess (on request) | `testid-migrator` | Locator-debt burndown: turns `suggested_testid=` hints into real testids and swaps the declarations once they are deployed. **Out of band** — its own session, its own procedure (`.claude/skills/migrate-locators-to-testids`), started by request (a person or another party); **never dispatched from a batch, and nothing in the pipeline waits on it** |
 | Scout — Kit | `scout` | Onboarding/seed refresh, retrospectives, optimization passes |
 
 Use the `subagent_type` value exactly — it must match a directory name in

@@ -127,9 +127,9 @@ env -u GITHUB_TOKEN gh release upload evidence <file>.png --clobber \
 ### DEV Verification Gate
 
 **Product bugs MUST be DEV-verified before escalation:**
-- Localhost-only reproduction ≠ confirmed product bug
-- DEV = `https://dev.elitea.ai/` with real Keycloak login
-- Post Environment line: `localhost-only | DEV | both`
+- A CI log or a reporter's screenshot ≠ confirmed product bug — you must see it yourself
+- DEV = `https://dev.elitea.ai/` (`/app`) with real Keycloak login
+- Post Environment line: `DEV | CI-only | both`
 
 ### Escalation to `elitea_issues`
 
@@ -149,9 +149,9 @@ env -u GITHUB_TOKEN gh release upload evidence <file>.png --clobber \
 ```
 Failure reproduced?
 ├─ No → "not reproducible", close as non-defect
-└─ Yes → Where?
-    ├─ Localhost only → File lightweight bug, label "localhost-only", DO NOT escalate
-    └─ DEV or both → Does test match TMS case?
+└─ Yes → By whom?
+    ├─ Second-hand only (CI log / screenshot) → File lightweight bug, label "repro:local-only", DO NOT escalate
+    └─ Confirmed on DEV by your own run → Does test match TMS case?
         ├─ No (drift) → Fix test or case, NOT a product bug
         └─ Yes (no drift) → FILE product bug (elitea-testing-public)
             Surface escalation option to human
@@ -196,16 +196,16 @@ Product bug filed, test affected:
 
 ---
 
-### Scenario: Localhost Pass, DEV Fail
+### Scenario: Green From This Machine, Red in CI
 
-**Input:** Test passes locally, fails on DEV in batch gate
+**Input:** Test passes when you run it against DEV, fails in the CI batch gate
 
 **Phases:**
 1. Extract failure from gate logs
-2. Reproduce on DEV (Keycloak auth, `/app` prefix)
+2. Re-run on DEV from this machine (Keycloak auth, `/app` prefix)
 3. Correlate: no drift
-4. RCA: DEV-specific timing (WebSocket response slower)
-5. Adjust timeout, verify 3/3 on DEV
+4. RCA: load-dependent timing on the CI runner (WebSocket response slower)
+5. Replace the fragile wait, verify 3/3 on DEV
 
 **Output:** PR with DEV-appropriate timeout, note in closure record
 
@@ -321,9 +321,9 @@ A processed failure is **complete** when:
 
 ---
 
-### "Test reproduced on localhost but not DEV — is it a bug?"
+### "It failed in CI but I can't reproduce it on DEV — is it a bug?"
 
-**NO.** Localhost-only = potential env quirk. File lightweight bug labeled `localhost-only`, DO NOT escalate to `elitea_issues`.
+**NO.** Not-reproducible-on-DEV = potential runner/data quirk, not a confirmed product defect. File a lightweight finding labeled `repro:local-only`, DO NOT escalate to `elitea_issues`.
 
 ---
 
@@ -375,7 +375,6 @@ See `references/bug-filing-procedure.md` § Escalation.
 - `.agents/profile.md` § Issue tracker — board #9 mechanics
 - `.agents/role-overrides.md` — interaction-discovery ladder, evidence discipline
 - `.agents/testing.md` § Merge gate — 3-green verification
-- `.agents/workflow.md` § Testid flow — testid provenance checking
-- `add-data-testid` skill — adding missing testids
+- `.agents/testing.md` § Locator policy — the ladder, and why a missing testid is a rung, not work
 - `reproduce-elitea-bug` skill — DEV verification procedure
 - `file-app-bug` skill — escalation to elitea_issues

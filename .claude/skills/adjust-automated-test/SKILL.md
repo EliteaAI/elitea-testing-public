@@ -1,6 +1,6 @@
 ---
 name: adjust-automated-test
-description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs promotion gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, and raise PRs for a human to accept. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
+description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs handle gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, and raise PRs for a human to accept. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
 allowed-tools:
   - Bash
   - Read
@@ -53,43 +53,40 @@ dispatch. The method below does not change; **your own slot contract does.** So:
 
 ## Step 1 — Ground truth BEFORE any diagnosis
 
-1. **Sync**, or you diagnose against stale UI: `sync-base-branches` (merges `main` into
-   `automation/base`, and into `automation/testids` on EliteaUI + connected
-   `elitea_assistant`). Guard first — never sync over another agent's in-flight work.
-2. **Pick the environment — DERIVE it, never assume:**
-
-   | Situation | Diagnose on |
-   |---|---|
-   | The test is on `main` and its testids are deployed (e.g. a DEV CI failure) | **`https://dev.elitea.ai`** — Keycloak login, `TEST_USER_EMAIL`/`_PASSWORD` from `.env.test`, field `input[name="username"]` |
-   | The test lives on `automation/base` (not yet promoted) | **`http://localhost:5173`** (`start-ui-localhost`) — its testids may exist only on `automation/testids` |
-   | A **new** testid will be needed | **localhost** — a new testid cannot exist on DEV yet |
-   | Any testid the test uses is **not on EliteaUI `main`** | **localhost — DEV is impossible for this test** (step 4) |
-
-3. **Reproduce** in that environment, clean process:
+1. **Sync**, or you diagnose against stale code: `sync-base-branches` Part 1 (merges
+   `main` into `automation/factory`). Guard first — never sync over another agent's
+   in-flight work. Then `git fetch origin` in the read-only frontend-source reference
+   clone, so what you read there is the product as DEV ships it (`origin/main`).
+2. **Diagnose on DEV — always.** Every test on `automation/factory` targets the DEV env as
+   deployed (`https://dev.elitea.ai`, `APP_PREFIX=/app`; Keycloak login,
+   `TEST_USER_EMAIL`/`_PASSWORD` from `.env.test`, field `input[name="username"]`).
+   Refresh the browser auth first: `cd automation && ../.venv/bin/python
+   scripts/dev_storage_state.py`.
+3. **Reproduce** on DEV, clean process:
    ```bash
    cd automation && HEADLESS=true ../.venv/bin/pytest <node-id> -v -p no:cacheprovider
    ```
-   **Green locally but red in CI ⇒ NOT drift** — env/infra/data (class **D**).
-4. **Promotion-gap pre-check — mandatory before calling any DEV failure "drift."** A test
-   can be entirely correct and still red on DEV because its testid was never promoted.
-   Fresh fetch, then compare refs (the closure-record grep, `.agents/workflow.md`):
-   ```bash
-   cd ../EliteaUI && git fetch origin
-   for t in <every testid the failing test uses>; do
-     printf "%-34s main:%-4s testids:%s\n" "$t" \
-       "$(git grep -- "$t" origin/main -- src/ 2>/dev/null | grep -qE "(data-testid|testid.*=.*$t)" && echo YES || echo no)" \
-       "$(git grep -- "$t" origin/automation/testids -- src/ 2>/dev/null | grep -qE "(data-testid|testid.*=.*$t)" && echo YES || echo no)"
-   done
-   ```
-   `main:no` + `testids:YES` ⇒ **class F. Stop — do not touch the test.**
+   **Green from this machine but red in CI ⇒ NOT drift** — env/infra/data (class **D**).
+4. **Handle pre-check — mandatory before calling a testid failure "drift."** A test on
+   `automation/factory` only ever uses handles DEV serves, so a `testid=` that resolves to
+   nothing is a fact about the deployment, not a bug in the test. Confirm which it is on
+   DEV itself, in the DOM — take a Playwright MCP snapshot of the page the test was on and
+   check whether the element is present **without** its testid:
+   - **Element absent entirely** ⇒ the flow changed: class **A**, or **B** if it's broken.
+   - **Element present, testid gone** ⇒ class **E** — climb down the ladder.
+   - **Element present WITH the testid, yet the test still can't reach it** ⇒ timing or
+     scoping, i.e. class **D**; fix the wait, never the assertion.
+   - **Element and testid both absent, and the case's flow is unreachable** ⇒ class **F**.
+     Stop — do not touch the test; report it (step 3 of § Report) so the handle gap is
+     resolved out of band.
 
 ## Step 2 — TRIAGE. The heart of this skill.
 
 **A red test is not evidence that the test is wrong.** Classify from the evidence trio —
 **the TMS case** (`onetest-ai-tm-Elitea`: the specified behaviour), **the AFS**
 (`test-specs/<feature>/`: what the analyst observed), **the automation code** (what it
-asserts) — plus **`../EliteaUI/src`**, which states the product's *intended* behaviour as
-fact. Run `.agents/role-overrides.md` § interaction-discovery ladder and § 4xx/5xx before
+asserts) — plus **the frontend source as DEV ships it** (`git show origin/main:<path>` in
+the read-only reference clone), which states the product's *intended* behaviour as fact. Run `.agents/role-overrides.md` § interaction-discovery ladder and § 4xx/5xx before
 any verdict.
 
 | # | Class | Signal | Action |
@@ -98,8 +95,8 @@ any verdict.
 | **B** | **New product bug** | The flow intended per `src/` is genuinely broken | File a local `bug`; test stays red, or `expect.soft()` + `# Known defect: #N`. **Do NOT adjust.** |
 | **C** | **Known bug persisting** | Matches an OPEN `bug` issue | Keep red, link `# Known defect: #N`, record as sanctioned RED. **Do NOT adjust.** |
 | **D** | **Data pollution / flake / infra** | Leftover entities skew a baseline or count; timing; CI-only; environment | Fix **hygiene and robustness** (unique data, scoped queries, cleanup, condition waits) — **never the assertion.** |
-| **E** | **Testid gone, no replacement** | Element exists but carries no testid | `add-data-testid` on localhost (or the connected repo), then adjust. Cannot be placed ⇒ `blocked`. |
-| **F** | **Promotion gap** | Testid on `automation/testids` but not `main` (step 1.4) | **Nothing to fix.** Report it; red on DEV is expected until a human promotes. |
+| **E** | **Testid gone, no replacement** | Element exists on DEV but no longer carries its testid | Climb down the ladder: declare the highest unique rung with `suggested_testid=` (the ledger picks it up), then adjust. Only a positional pick reaches it ⇒ `question`. |
+| **F** | **Handle gap** | The element AND its testid are both gone from DEV, and the case's flow can't be reached at all (step 1.4) | **Nothing to fix in the test.** Report the gap and stop — resolving it is out of band, not an adjustment. |
 
 > **Worked example — why D is not optional.** CI run 30532379296 mixed both in one run: 4
 > toolkit failures were `Locator.wait_for` timeouts (class **A**), while a skills failure
@@ -107,7 +104,7 @@ any verdict.
 > prior-run debris (`el-1795-skill-*`, `elitea-1790-*`), i.e. class **D**. Lowering that
 > expected count would have masked a data-hygiene defect. **Same run, opposite actions.**
 
-Only **A** (and **E**, once the testid lands) proceeds to adjustment. Everything else is
+Only **A** and **E** proceed to adjustment. Everything else is
 reported with its evidence (Step 9) — **never silently adjusted.** If triage refutes the
 suspicion, say so plainly and stop; that is a successful outcome, not a failure.
 
@@ -115,7 +112,7 @@ suspicion, say so plainly and stop; that is a successful outcome, not a failure.
 
 | Free to change (*how* it reaches/identifies) | Requires explicit human sign-off (*what* it verifies) |
 |---|---|
-| `LocatorDescriptor` testids, class-level selector constants | Deleting an assertion, or a whole step |
+| Class-level `LocatorDescriptor` rungs / selector constants | Deleting an assertion, or a whole step |
 | Step order, navigation, added condition waits | Weakening a comparison (`==` → `in`, exact → substring) |
 | Page-object method internals, new helper methods | Lowering a count/threshold, or making a check conditional |
 | Renamed handles after a restructure | Replacing a state assertion with a mere presence check |
@@ -148,33 +145,36 @@ the upload) — never a bare local path.
 
 Amend the existing AFS in place (`test-specs/<feature>/`, `test-case-analysis`
 spec-format) so it describes current behaviour as the new source of truth. Keep the Handles
-Reference **testid-only**, every row carrying a verified PROVENANCE (`on-main ✓` /
-`on-automation/testids only` / `needs-adding`). Add an **Adjustment** section: what changed,
+Reference on the ladder, one row per element verified on DEV — `rung` | `handle` |
+`suggested_testid` | `provenance` (`testid on DEV ✓` / `ladder — no testid on DEV`). Add an **Adjustment** section: what changed,
 why, the triage class, and any Expected-result changes.
 
 ## Step 7 — Update the code
 
-Branch `tests/adjust-ELITEA-<id>-<slug>` from fresh `origin/automation/base`. **Plain
+Branch `tests/adjust-ELITEA-<id>-<slug>` from fresh `origin/automation/factory`. **Plain
 branching, one thing at a time — no git worktrees** (`.agents/workflow.md` § No git
 worktrees).
 
 - **Update existing code only** — no new test files, no new test classes.
-- Locators stay class-level `LocatorDescriptor(testid=…)` or UPPER_CASE `[data-testid="…"]`
-  constants. No `fallback=`/`locator=`, nothing built in a method body, no raw handle
-  chained off a field (`.agents/testing.md` § Locator policy — testid-only, no ladder).
-- Need a testid ⇒ `add-data-testid` (localhost; **the connected repo's own source** if the
-  element ships from `elitea_assistant`), commit + push `automation/testids`. Genuinely
-  cannot be placed ⇒ `blocked`.
+- Locators follow the ladder (`.agents/testing.md` § Locator policy): existing testid on
+  DEV → `role`+`name` → `label` → stable `css` → declared `xpath`, class-level
+  `LocatorDescriptor` / `ScopedLocator` fields or UPPER_CASE `[data-testid="…"]` constants
+  only, every non-testid one with `suggested_testid=`. No `fallback=`/`locator=`, nothing
+  built in a method body, no raw handle chained off a field, no positional picks.
+- **Your PR in this repo is the only artifact.** Nothing outside it is changed to make a
+  locator work: a missing testid is a ladder rung + hint, not work.
 - Obey the preserve-the-nature rail (Step 3).
-- **Self-check before handoff** — run the reviewer's mechanical grep on your own diff and
-  paste the output (an empty result is the evidence):
+- **Self-check before handoff** — run the reviewer's mechanical grep
+  (`.agents/role-overrides.md` § Reviewer slot) on your own diff and paste the output,
+  plus the `locator_inventory.py scan` delta (unmanaged handles must not increase):
   ```bash
-  git diff origin/automation/base... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\()'
+  git diff origin/automation/factory...HEAD -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\(|\.nth\(|locator=|fallback=)'
+  cd automation && ../.venv/bin/python scripts/locator_inventory.py scan
   ```
 
 ## Step 8 — Gate, then raise the PRs
 
-**Gate** (`.agents/testing.md` § Merge gate): **3 separate consecutive invocations of the
+**Gate** (`.agents/testing.md` § Merge gate), against DEV: **3 separate consecutive invocations of the
 same node id**, clean process each time:
 ```bash
 cd automation && HEADLESS=true ../.venv/bin/pytest <node-id> -v -p no:cacheprovider   # ×3
@@ -186,10 +186,10 @@ soft-asserted) — name which members fired.
 
 **Then two PRs — this skill prepares, a human accepts:**
 
-1. **Test PR → `automation/base`** · `test(adjust): ELITEA-<id> — <what changed>`. Body:
+1. **Test PR → `automation/factory`** · `test(adjust): ELITEA-<id> — <what changed>`. Body:
    the originating task link, **triage class + evidence**, what drifted (old→new),
-   **Expected-result changes** (or "none"), gate evidence 3/3, testid provenance, and the
-   self-check grep output.
+   **Expected-result changes** (or "none"), gate evidence 3/3, handle provenance, and the
+   self-check grep + scan output.
 2. **TMS PR → `onetest-ai-tm-Elitea`** — the case's steps/expected results updated to
    current behaviour. **Keep `automation_test_id` unchanged** (same test, same dotted path);
    set `automation_pr` to the test PR URL. Edit case files **by exact path** — several cases
@@ -207,8 +207,8 @@ gap:
 | A drift | old→new handles, Expected-result changes (or "none"), PR links, gate 3/3 |
 | D pollution | the debris/timing observed, the robustness fix, and that assertions were untouched |
 | B / C bug | repro + `src/` pointer, the issue number, sanctioned-RED justification |
-| E blocked | which element, why no testid could be placed |
-| F promotion gap | the ref-grep output, and that a human testid promotion is what unblocks it |
+| E testid gone | which element, the rung + `suggested_testid` now declared (or the `question` filed) |
+| F handle gap | the DEV DOM snapshot showing element + testid both absent, the flow that can't be reached, and that the test was left untouched |
 
 Leave board routing and issue closure to the orchestrator/human
 (`.agents/profile.md` § Issue tracker: `Approved`/`Done` are human-only).

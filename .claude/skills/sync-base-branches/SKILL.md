@@ -1,6 +1,6 @@
 ---
 name: sync-base-branches
-description: Brings the long-lived automation branches up to date with their mains — automation/base (elitea-testing-public), plus the automation/testids integration branches on EliteaAI/EliteaUI and EliteaAI/elitea_assistant (Support Assistant, connected repo). All by merge; none ever rebased or force-pushed. Use before starting a new test, after a promotion, or when a test fails against unexpectedly-changed UI.
+description: Brings the long-lived automation branches up to date with their mains — automation/factory (elitea-testing-public), plus the automation/testids integration branches on EliteaAI/EliteaUI and EliteaAI/elitea_assistant (Support Assistant, connected repo). All by merge; none ever rebased or force-pushed. Use before starting a new test, after a promotion, or when a test fails against unexpectedly-changed UI.
 allowed-tools:
   - Bash
   - Read
@@ -13,7 +13,7 @@ new test**, **after a batch promotion**, or when a test fails against UI that lo
 
 | Branch | Repo | Base it tracks | Strategy |
 |---|---|---|---|
-| `automation/base` | `EliteaAI/elitea-testing-public` | `origin/main` | **merge** |
+| `automation/factory` | `EliteaAI/elitea-testing-public` | `origin/main` | **merge** |
 | `automation/testids` | `EliteaAI/EliteaUI` (no fork) | `origin/main` | **merge** |
 | `automation/testids` | `EliteaAI/elitea_assistant` (Support Assistant, connected repo) | `origin/main` | **merge** |
 
@@ -85,14 +85,14 @@ catches it) — a scanner that silently passes everything is worse than no scann
 
 Then commit, and only then proceed to Part 1.
 
-## Part 1 — Test repo: merge `origin/main` into `automation/base`
+## Part 1 — Test repo: merge `origin/main` into `automation/factory`
 
 ```bash
 # WORKSPACE = parent folder holding the three sibling clones (no env var needed)
 WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
 cd "$WORKSPACE/elitea-testing-public"
 git fetch origin
-git checkout automation/base
+git checkout automation/factory
 git merge origin/main
 ```
 
@@ -123,7 +123,7 @@ no default, add the key to `.env.test` **and tell the human**, because every tea
 needs it too.
 
 ```bash
-git push origin automation/base      # plain push. If this needs --force, STOP: something is wrong.
+git push origin automation/factory      # plain push. If this needs --force, STOP: something is wrong.
 ```
 
 ## Part 2 — UI: merge `origin/main` into `automation/testids`
@@ -342,7 +342,7 @@ pulled in real framework changes and real UI changes; run the smoke suite agains
 WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
 
 # 1. Each branch level with its base (left = behind, must be 0; right = our commits, fine)
-git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...automation/base
+git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...automation/factory
 git -C "$WORKSPACE/EliteaUI"              rev-list --left-right --count origin/main...automation/testids
 git -C "$WORKSPACE/elitea_assistant"      rev-list --left-right --count origin/main...automation/testids 2>/dev/null || echo "  (elitea_assistant not set up — skipped)"
 
@@ -391,7 +391,7 @@ a green sync with a broken UI is the failure mode this catches.
 
 ## Do not
 
-- Rebase or force-push `automation/base` or `automation/testids` (on EliteaUI **or**
+- Rebase or force-push `automation/factory` or `automation/testids` (on EliteaUI **or**
   elitea_assistant). Ever. All are shared branches; `--force` has no legitimate use on any.
   (Force-pushing a short-lived `testids/<case>` branch to resolve a PR conflict is fine — that is a
   different branch.)

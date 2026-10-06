@@ -5,7 +5,7 @@ Test automation for [Elitea AI Platform](https://dev.elitea.ai) using Playwright
 **Target: the DEV env as deployed** (`ELITEA_URL=https://dev.elitea.ai`, `APP_PREFIX=/app`).
 Locators follow the ladder in `.claude/rules/page-objects.md` § Locator Strategy (existing
 testid → role+name → label → stable CSS → declared XPath; every non-testid one carries
-`suggested_testid=`). `localhost:5173` is used only by the testid migrator.
+`suggested_testid=`). DEV is the only target — never point a run anywhere else.
 
 # Additional Instructions
 - Coding rules (auto-applied): @.claude/rules/page-objects.md, @.claude/rules/ui-tests.md, @.claude/rules/api-patterns.md, @.claude/rules/mui-patterns.md, @.claude/rules/api-tests.md
