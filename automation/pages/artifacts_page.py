@@ -72,6 +72,35 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Left panel — storage selector & footer (ELITEA-1805)
+    # ------------------------------------------------------------------
+
+    storage_selector = LocatorDescriptor(
+        css='[data-tour="artifacts-storage-selector"]',
+        suggested_testid="artifacts-storage-selector",
+        description="Storage-provider block ('Storage: <name>' + dropdown "
+        "chevron) above the bucket list — no data-testid on DEV yet; "
+        "BucketStorageSelector.jsx's root Box already carries a stable, "
+        "non-generated data-tour attribute for the interactive-tours "
+        "feature, confirmed live and used here as the css rung "
+        "(ELITEA-1805). The dropdown chevron SVG inside it is purely "
+        "decorative (no role/label of its own) and is not declared as its "
+        "own handle — no case step interacts with it directly.",
+    )
+
+    bucket_footer = LocatorDescriptor(
+        xpath='//span[text()="Buckets:"]/parent::div/parent::div',
+        suggested_testid="artifacts-bucket-footer",
+        description="Left-panel footer showing 'Buckets:N' and 'Size:X' "
+        "(BucketFooter.jsx, ELITEA-1805). No data-testid, no ARIA role or "
+        "label on this element; only MUI-generated classes (css-*) exist "
+        "as alternatives, so rungs 1-4 all fail — declared xpath last "
+        "resort, confirmed live and unique on the page. Read the full "
+        "text_content() and regex-parse 'Buckets:(\\d+)' / 'Size:(.+)$' — "
+        "see get_bucket_footer_text().",
+    )
+
+    # ------------------------------------------------------------------
     # "New Bucket" form — /artifacts/create-bucket (ELITEA-1808)
     # ------------------------------------------------------------------
 
@@ -174,6 +203,23 @@ class ArtifactsPage(BasePage):
     # nested in a subfolder). FileTreeItem.jsx.
     ARTIFACTS_TREE_ITEM = '[data-testid="artifacts-tree-item-{}"]'
 
+    # Dynamic, non-testid-of-its-own template — the left-panel tree's "No
+    # files in this bucket" sub-label for a given bucket (ELITEA-1805).
+    # BucketContent.jsx's zero-files branch renders a plain `<Typography>`
+    # with NO testid of its own (confirmed live via full outerHTML dump);
+    # it IS the bucket row's DOM-structural next sibling (both direct
+    # children of the same wrapper Box), confirmed unique project-wide.
+    # Anchored via a CSS adjacent-sibling combinator off the bucket row's
+    # OWN stable testid (BUCKET_ROW) — the string still starts with
+    # "[data-testid", so the locator inventory counts it as the testid
+    # rung, same convention already established by BUCKET_ROW /
+    # ARTIFACT_FILE_ROW for other raw UPPER_CASE template constants.
+    # suggested_testid="artifacts-bucket-tree-empty-state" on the
+    # Typography itself would let a future migration drop the combinator.
+    # Only resolves after an intentional SECOND click on an already-active
+    # bucket row — see issue #2393 and expand_bucket_tree_if_needed().
+    BUCKET_TREE_EMPTY_STATE = '[data-testid="artifacts-bucket-row-{}"] + div'
+
     # ------------------------------------------------------------------
     # Right panel — file list toolbar
     # ------------------------------------------------------------------
@@ -229,6 +275,33 @@ class ArtifactsPage(BasePage):
         "not a state-toggled testid). Static (non-parameterized) testid — "
         "use .first/.count()/text_content() to read a specific crumb, same "
         "shape as artifacts-file-row/artifacts-folder-row.",
+    )
+
+    bucket_info_button = LocatorDescriptor(
+        role="button",
+        name="Bucket info",
+        suggested_testid="artifacts-bucket-info-button",
+        description="Main-panel info icon next to the breadcrumb header "
+        "(BucketInfoTooltip.jsx's IconButton, ELITEA-1805) — no "
+        "data-testid on DEV yet; aria-label='Bucket info' IS the "
+        "accessible name, confirmed live unique on the page. Hovering it "
+        "shows the retention-policy / file-count tooltip (issue #1617 — "
+        "NOT the left-panel bucket-name hover, which shows nothing for a "
+        "short name). See hover_bucket_info_button() / "
+        "get_bucket_info_tooltip_text().",
+    )
+
+    bucket_info_tooltip = LocatorDescriptor(
+        role="tooltip",
+        suggested_testid="artifacts-bucket-info-tooltip",
+        description="Ambient '[role=\"tooltip\"]' landmark for the "
+        "retention-policy / file-count popper opened by hovering "
+        ":attr:`bucket_info_button` (ELITEA-1805, issue #1617). No "
+        "data-testid on this popper's content yet, so the standard ARIA "
+        "role is the rung — confirmed live exactly one tooltip is open at "
+        "a time in this flow. Content confirmed live: two stacked "
+        "label/value rows ('Retention Policy:1 Year' / 'Number of "
+        "files:0'), concatenated by .text_content().",
     )
 
     # ------------------------------------------------------------------
@@ -1364,6 +1437,71 @@ class ArtifactsPage(BasePage):
         self.wait_for_network(timeout=timeout)
         logger.info("Clicked bucket row '%s'", bucket_name)
 
+    def get_bucket_tree_empty_state(self, bucket_name: str) -> Locator:
+        """Return the left-panel tree's "No files in this bucket" sub-label.
+
+        Resolves via :attr:`BUCKET_TREE_EMPTY_STATE`, the bucket row's
+        DOM-structural next sibling (ELITEA-1805). The identical text ALSO
+        renders in the main panel (:attr:`empty_state_label`) at the same
+        time — this locator disambiguates by scoping to the row's own
+        testid via the sibling combinator, never a bare text match.
+
+        Args:
+            bucket_name: Exact name of the bucket whose row to scope from.
+        """
+        return self.page.locator(self.BUCKET_TREE_EMPTY_STATE.format(bucket_name))
+
+    @action("Expand bucket tree (second click if first selection didn't expand)")
+    def expand_bucket_tree_if_needed(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Ensure the left-panel tree shows "No files in this bucket" for *bucket_name*.
+
+        **Not a retry-until-pass loop** — a single, deliberate second click,
+        per the AFS's documented sequence (issue #2393, sibling of #651): on
+        a bucket's FIRST-EVER selection in the page's lifetime, a single
+        click selects the row (highlight + main panel update) but does NOT
+        expand the left-panel tree sub-label — only a second, deliberate
+        click on the SAME now-active row flips the toggle
+        (``handleSelectBucket``'s ``if (isActive) onToggle(...)`` gate).
+        Confirmed live: a short poll for the label first (it may already be
+        expanded, e.g. if this bucket was previously selected this
+        session), then exactly one extra click via :meth:`click_bucket_row`
+        if it is still absent, then a real wait for it to appear — never a
+        loop of repeated clicks.
+
+        Args:
+            bucket_name: Exact name of the bucket whose row to toggle.
+            timeout: Maximum wait time in milliseconds for the label to
+                appear after the (possible) second click.
+
+        **Confirmed live (ELITEA-1805 implementer exploration):** the
+        sibling element renders a transient ``"Loading files..."`` text
+        before settling on ``"No files in this bucket"`` — the SAME
+        element, already "visible" during the loading state. Waiting on
+        mere visibility (an earlier version of this method did) races that
+        transition and can read the loading text. ``expect(...).to_have_text``
+        is used instead — Playwright's own auto-retrying text assertion —
+        so both the short "already expanded?" poll and the final wait
+        settle on the real end state, never a transient one.
+        """
+        label = self.get_bucket_tree_empty_state(bucket_name)
+        try:
+            expect(label).to_have_text("No files in this bucket", timeout=2000)
+            logger.info(
+                "Bucket tree for '%s' already expanded — no second click needed",
+                bucket_name,
+            )
+            return
+        except AssertionError:
+            pass
+
+        logger.info(
+            "Bucket tree for '%s' not expanded after first selection — "
+            "issuing the documented deliberate second click (issue #2393)",
+            bucket_name,
+        )
+        self.click_bucket_row(bucket_name, timeout=timeout)
+        expect(label).to_have_text("No files in this bucket", timeout=timeout)
+
     # ------------------------------------------------------------------
     # Bucket-row dot-menu flow (ELITEA-1808)
     # ------------------------------------------------------------------
@@ -2466,6 +2604,67 @@ class ArtifactsPage(BasePage):
         except Exception:
             return False
 
+    def get_bucket_footer_text(self, timeout: int = 10000) -> str:
+        """Return the left-panel footer's full, stripped text content.
+
+        Confirmed live format (ELITEA-1805): ``"Buckets:1Size:0 B"`` — no
+        space/separator between the two fields and no literal "MB" unit.
+        Callers regex-parse ``Buckets:(\\d+)`` / ``Size:(.+)$`` out of the
+        returned string rather than relying on an exact literal match.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the footer to
+                become visible.
+        """
+        self.bucket_footer.wait_for(state="visible", timeout=timeout)
+        return (self.bucket_footer.text_content() or "").strip()
+
+    @action("Hover the bucket-info icon")
+    def hover_bucket_info_button(self, timeout: int = 10000) -> None:
+        """Hover the main-panel 'Bucket info' icon to open its tooltip.
+
+        Confirmed live (ELITEA-1805, issue #1617): this is the icon that
+        actually shows the retention-policy / file-count tooltip — hovering
+        the bucket NAME in the left panel shows nothing for a SHORT name
+        (per #1617). A LONG (e.g. generated, timestamp-suffixed) bucket
+        name can instead overflow and trigger the left panel's OWN
+        conditional overflow tooltip, which stays open independently of
+        mouse position and would leave TWO ``[role="tooltip"]`` elements
+        open at once — a Playwright strict-mode violation on a bare
+        ``get_by_role("tooltip")`` read (confirmed live: a mouse reset
+        alone does NOT dismiss it, since the overflow tooltip isn't purely
+        hover-driven). Callers must use a short bucket name (see this
+        case's test file) to avoid triggering it at all. Resetting the
+        mouse here is still cheap, general hover-state hygiene before this
+        method's own hover — same pattern already established elsewhere in
+        this page object family (e.g. ``chat_page.py``,
+        ``agent_detail_page.py``) — just not a fix for THAT specific
+        element.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the icon to
+                become visible before hovering.
+        """
+        self.page.mouse.move(0, 0)
+        self.bucket_info_button.wait_for(state="visible", timeout=timeout)
+        self.bucket_info_button.hover()
+        logger.info("Hovered the main-panel 'Bucket info' icon")
+
+    def get_bucket_info_tooltip_text(self, timeout: int = 5000) -> str:
+        """Return the open bucket-info tooltip's text content.
+
+        Call :meth:`hover_bucket_info_button` first. Confirmed live content
+        (ELITEA-1805, issue #1617): two stacked label/value rows
+        ("Retention Policy:1 Year" / "Number of files:0"), concatenated by
+        ``.text_content()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the tooltip to
+                become visible.
+        """
+        self.bucket_info_tooltip.wait_for(state="visible", timeout=timeout)
+        return self.bucket_info_tooltip.text_content() or ""
+
     # ------------------------------------------------------------------
     # Bucket permissions management
     # ------------------------------------------------------------------
@@ -2835,6 +3034,22 @@ class ArtifactsPage(BasePage):
             Locator scoped to the first matching row.
         """
         return self.page.locator(self.ARTIFACT_FILE_ROW).filter(has_text=filename).first
+
+    def get_file_row_count(self) -> int:
+        """Return the current ``artifacts-file-row`` count, no wait.
+
+        Unlike :meth:`get_file_count` (which waits for the FIRST row to
+        become visible before counting — the right call when files are
+        expected), this is a plain, unwaited ``.count()`` read via
+        :attr:`ARTIFACT_FILE_ROW` — the right call for an EMPTY-bucket
+        assertion (ELITEA-1805), where waiting for a row that will never
+        render would burn the full timeout for no reason.
+
+        Returns:
+            Integer count of ``artifacts-file-row`` elements currently in
+            the DOM (0 for an empty bucket).
+        """
+        return self.page.locator(self.ARTIFACT_FILE_ROW).count()
 
     @action("Hover file row")
     def hover_file_row(self, filename: str, timeout: int = 10000) -> None:
