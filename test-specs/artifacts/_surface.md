@@ -75,6 +75,23 @@ CodeMirror, no toggle) or the IMAGE branch — both are genuinely new surface.
 | Reliable single-line edit targeting in CodeMirror | `page.locator(".cm-line").filter(has_text="<target text>").first.click()` then `End` then `type()` | n/a — technique, not a testid | **`Control+Home` did NOT reliably move the cursor to true document start** in this CodeMirror instance during live testing — a plain `.click()` on the content wrapper lands wherever the pointer's bounding-box center falls, and `Control+Home` failed to correct it (live repro: an edit intended for line 1 landed on paragraph 2 instead). The existing `edit_file_preview_content(text, line_index=0)` helper (ELITEA-1852) works for THAT case only because it doesn't care which line gets hit ("any known content line" per its own AFS) — don't reuse it blind when a case needs a SPECIFIC line (e.g. the heading). |
 | Image load timing | image blob fetch can exceed 1s beyond `networkidle` on a busy shared DEV backend | live-observed | use a condition-based wait on the `<img>` element's visibility (generous timeout), not a fixed short sleep — a `networkidle` + 1s wait intermittently caught the panel still on "Loading file content..." |
 
+## Confirmed handles (as of ELITEA-1805 analysis, 2026-10-06 — landing page / empty-bucket surface, DEV-targeted factory)
+
+First AFS to analyse the Artifacts **landing page's own chrome** (left-panel
+header/footer/storage-selector, left-panel per-bucket tree empty state) — all
+prior entries above cover an already-selected/populated bucket's file
+operations. Confirmed live against `https://dev.elitea.ai` (ladder locators,
+2026-10 regime — not testid-only).
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Storage-provider selector (name + dropdown chevron) | `[data-tour="artifacts-storage-selector"]` (css rung, stable attribute) | `BucketStorageSelector.jsx` | no `data-testid` yet, but a stable, already-unique `data-tour` attribute (interactive-tours feature) serves as the css rung today. `suggested_testid="artifacts-storage-selector"`. |
+| Left-panel per-bucket "No files in this bucket" tree sub-label | `[data-testid="artifacts-bucket-row-{}"] + div` (css adjacent-sibling, dynamic per bucket name) | `BucketContent.jsx`'s zero-files branch | **no testid of its own** — scoped via the adjacent bucket row's own testid. Disambiguation matters: the IDENTICAL text string ALSO renders simultaneously in the main panel (`artifacts-empty-state`) — a bare text match hits both. `suggested_testid="artifacts-bucket-tree-empty-state"`. |
+| Bucket-info tooltip trigger (retention/file-count) | `get_by_label("Bucket info")` (role+name rung — `aria-label="Bucket info"`) | `BucketInfoTooltip.jsx`'s `IconButton`, mounted from `ArtifactTableToolbar.jsx` | no testid; confirmed live unique on page. Tooltip content on hover: `page.locator('[role="tooltip"]')`, confirmed live text `"Retention Policy:1 YearNumber of files:0"` (two concatenated label+value rows). `suggested_testid="artifacts-bucket-info-button"`. |
+| Left-panel footer (bucket count + total size) | xpath rung — `//span[text()="Buckets:"]/parent::div/parent::div`, then regex-parse the full text | `BucketFooter.jsx` | no testid, no role, no label, only MUI generated classes — rungs 1-4 all genuinely fail here. Confirmed live full text format: `"Buckets:1Size:0 B"` (no "MB" literal — case texts citing "X MB" are generic placeholders). `suggested_testid="artifacts-bucket-footer"` on the root `Box`. |
+| Toolbar action group (search/upload/download/delete) presence gate | n/a — behavioral note, not a handle | `ArtifactTableToolbar.jsx`: `{!isEmptyFiles && (...)}` | the WHOLE right-hand action section is unmounted (not disabled) when the selected bucket has zero files. Existing testids (`artifacts-file-search-input`, `artifacts-upload-files-button`, `artifacts-download-files-button`, `artifacts-delete-files-button`) all resolve to `.count() == 0` on an empty bucket — assert absence, not a disabled state. Filed as case-text clarification, `EliteaAI/elitea-testing-public#2394` (not a defect — by design). |
+| First-selection vs re-click expand semantics for the left-panel tree | n/a — behavioral note | `SimpleBucketList.jsx` → `BucketItem.jsx`'s `handleSelectBucket` | **confirmed live, deterministic 3/3 toggle pattern**: a bucket's FIRST-EVER click selects it (main panel updates, `data-selected` flips) but does **not** expand its left-panel tree content; a SECOND click (now already-active) toggles expand ON; a third toggles it back OFF. Root cause: `onToggle` only fires `if (isActive)` evaluated BEFORE the click, so a never-before-selected row never calls it on its first click. Same mechanism `#651` already documented for ELITEA-1824 (re-click on an already-active bucket) — ELITEA-1805 hits the first-selection edge of the identical code path. Sibling clarification filed: `EliteaAI/elitea-testing-public#2393`. **Loading the page directly via `?bucket=<name>` in the URL DOES show the expanded tree immediately** (selection happens on mount, not via the click handler) — a useful alternate reach-path when a test needs the expanded state without caring about the click mechanics. |
+
 ## Known gotchas
 - **Formik `touched` gating**: typing alone never reveals a validation error
   in this form — only blur or submit-attempt sets `touched.name = true`,
@@ -105,3 +122,23 @@ CodeMirror, no toggle) or the IMAGE branch — both are genuinely new surface.
   sessions (ELITEA-1880/1993, ELITEA-2004/2010, ELITEA-1828/1829/1831, and
   this one). See `.agents/memory/qa-engineer/no_playwright_mcp_use_sync_playwright_script.md`
   — go straight to a `playwright.sync_api` scratch script, don't retry `ToolSearch`.
+- **Playwright MCP's bundled Chrome binary is absent in this container**
+  (ELITEA-1805 session, 2026-10-06): `browser_navigate` failed with
+  `Chromium distribution 'chrome' is not found at /opt/google/chrome/chrome` —
+  a different failure mode from the "ToolSearch unreachable" entries above
+  (those were about discovering the MCP tool at all; this one is the MCP
+  server launching successfully but failing to find its own browser). A
+  working chromium build DOES exist on the box at
+  `/opt/ms-playwright/chromium-1243` (same one `automation/.venv`'s
+  `playwright` package already resolves) — the gap is specific to whatever
+  channel/path the bundled `@playwright/mcp` build defaults to. Same fallback
+  applies: a direct `playwright.sync_api` script (`p.chromium.launch(headless=True)`,
+  no channel override needed) against the `.playwright-mcp/dev-storage-state.json`
+  storage state works fine. No DISPLAY in this container either — always pass
+  `headless=True` for scratch scripts here, regardless of `config.py`'s
+  `headless=False` default for the real suite.
+- **`Private` project's accumulated-bucket count reset to 0 between the
+  2026-08-03 cluster session (555 buckets) and this ELITEA-1805 session
+  (2026-10-06, 0 buckets at start)** — some cleanup sweep ran in between.
+  Not investigated further (out of scope for this case); noting so a future
+  session doesn't assume the old 555-bucket backlog is still accurate.
