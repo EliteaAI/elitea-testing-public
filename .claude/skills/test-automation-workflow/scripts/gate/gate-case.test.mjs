@@ -64,10 +64,10 @@ test('gateNote: records timings as evidence, both verdicts', () => {
     { ok: true, exitCode: 0, seconds: 29.61 },
     { ok: true, exitCode: 0, seconds: 37.2 },
   ], 3);
-  const note = gateNote(s, 'merged origin/automation/base before gating');
+  const note = gateNote(s, 'merged origin/automation/factory before gating');
   assert.match(note, /Lead gate 3\/3 green/);
   assert.match(note, /29\.04s\/29\.61s\/37\.20s/); // the proof, not a claim
-  assert.match(note, /merged origin\/automation\/base before gating/);
+  assert.match(note, /merged origin\/automation\/factory before gating/);
 
   const bad = gateNote(summarize([{ ok: false, exitCode: 1, seconds: 5 }], 3));
   assert.match(bad, /NOT 3\/3 green/);

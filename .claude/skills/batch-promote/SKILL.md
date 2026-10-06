@@ -11,7 +11,7 @@ allowed-tools:
 # Batch Promote
 
 Promotes automation work from the long-lived integration branches
-(`elitea-testing-public automation/base`, `EliteaAI/EliteaUI automation/testids`, and
+(`elitea-testing-public automation/factory`, `EliteaAI/EliteaUI automation/testids`, and
 `elitea_assistant automation/testids`) into the respective `main` branches.
 
 **HUMAN-TRIGGERED ONLY.** Never autonomous, never scheduled, never a follow-on from
@@ -101,7 +101,7 @@ git -C "$WORKSPACE/EliteaUI" merge-base --is-ancestor origin/main origin/automat
   && echo "EliteaUI: main contained" || echo "EliteaUI: NEEDS SYNC"
 
 git fetch origin main --no-tags
-git merge-base --is-ancestor origin/main origin/automation/base \
+git merge-base --is-ancestor origin/main origin/automation/factory \
   && echo "tests: main contained" || echo "tests: NEEDS SYNC"
 ```
 
@@ -119,8 +119,8 @@ cheap; the fetch is one second (`--no-tags`, see the traps file).
 concurrently with the rest of the team, who are looking at the same red suite:
 
 ```bash
-comm -12 <(git diff --name-only origin/automation/base...origin/main -- automation/ | sort) \
-         <(git diff --name-only origin/main...origin/automation/base -- automation/ | sort)
+comm -12 <(git diff --name-only origin/automation/factory...origin/main -- automation/ | sort) \
+         <(git diff --name-only origin/main...origin/automation/factory -- automation/ | sort)
 ```
 
 Overlap is not a problem to route around — it is a **decision to surface**. Where both
@@ -237,7 +237,7 @@ promoted state honest is the work. Expect several passes.
 | Cause | Fix where | Rebuild needed? |
 |---|---|---|
 | **The cut itself** — wrong scope, a subtree missed, tree composed incorrectly | Fix the *recipe* and rebuild. Nothing is wrong upstream. | Yes |
-| **A general defect** — drift, missing/lost testid, data hygiene, flaky wait | **Upstream**: `automation/base` for test/page-object code, `automation/testids` for testids. Then rebuild. | Yes |
+| **A general defect** — drift, missing/lost testid, data hygiene, flaky wait | **Upstream**: `automation/factory` for test/page-object code, `automation/testids` for testids. Then rebuild. | Yes |
 | **A product bug** | Nowhere in this skill. File it, link it, hold the assertion at the correct value. | No |
 
 **Mode A: never edit a promote branch directly.** It is *derived* — regenerating it from
@@ -451,9 +451,9 @@ rename during review**. That is real divergence and must be backported.
   (A and B), or a post-PR fix pushed onto a promote branch (A and B).
 - **Destinations:** EliteaUI testid edits → `EliteaUI automation/testids`; Assistant edits
   → `elitea_assistant automation/testids`; `LocatorDescriptor`/test fixes →
-  `elitea-testing-public automation/base`. All shared org branches: **merge-only, never
+  `elitea-testing-public automation/factory`. All shared org branches: **merge-only, never
   rebase, never force-push.**
-- **Renamed testid?** grep it across `automation/base` and re-verify those tests — a
+- **Renamed testid?** grep it across `automation/factory` and re-verify those tests — a
   rename can affect tests outside this batch.
 
 This is the divergence rule (`.agents/workflow.md` § Sync) applied proactively instead of
@@ -474,7 +474,7 @@ surfacing at the next `sync-base-branches`.
   git -C "$WORKSPACE/EliteaUI"         checkout automation/testids
   git -C "$WORKSPACE/elitea_assistant" checkout automation/testids
   ```
-- Re-run **`sync-base-branches`** — `main` moved in 2–3 repos, and `automation/base` is
+- Re-run **`sync-base-branches`** — `main` moved in 2–3 repos, and `automation/factory` is
   now behind by the merge commit. Merge, never rebase.
 - Back-write the TMS per the seeded policy (`.agents/test-automation.yaml`
   § `backwrite_on_done`) — only if the seed establishes it; never invent it.
@@ -483,7 +483,7 @@ surfacing at the next `sync-base-branches`.
 
 ## Does NOT touch
 
-- `automation/base` and both `automation/testids` branches are **read-only sources** here,
+- `automation/factory` and both `automation/testids` branches are **read-only sources** here,
   except the Stage-7 backport (merge-only). **Never rebase or force-push them.**
 - `EliteaUI/vite.config.js` — the local-Assistant alias is operator-local
   (`skip-worktree`'d). Never commit it to a promote branch.

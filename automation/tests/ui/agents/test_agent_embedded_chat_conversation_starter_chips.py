@@ -207,8 +207,8 @@ def _is_known_554_toolkits_404(msg) -> bool:
 # The response-side counterpart of the console filter above, for the same known
 # defect (#1971 / #554). Deliberately keyed on the URL and matched with
 # ``str.endswith``, mirroring ``utils.console_errors.exclude_known_defect_urls``
-# — that helper itself is not reachable from here: it lives on `automation/base`
-# and is not yet on `main`, which this branch targets.
+# — that helper itself is not reachable from here: it lives only on the frozen `automation/base` branch
+# and was never folded into `main` / `automation/factory`.
 #
 # NEVER keyed on the status code: an "any 4xx" filter would swallow the next
 # genuine one, which is masking (`.agents/testing.md` § Unconfirmed says so

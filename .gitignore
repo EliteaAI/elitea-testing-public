@@ -60,7 +60,9 @@ automation/=*
 **/.env*
 !**/.env*.example
 
-factory/*
+# factory/ mirrors the harness copy (gitbud automation_factory) — tracked as a
+# backup; only its runtime state is local.
+factory/state/
 
 # Reversible process-change notes (local-only; how to restore a suspended policy)
 .agents/_reverted/

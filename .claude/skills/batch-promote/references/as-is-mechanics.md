@@ -8,7 +8,7 @@ the traps are failures that actually happened, not hypotheticals.
 ## 1. Why a synthetic snapshot branch, and not a merge or a cherry-pick
 
 Mode A promotes **the whole current state** of a long-lived integration branch, but
-`automation/base` carries far more than the deliverable — `.claude/`, `.agents/`,
+`automation/factory` carries far more than the deliverable — `.claude/`, `.agents/`,
 `docs/`, factory config. Three ways to get a `main`-parented branch containing only
 the deliverable:
 
@@ -79,7 +79,7 @@ git ls-files -z --cached -- automation test-specs \
   | xargs -0 -n 200 git update-index --force-remove --
 
 # graft the integration branch's copies
-git ls-tree -r origin/automation/base -- automation test-specs \
+git ls-tree -r origin/automation/factory -- automation test-specs \
   | git update-index --index-info
 
 TREE=$(git write-tree)
@@ -98,7 +98,7 @@ And verify the grafted subtrees are byte-identical to the source:
 
 ```bash
 for p in automation test-specs; do
-  a=$(git rev-parse "$TREE:$p"); b=$(git rev-parse "origin/automation/base:$p")
+  a=$(git rev-parse "$TREE:$p"); b=$(git rev-parse "origin/automation/factory:$p")
   [ "$a" = "$b" ] && echo "$p identical" || echo "$p DIFFERS"
 done
 ```
@@ -147,7 +147,7 @@ b=$(git -C "$WORKSPACE/EliteaUI" rev-parse "automation/testids^{tree}")
 
 # tests repo: the promoted subtree only
 a=$(git rev-parse "tests/promote-<date>:automation")
-b=$(git rev-parse "origin/automation/base:automation")
+b=$(git rev-parse "origin/automation/factory:automation")
 [ "$a" = "$b" ] && echo IDENTICAL
 ```
 
