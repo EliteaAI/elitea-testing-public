@@ -15,7 +15,7 @@
 - [extend-existing: classify + shape](extend_existing_classification_and_shape.md) — already-covered is board-first; 3 shapes
 - [Analyst commit authority](analyst_slot_has_no_git_commit_authority.md) — batch trunk: commit the AFS; standalone: leave untracked
 - [Can't self-approve a PR via gh](gh_identity_blocks_self_approval.md) — post the verdict via gh pr comment instead
-- [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — grep AFS Priority vs @pytest.mark.p*; seen 7×, incl. module-level
+- [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — NEVER non-blocking; grep AFS Priority vs @pytest.mark.p* BEFORE drafting verdict; seen 8×
 - [Open cross-cutting defects](open_cross_cutting_defects.md) — #694, bucket-fixture 404, #551/#585, #607 (re-verify before acting)
 - [Provenance grep lies](provenance_grep_needs_case_insensitive.md) — needs -i; object-literal testId: still fails; live ≠ on-main
 - [Closed/unlabelled ≠ absent](mui_menu_unmounted_when_closed_false_negative.md) — open overflows before counting; snapshot isn't evidence

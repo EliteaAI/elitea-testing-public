@@ -204,3 +204,27 @@ Flagged CHANGES_REQUESTED — one-line fix: add a per-function
 `@pytest.mark.p2` decorator on `test_state_panel_delete_custom_variable`
 (cannot change the shared module-level `pytestmark` without demoting the
 correctly-`p1` ELITEA-2042 test).
+
+## Recurrence variant (PR #2395/ELITEA-1805, 2026-10-06) — near-miss: almost waved through as a non-blocking nit
+
+Eighth occurrence, same `l3(medium)→p3` mis-mapping (fresh single-test file,
+no sibling in the file itself) — but the review process itself nearly failed
+this time: a first-pass review (same session) drafted and POSTED a verdict of
+`APPROVED` with this exact drift listed only as a "non-blocking note... worth
+a one-line fix, not a correctness defect." That framing contradicts every
+prior entry in this file — all seven were `CHANGES_REQUESTED`, zero exceptions,
+precisely because the gap is real and CI-relevant regardless of how trivial
+the fix is. Caught only because this skill's own § Session End step forces a
+memory check before finishing, which surfaced this very file. Confirmed
+against the folder's own siblings: `test_artifacts_duplicate_bucket_name.py`
+(ELITEA-1809) and `test_artifacts_bucket_name_validation_invalid_formats.py`
+(ELITEA-1811), both `l3(medium)`, both `@pytest.mark.p2`. A second PR comment
+was posted correcting the verdict to `CHANGES_REQUESTED` before the review was
+considered done.
+
+**Lesson for next time, stated plainly: this specific defect class is NEVER
+non-blocking.** If a priority-marker check surfaces a mismatch, the verdict is
+`CHANGES_REQUESTED`, full stop — don't let an otherwise-clean PR's overall
+strength talk you into downgrading this one check's severity. Run the grep
+check BEFORE drafting the verdict section, not after, so the finding lands in
+the right bucket the first time instead of needing a correction comment.
