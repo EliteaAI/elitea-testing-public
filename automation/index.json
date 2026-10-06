@@ -1,70 +1,12 @@
 {
   "tests": [
     {
-      "automation_test_id": "tests.ui.admin.test_analytics_agent_detail_view.TestAnalyticsAgentDetailView.test_agent_row_click_opens_detail_view",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_analytics_agents_pipelines_tab.TestAnalyticsAgentsPipelinesTab.test_agents_pipelines_tab_charts_and_activity_table",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.admin.test_analytics_default_load.TestAnalyticsDefaultLoad.test_analytics_page_default_load",
       "markers": [
         "admin",
         "new_verified",
         "p1",
         "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_analytics_user_detail_view.TestAnalyticsUserDetailView.test_users_tab_row_click_opens_detail_view",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_analytics_users_activity_table.TestAnalyticsUsersActivityTable.test_users_tab_activity_table_columns_and_pagination",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_guardrails_cleanup_only.test_cleanup_after",
-      "markers": [
-        "admin",
-        "guardrails",
-        "new",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_guardrails_cleanup_only.test_cleanup_before",
-      "markers": [
-        "admin",
-        "guardrails",
-        "new",
         "ui"
       ]
     },
@@ -96,41 +38,9 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.admin.test_invite_user_invalid_email_validation.TestInviteUserInvalidEmailValidation.test_invite_user_invalid_email_validation",
-      "markers": [
-        "admin",
-        "blocked",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_notification_mark_read_unread.TestNotificationMarkReadUnread.test_mark_selected_notifications_read_and_unread",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.admin.test_notification_text_content.TestNotificationTextContent.test_notification_text_content_renders_correctly",
       "markers": [
         "admin",
-        "new_verified",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_create_personal_token_and_verify_in_table",
-      "markers": [
-        "admin",
-        "blocked",
         "new_verified",
         "p2",
         "regression",
@@ -154,119 +64,6 @@
         "admin",
         "new_verified",
         "p1",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_personal_tokens_page_layout.TestPersonalTokensPageLayout.test_personal_tokens_page_layout_and_components",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_project_context_character_limit.TestProjectContextCharacterLimit.test_project_context_character_limit_2500",
-      "markers": [
-        "admin",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_secret_create_inline_checkmark_x_cancel.TestSecretCreateInlineCheckmarkXCancel.test_create_secret_inline_checkmark_saves_x_cancels",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_secret_create_inline_checkmark_x_cancel.TestSecretCreateInlineCheckmarkXCancel.test_secret_name_rejects_hyphen_and_special_chars_valid_name_clears_error",
-      "markers": [
-        "admin",
-        "new",
-        "p1",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_secret_delete_via_three_dot_menu.TestSecretDeleteViaThreeDotMenu.test_delete_secret_via_three_dot_menu",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_secret_edit_value_name_field_readonly.TestSecretEditValueNameFieldReadonly.test_edit_secret_value_name_field_readonly",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_secret_eye_icon_reveal_and_mask_toggle.TestSecretEyeIconRevealAndMaskToggle.test_secret_eye_icon_reveal_and_mask_toggle",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_secret_hide_via_three_dot_menu.TestSecretHideViaThreeDotMenu.test_hide_secret_via_three_dot_menu",
-      "markers": [
-        "admin",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_users_batch_edit_roles.TestBatchEditRolesForMultipleSelectedUsers.test_batch_edit_roles_for_multiple_selected_users",
-      "markers": [
-        "admin",
-        "blocked",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.admin.test_users_page_layout.TestUsersPageLayout.test_users_page_layout_and_components",
-      "markers": [
-        "admin",
-        "blocked",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_agent_chip_visible_in_message_input.TestAgentHubAgentChipVisibleInMessageInput.test_agent_chip_visible_in_message_input",
-      "markers": [
-        "chat",
-        "new",
         "p2",
         "regression",
         "ui"
@@ -333,26 +130,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_my_liked_filter_shows_only_liked_agents.TestAgentHubMyLikedFilterShowsOnlyLikedAgents.test_agent_hub_my_liked_filter_shows_only_liked_agents",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_my_liked_reload_cross_tab_sync.TestAgentHubMyLikedReloadCrossTabSync.test_agent_hub_my_liked_reload_reflects_cross_tab_like",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_open_agent_detail_modal.TestAgentHubOpenAgentDetailModal.test_agent_hub_open_agent_detail_modal",
       "markers": [
         "agents",
@@ -367,16 +144,6 @@
       "markers": [
         "agents",
         "new_verified",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_page_loads_team_project.TestAgentHubPageLoadsTeamProject.test_agent_hub_page_loads_team_project",
-      "markers": [
-        "agents",
-        "new",
         "p1",
         "regression",
         "ui"
@@ -403,43 +170,11 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_started_conversation_has_agent_as_participant.TestAgentHubStartedConversationHasAgentAsParticipant.test_started_conversation_has_agent_as_participant",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_trending_category.TestAgentHubTrendingCategory.test_agent_hub_trending_category_displays_agents",
       "markers": [
         "agents",
         "p2",
         "regression"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_unlike_agent_list_view.TestAgentHubUnlikeAgentListView.test_agent_hub_unlike_agent_from_list_view",
-      "markers": [
-        "agents",
-        "flaky",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agent_hub.test_catalog_default_agents_tab.TestCatalogDefaultAgentsTab.test_catalog_default_agents_tab_and_skills_navigation",
-      "markers": [
-        "agent_hub",
-        "allure_description",
-        "new",
-        "p1",
-        "regression",
-        "ui"
       ]
     },
     {
@@ -467,147 +202,6 @@
       "markers": [
         "agents",
         "p0",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAIBackToPromptFromReviewStep.test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAICancelFromPromptStep.test_cancel_from_prompt_step_closes_modal_without_creating_agent",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAICancelFromReviewStep.test_cancel_from_review_step_closes_modal_without_creating_agent",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAICreationFailureRecovery.test_creation_failure_stays_on_review_step_and_retry_succeeds",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAIDraftFieldPopulation.test_draft_fields_prepopulated_and_editable",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAIDraftFieldPopulation.test_edited_fields_persist_after_approve",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAIGenerationFailureRetry.test_generation_failure_shows_error_and_allows_retry",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAIReviewNameValidation.test_review_name_validation_enforces_32_character_maximum",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAISelectedResourcesAttached.test_approve_with_no_resources_creates_agent_and_appears_in_list",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAISelectedResourcesAttached.test_selected_suggested_resources_attached_and_non_selected_absent",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAISelectedResourcesAttached.test_selected_suggested_skill_attached_and_non_selected_absent",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAISelectedResourcesAttached.test_zero_selection_across_categories_attaches_nothing",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAISuggestedResources.test_generated_draft_includes_suggested_resources_section",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai.TestAgentBuildWithAISuggestedResources.test_suggested_skills_section_capped_at_5_skills",
-      "markers": [
-        "agents",
-        "flaky",
-        "new",
-        "p2",
         "regression",
         "ui"
       ]
@@ -642,15 +236,6 @@
       "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_fullscreen_counter_and_warning",
       "markers": [
         "agents",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_text_truncated_with_warning",
-      "markers": [
-        "agents",
-        "flaky",
         "p1",
         "ui"
       ]
@@ -755,247 +340,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_llm_selector_anthropic_models.TestAgentLlmSelectorAnthropicModels.test_llm_selector_anthropic_models_are_available_and_functional",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "slow",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_llm_selector_model_settings_persist.TestAgentLlmSelectorModelSettingsPersist.test_llm_selector_change_model_settings_dialog_persist",
-      "markers": [
-        "agents",
-        "flaky",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_llm_selector_openai_models.TestAgentLlmSelectorOpenaiModels.test_llm_selector_openai_models_are_available_and_functional",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "slow",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_add_multiple_tags_persist_after_reload",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_delete_agent_via_api",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_delete_agent_via_ui_menu",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_discard_changes_reverts_all_unsaved_edits",
-      "markers": [
-        "agents",
-        "new",
-        "p0",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_edit_agent_description",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_edit_agent_instructions",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_edit_agent_name",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_remove_tag_from_agent_persists_after_reload",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentActions.test_welcome_message_shown_as_agent_bubble_before_first_message",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_detail_page_loads",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_information_section",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_instructions_field",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentConfiguration.test_internal_tools_enum_usage",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentExecution.test_agent_executes_with_name_description_instructions_only",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentList.test_agent_search",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentList.test_agent_search_no_results",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentList.test_agents_dashboard_loads",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestAgentList.test_view_toggle_table_and_card",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestCreateAgent.test_create_agent_required_fields_validation",
-      "markers": [
-        "agents",
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestCreateAgent.test_create_agent_via_api_visible_in_ui",
-      "markers": [
-        "agents",
-        "new",
-        "p0",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_management.TestCreateAgent.test_create_agent_via_ui",
-      "markers": [
-        "agents",
-        "new",
-        "p0",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.agents.test_agent_name_character_limit.test_agent_name_truncated_at_32_characters",
       "markers": [
         "agents",
@@ -1025,16 +369,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_run_history_select_past_run.TestAgentRunHistorySelectPastRun.test_select_past_run_loads_chat_messages",
-      "markers": [
-        "agents",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.agents.test_agent_save_as_version.TestAgentSaveAsVersion.test_save_as_version_creates_named_version_visible_in_dropdown",
       "markers": [
         "agents",
@@ -1049,17 +383,6 @@
       "markers": [
         "agents",
         "p0",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_agent_self_attachment_blocked.TestAgentSelfAttachmentBlocked.test_agent_self_attachment_blocked",
-      "markers": [
-        "agents",
-        "flaky",
-        "new",
-        "p2",
         "regression",
         "ui"
       ]
@@ -1112,17 +435,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_fork_agent_to_different_project.TestForkAgentToDifferentProject.test_fork_agent_to_different_project",
-      "markers": [
-        "agents",
-        "flaky",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
       "markers": [
         "agents",
@@ -1148,17 +460,6 @@
         "agents",
         "mcp",
         "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.agents.test_nested_agent_with_mcp_tool_output.TestNestedAgentWithMcpToolOutput.test_nested_agent_with_mcp_tool_output",
-      "markers": [
-        "agents",
-        "mcp",
-        "new",
-        "p2",
         "regression",
         "ui"
       ]
@@ -1204,17 +505,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_create_bucket_55char_name_and_delete.TestArtifactCreateBucketMaxLengthNameAndDelete.test_create_bucket_max_length_name_and_delete",
-      "markers": [
-        "allure_label",
-        "blocked",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_create_bucket_upload_file.TestArtifactCreateBucketAndUploadFile.test_create_bucket_via_form_and_upload_file_via_bucket_menu",
       "markers": [
         "allure_label",
@@ -1238,17 +528,6 @@
       "automation_test_id": "tests.ui.artifacts.test_artifacts_delete_subfolder_checkbox.TestArtifactDeleteSubfolderCheckbox.test_delete_subfolder_via_checkbox",
       "markers": [
         "allure_label",
-        "new_verified",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_download_all_files_select_all_zip.TestArtifactDownloadAllFilesSelectAllZip.test_download_all_files_via_select_all_as_zip",
-      "markers": [
-        "allure_label",
-        "flaky",
         "new_verified",
         "p1",
         "regression",
@@ -1405,16 +684,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_three_options_verify_selection.TestArtifactsUploadThreeOptionsVerifySelection.test_upload_via_three_options_and_verify_selection",
-      "markers": [
-        "allure_label",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations",
       "markers": [
         "allure_label",
@@ -1435,102 +704,11 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_agent_hub_participant_readonly_canvas_llm_override.TestAgentHubParticipantReadonlyCanvasLlmOverride.test_agent_hub_participant_readonly_canvas_llm_override",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_agent_hub_start_conversation_no_starters.TestAgentHubStartConversationNoStarters.test_agent_hub_start_conversation_no_starters",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_agent_hub_start_conversation_with_starters.TestAgentHubStartConversationWithStarters.test_agent_hub_start_conversation_with_starters",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.chat.test_agent_with_toolkit_chat.TestAgentWithToolkitInChat.test_agent_with_toolkit_executes_in_chat",
       "markers": [
         "agents",
         "p0",
         "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_attach_files_10_file_limit_warning.TestAttachFiles10FileLimitWarning.test_attach_11_files_shows_10_file_limit_warning",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_attach_unsupported_file_format_error.TestAttachUnsupportedFileFormatError.test_attach_unsupported_file_shows_error_toast",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_build_with_ai_from_chat_canvas.TestBuildWithAIFromChatCanvas.test_build_with_ai_from_chat_canvas_adds_participant",
-      "markers": [
-        "agents",
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_chat_folder_rename_checkmark_validation.TestChatFolderDeleteApiFallbackRegression.test_delete_folder_via_api_actually_removes_the_folder",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_chat_folder_rename_checkmark_validation.TestChatFolderRenameCheckmarkValidation.test_folder_rename_checkmark_special_chars_and_leading_space_invalid",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_chat_folder_rename_checkmark_validation.TestChatFolderRenameCheckmarkValidation.test_folder_rename_checkmark_validation",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
         "ui"
       ]
     },
@@ -1585,14 +763,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestMessageActions.test_delete_message",
-      "markers": [
-        "flaky",
-        "p1",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.chat.test_chat_interface.TestPageLoadAndRendering.test_chat_page_loads_with_functional_input",
       "markers": [
         "p0",
@@ -1630,14 +800,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSendingMessages.test_shift_enter_adds_new_line",
-      "markers": [
-        "flaky",
-        "p2",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.chat.test_chat_interface.TestSidebarNavigation.test_navigate_to_agents_from_sidebar",
       "markers": [
         "p1",
@@ -1648,26 +810,6 @@
       "automation_test_id": "tests.ui.chat.test_chat_interface.TestSidebarNavigation.test_open_close_sidebar",
       "markers": [
         "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_chat_search_and_modules_panel.TestChatSearchAndModulesPanel.test_search_filters_and_modules_panel_toggles",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_context_auto_summarization.TestContextAutoSummarization.test_auto_summarization_triggers_at_max_context_tokens",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
         "ui"
       ]
     },
@@ -1684,241 +826,6 @@
       "markers": [
         "chat",
         "p2",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_deletion_flow.TestConversationDeletionFlow.test_conversation_deletion_cancel_then_delete_active_conversation",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationActions.test_delete_conversation_cancel",
-      "markers": [
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationActions.test_delete_conversation_with_confirmation",
-      "markers": [
-        "new",
-        "p1",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationActions.test_multiple_conversations_listed",
-      "markers": [
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationActions.test_rename_conversation_via_ui",
-      "markers": [
-        "new",
-        "p1",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationIsolation.test_fixture_cleanup_cycle",
-      "markers": [
-        "new",
-        "p1",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationIsolation.test_fixture_creates_fresh_conversation",
-      "markers": [
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationList.test_click_conversation_to_open",
-      "markers": [
-        "new",
-        "p0",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationList.test_search_conversations_button",
-      "markers": [
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationNavigation.test_navigate_between_conversations",
-      "markers": [
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestConversationNavigation.test_send_message_persists_conversation",
-      "markers": [
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestCreateConversation.test_create_conversation_via_api",
-      "markers": [
-        "new",
-        "p0",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestCreateConversation.test_create_conversation_via_ui_button",
-      "markers": [
-        "new",
-        "p0",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_conversation_management.TestCreateConversation.test_new_conversation_default_settings",
-      "markers": [
-        "new",
-        "p1",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_create_agent_via_chat_canvas.TestCreateAgentViaChatCanvas.test_create_new_conversation_and_add_agent_via_canvas",
-      "markers": [
-        "agents",
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_create_mcp_from_conversation.TestCreateMcpFromConversation.test_create_mcp_from_conversation_save_and_verify",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_direct_toolkit_call_complete_flow.TestDirectToolkitCallCompleteFlow.test_direct_toolkit_call_complete_flow",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_edit_generated_table_canvas_open_and_verify_display.TestEditGeneratedTableCanvasOpenAndVerifyDisplay.test_edit_generated_table_canvas_open_and_verify_display",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_edit_table_canvas_modify_cell_and_save.TestEditTableCanvasModifyCellAndSave.test_edit_table_canvas_modify_cell_and_save",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_folder_creation.TestChatFolderCreation.test_create_folder_via_chats_header_icon",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_generate_mermaid_diagram_and_edit_in_canvas.TestGenerateMermaidDiagramAndEditInCanvas.test_generate_mermaid_diagram_and_edit_in_canvas",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_hitl_sensitive_action_authorization.TestSensitiveActionAuthorize.test_authorize_executes_toolkit_tool_directly",
-      "markers": [
-        "chat",
-        "guardrails",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_hitl_sensitive_action_authorization.TestSensitiveActionBlock.test_block_prevents_toolkit_tool_from_executing",
-      "markers": [
-        "chat",
-        "guardrails",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_hitl_sensitive_action_authorization.TestSensitiveActionBlockWithComment.test_block_with_comment_records_reason_and_blocks_action",
-      "markers": [
-        "chat",
-        "guardrails",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_hitl_sensitive_action_authorization.TestSensitiveActionCardDisplay.test_sensitive_action_card_displays_for_direct_toolkit_call",
-      "markers": [
-        "chat",
-        "guardrails",
-        "new",
-        "p2",
-        "regression",
         "ui"
       ]
     },
@@ -1941,46 +848,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_invite_users_add_cancel_close.TestInviteUsersAddCancelClose.test_invite_users_add_persists_cancel_and_close_discard",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_move_conversation_to_folder.TestMoveConversationToExistingFolder.test_move_conversation_to_existing_folder",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_move_conversation_to_folder.TestMoveConversationToNewFolder.test_move_conversation_to_new_folder",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_open_conversation_today_section.TestOpenConversationFromTodaySection.test_open_conversation_from_today_section",
-      "markers": [
-        "chat",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.chat.test_open_existing_conversation_from_this_week_section.TestOpenExistingConversationFromThisWeekSection.test_open_existing_conversation_from_this_week_section",
       "markers": [
         "chat",
@@ -1995,67 +862,6 @@
         "chat",
         "new_verified",
         "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_pipeline_flow_editor_add_llm_node_from_chat_canvas.TestPipelineFlowEditorAddLlmNodeFromChatCanvas.test_add_llm_node_save_pipeline_and_verify_participant",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "pipelines",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_slash_mention_empty_state.TestSlashMentionEmptyState.test_slash_mention_empty_dropdown_with_no_participants",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_slash_mention_toolkit_and_mcp_participants.TestSlashMentionToolkitAndMcpParticipants.test_slash_mention_shows_only_added_toolkit_and_mcp",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_slash_mention_toolkit_tool_selection.TestSlashMentionToolkitToolSelection.test_select_toolkit_from_slash_mention_shows_its_tools",
-      "markers": [
-        "chat",
-        "new",
-        "p3",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_streaming_response.TestStreamingResponse.test_streaming_response_progressive_display",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.chat.test_team_users_mention_and_remove_participants.TestTeamUsersMentionAndRemoveParticipants.test_team_users_mention_and_remove_participants",
-      "markers": [
-        "chat",
-        "new",
-        "p1",
         "regression",
         "ui"
       ]
@@ -2528,17 +1334,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_hitl_node_runtime_behavior.test_hitl_node_runtime_behavior",
-      "markers": [
-        "blocked",
-        "new_verified",
-        "p2",
-        "pipelines",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_import_via_file.test_pipeline_import_via_file",
       "markers": [
         "new_verified",
@@ -2551,17 +1346,6 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section",
       "markers": [
-        "new_verified",
-        "p2",
-        "pipelines",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_interrupt_before_after_toggles.test_interrupt_after_toggle_pauses_and_attempts_resume",
-      "markers": [
-        "blocked",
         "new_verified",
         "p2",
         "pipelines",
@@ -2838,17 +1622,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_router_node_configuration.test_router_node_configuration_and_edge_wiring",
-      "markers": [
-        "blocked",
-        "new_verified",
-        "p2",
-        "pipelines",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_delete_run_from_history.test_run_details_delete_run_from_history",
       "markers": [
         "new_verified",
@@ -3000,17 +1773,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_subgraph_state_sharing.test_subgraph_state_sharing_node_c_state_propagation",
-      "markers": [
-        "blocked",
-        "new_verified",
-        "p2",
-        "pipelines",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.pipelines_2.test_pipeline_tags_add_and_filter.test_pipeline_tags_add_and_filter",
       "markers": [
         "new_verified",
@@ -3143,17 +1905,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_max_context_tokens_rejects_non_numeric_and_negative_input",
-      "markers": [
-        "blocked",
-        "new_verified",
-        "p2",
-        "regression",
-        "settings",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_target_summary_tokens_range_validation",
       "markers": [
         "new_verified",
@@ -3186,16 +1937,6 @@
       "automation_test_id": "tests.ui.skills.test_agent_max_five_skills_limit.TestAgentMaxFiveSkillsLimit.test_max_five_skills_attach_limit",
       "markers": [
         "p1",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_export_agent_no_nested_dependencies.TestExportAgentNoNestedDependencies.test_export_agent_no_nested_dependencies",
-      "markers": [
-        "blocked",
-        "p2",
         "regression",
         "skills",
         "ui"
@@ -3240,113 +1981,8 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_agent_interaction.TestInteractWithSkillsFromAgent.test_interact_with_skills_from_agent",
-      "markers": [
-        "flaky",
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.skills.test_skill_agent_version_selector.TestAttachSkillToAgentWithVersionSelector.test_attach_skill_to_agent_with_version_selector",
       "markers": [
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_back_navigation.test_back_button_from_skill_editor_returns_to_skills_list",
-      "markers": [
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIGenerationFailureRetry.test_generation_failure_shows_error_and_allows_retry",
-      "markers": [
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIModalElements.test_build_with_ai_opens_modal_with_expected_elements",
-      "markers": [
-        "new",
-        "p1",
-        "regression",
-        "skills",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAINameFieldValidation.test_name_field_validation_on_invalid_manual_edits",
-      "markers": [
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIReviewFormEditableFields.test_create_skill_from_unmodified_draft_persists_generated_values",
-      "markers": [
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIReviewFormEditableFields.test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections",
-      "markers": [
-        "new",
-        "p1",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIReviewFormEditableFields.test_review_form_fields_are_editable_before_creation",
-      "markers": [
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_card_view_fields.TestSkillCardViewFields.test_skill_card_shows_icon_name_description_and_tags",
-      "markers": [
-        "flaky",
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_conversation_interaction.TestInteractWithSkillsFromConversation.test_interact_with_skills_from_conversation",
-      "markers": [
-        "chat",
-        "flaky",
-        "new",
         "p2",
         "regression",
         "skills",
@@ -3357,28 +1993,6 @@
       "automation_test_id": "tests.ui.skills.test_skill_copy_link.TestSkillCopyLink.test_copy_link_copies_valid_url_to_correct_skill_and_version",
       "markers": [
         "new_verified",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_custom_icon_upload_and_validation.TestSkillCustomIconUploadAndValidation.test_skill_custom_icon_upload_and_validation",
-      "markers": [
-        "flaky",
-        "new",
-        "p1",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_custom_icon_visibility_across_ui.TestSkillCustomIconVisibilityAcrossUI.test_skill_custom_icon_visible_across_ui",
-      "markers": [
-        "flaky",
-        "new",
         "p2",
         "regression",
         "skills",
@@ -3416,86 +2030,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_fork_end_to_end.TestSkillForkEndToEnd.test_fork_skill_end_to_end",
-      "markers": [
-        "flaky",
-        "new",
-        "p1",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_fork_non_base_version.TestSkillForkNonBaseVersion.test_fork_non_base_skill_version",
-      "markers": [
-        "flaky",
-        "new",
-        "p2",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_icon_persists_on_save_as_version.TestSkillIconPersistsOnSaveAsVersion.test_skill_custom_icon_persists_on_save_as_version",
-      "markers": [
-        "new",
-        "p3",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_management.TestCreateSkill.test_create_skill_and_verify_execution",
-      "markers": [
-        "new",
-        "p0",
-        "skills",
-        "smoke",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_management.TestEditSkill.test_edit_name_description_instructions_persist",
-      "markers": [
-        "new",
-        "p3",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_management.TestSkillInstructionsMarkdownTogglePersistence.test_markdown_edit_preview_toggle_and_persist",
-      "markers": [
-        "new",
-        "p3",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_management.TestSkillMandatoryFieldsValidation.test_save_disabled_until_name_and_description_filled",
-      "markers": [
-        "new",
-        "p3",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_multiple_tags_persist.TestSkillMultipleTagsPersist.test_multiple_tags_persist_on_creation_and_edit",
-      "markers": [
-        "flaky",
-        "new",
-        "p3",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.skills.test_skill_pin_unpin.TestSkillPinUnpin.test_skill_pin_moves_to_top_and_unpin_reverts",
       "markers": [
         "new_verified",
@@ -3515,29 +2049,8 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_tag_add_remove.TestSkillTagAddRemove.test_add_save_and_remove_skill_tag",
-      "markers": [
-        "new",
-        "p3",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.skills.test_skill_tag_filter.TestSkillTagFilter.test_filter_skills_by_tag",
       "markers": [
-        "p3",
-        "regression",
-        "skills",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.skills.test_skill_test_panel_llm_model_settings.TestSkillTestPanelLlmModelSettings.test_llm_model_settings_configurable",
-      "markers": [
-        "flaky",
-        "new",
         "p3",
         "regression",
         "skills",
@@ -3686,270 +2199,12 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_credential_create.TestCredentialCreate.test_create_github_credential_via_sidebar_button",
-      "markers": [
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_create_private_from_toolkit_dropdown.TestCredentialCreatePrivateFromToolkitDropdown.test_create_private_credential_from_toolkit_dropdown",
-      "markers": [
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_discard_changes.TestCredentialDiscardChanges.test_credential_discard_changes_reverts_display_name",
-      "markers": [
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_duplicate_mismatch_validation.TestCredentialDuplicateMismatchValidation.test_credential_duplicate_and_empty_required_field_validation",
-      "markers": [
-        "blocked",
-        "bug",
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_edit_rename.TestCredentialEditRename.test_edit_credential_rename_persists_after_reload",
-      "markers": [
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_id_auto_generation.TestCredentialIdAutoGeneration.test_credential_id_auto_generation_and_url_stability",
-      "markers": [
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_pin_unpin.TestCredentialPinUnpin.test_credential_pin_moves_to_top_and_unpin_reverts",
-      "markers": [
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "ui"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.toolkits.test_credential_required_fields_validation.TestCredentialRequiredFieldsValidation.test_create_credential_required_fields_validation",
       "markers": [
         "credentials",
         "new_verified",
         "p0",
         "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_search_by_name.TestCredentialSearchByName.test_search_credentials_by_name",
-      "markers": [
-        "credentials",
-        "new",
-        "p2",
-        "regression",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_credential_usage_in_toolkit_flows.TestCredentialUsageInToolkitFlows.test_credential_usage_and_deletion_mismatch",
-      "markers": [
-        "credentials",
-        "new",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_github_toolkit.TestChatWithGitHubToolkit.test_chat_with_github_toolkit",
-      "markers": [
-        "flaky",
-        "new_verified",
-        "p0",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_github_toolkit.TestCreateGitHubCredential.test_create_github_credential",
-      "markers": [
-        "credentials",
-        "flaky",
-        "new_verified",
-        "p0",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_github_toolkit.TestCreateGitHubToolkit.test_create_github_toolkit",
-      "markers": [
-        "flaky",
-        "new_verified",
-        "p0",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_github_toolkit.TestGitHubToolkitTestSettings.test_github_toolkit_test_settings",
-      "markers": [
-        "flaky",
-        "new_verified",
-        "p1",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_create_remote.test_create_remote_mcp_all_fields_populated",
-      "markers": [
-        "mcp",
-        "new",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_create_remote.test_create_remote_mcp_minimal_required_fields",
-      "markers": [
-        "mcp",
-        "new",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_delete_remote.test_delete_remote_mcp",
-      "markers": [
-        "mcp",
-        "new",
-        "p3",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_edit_raw_json_description.test_mcp_edit_raw_json_description",
-      "markers": [
-        "mcp",
-        "new",
-        "p0",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_edit_toggle_enable_caching.test_mcp_edit_toggle_enable_caching",
-      "markers": [
-        "mcp",
-        "new",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_load_tools_discovery.test_mcp_load_tools_discovery",
-      "markers": [
-        "mcp",
-        "new",
-        "p2",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_load_tools_invalid_url.test_mcp_load_tools_invalid_url",
-      "markers": [
-        "mcp",
-        "new",
-        "p2",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_search_by_name.TestMcpSearchByName.test_mcp_search_by_name",
-      "markers": [
-        "blocked",
-        "bug",
-        "mcp",
-        "new_verified",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_test_settings_select_and_run_tool.test_mcp_test_settings_select_and_run_tool",
-      "markers": [
-        "mcp",
-        "new",
-        "p3",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_mcp_view_toggle.test_mcp_dashboard_view_toggle_card_table",
-      "markers": [
-        "mcp",
-        "new",
-        "p1",
-        "regression",
-        "toolkits",
-        "ui"
-      ]
-    },
-    {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_creation_cancel_no_toolkit_no_bucket.TestToolkitCreationCancelNoToolkitNoBucket.test_cancel_artifact_toolkit_creation_creates_no_toolkit_no_bucket",
-      "markers": [
-        "allure_label",
-        "new",
-        "p2",
-        "regression",
-        "toolkits",
         "ui"
       ]
     },
