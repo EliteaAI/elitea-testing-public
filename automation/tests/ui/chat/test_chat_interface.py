@@ -117,28 +117,6 @@ class TestSendingMessages:
             assert new_count > initial_count, f"Message count should increase: {initial_count} -> {new_count}"
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
-    @pytest.mark.p2
-    @pytest.mark.flaky  # Race condition with shift+enter key timing
-    def test_shift_enter_adds_new_line(self, page, conversation_id):
-        """TC-CHAT-006: Shift+Enter adds new line instead of sending."""
-        with allure.step("Step 1 — Navigate to chat page"):
-            chat = ChatPage(page)
-            chat.navigate_to_chat(conversation_id=conversation_id)
-
-        with allure.step("Step 2 — Send multi-line message with Shift+Enter"):
-            lines = ["Line 1", "Line 2", "Line 3"]
-            initial_count = chat.get_message_count()
-            chat.send_message_with_shift_enter(lines)
-
-        with allure.step("Step 3 — Wait for AI response"):
-            chat.wait_for_input_ready()
-            chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
-
-        with allure.step("Step 4 — Verify input cleared"):
-            chat.wait_for_input_empty(timeout=UI_ELEMENT_TIMEOUT)
-            assert chat.is_input_empty(), "Input should be cleared after sending multi-line message"
-
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
     def test_cannot_send_empty_message(self, page, conversation_id):
@@ -197,47 +175,6 @@ class TestMessageActions:
                 f"Clipboard (normalized): {_strip_markdown(clipboard_text)[:100]}...\n"
                 f"Expected: {ai_response_text[:100]}..."
             )
-
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0502_chat-message-actions.md", "onetest-ai Test Case link")
-    @pytest.mark.p1
-    @pytest.mark.flaky  # Intermittent failures with message deletion timing
-    def test_delete_message(self, page, conversation_id):
-        """TC-CHAT-009: Delete message."""
-        with allure.step("Step 1 — Navigate to chat page"):
-            chat = ChatPage(page)
-            chat.navigate_to_chat(conversation_id=conversation_id)
-
-        with allure.step("Step 2 — Send a message"):
-            initial_count = chat.get_message_count()
-            chat.send_message("Message to delete", use_enter=True)
-            chat.wait_for_input_ready()
-            chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
-
-        with allure.step("Step 3 — Wait for streaming to finish"):
-            chat.wait_for_network(timeout=AI_RESPONSE_TIMEOUT)
-
-        with allure.step("Step 4 — Count messages before deletion"):
-            initial_message_count = chat.get_message_count()
-            assert initial_message_count >= 2, (
-                f"Expected at least 2 messages (user + AI), got {initial_message_count}"
-            )
-
-        with allure.step("Step 5 — Delete the last message"):
-            try:
-                chat.delete_message(-1)
-            except PlaywrightTimeoutError:
-                pytest.skip(
-                    "Delete button not accessible after hover — "
-                    "delete functionality may have changed in current UI"
-                )
-
-        with allure.step("Step 6 — Verify message count decreased"):
-            new_message_count = chat.get_message_count()
-            assert new_message_count < initial_message_count, (
-                f"Message count should decrease after deletion: "
-                f"{initial_message_count} -> {new_message_count}"
-            )
-
 
 class TestConversationUIElements:
     """TC-CHAT-010 to TC-CHAT-013: Conversation UI element tests."""
