@@ -1,6 +1,6 @@
 ---
 name: reproduce-elitea-bug
-description: Reproduce a reported Elitea bug and reach a verdict, verifying on the DEV environment (dev.elitea.ai) — NOT just localhost — before concluding it is a real application defect. Elitea overlay on the generic reproducing-issues method; adds DEV verification, verdict labels, and evidence discipline. Reproduction + documentation only — never fixes code, and never files to elitea_issues (that is a separate, explicitly-requested step). Use when a `bug`-labelled card needs reproduction, whether triggered by the reproduce loop or asked for in a live session.
+description: Reproduce a reported Elitea bug and reach a verdict, verifying on the DEV environment as deployed (dev.elitea.ai) before concluding it is a real application defect. Elitea overlay on the generic reproducing-issues method; adds DEV verification, verdict labels, and evidence discipline. Reproduction + documentation only — never fixes code, and never files to elitea_issues (that is a separate, explicitly-requested step). Use when a `bug`-labelled card needs reproduction, whether triggered by the reproduce loop or asked for in a live session.
 allowed-tools:
   - Bash
   - Read
@@ -19,23 +19,25 @@ Works identically whether the **reproduce loop** dispatched you or a human asked
 a **live session** — the procedure is the same; only the loop's factory Deltas
 (`factory/loops/reproduce.md`) differ.
 
-## The one rule that makes a verdict trustworthy — verify on DEV (#699)
+## The one rule that makes a verdict trustworthy — verify on DEV as deployed (#699)
 
-A bug reproduced **only on localhost:5173** is NOT a confirmed application defect.
-Localhost runs the `automation/testids` integration branch against a dev backend
-and carries local-env quirks (HMR state, `.env` oddities, unreviewed testid JSX).
-Before any `confirmed` verdict, re-verify the same scenario on the **DEV
-environment**:
+**A verdict counts only when the scenario was reproduced on DEV as deployed.** A
+symptom seen anywhere else — a reporter's own browser, a stale tab, an unreviewed
+build — is a lead, not a confirmed application defect. So every `confirmed` verdict
+rests on your own run against:
 
-- **URL:** `https://dev.elitea.ai/` (`APP_PREFIX` = `/app` on deployed envs).
-- **Auth:** real Keycloak login (localhost's `VITE_DEV_TOKEN` bypass does NOT apply
-  here). Log in with `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` from `automation/.env.test`.
-  The Keycloak field selector is `input[name="username"]`. Never print the values.
+- **URL:** `https://dev.elitea.ai/` (`APP_PREFIX` = `/app`).
+- **Auth:** real Keycloak login with `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` from
+  `automation/.env.test`. The Keycloak field selector is `input[name="username"]`.
+  Never print the values. (Playwright MCP: refresh
+  `scripts/dev_storage_state.py` first instead of typing credentials.)
 - **Browser Bash commands: `timeout=600000`** (Keycloak + SPA + WebSocket AI waits
   false-fail the 120s default).
 
-Record where it reproduces in an **Environment** line: `localhost-only | DEV | both`.
-Only `DEV` or `both` may become `repro:confirmed`. `localhost-only` ⇒ `repro:local-only`.
+Record the result in an **Environment** line: `DEV` (reproduced there) or
+`not-on-DEV` (clean there, symptom reported elsewhere). Only `DEV` may become
+`repro:confirmed`; `not-on-DEV` is `repro:local-only` — the symptom belongs to the
+reporter's environment, not the product.
 
 ## Dedup check first — is this card already tracked?
 
@@ -63,8 +65,9 @@ normally, noting "possible duplicate of #N".
 A "reproduction" that is really an artifact burns a dev's day. Run the rule-outs in
 `.agents/role-overrides.md` § *interaction-discovery ladder* and the reproduce loop's
 Deltas, in order — environment/service, auth/identity, test data, timing (WebSocket
-~2–30s; MUI debounce), interaction mode, and finally **read the component source in
-`../EliteaUI/src`** (the handlers state the intended mode as fact). For a 4xx/5xx,
+~2–30s; MUI debounce), interaction mode, and finally **read the component source as DEV ships it** in the
+read-only frontend-source reference clone (`git show origin/main:<path>` after
+`git fetch origin`) — the handlers state the intended mode as fact. For a 4xx/5xx,
 cross-check the OpenAPI contract per `.agents/role-overrides.md` § *4xx/5xx*.
 A bug is CONFIRMED only if the **intended** mode fails on DEV and none of the
 above explains it — name the mode, the code pointer, and the rule-outs you ran.
@@ -83,7 +86,7 @@ terminal `repro:triaged` (which dequeues the card from the reproduce loop):
 | Verdict | Label(s) | Then |
 |---|---|---|
 | Reproduced on DEV | `repro:confirmed` + `repro:triaged` | Post full repro report (steps, expected vs actual, evidence embedded, Environment line, rule-outs). **Surface the escalation option — do NOT file.** |
-| Localhost only | `repro:local-only` + `repro:triaged` | Post finding; recommend it is env/local, not an app bug. Do not file. |
+| Clean on DEV, symptom reported elsewhere | `repro:local-only` + `repro:triaged` | Post finding; recommend it is the reporter's environment, not an app bug. Do not file. |
 | Not reproducible | `repro:not-reproducible` + `repro:triaged` | Post exactly what you tried and where behaviour diverged. Do not file. |
 | Case-text assumed wrong mode | `repro:triaged` | Post finding; recommend a case-text clarification (the #40 pattern). Do not file. |
 | Already tracked by another card | `duplicate` + `repro:triaged` | Comment "Duplicate of #M — <why>" on the higher-numbered card. Leave it **OPEN** — never close. No reproduction needed. |

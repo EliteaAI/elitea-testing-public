@@ -27,10 +27,11 @@ type: project
 
 ## Elitea Project Specifics (seeded by scout 2026-07-10, revised 2026-10)
 
-> **2026-10 precedence:** the factory targets the **DEV env as deployed** with the locator
-> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Any pre-2026-10
-> testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
-> is **superseded**; testid creation belongs to the `testid-migrator` only.
+> **2026-10 precedence:** work targets the **DEV env as deployed** with the locator
+> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`), in this
+> repo alone. Any pre-2026-10 memory — here or in `.agents/memory/` — that says
+> testid-only, a locally served UI, or testid-presence-as-coverage is **superseded**:
+> a missing testid is a lower rung plus a `suggested_testid=` hint, never work.
 
 - **Framework:** Playwright 1.61 + pytest 9.1, Python 3.13 repo-local `.venv`.
   Run from `automation/`: `../.venv/bin/pytest tests/ui/<feature>/test_x.py -v`.
@@ -48,8 +49,8 @@ type: project
   `[data-testid=` constants only — never built in methods or specs; `fallback=` /
   `locator=` are legacy, never in new code. Existing raw handles are tech debt
   (#25/#42), never precedent.
-- **You never touch EliteaUI** (no `add-data-testid`, no `automation/testids` commits,
-  no localhost). Testids are added later by the `testid-migrator`.
+- **Your PR in this repo is the only artifact.** Nothing outside it is changed to make
+  a locator work: if DEV does not serve a testid, drop a rung and write the hint.
 - **The per-test loop:** explore DEV → `page-object-generator` (ladder declarations) →
   write test → green on DEV → `locator_inventory.py scan` delta → PR to `automation/factory`.
 - **Wrap every test step in `with allure.step("Step N — …"):`** — one per AFS step,
@@ -59,8 +60,8 @@ type: project
   the file. Page objects navigate with bare paths (`/skills/all`); `APP_PREFIX=/app`
   on DEV is injected by `settings.app_base_url`.
 - **WebSocket ~2s delay** on AI responses — condition waits, never sleeps.
-- **Traps:** OneDrive is slow (background npm/git); `npm install` looks hung — isn't;
-  EliteaUI `.env` is a symlink, don't recreate; never shallow-clone.
+- **Traps:** OneDrive is slow (background git commands, don't assume a hang);
+  `.env.test` is a symlink, don't recreate; never shallow-clone.
 - **Coverage id:** the dotted pytest path is what gets back-written to the TMS —
   keep test names stable and meaningful.
 - **Elitea domain knowledge:** for API-level work (clients in `automation/api/`,

@@ -14,9 +14,9 @@ type: project
   strategy per the skill's own contract; `role-overrides.md` is the hook-injected
   per-slot override channel — occupy those seams instead).
 - **Team-owned** (test-automation team updates them, scout only FLAGS):
-  `.claude/rules/*`, project skills (`add-data-testid`, `page-object-generator`,
-  `test-quality-checker`, `start-ui-localhost`, `sync-base-branches`,
-  `batch-promote`, …), framework code (`automation/`), EliteaUI.
+  `.claude/rules/*`, project skills (`page-object-generator`,
+  `test-quality-checker`, `sync-base-branches`, `batch-promote`, …), framework
+  code (`automation/`).
 - **Scout-owned levers**: `.agents/*` (incl. role memories), `CLAUDE.md`, `AGENTS.md`.
 - Precedence lesson (2026-07-14 audit, hook-verified 43/43): ambient briefings LOSE
   to the actively-executing skill text; overrides must land in the skill's declared
@@ -53,18 +53,19 @@ type: project
 
 ## Elitea Project Specifics (seeded 2026-07-10, revised 2026-10)
 
-> **2026-10 precedence:** the factory targets the **DEV env as deployed** with the locator
-> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Any pre-2026-10
-> testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
-> is **superseded**; testid creation belongs to the `testid-migrator` only.
+> **2026-10 precedence:** work targets the **DEV env as deployed** with the locator
+> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`), in this
+> repo alone. Any pre-2026-10 memory — here or in `.agents/memory/` — that says
+> testid-only, a locally served UI, or testid-presence-as-coverage is **superseded**:
+> a missing testid is a lower rung plus a `suggested_testid=` hint, never work.
 
 - **Seed complete** — CLAUDE.md rewritten, AGENTS.md project sections added (bundle
   block preserved), full `.agents/*` set written, 4 memory briefings adjusted.
-- **Topology:** three siblings under the parent folder (NOT a git repo, don't init):
-  this repo (`automation/factory`), `../EliteaUI` (**`EliteaAI/EliteaUI` directly — no fork**;
-  `automation/testids` integration branch, push but no admin — written only by the
-  `testid-migrator` since 2026-10; the factory targets DEV),
-  `../onetest-ai-tm-Elitea` (TMS, `.onetest/` cwd-relative).
+- **Topology:** siblings under the parent folder (NOT a git repo, don't init):
+  this repo (`automation/factory`) and `../onetest-ai-tm-Elitea` (TMS, `.onetest/`
+  cwd-relative). A frontend-source clone also sits beside them as a **read-only
+  reference** — grepped on `origin/main` to answer "how is this control wired as DEV
+  ships it", never edited, never built, never run.
 - **TMS = onetest** (custom adapter, MCP server `onetest-tms` in `.mcp.json`);
   intake/back-write policy in `.agents/test-automation.yaml`.
 - **Exploration shortcuts:** framework truth = `pyproject.toml` + `automation/pytest.ini`

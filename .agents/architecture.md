@@ -2,26 +2,26 @@
 
 ## System overview
 
-This is a **test-automation engagement** — the map below covers the three-repo
-factory topology and the Elitea application surface under test, not Elitea's
-internal service architecture.
+This is a **test-automation engagement** — the map below covers the workspace
+topology and the Elitea application surface under test, not Elitea's internal
+service architecture.
 
-## Three-repo factory topology
+## Workspace topology
 
 ```
 <workspace>/                             (= parent folder of this clone; plain dir, NOT a repo)
 ├── .env  .env.test                      master secrets (symlink targets)
 ├── elitea-testing-public/               THIS repo — tests · branch automation/factory · admin
 │   └── automation/.env.test → ../../.env.test
-├── EliteaUI/                            EliteaAI/EliteaUI (NO fork) · automation/testids · migrator-only
-│   ├── .env → ../.env                   (VITE_DEV_TOKEN etc.)
-│   └── origin = EliteaAI/EliteaUI       push, no admin · main owned by the UI team
-└── onetest-ai-tm-Elitea/                TMS repo ($OT_REPO_ROOT) · admin
-    ├── .onetest/                        config the @onetest/tms MCP package reads via cwd
-    └── tests/automated-full-regression-ui/   case source (markdown + YAML frontmatter)
+├── onetest-ai-tm-Elitea/                TMS repo ($OT_REPO_ROOT) · admin
+│   ├── .onetest/                        config the @onetest/tms MCP package reads via cwd
+│   └── tests/automated-full-regression-ui/   case source (markdown + YAML frontmatter)
+└── EliteaUI/                            frontend source, READ-ONLY reference (never edited,
+                                         never built, never run) — grepped on `main` only to
+                                         answer "how is this control wired as DEV ships it"
 ```
 
-## Runtime data flow (factory loop, 2026-10)
+## Runtime data flow
 
 ```
 pytest (automation/) ──drives──▶ DEV env https://dev.elitea.ai/app (as deployed)
@@ -34,18 +34,10 @@ onetest-tms MCP (npx @onetest/tms) ──reads/writes──▶ onetest-ai-tm-Eli
                                                       (cases, runs, defects → GitHub issues)
 ```
 
-**Migration loop (`testid-migrator`, runs on request)** — the only process that runs the local UI:
+**DEV is the only environment in the loop.** Nothing is built or served locally;
+there is no second target to keep in sync and no frontend change to wait for.
 
-```
-ledger (.agents/locator-migration/ledger.json) ◀── locator_inventory.py sync-ledger
-  phase B: localhost:5173 (EliteaUI automation/testids) ── add-data-testid ──▶ push
-           ┄┄ human cherry-pick → EliteaUI main → deployed to DEV
-  phase A: check-ui-ref sees testid on the deployed ref ──▶ swap descriptor
-           ──▶ run affected tests on DEV ──▶ PR → automation/factory
-```
-
-- **Auth:** Keycloak on DEV (`input[name="username"]`); `auth_state` bypasses login
-  via `VITE_DEV_TOKEN` only on localhost (migrator phase B).
+- **Auth:** Keycloak on DEV (`input[name="username"]`); `auth_state` logs in via the API.
 - **WebSocket:** AI responses arrive ~2s after send — condition waits required.
 - **Other deployed environments** (`next.elitea.ai`, stage) stay CI-only targets.
 
@@ -71,22 +63,11 @@ The team measures **locator debt** — non-testid declarations / all declaration
 plus unmanaged raw handles in method bodies — via
 `automation/scripts/locator_inventory.py scan`. Because every locator is a
 class-level declaration and every non-testid one names its `suggested_testid`, the
-debt is enumerable and the migration is mechanical. This replaced the earlier
-"coverage = testid presence" metric, which forced testid creation into every case
-and coupled the factory to EliteaUI review latency.
+debt is enumerable and burning it down is mechanical.
 
-## Why the integration-branch design still exists (migrator)
-
-EliteaUI `main` is owned by the product UI team (review takes days), so
-**`automation/testids` remains a permanent integration branch accumulating every
-testid the team writes** — now written only by the `testid-migrator`. The
-migrator swaps a test to a testid only after that testid is deployed, so nothing in
-`automation/factory` ever depends on the integration branch.
-
-**→ `.agents/workflow.md` § The two processes / § The migration loop / § Testid
-flow** is the single source for the mechanism.
-
-What lives *only* here — **why the migration is batched:** a swap is only safe
-once its testid is on DEV, and deploys arrive in waves; batching the swaps per migration run
-amortises one DEV verification run and one review over many rows, and keeps the
-factory's per-case PRs free of cross-repo work.
+This replaced an earlier "coverage = testid presence" metric, which made a missing
+testid a blocker on every case and pinned each case's fate to a frontend review
+cycle. Under the ladder, a missing testid is a hint recorded in the declaration;
+the test is green on DEV the day it merges. Converting hints into real testids is a
+separate, on-request process with its own session and procedure — out of scope for
+any work described in these docs.

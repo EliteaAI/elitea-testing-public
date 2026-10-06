@@ -43,13 +43,16 @@ if [ -n "$EXEC_LOOP" ]; then
     command -v npx >/dev/null && pass "npx installed" || fail "npx missing"
     [ -x .venv/bin/pytest ] && pass ".venv/bin/pytest present" || fail ".venv missing in $EXEC_DIR — pip install -e '.[reporting]'"
     [ -d "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" ] && pass "Playwright browsers present" || fail "Playwright browsers missing"
-    for s in ../EliteaUI ../onetest-ai-tm-Elitea; do
-      [ -d "$s/.git" ] && pass "sibling $s present" || fail "sibling $s missing — four-sibling topology incomplete"
+    # UI_SRC is the READ-ONLY frontend-source reference clone: grepped on main to
+    # answer "how is this control wired as DEV ships it" (the interaction-discovery
+    # ladder). Never edited, never built, never served.
+    UI_SRC=../EliteaUI
+    for s in "$UI_SRC" ../onetest-ai-tm-Elitea; do
+      [ -d "$s/.git" ] && pass "sibling $s present" || fail "sibling $s missing — sibling topology incomplete"
     done
-    # The factory only READS ../EliteaUI as DEV ships it (main — the interaction-
-    # discovery ladder) and adds no testids; automation/testids is the migrator's.
-    ui_branch="$(git -C ../EliteaUI rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-    [ "$ui_branch" = main ] && pass "EliteaUI on main" || warn "EliteaUI on \"$ui_branch\", not main — the factory reads the UI source as DEV ships it"
+    ui_branch="$(git -C "$UI_SRC" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    [ "$ui_branch" = main ] && pass "frontend-source reference on main" \
+      || warn "frontend-source reference on \"$ui_branch\", not main — it is read as DEV ships it, so main is the ref to read"
     # The work repo mirrors this factory/ as a backup — the two must match.
     if [ -d factory ] && [ "$(cd factory && pwd)" != "$FACTORY" ]; then
       diff -rq -x state "$FACTORY" factory >/dev/null 2>&1 \

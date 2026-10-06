@@ -251,7 +251,7 @@ cat > /tmp/issue-body.md <<'EOF'
 - **AFS:** `<path>`
 - **Failure source:** <GHA run | local>
 - **Failure type:** <category>
-- **Environment:** <localhost | dev.elitea.ai>
+- **Environment:** dev.elitea.ai (`/app`)
 
 ## Failure Evidence
 

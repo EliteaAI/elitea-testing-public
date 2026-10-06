@@ -236,8 +236,8 @@ echo "Fix strategy: $FIX_BRANCH_STRATEGY"
 From issue #1776 (correct pattern):
 ```
 **Branch:** main (test already promoted)
-**Scope:** ... work on this environment (Keycloak auth, `/app` prefix, live DEV backend/WebSocket timing) 
-rather than localhost, and fix anything DEV-specific ... cut a fix branch from main per normal PR flow, 
+**Scope:** ... work on this environment (Keycloak auth, `/app` prefix, live DEV backend/WebSocket timing)
+and fix anything DEV-specific ... cut a fix branch from main per normal PR flow,
 still targeting main since that's where this test now lives
 ```
 
@@ -301,7 +301,7 @@ Examples:
 - **TMS case:** <CASE-ID or "not found">
 - **AFS:** `<path>` (or "not found")
 - **Failure source:** <GHA run #NNNN | local run YYYY-MM-DD>
-- **Environment:** <localhost:5173 | dev.elitea.ai | next.elitea.ai>
+- **Environment:** <dev.elitea.ai | next.elitea.ai>
 
 **Goal:** Reproduce, investigate, and **DELIVER A FIX** (PR, bug filing, or clarification)
 

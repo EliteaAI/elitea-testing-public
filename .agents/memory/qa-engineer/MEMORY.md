@@ -7,7 +7,7 @@
 > Compacted by scout 2026-08-10 (41 → 26 lines): merged near-duplicates, demoted
 > surface lookups to disk-only, promoted 5 preventive entries. Nothing was deleted.
 
-- [Project briefing](project_briefing.md) — analyst + reviewer slots; testid-only HARD OVERRIDE; localhost = automation/testids
+- [Project briefing](project_briefing.md) — analyst + reviewer slots; locator-ladder HARD OVERRIDE; DEV as deployed is the only target
 - [AFS claims need a full sweep](afs_claims_need_full_sweep_and_grep.md) — no row/clause/PROVENANCE cell is true till you grep it
 - [Reviewer verifies, never trusts](reviewer_verifies_never_trusts.md) — re-run live; re-run their pasted greps; triage reds
 - [A passing assertion may prove nothing](passing_assertion_may_prove_nothing.md) — would it differ in the broken case? 12 shapes
@@ -15,7 +15,6 @@
 - [extend-existing: classify + shape](extend_existing_classification_and_shape.md) — already-covered is board-first; 3 shapes
 - [Analyst commit authority](analyst_slot_has_no_git_commit_authority.md) — batch trunk: commit the AFS; standalone: leave untracked
 - [Can't self-approve a PR via gh](gh_identity_blocks_self_approval.md) — post the verdict via gh pr comment instead
-- [EliteaUI commits need [EL-NNNN]](eliteaui_testid_commit_message_format.md) — commitlint rejects [ELITEA-NNNN]
 - [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — grep AFS Priority vs @pytest.mark.p*; seen 7×, incl. module-level
 - [Open cross-cutting defects](open_cross_cutting_defects.md) — #694, bucket-fixture 404, #551/#585, #607 (re-verify before acting)
 - [Provenance grep lies](provenance_grep_needs_case_insensitive.md) — needs -i; object-literal testId: still fails; live ≠ on-main
@@ -32,7 +31,6 @@
 - [Sanctioned-RED needs ONE signature](sanctioned_red_requires_single_failure_signature.md) — two failure paths = flaky, blocks even if both filed
 - [Missing control = defect, not clarification](case_describes_nonexistent_control_is_defect_not_clarification.md) — don't stretch reverse-masking
 - [browser_click target = CSS selector, not ref/text](playwright_mcp_snapshot_refs_go_stale_fast_on_pipeline_canvas.md) — any page, use `[data-testid=...]`
-- [Corrective testid commits leave orphans](corrective_testid_commit_can_leave_wrong_call_site_wired.md) — grep automation/testids, not the narrative
 - [MUI Tooltip title is app-owned](mui_tooltip_title_content_is_app_owned_testid_able.md) — not #579; testid the JSX directly
 - [Dead-code guard's "class scoping" still false-passes](dead_code_guard_class_name_substring_scoping_still_false_passes.md) — verify via a live collision, don't trust the scoping code
 - [Recovered-branch PRs can wipe daily logs](pr_branch_recovery_can_silently_wipe_other_units_daily_log.md) — diff line counts vs base, not just content

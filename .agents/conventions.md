@@ -42,13 +42,7 @@ This file only records what those don't.
   `automation/<case-id>-<slug>` branches exist historically — don't create new ones)
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
 - PRs: small, one per test/feature area, target `automation/factory`, squash merge
-- Migrator batch branches: `locators/<yyyy-mm-dd>` (run date) from `automation/factory`, one PR per migration run.
-- Testid commits (**`testid-migrator` only** — factory roles never commit to EliteaUI):
-  land ON `automation/testids` (dev server runs it — HMR live) and are
-  **pushed** — that's the agent's terminal step. A human cherry-picks them to EliteaUI
-  `main`; agents open no `main` PR (suspended 2026-07-16 — `.agents/_reverted/`). Message
-  describing the testids added.
-  (Full flow: `.agents/workflow.md` § Testid flow / `add-data-testid`.)
+- Every artifact a case produces lands in **this** repo — one branch, one PR, one repo
 
 ## Hard don'ts
 
@@ -56,6 +50,6 @@ This file only records what those don't.
 - Never build locators inside methods or spec files — class fields only
 - Never ship a test whose steps aren't wrapped in `allure.step`
 - Never commit/print `.env` / `.env.test`
-- Never edit anything outside `src/` in the EliteaUI repo
+- Never edit the frontend source — it is a read-only reference, not a work surface
 - No `sleep`/`waitForTimeout` — framework waits only
 - No defect masking (`pytest.skip`, weakened asserts) — see AGENTS.md bundle block

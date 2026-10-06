@@ -3,15 +3,16 @@
 Playwright + pytest automation for [Elitea](https://elitea.ai), an AI collaboration
 platform. Working branch: **`automation/factory`** (never PR `main` directly).
 
-## Layout (four sibling clones — parent dir is NOT a git repo)
+## Layout (sibling clones — parent dir is NOT a git repo)
 
 ```
 <parent>/                        ← this repo's parent folder (sibling clones; no env var needed)
 ├── .env  .env.test              master secrets — NEVER commit, NEVER print
 ├── elitea-testing-public/       THIS repo · branch automation/factory · .venv (Python 3.13)
-├── EliteaUI/                    EliteaAI/EliteaUI (NO fork) · automation/testids · testid-migrator only (:5173)
-├── elitea_assistant/            EliteaAI/elitea_assistant · Support Assistant (connected repo — migrator adds testids in its source)
-└── onetest-ai-tm-Elitea/        TMS repo (test cases as markdown + GitHub issues)
+├── onetest-ai-tm-Elitea/        TMS repo (test cases as markdown + GitHub issues)
+└── EliteaUI/                    frontend source — READ-ONLY reference, grepped on `main`
+                                 to answer "how is this control wired as DEV ships it".
+                                 Never edited, never built, never run.
 ```
 
 ## Essential Commands
@@ -34,25 +35,14 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
 
 ## Critical Conventions
 
-- **Test target is the DEV env as deployed** — `https://dev.elitea.ai`, `APP_PREFIX=/app`
-  (2026-10). The factory (analyst/implementer/reviewer/lead) never starts the local UI and
-  never touches EliteaUI; `localhost:5173` is used only by the `testid-migrator`.
+- **The DEV env as deployed is the only target** — `https://dev.elitea.ai`,
+  `APP_PREFIX=/app` (2026-10). Nothing is built or served locally.
   `next.elitea.ai` / stage remain CI's job.
-- **Test PRs target `automation/factory`**, never `main`.
-- **Two processes (2026-10).** Factory cases ship ladder locators against DEV, one PR
-  into this repo. The **`testid-migrator`** (`.claude/agents/testid-migrator/`,
-  skill `migrate-locators-to-testids`) works the ledger
-  `.agents/locator-migration/ledger.json`: phase A swaps locators whose testid is
-  deployed on DEV (verified on DEV, PR → `automation/factory`); phase B adds testids on
-  `EliteaAI/EliteaUI` `automation/testids` (push is terminal; a **human** cherry-picks to
-  `main`; agents open no `main` PR). Same for `elitea_assistant`
-  (`.agents/workflow.md` § Connected repos).
+- **One repo, one PR per case.** Every artifact a case produces — test, page objects,
+  AFS — lands here and targets `automation/factory`, never `main`.
 - **No git worktrees for regular work** — plain branching, one thing at a time. Read
   another branch with `git show <branch>:<path>` / `git diff <branch>...HEAD`, never a
   checkout. Worktrees only on an explicit human ask (`.agents/workflow.md` § Branching).
-- **Never rebase or force-push `automation/testids`** (migrator only) — it's a shared org branch.
-  Sync it with `git merge origin/main`. If review changes a testid, resolve the next
-  merge **in favour of `main`**.
 - **Locators follow the ladder** (`.claude/rules/page-objects.md`): existing testid on
   DEV → `role`+`name` → `label` → stable `css` → declared `xpath`. Never positional.
   Every non-testid declaration carries `suggested_testid="{section}-{element}-{type}"`
@@ -63,9 +53,9 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
 - **Test steps wrapped in `with allure.step("Step N — …"):`** so they reach reports.
 - **`.env.test` beats shell env vars** (`config.py` orders dotenv first). Edit the file,
   don't export.
-- `APP_PREFIX` is `/app` on DEV and other deployed envs (empty only on localhost — migrator).
+- `APP_PREFIX` is `/app` on DEV and every other deployed env.
 - Keycloak login field is `input[name="username"]`, NOT email. `auth_state` logs in via
-  the API on DEV; only on localhost (migrator) does it skip login (`VITE_DEV_TOKEN`).
+  the API.
 - AI responses arrive over WebSocket with ~2s delay — use waits, never sleeps.
 - Never commit or print `.env` / `.env.test` contents.
 - **Tracker writes: prefix `env -u GITHUB_TOKEN gh …`** — the shared env token is the

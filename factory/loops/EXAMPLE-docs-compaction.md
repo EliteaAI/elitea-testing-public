@@ -50,8 +50,8 @@ duplicate of another block stays untouched, full stop.
    canonical (it's the fullest), pointer the rest. (~600 bytes)
 5. **Small one-liner facts duplicated 2–3× each** (OneDrive slowness,
    `.env.test` precedence, deployed-envs-are-CI-only, never shallow-clone,
-   never rebase/force-push `automation/testids`, ~2s WebSocket delay,
-   Keycloak/`auth_state`, no-CI-on-`automation/factory`, retired fork) — see
+   ~2s WebSocket delay,
+   Keycloak/`auth_state`, no-CI-on-`automation/factory`) — see
    the full audit table (posted to this PR's description by you, or ask
    your dispatcher to re-run the audit if this file has aged) — pick
    whichever file states each most completely, pointer the others.

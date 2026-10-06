@@ -11,8 +11,7 @@ languages: [python]
 Playwright/pytest suite automating onetest TMS cases against the Elitea platform,
 built and verified against the **DEV env as deployed** (2026-10). Locators follow a
 ladder (existing testid → role+name → label → css → xpath, each non-testid with a
-`suggested_testid=` hint); a separate **`testid-migrator`** converts them to testids
-once those are deployed. **Team goal: drive locator debt to zero** — measured by
+`suggested_testid=` hint). **Team goal: drive locator debt to zero** — measured by
 `automation/scripts/locator_inventory.py scan` (locator policy: `.agents/testing.md`).
 Currently UI-focused; API tests exist and
 other surfaces (mobile, perf) may be added later — nothing in this seed assumes
@@ -36,18 +35,16 @@ UI-only.
 - **API base:** `ELITEA_API_BASE` (DEV backend).
 - **Browser exploration auth:** `cd automation && ../.venv/bin/python scripts/dev_storage_state.py`
   at session start — writes the Playwright MCP storage state (Keycloak sessions expire).
-- `http://localhost:5173` (EliteaUI `automation/testids`) is used **only by the
-  `testid-migrator`** in its phase B. `next.elitea.ai` / stage envs stay CI's job.
+- **DEV is the only target.** Nothing is built or served locally; `next.elitea.ai` /
+  stage envs stay CI's job.
 
 ### Repo access map
 
 | Repo | Access | Role |
 |---|---|---|
-| `EliteaAI/elitea-testing-public` | admin | this repo — tests, tracker, board |
+| `EliteaAI/elitea-testing-public` | admin | this repo — tests, tracker, board. The only repo work is committed to |
 | `EliteaAI/onetest-ai-tm-Elitea` | admin | TMS — cases, runs, defects |
-| `EliteaAI/EliteaUI` | **push, no admin** | UI — read-only for the factory; `testid-migrator` commits testids on `automation/testids`; `main` owned by the UI team |
-| `EliteaAI/elitea_assistant` | **push, no admin** | Support Assistant (connected repo, `@eliteaai/elitea-assistant`) — testids in ITS source on its own `automation/testids` integration branch; consumed by EliteaUI as a git-dep. See `.agents/workflow.md` § Connected repos. |
-| ~~`bermudas/EliteaUI`~~ (fork) | RETIRED 2026-07-13 | no longer part of the workflow — never push to it |
+| `EliteaAI/EliteaUI` | read | frontend source — **read-only reference**, grepped on `main` to answer "how is this control wired as DEV ships it". Never edited, never built, never run |
 
 ### Roles & sample users
 
@@ -58,7 +55,6 @@ Env-var names only — **never secrets**. All resolve from `automation/.env.test
 |----------|---------|--------------------|
 | `${TEST_USER}` | Standard authenticated user (Keycloak) | `TEST_USER_EMAIL`, `TEST_USER_PASSWORD` |
 | API token | Direct API calls | `ELITEA_API_TOKEN` |
-| localhost dev auth (migrator only) | `auth_state` skips login on localhost | `VITE_DEV_TOKEN` (in `EliteaUI/.env`) |
 | GitHub toolkit test data | Fed INTO the Elitea UI/API to create GitHub toolkits & credentials (toolkit tests, `github_credential` fixture, guardrails tests — they SKIP without it) | `GIT_HUB_TOKEN` (in `.env.test`) |
 | Jira toolkit test data | Same pattern for Jira toolkits | `JIRA_USERNAME`, `JIRA_API_KEY` |
 
@@ -95,7 +91,7 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   github MCP server.
 - **Board #9 holds ONLY `EliteaAI/elitea-testing-public` issues.** Never
   `gh project item-add` an issue from another repo (`elitea_issues`,
-  `elitea_support`, EliteaUI, …) — it duplicates a defect the originating card
+  `elitea_support`, …) — it duplicates a defect the originating card
   already tracks, in a repo this board has no workflow states for, and lands in
   `Todo` (the reproduce loop's trigger column). Cross-repo visibility comes from a
   **back-link comment**, never a second card. (Two real incidents: elitea_support#1231
@@ -202,22 +198,17 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Merge policy**: auto-merge into `automation/factory` — the orchestrator merges once the
   test ran green against DEV from this machine + review passed. There is NO CI on
   `automation/factory`; that green run IS the gate.
-- **Factory PRs touch this repo only.** No EliteaUI change accompanies a case.
-- **Testids to `EliteaAI/EliteaUI` `main`** (migrator only): **agents do NOT open `main`
-  PRs (suspended 2026-07-16 — `.agents/_reverted/`).** The `testid-migrator` commits +
-  **pushes** to `automation/testids` and stops there; a **human** cherry-picks them to
-  `main` out of band. Its phase-A swap PR (one per migration run) targets `automation/factory`.
+- **One PR, one repo.** A case's PR touches this repo only — nothing outside it is
+  changed, and nothing in it waits on another repo's review.
 - **Batch promotion is human-triggered only** (never autonomous): GHA runs,
   `automation/factory → main` gate PR. See `.agents/workflow.md` § Promotion.
 - **Squash / rebase / merge**: squash (default) for small PRs into `automation/factory`.
 
 ### Additional notes
 - Parent folder of this clone = the workspace (plain directory, NOT a git
-  repo — never `git init` it; the three-sibling layout is load-bearing).
-- No `env.sh` — paths are repo-relative (`../EliteaUI`, `../onetest-ai-tm-Elitea`);
+  repo — never `git init` it; the sibling layout is load-bearing).
+- No `env.sh` — paths are repo-relative (`../onetest-ai-tm-Elitea`);
   `GITHUB_TOKEN` comes from the master `.env` when needed by `.mcp.json`.
-- Repos sit on OneDrive — git/npm operations are slow, background them, don't assume hangs.
-- Never shallow-clone any of the three repos (`test -f .git/shallow` to check;
+- Repos sit on OneDrive — git operations are slow, background them, don't assume hangs.
+- Never shallow-clone any of the sibling repos (`test -f .git/shallow` to check;
   `git fetch --unshallow origin` to fix) — shallow clones break history-walking merges.
-- **`automation/testids` is a shared org branch: never rebase it, never force-push it.**
-  Sync with `git merge origin/main`. (Only the `testid-migrator` writes to it.)

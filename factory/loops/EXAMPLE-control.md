@@ -22,10 +22,10 @@ verdict, they override any skill's defaults/examples:
 - `.agents/workflow.md` § Closure record — factory cases + § Work tracking
 - `.agents/profile.md` § Issue tracker (board discipline, identity rule)
 
-The factory targets DEV as deployed and never touches EliteaUI (2026-10):
-testids are the `testid-migrator`'s work, not a delivery criterion. Do not
-audit a factory card for testids, `automation/testids` or promotability to
-EliteaUI `main` — those checks belong to the migrator's own batch review.
+The factory targets DEV as deployed (2026-10): adding testids is a separate,
+on-request process with its own session and its own review, and is not a
+delivery criterion here. A factory card is audited on its own single PR in this
+repo — never for testid presence or for promotability anywhere else.
 
 ## The evidence principle (read before the checklist)
 
@@ -70,9 +70,9 @@ finding). Tal's recorded account of the returned verdict is sufficient.
    user data, counts or the selected model. A lower rung than the AFS specified
    = FAIL.
 3. **This repo only + locator delta verified.** The merged diff touches
-   `EliteaAI/elitea-testing-public` alone — no EliteaUI change and no
-   dependency on a testid DEV does not serve (that would be migrator work) —
-   else FAIL. Re-run the scan yourself on the merge commit and its parent
+   `EliteaAI/elitea-testing-public` alone, and rung 1 is used only where DEV
+   already serves that testid — a locator that depends on an undeployed testid
+   = FAIL. Re-run the scan yourself on the merge commit and its parent
    (static AST scan — no checkout, no worktree):
    ```bash
    for r in <merge-sha>^ <merge-sha>; do d=$(mktemp -d)
@@ -84,7 +84,7 @@ finding). Tal's recorded account of the returned verdict is sufficient.
    have a ledger row on `automation/factory`
    (`git show origin/automation/factory:.agents/locator-migration/ledger.json`
    → `.entries["pages/<file>.py::<Class>.<field>"]`, state `raw`). Missing rows
-   = FAIL (the migrator's queue silently loses them).
+   = FAIL (the ledger is the only record of the debt; a missing row loses it).
 4. **Closure record.** The record must match `.agents/workflow.md` § Closure
    record — factory cases: artifact table (Test PR + merge sha, AFS path,
    Locators row = declared D (testid T · ladder L) · unmanaged handles Δ ±U ·
@@ -92,8 +92,8 @@ finding). Tal's recorded account of the returned verdict is sufficient.
    `owner/repo#N` (never backticked), status line, still-open line. The
    Locators row must AGREE with your item-3 scan — a row that ground truth
    contradicts, or one copied from the Run Report instead of re-run after the
-   merge, = FAIL. A testid/promotability row is not expected (it is the
-   migrator's format). Bare "✅ done" = FAIL.
+   merge, = FAIL. A testid/promotability row is not expected in this format.
+   Bare "✅ done" = FAIL.
 5. **Merge gate evidence.** The issue work-log must show the lead's own
    3× gate: three SEPARATE consecutive invocations of the SAME spec, run
    BEFORE the merge (per `.agents/testing.md` § Merge gate — one invocation
@@ -146,7 +146,7 @@ Append to your verdict comment a short watch note if anything is amiss
 (read-only observations; the human decides):
 1. factory deliveries whose new non-testid declarations never reached the
    ledger, or a locator-debt trend climbing fast (`locator_inventory.py scan`
-   on `automation/factory`) — the nudge for a `testid-migrator` run, which a
+   on `automation/factory`) — the nudge for a debt-burndown run, which a
    person or another party starts on request;
 2. `Blocked` cards whose `Waiting on #N` targets are all closed;
 3. `question` issues unanswered >24h;
@@ -158,6 +158,6 @@ Append to your verdict comment a short watch note if anything is amiss
 1. **No one to ask** — `question` issues, as above. Never guess to keep going.
 2. **Identity rule:** every tracker/board write prefixed `env -u GITHUB_TOKEN`.
 3. **Never background anything.** Each audit step synchronous, in-turn.
-4. **Read-only on git.** You fetch and grep both repos; you never commit,
+4. **Read-only on git.** You fetch and grep; you never commit,
    push, merge, or touch working trees (no WORKDIR needed).
 5. **Only the card named in this dispatch.** Discoveries become new issues.

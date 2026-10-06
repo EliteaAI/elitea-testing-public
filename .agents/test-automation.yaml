@@ -1,8 +1,8 @@
 # TMS + pipeline configuration — seeded by scout 2026-07-10.
 # Read by test-automation-lead (intake, back-write) and the pipeline skills.
 
-# 2026-10: the factory analyses + builds against the DEV env as deployed (ladder
-# locators, no EliteaUI changes); testids arrive via the testid-migrator
+# 2026-10: the factory analyses + builds against the DEV env as deployed, using
+# ladder locators; adding testids is a separate on-request process
 # (ledger: .agents/locator-migration/ledger.json). Nothing below changed.
 
 tms:

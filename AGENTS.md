@@ -3,8 +3,7 @@
 Playwright/pytest test-automation suite for the Elitea AI platform. This team turns
 onetest TMS cases into merged, honest automated tests on the **`automation/factory`**
 branch, built and verified against the **DEV env as deployed** (`https://dev.elitea.ai/app`,
-2026-10). A separate **`testid-migrator`** converts ladder locators to `data-testid`s
-(EliteaUI `automation/testids` on the org repo — no fork; human promotes to `main`).
+2026-10). One env, one repo: every artifact a case produces lands here.
 
 ## Tech Stack
 
@@ -14,7 +13,7 @@ branch, built and verified against the **DEV env as deployed** (`https://dev.eli
 - **Reporting:** allure-pytest (mandatory — `--alluredir` in `pytest.ini` addopts), pytest-html/json
 - **Lint/type:** ruff (line 120, py311 target), mypy
 - **System under test:** Elitea (React UI + REST API, Keycloak auth) — the DEV env
-  `https://dev.elitea.ai/app` (localhost:5173 is the migrator's phase-B target only)
+  `https://dev.elitea.ai/app`, the only target
 
 ## Repository Structure
 
@@ -32,11 +31,11 @@ automation/
     ├── api/             ← API tests
     └── unit/            ← framework unit tests
 .claude/rules/           ← auto-applied coding rules (page-objects, ui-tests, api-*, mui)
-.claude/skills/          ← project skills incl. start-ui-localhost, add-data-testid,
-                           page-object-generator, test-automation pipeline skills,
-                           and Elitea domain knowledge: elitea-platform (REST API
-                           reference — load first), elitea-pipeline, elitea-toolkit,
-                           elitea-testing (agent/pipeline run & debug)
+.claude/skills/          ← project skills incl. page-object-generator, the
+                           test-automation pipeline skills, and Elitea domain
+                           knowledge: elitea-platform (REST API reference — load
+                           first), elitea-pipeline, elitea-toolkit, elitea-testing
+                           (agent/pipeline run & debug)
 .agents/                 ← seeded team config (profile, workflow, testing, TMS yaml, memory)
 docs/                    ← mkdocs site (requirements.txt is mkdocs-ONLY, not test deps)
 ```
@@ -53,8 +52,8 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v           # smoke suite (<5 min)
 
 Browser auth for exploration (Playwright MCP): `cd automation && ../.venv/bin/python
 scripts/dev_storage_state.py` at session start. Locator debt:
-`../.venv/bin/python scripts/locator_inventory.py scan`. The local UI
-(`start-ui-localhost`) is started only by the `testid-migrator`.
+`../.venv/bin/python scripts/locator_inventory.py scan`. Nothing in this repo is
+built or served locally — DEV as deployed is the only environment.
 
 ## Environment
 
@@ -70,9 +69,9 @@ ladder: existing testid → role+name → label → stable css → declared xpat
 non-testid with `suggested_testid=`**, AFS conventions) and `.agents/conventions.md`
 (pointers to `.claude/rules/*`). Hard per-role overrides: `.agents/role-overrides.md`
 — it wins over any skill's defaults/examples. Team goal: drive **locator debt** to zero
-(`locator_inventory.py scan`) via the `testid-migrator`.
-Way of work — the two-branch dance, sync procedures, batch operations — in
-`.agents/workflow.md`. Three-repo topology in `.agents/architecture.md`.
+(`locator_inventory.py scan`).
+Way of work — the loop, sync procedures, batch operations — in
+`.agents/workflow.md`. Workspace topology in `.agents/architecture.md`.
 
 ## CI/CD
 
