@@ -185,18 +185,6 @@ class SkillsListPage(BasePage):
     # sub-selector only — see :meth:`card_icon_img_locator`.
     CARD_ICON_IMG_SELECTOR = '[data-testid="entity-card-icon-img"]'
 
-    # ELITEA-2428 — card hover-tooltip description text. Added via
-    # add-data-testid to Card.jsx's descriptionTooltip Typography node
-    # (see AFS Concrete Handles). Only the description node is testid'd
-    # (the sibling title/name Typography is not, per the "referenced =
-    # called on the test's actual code path" ruling — this case only
-    # asserts description).
-    card_description_tooltip = LocatorDescriptor(
-        testid="entity-card-description-tooltip",
-        description="Card hover-tooltip's description text (MUI Popper "
-                     "content, rendered only while the card name is hovered)",
-    )
-
     tags_panel_clear_all = LocatorDescriptor(
         testid="tags-panel-clear-all",
         description=(

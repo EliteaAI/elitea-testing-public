@@ -4,11 +4,9 @@ These fixtures have session scope and are shared across all tests in a run.
 They handle browser lifecycle and authentication state caching.
 
 Fixtures:
-- test_run_id: Unique UUID for the test session
 - browser: Playwright Chromium browser instance
 - auth_state: Authenticated browser storage state (cookies, localStorage, etc.)
 """
-import uuid
 import logging
 
 import pytest
@@ -23,22 +21,6 @@ TEST_USER_EMAIL = settings.test_user_email
 TEST_USER_PASSWORD = settings.test_user_password
 TEST_USER_B_EMAIL = settings.test_user_b_email
 TEST_USER_B_PASSWORD = settings.test_user_b_password
-
-
-@pytest.fixture(scope="session")
-def test_run_id() -> str:
-    """Generate a unique ID for this test session.
-
-    This ID is used for artifact naming, log correlation, and test run tracking.
-    Also stored in pytest namespace for access from hooks.
-
-    Returns:
-        UUID string unique to this test session
-    """
-    run_id = str(uuid.uuid4())
-    pytest.test_run_id = run_id  # type: ignore[attr-defined]
-    logger.info("Test run ID: %s", run_id)
-    return run_id
 
 
 @pytest.fixture(scope="session")

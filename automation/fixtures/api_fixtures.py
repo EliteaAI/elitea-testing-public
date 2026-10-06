@@ -312,23 +312,6 @@ def _browser_cookies_user_b(browser: Browser, auth_state_user_b):
 
 
 @pytest.fixture
-def artifact_api_user_b(_browser_cookies_user_b):
-    """ArtifactAPI client authenticated as User B.
-
-    Used for permission enforcement tests where we need to verify
-    that User B (with restricted permissions) gets correct API responses.
-
-    Yields:
-        ArtifactAPI: Authenticated artifact API client for User B
-    """
-    api = ArtifactAPI(browser_cookies=_browser_cookies_user_b)
-    logger.debug("Created ArtifactAPI client for User B")
-    yield api
-    api.close()
-    logger.debug("Closed ArtifactAPI client for User B")
-
-
-@pytest.fixture
 def artifact_api_team_project(_browser_cookies):
     """ArtifactAPI client for Team project (not personal/private project).
 
