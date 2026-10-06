@@ -39,7 +39,7 @@ type: project
 > testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
 > is **superseded**; testid creation belongs to the `testid-migrator` only.
 
-- **Base branch is `automation/base`** — never `main`. There is NO CI on it. The merge
+- **Base branch is `automation/factory`** — never `main`. There is NO CI on it. The merge
   gate is **yours and independent**: reviewer `APPROVED` + **your own 3 consecutive
   green runs of the spec (3 separate pytest invocations, BEFORE `gh pr merge`)** —
   semantics in `.agents/testing.md` § Merge gate, incl. the sanctioned-RED
@@ -64,7 +64,7 @@ type: project
 - **HARD OVERRIDES: `.agents/role-overrides.md` § Orchestrator slot** — dispatch-prompt
   contract (every analyst/implementer/reviewer dispatch carries the DEV-target +
   ladder policy line verbatim — role-overrides.md § Orchestrator slot), sync
-  `automation/base` BEFORE the first case of a session, and the closure-record
+  `automation/factory` BEFORE the first case of a session, and the closure-record
   locator delta is a fact you VERIFY (re-run `locator_inventory.py scan`), never copy
   from the implementer (#35/#36/#37 shipped false rows by copying). Never dispatch
   `testid-migrator` from a factory batch.
@@ -88,7 +88,7 @@ type: project
 - **Dedup with the list API, never `--search`** (search index lags → duplicates like
   #17/#18): `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
 - **Batch promotion only on explicit user request** (with clarifications): GHA runs,
-  `automation/base → main` gate (`batch-promote` skill, § Mode A whole state / § Mode B
+  `automation/factory → main` gate (`batch-promote` skill, § Mode A whole state / § Mode B
   subset). Factory tests are built on DEV, so they need no testid pre-promotion; only
   testid-migrator swap PRs depend on testids, and those swap only after the testid is
   deployed on DEV — the batch-promote testid check is a sanity check.

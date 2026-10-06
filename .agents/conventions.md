@@ -38,11 +38,11 @@ This file only records what those don't.
 
 ## Git
 
-- Work branches from `automation/base`: `tests/<case-id>-<slug>` (canonical; older
+- Work branches from `automation/factory`: `tests/<case-id>-<slug>` (canonical; older
   `automation/<case-id>-<slug>` branches exist historically — don't create new ones)
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
-- PRs: small, one per test/feature area, target `automation/base`, squash merge
-- Migrator batch branches: `locators/<yyyy-mm-dd>` (run date) from `automation/base`, one PR per migration run.
+- PRs: small, one per test/feature area, target `automation/factory`, squash merge
+- Migrator batch branches: `locators/<yyyy-mm-dd>` (run date) from `automation/factory`, one PR per migration run.
 - Testid commits (**`testid-migrator` only** — factory roles never commit to EliteaUI):
   land ON `automation/testids` (dev server runs it — HMR live) and are
   **pushed** — that's the agent's terminal step. A human cherry-picks them to EliteaUI

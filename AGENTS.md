@@ -1,7 +1,7 @@
 # AGENTS — elitea-testing
 
 Playwright/pytest test-automation suite for the Elitea AI platform. This team turns
-onetest TMS cases into merged, honest automated tests on the **`automation/base`**
+onetest TMS cases into merged, honest automated tests on the **`automation/factory`**
 branch, built and verified against the **DEV env as deployed** (`https://dev.elitea.ai/app`,
 2026-10). A separate **`testid-migrator`** converts ladder locators to `data-testid`s
 (EliteaUI `automation/testids` on the org repo — no fork; human promotes to `main`).
@@ -78,7 +78,7 @@ Way of work — the two-branch dance, sync procedures, batch operations — in
 
 GitHub Actions workflows run the suite against deployed envs (`test-ui-dev.yml`,
 `test-ui-next.yml`, `test-ui-stage2.yml`, `test-api.yml`) — **that is not the local
-loop's job**. There is NO CI on `automation/base`: the engineer running tests green
+loop's job**. There is NO CI on `automation/factory`: the engineer running tests green
 against DEV from their machine before PR is the only verification gate.
 
 <!-- BUNDLE:test-automation START -->

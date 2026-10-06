@@ -2,7 +2,7 @@
 project: elitea-testing
 team: elitea-test-automation
 issue-tracker: https://github.com/EliteaAI/elitea-testing-public/issues
-default-branch: automation/base
+default-branch: automation/factory
 languages: [python]
 ---
 
@@ -196,20 +196,20 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   explicit orchestrator actions, never per-local-run
 
 ### Automation PR policy
-- **Base branch for automation PRs**: `automation/base` (long-lived, cut from `main`).
-  **Never** open a PR against `main`. Feature branches cut from `automation/base`,
+- **Base branch for automation PRs**: `automation/factory` (long-lived; cut 2026-10-05 from `automation/base` + the DEV-target factory split, kept current by merging `main`).
+  **Never** open a PR against `main`. Feature branches cut from `automation/factory`,
   one PR per test / feature area, small.
-- **Merge policy**: auto-merge into `automation/base` — the orchestrator merges once the
+- **Merge policy**: auto-merge into `automation/factory` — the orchestrator merges once the
   test ran green against DEV from this machine + review passed. There is NO CI on
-  `automation/base`; that green run IS the gate.
+  `automation/factory`; that green run IS the gate.
 - **Factory PRs touch this repo only.** No EliteaUI change accompanies a case.
 - **Testids to `EliteaAI/EliteaUI` `main`** (migrator only): **agents do NOT open `main`
   PRs (suspended 2026-07-16 — `.agents/_reverted/`).** The `testid-migrator` commits +
   **pushes** to `automation/testids` and stops there; a **human** cherry-picks them to
-  `main` out of band. Its phase-A swap PR (one per migration run) targets `automation/base`.
+  `main` out of band. Its phase-A swap PR (one per migration run) targets `automation/factory`.
 - **Batch promotion is human-triggered only** (never autonomous): GHA runs,
-  `automation/base → main` gate PR. See `.agents/workflow.md` § Promotion.
-- **Squash / rebase / merge**: squash (default) for small PRs into `automation/base`.
+  `automation/factory → main` gate PR. See `.agents/workflow.md` § Promotion.
+- **Squash / rebase / merge**: squash (default) for small PRs into `automation/factory`.
 
 ### Additional notes
 - Parent folder of this clone = the workspace (plain directory, NOT a git

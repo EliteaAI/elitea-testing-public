@@ -30,7 +30,7 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 - **Headed vs headless:** headed is the **default** (`config.py: headless=False`);
   `HEADLESS=true` for quiet runs. CI-on-deployed-envs uses the GHA workflows
   (`.github/workflows/test-ui-*.yml`) — not the local loop's concern.
-- **Local verification gate:** there is no CI on `automation/base`; a test must run
+- **Local verification gate:** there is no CI on `automation/factory`; a test must run
   green from this machine against the **DEV env** (`ELITEA_URL=https://dev.elitea.ai`,
   `APP_PREFIX=/app` in `automation/.env.test`) before its PR — that is the
   *implementer's* gate. The *merge* gate is separate and stricter — see § Merge gate.
@@ -148,7 +148,7 @@ states the policy and who owns what. See also `.agents/role-overrides.md`._
 | Target | DEV env as deployed (`https://dev.elitea.ai`, `/app`) | localhost:5173 on `automation/testids` (phase B) + DEV (phase A verify) |
 | Locators | the **ladder** below, existing testid first | swaps ladder locators for testids once DEV serves them |
 | EliteaUI | **never touched** — no testid commits, no UI repo knowledge | owns every testid addition (`add-data-testid`) |
-| PRs per case | **one** — test repo → `automation/base` | one per migration run → `automation/base` |
+| PRs per case | **one** — test repo → `automation/factory` | one per migration run → `automation/factory` |
 
 A factory case never waits on, edits, or reasons about the UI repo. A missing
 testid is **not** factory work any more — it is recorded as a `suggested_testid=`
@@ -200,7 +200,7 @@ in force **for anyone adding a testid** — which, from 2026-10, is only the mig
 - **Ledger-driven, two-phase, deployment-gated.** `.agents/locator-migration/ledger.json`,
   states `raw → testid-proposed → on-dev → migrated` (`removed` when a declaration
   disappears). **Phase A**: entries `on-dev` → swap the declaration to `testid=`,
-  run the affected specs green on DEV, PR to `automation/base`, `sync-ledger` marks
+  run the affected specs green on DEV, PR to `automation/factory`, `sync-ledger` marks
   them `migrated`. **Phase B**: next `raw` batch → add testids in EliteaUI on
   `automation/testids` (localhost:5173, commit + push, human cherry-picks to
   `main`) → `testid-proposed`; `check-ui-ref --ref origin/main` + a DEV DOM check
@@ -287,7 +287,7 @@ without step wrapping is `CHANGES_REQUESTED` at review.
 - `.github/workflows/`: `test-ui-dev.yml`, `test-ui-next.yml`, `test-ui-stage2.yml`,
   `test-ui-custom.yml`, `test-api.yml`, `docs-build.yml`, `delete-stale-branches.yml`.
 - These target **deployed** envs and are run by humans / the batch process — the local
-  pipeline never gates on them. `automation/base` has no CI by design.
+  pipeline never gates on them. `automation/factory` has no CI by design.
 
 ## Known issues
 

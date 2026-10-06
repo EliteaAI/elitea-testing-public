@@ -95,7 +95,7 @@ backwrite_on_done:
     # ⚠ index.json is NOT auto-rebuilt (build-index CI is a stub). After editing case files,
     #   rebuild it (build_index MCP verb, or the packaged scripts/_index.py) or correlate_results
     #   reads the stale ref and still reports a gap.
-  automation_pr: URL of the merged automation/base PR (observed practice, now policy)
+  automation_pr: URL of the merged automation/factory PR (observed practice, now policy)
 
 reporting:
   # No pytest-wired TMS reporter exists and none should be added silently.

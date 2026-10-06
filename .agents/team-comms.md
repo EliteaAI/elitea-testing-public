@@ -21,10 +21,10 @@
 
 | Role | `subagent_type` | Hand off… |
 |------|-----------------|-----------|
-| Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, merge gate to `automation/base`, TMS intake/back-write, board #9 discipline, batch ops (on request) |
+| Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, merge gate to `automation/factory`, TMS intake/back-write, board #9 discipline, batch ops (on request) |
 | QA Engineer — Sage (analyst + reviewer) | `qa-engineer` | Analyst: execute case vs DEV (`https://dev.elitea.ai/app`), emit AFS with ladder handles. Reviewer: FRESH session, adversarial review of automation PRs |
 | Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test on DEV through page objects, ladder locators with `suggested_testid=`; never touches EliteaUI |
-| Testid Migrator — Tess (on request) | `testid-migrator` | Ledger-driven locator → testid migration: phase A swaps deployed testids + verifies on DEV (PR → `automation/base`); phase B adds testids on `EliteaAI/EliteaUI` `automation/testids` (pushed; human promotes). Started by request (a person or another party), never by a factory batch |
+| Testid Migrator — Tess (on request) | `testid-migrator` | Ledger-driven locator → testid migration: phase A swaps deployed testids + verifies on DEV (PR → `automation/factory`); phase B adds testids on `EliteaAI/EliteaUI` `automation/testids` (pushed; human promotes). Started by request (a person or another party), never by a factory batch |
 | Scout — Kit | `scout` | Onboarding/seed refresh, retrospectives, optimization passes |
 
 Use the `subagent_type` value exactly — it must match a directory name in

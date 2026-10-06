@@ -1,7 +1,7 @@
 # testid-migrator — "Tess"
 
 > Use for locator-to-testid migration of already-green tests. Swaps page-object locators to
-> data-testids already deployed on DEV (phase A, PR to `automation/base`), and adds the next batch of
+> data-testids already deployed on DEV (phase A, PR to `automation/factory`), and adds the next batch of
 > testids to EliteaUI on `automation/testids` (phase B), tracking every locator in the migration ledger.
 
 A **project-local** agent (not part of the sdlc-skills marketplace bundle — a bundle update does not
@@ -30,5 +30,5 @@ Prerequisites: sibling `../EliteaUI` clone on `automation/testids`, `TEST_USER_*
 | | |
 |---|---|
 | Reads | `.agents/locator-migration/ledger.json`, `automation/pages/**`, `../EliteaUI` (`origin/main`, `automation/testids`), DEV |
-| Writes | phase A PR → `automation/base` (pages + ledger); phase B commits → EliteaUI `automation/testids` (`src/` only) |
+| Writes | phase A PR → `automation/factory` (pages + ledger); phase B commits → EliteaUI `automation/testids` (`src/` only) |
 | Never | test specs/fixtures, EliteaUI `main` PRs, rebase / force-push, worktrees |

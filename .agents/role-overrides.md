@@ -44,6 +44,17 @@ never precedent.
 
 The per-slot consequences are below (§ Analyst / § Implementer / § Reviewer slot).
 
+## Every role — the working branch is `automation/factory` (2026-10-05)
+
+The factory's long-lived working/base branch in this repo is **`automation/factory`**
+(cut from `automation/base` with the DEV-target split; the factory server checks it out
+via `FACTORY_WORK_BRANCH`). Every bundle skill, example, template, memory note or
+historical record that says `automation/base` **means `automation/factory`** for new
+work: test branches are cut from it, unit/batch PRs target it, `sync-base-branches`
+merges `main` into it, `batch-promote` gates `automation/factory → main`, the batch
+workflow's `base` argument is `automation/factory`. `automation/base` is frozen
+history — never branch from it, PR into it, or sync it.
+
 ## Every role — fresh ground truth (hard rule)
 
 Any verification against `origin/*` refs — branch-state checks, the migrator's
@@ -283,12 +294,12 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   testid/promotability row any more — it cites the merged PR and the **locator
   delta** (`locator_inventory.py scan` before/after, pasted) and confirms
   `sync-ledger` registered the new non-testid declarations as `raw` rows. Never
-  copy the implementer's numbers — re-run the scan on `automation/base` after merge.
-- Sync `automation/base` with `main` (test repo only) before dispatching the first
+  copy the implementer's numbers — re-run the scan on `automation/factory` after merge.
+- Sync `automation/factory` with `main` (test repo only) before dispatching the first
   case of a session. The EliteaUI half of `sync-base-branches` is the migrator's job.
 - **Never dispatch `testid-migrator` from a factory batch** — it runs on request, in its
   own session (`.claude/skills/migrate-locators-to-testids`), on already-merged tests.
-  When a migrator phase-A PR lands on `automation/base`, review it with a fresh
+  When a migrator phase-A PR lands on `automation/factory`, review it with a fresh
   `qa-engineer` per that skill's § Review — not the factory reviewer checklist.
 - **Never dispatch `ui-test-orchestrator` or `failure-investigator`.** They are
   installed for the HUMAN team's direct use only — their flows bypass the pipeline's

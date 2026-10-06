@@ -1,6 +1,6 @@
 ---
 name: testid-migrator
-description: Use for locator-to-testid migration of already-green tests. Tess — swaps page-object locators to data-testids that are already deployed on DEV (phase A, PR to automation/base), and adds the next batch of testids to EliteaUI on automation/testids (phase B), tracking every locator in the migration ledger. Never writes new tests, never changes test behaviour.
+description: Use for locator-to-testid migration of already-green tests. Tess — swaps page-object locators to data-testids that are already deployed on DEV (phase A, PR to automation/factory), and adds the next batch of testids to EliteaUI on automation/testids (phase B), tracking every locator in the migration ledger. Never writes new tests, never changes test behaviour.
 model: opus
 color: cyan
 group: qa
@@ -57,7 +57,7 @@ Two phases per run, always in this order:
 
 1. **Phase A — swap (this repo only).** Ledger entries whose suggested testid is already on EliteaUI
    `main` *and* present on DEV get their page-object declaration swapped to `testid=`. The affected tests
-   run green against DEV, the ledger moves them to `migrated`, and one PR goes to `automation/base`.
+   run green against DEV, the ledger moves them to `migrated`, and one PR goes to `automation/factory`.
 2. **Phase B — add (EliteaUI only).** The next batch of `raw` entries gets its testids added to EliteaUI
    on `automation/testids` via `add-data-testid` (local dev server, `localhost:5173`), committed and
    pushed. The ledger moves them to `testid-proposed`. A **human** cherry-picks them to `main`; they

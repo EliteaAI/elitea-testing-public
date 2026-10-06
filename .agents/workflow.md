@@ -29,7 +29,7 @@ applies **only to the migrator**. Refresh when the process shifts._
 | Target | DEV (`https://dev.elitea.ai`, `/app`) | phase B: localhost:5173 on `automation/testids` · phase A: DEV |
 | Locators | ladder — existing testid → role+name → label → css → xpath, each non-testid with `suggested_testid=` | swaps a ledger row to `testid=` only once the testid is **on DEV** |
 | Touches EliteaUI | **never** | yes — `add-data-testid` onto `automation/testids`, pushed; human cherry-picks to `main` |
-| Output | one PR per case → `automation/base` | one PR per migration run → `automation/base` (phase A) + testid commits (phase B) |
+| Output | one PR per case → `automation/factory` | one PR per migration run → `automation/factory` (phase A) + testid commits (phase B) |
 
 **Why the split.** The old loop coupled every case to a second repo: a test needed a
 testid → the testid lived in EliteaUI JSX → `main` review took days → the factory ran
@@ -45,15 +45,15 @@ never red on DEV. The ledger states are `raw → testid-proposed → on-dev → 
 
 | Repo | Long-lived branch | Rule |
 |---|---|---|
-| elitea-testing-public | `automation/base` (cut from `main`) | small PRs into it, one per test/feature area; **never PR `main` directly** |
+| elitea-testing-public | `automation/factory` (cut from `automation/base`; `main` merged in) | small PRs into it, one per test/feature area; **never PR `main` directly** |
 | EliteaAI/EliteaUI | `automation/testids` (integration) — **migrator only** | **never PR it into `main`, and (since 2026-07-16) never open per-case `main` PRs at all.** Testid commits are born ON it, committed + pushed, and stop there. A human cherry-picks them to `main`. |
 | EliteaAI/elitea_assistant | `automation/testids` (integration) — **migrator only** | Connected repo (Support Assistant). Same rule as EliteaUI — testids born on it, committed + pushed, human promotes to its `main`. See § Connected repos. |
 
-- There is **no CI on `automation/base`** — the green run from this machine against
+- There is **no CI on `automation/factory`** — the green run from this machine against
   DEV before the PR is the only verification. You are the CI.
 - There is **no `pending_testid` marker**. Do not invent one.
-- Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/base`**.
-- Migrator batch branches: `locators/<yyyy-mm-dd>` (run date), cut from **`automation/base`**.
+- Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/factory`**.
+- Migrator batch branches: `locators/<yyyy-mm-dd>` (run date), cut from **`automation/factory`**.
 - Testid work (migrator only): committed **straight onto `automation/testids`** and pushed — no
   per-case branch, no PR (see § Testid flow below). *(Suspended 2026-07-16: the
   old `testids/<case-id>-<slug>` review branch + draft PR to `main` is on hold —
@@ -185,7 +185,7 @@ JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm 
 > prop-passed `testId="x"` form — `artifacts-delete-files-button` is wired via the
 > prop, so a `data-testid`-only check reports "no loss" while the test breaks.
 
-**Test repo ← main** (periodically): merge `main` into `automation/base`.
+**Test repo ← main** (periodically): merge `main` into `automation/factory`.
 
 **Never shallow clones.** Check `test -f .git/shallow`; fix with `git fetch --unshallow origin`.
 
@@ -198,7 +198,7 @@ JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm 
    first, then role+name, label, stable css, declared xpath.
 3. **`page-object-generator` skill** — emit class-level declarations on that rung,
    every non-testid one with `suggested_testid=` (`.claude/rules/page-objects.md`).
-4. **Write the test**, run it green against DEV, PR into `automation/base`.
+4. **Write the test**, run it green against DEV, PR into `automation/factory`.
 5. **After merge**, `locator_inventory.py sync-ledger` registers the new non-testid
    declarations as `raw` rows — the migrator's queue.
 
@@ -211,7 +211,7 @@ Full procedure: `.claude/skills/migrate-locators-to-testids/SKILL.md`. In short:
 1. `sync-ledger` + `queue` — split the ledger into **phase A** (testid already on
    DEV → swap) and **phase B** (needs a testid added).
 2. **Phase A on DEV:** swap each `on-dev` row's declaration to `testid=`, run every
-   test that uses it green on DEV, PR the batch to `automation/base`, mark `migrated`.
+   test that uses it green on DEV, PR the batch to `automation/factory`, mark `migrated`.
 3. **Phase B on localhost:** `add-data-testid` for the next batch of `raw` rows
    (named by `suggested_testid`), commit + push `automation/testids`, mark
    `testid-proposed`. A human cherry-picks to `main`; when `check-ui-ref` sees the
@@ -225,11 +225,11 @@ already serves.
 
 What the lead performs — **only on explicit request**, never autonomously — is the
 batch promotion (`batch-promote` skill): run the suite from GHA against the deployed
-env, then open the `automation/base → main` gate PR (gate = green deployed run) and
+env, then open the `automation/factory → main` gate PR (gate = green deployed run) and
 merge.
 
 **Simplified by the split:** factory tests are built on DEV and migrated tests only
-reference testids that DEV already serves, so `automation/base` never depends on an
+reference testids that DEV already serves, so `automation/factory` never depends on an
 undeployed testid. The `batch-promote` testid-presence pre-check (Stage 6 sequencing)
 is now a sanity check, not a blocker — if it ever finds a missing testid, a migrator
 row skipped the `on-dev` gate; fix the ledger, don't sequence merges around it.
@@ -239,7 +239,7 @@ Testid promotion to EliteaUI `main` stays a **human** cherry-pick from
 
 ## Review gates (pipeline-internal)
 
-- Every automation PR into `automation/base`: adversarial review by `qa-engineer`
+- Every automation PR into `automation/factory`: adversarial review by `qa-engineer`
   (fresh session, `code-review` + triangulation vs TMS case and AFS) →
   `APPROVED` | `CHANGES_REQUESTED`; the lead merges.
 - **Dispatch-prompt contract (lead):** every analyst, implementer and reviewer dispatch
@@ -255,7 +255,7 @@ Testid promotion to EliteaUI `main` stays a **human** cherry-pick from
   green on DEV — and the phase-B testid commits against the testid canon
   (`.agents/testing.md` § Testid-migrator rules).
 - Commit authority: the implementer commits on the work branch the lead names
-  (or creates one from `automation/base` when dispatched standalone). Factory roles
+  (or creates one from `automation/factory` when dispatched standalone). Factory roles
   never commit to EliteaUI; testid commits to `automation/testids` belong to the
   `testid-migrator` alone.
 
@@ -297,17 +297,17 @@ factory added none, so the case is promotable as soon as it is merged:
 
 | Artifact | Where | State |
 |---|---|---|
-| Test | #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
-| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/base` |
+| Test | #<N> — `tests/<case>-<slug>` → `automation/factory` | ✅ merged (`<sha>`) |
+| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/factory` |
 | Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> | ledger: <L> new `raw` rows |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
-**Status:** merged to `automation/base` · green on DEV · promotable.
+**Status:** merged to `automation/factory` · green on DEV · promotable.
 **Still open:** <follow-ups, or "none">
 ```
 
 The Locators row is the `locator_inventory.py scan` delta, **re-run by the lead on
-`automation/base` after the merge and pasted** — never copied from the Run Report.
+`automation/factory` after the merge and pasted** — never copied from the Run Report.
 The issue moves to **`Ready`**; `Done` stays human-only.
 
 ### Closure record — testid-migrator batches (and pre-2026-10 cases)
@@ -384,12 +384,12 @@ of the gap:
 
 | Artifact | Where | State |
 |---|---|---|
-| Test | #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
+| Test | #<N> — `tests/<case>-<slug>` → `automation/factory` | ✅ merged (`<sha>`) |
 | Testids | EliteaAI/EliteaUI@<sha> (+ EliteaAI/EliteaUI@<sha> …) on `automation/testids` | ✅ pushed — dev server serves them; **human cherry-picks to `main`** |
-| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/base` |
+| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/factory` |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
-**Status:** merged to `automation/base` · testids on `automation/testids` · ⚠️ NOT yet on `main` (awaiting human cherry-pick) → not deployable-env-promotable yet.
+**Status:** merged to `automation/factory` · testids on `automation/testids` · ⚠️ NOT yet on `main` (awaiting human cherry-pick) → not deployable-env-promotable yet.
 
 **Testid commit SHAs — MANDATORY, regardless of promotability status.** The Testids
 row must cite WHERE each testid was introduced (the originating commit SHA), whether
@@ -484,5 +484,5 @@ The rule stands: agents leave such issues OPEN; only a human may close early.)
 
 ## Unconfirmed
 
-- `automation/base` PR review-approval count (branch is new — no PR history yet;
+- `automation/factory` PR review-approval count (branch is new — no PR history yet;
   pipeline-internal review applies regardless).

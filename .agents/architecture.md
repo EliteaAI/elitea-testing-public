@@ -11,7 +11,7 @@ internal service architecture.
 ```
 <workspace>/                             (= parent folder of this clone; plain dir, NOT a repo)
 ├── .env  .env.test                      master secrets (symlink targets)
-├── elitea-testing-public/               THIS repo — tests · branch automation/base · admin
+├── elitea-testing-public/               THIS repo — tests · branch automation/factory · admin
 │   └── automation/.env.test → ../../.env.test
 ├── EliteaUI/                            EliteaAI/EliteaUI (NO fork) · automation/testids · migrator-only
 │   ├── .env → ../.env                   (VITE_DEV_TOKEN etc.)
@@ -41,7 +41,7 @@ ledger (.agents/locator-migration/ledger.json) ◀── locator_inventory.py sy
   phase B: localhost:5173 (EliteaUI automation/testids) ── add-data-testid ──▶ push
            ┄┄ human cherry-pick → EliteaUI main → deployed to DEV
   phase A: check-ui-ref sees testid on the deployed ref ──▶ swap descriptor
-           ──▶ run affected tests on DEV ──▶ PR → automation/base
+           ──▶ run affected tests on DEV ──▶ PR → automation/factory
 ```
 
 - **Auth:** Keycloak on DEV (`input[name="username"]`); `auth_state` bypasses login
@@ -81,7 +81,7 @@ EliteaUI `main` is owned by the product UI team (review takes days), so
 **`automation/testids` remains a permanent integration branch accumulating every
 testid the team writes** — now written only by the `testid-migrator`. The
 migrator swaps a test to a testid only after that testid is deployed, so nothing in
-`automation/base` ever depends on the integration branch.
+`automation/factory` ever depends on the integration branch.
 
 **→ `.agents/workflow.md` § The two processes / § The migration loop / § Testid
 flow** is the single source for the mechanism.

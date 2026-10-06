@@ -107,7 +107,7 @@ This document provides the executive summary of the test failure processing work
 - Decision tree selection
 
 **Output:**
-- **Path A (Test Code Fix):** PR to automation/base or main, 3/3 green verified
+- **Path A (Test Code Fix):** PR to automation/factory or main, 3/3 green verified
 - **Path B (Test Drift):** Updated test + optional AFS update, PR opened
 - **Path C (Case Drift):** Clarification issue filed in TMS repo
 - **Path D (Product Bug):** Bug issue filed with evidence, test marked if blocking

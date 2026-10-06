@@ -1,6 +1,6 @@
 ---
 name: migrate-locators-to-testids
-description: The testid-migrator procedure — reconcile the locator ledger, swap page-object declarations to data-testids already deployed on DEV (phase A → PR to automation/base), and add the next batch of testids to EliteaUI on automation/testids (phase B). Use only from the testid-migrator agent (started on request, by a person or another party); the factory never runs this.
+description: The testid-migrator procedure — reconcile the locator ledger, swap page-object declarations to data-testids already deployed on DEV (phase A → PR to automation/factory), and add the next batch of testids to EliteaUI on automation/testids (phase B). Use only from the testid-migrator agent (started on request, by a person or another party); the factory never runs this.
 allowed-tools:
   - Bash
   - Read
@@ -43,7 +43,7 @@ Legal `mark` moves: `raw→testid-proposed`, `testid-proposed→on-dev | raw`, `
 ## Step 0 — Preconditions (one Bash call)
 
 ```bash
-cd <repo root> && git status --short && git fetch origin && git checkout automation/base && git merge --ff-only origin/automation/base
+cd <repo root> && git status --short && git fetch origin && git checkout automation/factory && git merge --ff-only origin/automation/factory
 cd ../EliteaUI && git status --short && git fetch origin && git branch --show-current
 ```
 
@@ -91,7 +91,7 @@ DEV run. Cap at 10 per run; they are the riskiest edits you make.
 
 ## Step 2 — Phase A: swap to deployed testids (this repo only)
 
-Branch: `locators/<yyyy-mm-dd>` cut from `automation/base` (run date, e.g. `locators/2026-10-06`).
+Branch: `locators/<yyyy-mm-dd>` cut from `automation/factory` (run date, e.g. `locators/2026-10-06`).
 
 For each `phase_a_swap` row:
 
@@ -107,7 +107,7 @@ For each `phase_a_swap` row:
    - Red on the swapped locator (strict-mode duplicate, wrong element, not visible) ⇒ **revert that one
      declaration**, `INV mark <id> testid-proposed --evidence "<failure, node id>"` and report it — usually a
      duplicate testid that needs a scope or a rename in phase B.
-   - Red for an unrelated reason ⇒ re-run once against `automation/base` without your change. Same red ⇒
+   - Red for an unrelated reason ⇒ re-run once against `automation/factory` without your change. Same red ⇒
      pre-existing failure: keep the swap only if the failing step is upstream of the swapped locator, and
      report the failure. Otherwise revert and report. Never edit the spec to make it pass.
 4. After all swaps: `INV sync-ledger` (moves swapped rows to `migrated`) and `INV scan` (paste: AFTER metric).
@@ -115,13 +115,13 @@ For each `phase_a_swap` row:
 Self-check on the diff, paste the output:
 
 ```bash
-git diff automation/base --stat                                   # only automation/pages/** + ledger.json
-git diff automation/base -- automation/pages | grep -nE '^\+.*(locator=|fallback=|nth\(|:nth-child|\.first|\.last)'   # expect 0 hits
+git diff automation/factory --stat                                   # only automation/pages/** + ledger.json
+git diff automation/factory -- automation/pages | grep -nE '^\+.*(locator=|fallback=|nth\(|:nth-child|\.first|\.last)'   # expect 0 hits
 cd automation && ../.venv/bin/ruff check pages && ../.venv/bin/pytest tests/unit -q
 ```
 
 Commit (`refactor(locators): migrate <n> locators to deployed testids (<yyyy-mm-dd>)`), push, open the PR to
-**`automation/base`** with the Migration Report as body. Merge policy is the normal one: a fresh-session
+**`automation/factory`** with the Migration Report as body. Merge policy is the normal one: a fresh-session
 `qa-engineer` review (§ Review) + green DEV run; you do not self-merge.
 
 ## Step 3 — Phase B: add the next batch of testids (EliteaUI only)

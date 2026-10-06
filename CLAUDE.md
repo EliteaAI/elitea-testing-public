@@ -1,14 +1,14 @@
 # elitea-testing — Elitea AI Platform Test Automation
 
 Playwright + pytest automation for [Elitea](https://elitea.ai), an AI collaboration
-platform. Working branch: **`automation/base`** (never PR `main` directly).
+platform. Working branch: **`automation/factory`** (never PR `main` directly).
 
 ## Layout (four sibling clones — parent dir is NOT a git repo)
 
 ```
 <parent>/                        ← this repo's parent folder (sibling clones; no env var needed)
 ├── .env  .env.test              master secrets — NEVER commit, NEVER print
-├── elitea-testing-public/       THIS repo · branch automation/base · .venv (Python 3.13)
+├── elitea-testing-public/       THIS repo · branch automation/factory · .venv (Python 3.13)
 ├── EliteaUI/                    EliteaAI/EliteaUI (NO fork) · automation/testids · testid-migrator only (:5173)
 ├── elitea_assistant/            EliteaAI/elitea_assistant · Support Assistant (connected repo — migrator adds testids in its source)
 └── onetest-ai-tm-Elitea/        TMS repo (test cases as markdown + GitHub issues)
@@ -38,12 +38,12 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
   (2026-10). The factory (analyst/implementer/reviewer/lead) never starts the local UI and
   never touches EliteaUI; `localhost:5173` is used only by the `testid-migrator`.
   `next.elitea.ai` / stage remain CI's job.
-- **Test PRs target `automation/base`**, never `main`.
+- **Test PRs target `automation/factory`**, never `main`.
 - **Two processes (2026-10).** Factory cases ship ladder locators against DEV, one PR
   into this repo. The **`testid-migrator`** (`.claude/agents/testid-migrator/`,
   skill `migrate-locators-to-testids`) works the ledger
   `.agents/locator-migration/ledger.json`: phase A swaps locators whose testid is
-  deployed on DEV (verified on DEV, PR → `automation/base`); phase B adds testids on
+  deployed on DEV (verified on DEV, PR → `automation/factory`); phase B adds testids on
   `EliteaAI/EliteaUI` `automation/testids` (push is terminal; a **human** cherry-picks to
   `main`; agents open no `main` PR). Same for `elitea_assistant`
   (`.agents/workflow.md` § Connected repos).

@@ -199,14 +199,14 @@ fi
 **This determines which branch the investigation agent should work on:**
 
 ```bash
-# Check if test exists on main (promoted) or only on automation/base
+# Check if test exists on main (promoted) or only on automation/factory
 
 # 1. Fetch latest
-git fetch origin main automation/base --no-tags
+git fetch origin main automation/factory --no-tags
 
 # 2. Check where test file exists
 TEST_ON_MAIN=$(git ls-tree -r origin/main --name-only | grep -F "$TEST_FILE" || echo "")
-TEST_ON_BASE=$(git ls-tree -r origin/automation/base --name-only | grep -F "$TEST_FILE" || echo "")
+TEST_ON_BASE=$(git ls-tree -r origin/automation/factory --name-only | grep -F "$TEST_FILE" || echo "")
 
 if [ -n "$TEST_ON_MAIN" ]; then
   # Test is promoted to main
@@ -215,15 +215,15 @@ if [ -n "$TEST_ON_MAIN" ]; then
   echo "✓ Test found on main (promoted)"
 else
   if [ -n "$TEST_ON_BASE" ]; then
-    # Test only on automation/base (not promoted yet)
-    TEST_LOCATION="automation/base"
-    FIX_BRANCH_STRATEGY="Cut fix branch from automation/base, PR to automation/base"
-    echo "✓ Test found on automation/base (not promoted)"
+    # Test only on automation/factory (not promoted yet)
+    TEST_LOCATION="automation/factory"
+    FIX_BRANCH_STRATEGY="Cut fix branch from automation/factory, PR to automation/factory"
+    echo "✓ Test found on automation/factory (not promoted)"
   else
     # Test not found on either (may be in work branch or deleted)
     TEST_LOCATION="unknown"
     FIX_BRANCH_STRATEGY="Investigate test location first"
-    echo "⚠ Test not found on main or automation/base"
+    echo "⚠ Test not found on main or automation/factory"
   fi
 fi
 
@@ -248,7 +248,7 @@ From issue #1800 (incorrect — fixed on automation/base when should be main):
 
 **Rule:**
 - **Test on main** → Fix on main (tests already delivered to users)
-- **Test on automation/base** → Fix on automation/base (tests not promoted yet)
+- **Test on automation/factory** → Fix on automation/factory (tests not promoted yet)
 
 ### Upload Local Artifacts (Local Runs Only)
 
@@ -375,20 +375,20 @@ Examples:
 
 ### Fix Branch Strategy
 
-**Test is on:** <main | automation/base | unknown>
+**Test is on:** <main | automation/factory | unknown>
 
 **Fix instructions:**
 
 <If test is on MAIN:>
 - **Branch from:** `main`
 - **PR target:** `main`
-- **Why:** Test already promoted to main (delivered). Fixes to already-promoted tests MUST go to main, not automation/base.
+- **Why:** Test already promoted to main (delivered). Fixes to already-promoted tests MUST go to main, not automation/factory.
 - **Example:** See issue #1776 (correct pattern)
 
-<If test is on automation/base:>
-- **Branch from:** `automation/base`
-- **PR target:** `automation/base`
-- **Why:** Test not promoted yet. Fixes go to automation/base until batch promotion.
+<If test is on automation/factory:>
+- **Branch from:** `automation/factory`
+- **PR target:** `automation/factory`
+- **Why:** Test not promoted yet. Fixes go to automation/factory until batch promotion.
 
 <If test location unknown:>
 - **First step:** Investigate where test actually lives before starting fix
@@ -398,7 +398,7 @@ Examples:
 
 Choose ONE based on root cause:
 
-1. **Test code fix → PR opened** to correct branch (main or automation/base)
+1. **Test code fix → PR opened** to correct branch (main or automation/factory)
    - Includes: fix commit, 3/3 green verification, PR description
    
 2. **Product bug → Bug filed + test marked**
@@ -605,10 +605,10 @@ echo "AFS: $AFS_FILE"
 
 # Determine test location (critical for fix branch strategy)
 echo "Checking test location..."
-git fetch origin main automation/base --no-tags
+git fetch origin main automation/factory --no-tags
 
 TEST_ON_MAIN=$(git ls-tree -r origin/main --name-only | grep -F "$TEST_FILE" || echo "")
-TEST_ON_BASE=$(git ls-tree -r origin/automation/base --name-only | grep -F "$TEST_FILE" || echo "")
+TEST_ON_BASE=$(git ls-tree -r origin/automation/factory --name-only | grep -F "$TEST_FILE" || echo "")
 
 if [ -n "$TEST_ON_MAIN" ]; then
   TEST_LOCATION="main"
@@ -616,13 +616,13 @@ if [ -n "$TEST_ON_MAIN" ]; then
   echo "✓ Test found on main (promoted)"
 else
   if [ -n "$TEST_ON_BASE" ]; then
-    TEST_LOCATION="automation/base"
-    FIX_INSTRUCTIONS="Branch from: automation/base → PR target: automation/base (not promoted)"
-    echo "✓ Test found on automation/base"
+    TEST_LOCATION="automation/factory"
+    FIX_INSTRUCTIONS="Branch from: automation/factory → PR target: automation/factory (not promoted)"
+    echo "✓ Test found on automation/factory"
   else
     TEST_LOCATION="unknown"
-    FIX_INSTRUCTIONS="Investigate test location first (not found on main or automation/base)"
-    echo "⚠ Test not found on main or automation/base"
+    FIX_INSTRUCTIONS="Investigate test location first (not found on main or automation/factory)"
+    echo "⚠ Test not found on main or automation/factory"
   fi
 fi
 
@@ -684,7 +684,7 @@ $ARTIFACTS_URL
 
 **Fix instructions:** $FIX_INSTRUCTIONS
 
-**Why this matters:** Tests already on \`main\` are delivered/promoted. Fixes to promoted tests MUST target \`main\`, not \`automation/base\`. See issue #1776 (correct) vs #1800 (incorrect - fixed on automation/base when should be main).
+**Why this matters:** Tests already on \`main\` are delivered/promoted. Fixes to promoted tests MUST target \`main\`, not \`automation/factory\`. See issue #1776 (correct) vs #1800 (incorrect - fixed on automation/factory when should be main).
 EOF
 
 # File issue
@@ -738,15 +738,15 @@ echo "✅ Intake complete: issue #${ISSUE_NUM} filed and approved"
 - Be honest about confidence level
 - Create complete briefing for investigation agent
 - Set issue to Approved status
-- **✅ CRITICAL: Always check if test is on main vs automation/base** — this determines fix branch strategy
+- **✅ CRITICAL: Always check if test is on main vs automation/factory** — this determines fix branch strategy
 
 ---
 
 ## Common Mistake: Wrong PR Target (Issue #1800)
 
-**Problem:** Test was on `main` (promoted), but fix PR opened to `automation/base`
+**Problem:** Test was on `main` (promoted), but fix PR opened to `automation/factory`
 
-**Why it's wrong:** Tests on `main` are delivered. Fixes MUST go to `main`, not `automation/base`.
+**Why it's wrong:** Tests on `main` are delivered. Fixes MUST go to `main`, not `automation/factory`.
 
 **How this skill prevents it:** 
 1. Checks `git ls-tree origin/main` for test file

@@ -61,7 +61,7 @@ type: project
 - **Seed complete** — CLAUDE.md rewritten, AGENTS.md project sections added (bundle
   block preserved), full `.agents/*` set written, 4 memory briefings adjusted.
 - **Topology:** three siblings under the parent folder (NOT a git repo, don't init):
-  this repo (`automation/base`), `../EliteaUI` (**`EliteaAI/EliteaUI` directly — no fork**;
+  this repo (`automation/factory`), `../EliteaUI` (**`EliteaAI/EliteaUI` directly — no fork**;
   `automation/testids` integration branch, push but no admin — written only by the
   `testid-migrator` since 2026-10; the factory targets DEV),
   `../onetest-ai-tm-Elitea` (TMS, `.onetest/` cwd-relative).
