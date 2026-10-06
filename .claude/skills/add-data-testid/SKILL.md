@@ -414,7 +414,7 @@ force-push it.** Sync it with `git merge origin/main` (see the `sync-base-branch
 cherry-picks these commits to `EliteaAI/EliteaUI` `main` when they choose.
 
 **Invariant:** `origin/automation/testids` must contain every testid that any test on
-`origin/automation/base` references. Never merge a test PR whose testids aren't pushed.
+`origin/automation/factory` references. Never merge a test PR whose testids aren't pushed.
 
 ---
 
