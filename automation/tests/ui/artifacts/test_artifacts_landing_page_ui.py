@@ -41,7 +41,8 @@ AFS: test-specs/artifacts/l3_landing-page-empty-bucket_ELITEA-1805.md
 Markers:
     - ui: requires browser
     - regression: regression test
-    - p3: medium priority (matches case priority — AFS l3/"medium")
+    - p2: medium priority (matches case priority — AFS l3/"medium"; this
+      folder's own l3→p2 convention, e.g. ELITEA-1809/1811)
 
 Usage:
     cd automation
@@ -107,7 +108,7 @@ class TestArtifactsLandingPageUI:
     bucket can guarantee for the full run.
     """
 
-    @pytest.mark.p3
+    @pytest.mark.p2
     @allure.title(
         "Artifacts landing page renders the correct empty-bucket UI"
     )
