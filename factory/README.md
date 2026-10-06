@@ -48,14 +48,17 @@ them because the dispatch says so, only there.
 2. `gh label create question -R <tracking-repo>` and same for `bug` —
    the child-issue types (conversation places, never worked as tasks).
 3. Fill in `factory/config.env` (repo, board number, status names).
-4. *(Optional)* Copy `factory/SEED.md` into `.agents/profile.md` § Project
+4. *(Optional)* Copy `factory/SEED.md` into the work repo's
+   `.agents/profile.md` § Project
    systems — ONLY if you also want interactive sessions to know the board
    exists (e.g. so headed Tal files straight into it by habit). Skip it and
    headed mode stays completely board-unaware, which is fine. If you do seed:
    the seed and the loop prompts are mirrors — same labels, same parking
    lines, same board duties; change a convention in both or the board goes
    bilingual (`setup.sh` cross-checks the facts, prose is on you).
-5. Two keys in `.claude/settings.json` (added to your existing file):
+5. Two keys in the **work repo's** `.claude/settings.json` (added to your
+   existing file — the harness itself ships no `.claude/`; every agent-facing
+   file comes from the repo a loop's `WORKDIR` points at):
 
    ```bash
    jq '. + {cleanupPeriodDays: 90, enableAllProjectMcpServers: true}' \
@@ -175,7 +178,7 @@ it (isolated soft-asserts, adjusted flows). When it gets fixed for real:
 ## Several agents at once
 
 A loop = an agent + a queue filter + a prompt: `factory/loops/<name>.env`
-(`AGENT`, `QUERY`, `POLL`, optional `WORKDIR`) and `factory/loops/<name>.md` —
+(`AGENT`, `QUERY`, `POLL`, `WORKDIR`) and `factory/loops/<name>.md` —
 the agent's complete unattended prompt: who it is, what changes with no human
 present, its mission, and what `Done` means. Every session's dispatch is that
 file plus one line naming the issue. Subagents never see it: they get their
