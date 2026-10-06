@@ -162,7 +162,23 @@ Dispatch line: *"Review a testid-migrator batch per `.claude/skills/migrate-loca
 Phase A PR:
 - Diff touches only `automation/pages/**` and `.agents/locator-migration/ledger.json`.
 - Every swapped testid is a ledger row that was `on-dev` (or promoted this run with DEV-check evidence) —
-  re-run `check-ui-ref` after `git fetch origin` in `../EliteaUI` and paste it.
+  re-run `check-ui-ref` after `git fetch origin` in `../EliteaUI` and paste it. **The fetch is part of the
+  check** — a presence verdict from a stale clone is not a verdict (it once produced "0 of 12 on main" when
+  the truth was 5/12, added by the UI team in parallel).
+- **Reading a presence check honestly — the wiring forms a grep does and doesn't see.** `check-ui-ref`
+  matches the testid as a bare substring, which is deliberate: a testid can be wired as a direct attribute
+  (`data-testid="agent-name-input"`), an object literal (`'data-testid': '…'`, `testId: '…'`), or through a
+  prop (`buttonTestId="agent-name-input"` → `data-testid={buttonTestId}`), and only substring matching finds
+  all three. Two consequences:
+  - **False positives are possible** — comments (`// TODO: add agent-name-input testid`), prose, variable
+    names, and prefix collisions (`agent-form` inside `agent-form-save-button`). Read the hits rather than
+    counting them; real wiring matches `grep -iE '(data-testid|testid[[:space:]]*[:=])'` — both the `-i`
+    (`TestId` ≠ `testid`) and the `[:=]` (the colon form has no `=`) are load-bearing.
+  - **Runtime-composed testids are invisible** — `` data-testid={`${PREFIX}-suffix`} `` cannot be grepped at
+    all. When the component file differs between refs, diff the file
+    (`git diff origin/main origin/automation/testids -- <path>`) instead of trusting any grep.
+  A wrong presence verdict here promotes a row to `on-dev` that DEV does not serve, and phase A then ships a
+  locator that never matches — which is why the DEV DOM check, not the grep, is the gate.
 - Each swap keeps the method's behaviour: same element, same scoping; no new waits, no assertion changes.
 - The Run section lists the node ids per swapped locator with a green DEV result.
 - `needs_hint` rewrites stay on the ladder with a hint; no `locator=`/`fallback=`/positional handles.

@@ -1,6 +1,6 @@
 ---
 name: adjust-automated-test
-description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs migration gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, and raise PRs for a human to accept. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
+description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs handle gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, and raise PRs for a human to accept. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
 allowed-tools:
   - Bash
   - Read
@@ -54,42 +54,39 @@ dispatch. The method below does not change; **your own slot contract does.** So:
 ## Step 1 — Ground truth BEFORE any diagnosis
 
 1. **Sync**, or you diagnose against stale code: `sync-base-branches` Part 1 (merges
-   `main` into `automation/factory`, test repo only — the EliteaUI / `automation/testids`
-   half is the `testid-migrator`'s). Guard first — never sync over another agent's
-   in-flight work. Then `git -C ../EliteaUI fetch origin` so you read the UI source as DEV
-   ships it (`origin/main`, read-only).
+   `main` into `automation/factory`). Guard first — never sync over another agent's
+   in-flight work. Then `git fetch origin` in the read-only frontend-source reference
+   clone, so what you read there is the product as DEV ships it (`origin/main`).
 2. **Diagnose on DEV — always.** Every test on `automation/factory` targets the DEV env as
    deployed (`https://dev.elitea.ai`, `APP_PREFIX=/app`; Keycloak login,
    `TEST_USER_EMAIL`/`_PASSWORD` from `.env.test`, field `input[name="username"]`).
    Refresh the browser auth first: `cd automation && ../.venv/bin/python
-   scripts/dev_storage_state.py`. Never localhost — that is the migrator's phase B only.
+   scripts/dev_storage_state.py`.
 3. **Reproduce** on DEV, clean process:
    ```bash
    cd automation && HEADLESS=true ../.venv/bin/pytest <node-id> -v -p no:cacheprovider
    ```
    **Green from this machine but red in CI ⇒ NOT drift** — env/infra/data (class **D**).
-4. **Migration-gap pre-check — mandatory before calling a testid failure "drift."** The
-   `testid-migrator` swaps a declaration to `testid=` only once DEV serves it, so a testid
-   the test uses that is missing from EliteaUI `main` means a ledger row skipped the
-   `on-dev` gate. Fresh fetch, then compare refs (the closure-record grep, `.agents/workflow.md`):
-   ```bash
-   cd ../EliteaUI && git fetch origin
-   FILTER='(data-testid|testid[[:space:]]*[:=])'
-   for t in <every testid the failing test uses>; do
-     printf "%-34s main:%-4s testids:%s\n" "$t" \
-       "$(git grep -- "$t" origin/main -- src/ 2>/dev/null | grep -qiE "$FILTER" && echo YES || echo no)" \
-       "$(git grep -- "$t" origin/automation/testids -- src/ 2>/dev/null | grep -qiE "$FILTER" && echo YES || echo no)"
-   done
-   ```
-   `main:no` + `testids:YES` ⇒ **class F. Stop — do not touch the test.**
+4. **Handle pre-check — mandatory before calling a testid failure "drift."** A test on
+   `automation/factory` only ever uses handles DEV serves, so a `testid=` that resolves to
+   nothing is a fact about the deployment, not a bug in the test. Confirm which it is on
+   DEV itself, in the DOM — take a Playwright MCP snapshot of the page the test was on and
+   check whether the element is present **without** its testid:
+   - **Element absent entirely** ⇒ the flow changed: class **A**, or **B** if it's broken.
+   - **Element present, testid gone** ⇒ class **E** — climb down the ladder.
+   - **Element present WITH the testid, yet the test still can't reach it** ⇒ timing or
+     scoping, i.e. class **D**; fix the wait, never the assertion.
+   - **Element and testid both absent, and the case's flow is unreachable** ⇒ class **F**.
+     Stop — do not touch the test; report it (step 3 of § Report) so the handle gap is
+     resolved out of band.
 
 ## Step 2 — TRIAGE. The heart of this skill.
 
 **A red test is not evidence that the test is wrong.** Classify from the evidence trio —
 **the TMS case** (`onetest-ai-tm-Elitea`: the specified behaviour), **the AFS**
 (`test-specs/<feature>/`: what the analyst observed), **the automation code** (what it
-asserts) — plus **`../EliteaUI/src` as DEV ships it** (`git show origin/main:<path>`, read-only),
-which states the product's *intended* behaviour as fact. Run `.agents/role-overrides.md` § interaction-discovery ladder and § 4xx/5xx before
+asserts) — plus **the frontend source as DEV ships it** (`git show origin/main:<path>` in
+the read-only reference clone), which states the product's *intended* behaviour as fact. Run `.agents/role-overrides.md` § interaction-discovery ladder and § 4xx/5xx before
 any verdict.
 
 | # | Class | Signal | Action |
@@ -98,8 +95,8 @@ any verdict.
 | **B** | **New product bug** | The flow intended per `src/` is genuinely broken | File a local `bug`; test stays red, or `expect.soft()` + `# Known defect: #N`. **Do NOT adjust.** |
 | **C** | **Known bug persisting** | Matches an OPEN `bug` issue | Keep red, link `# Known defect: #N`, record as sanctioned RED. **Do NOT adjust.** |
 | **D** | **Data pollution / flake / infra** | Leftover entities skew a baseline or count; timing; CI-only; environment | Fix **hygiene and robustness** (unique data, scoped queries, cleanup, condition waits) — **never the assertion.** |
-| **E** | **Testid gone, no replacement** | Element exists on DEV but no longer carries its testid | Climb down the ladder: declare the highest unique rung with `suggested_testid=` (the ledger picks it up for the migrator), then adjust. Only a positional pick reaches it ⇒ `question`. |
-| **F** | **Migration gap** | Testid on `automation/testids` but not `main` (step 1.4) | **Nothing to fix in the test.** Report it for the `testid-migrator` — its ledger row skipped the `on-dev` gate. |
+| **E** | **Testid gone, no replacement** | Element exists on DEV but no longer carries its testid | Climb down the ladder: declare the highest unique rung with `suggested_testid=` (the ledger picks it up), then adjust. Only a positional pick reaches it ⇒ `question`. |
+| **F** | **Handle gap** | The element AND its testid are both gone from DEV, and the case's flow can't be reached at all (step 1.4) | **Nothing to fix in the test.** Report the gap and stop — resolving it is out of band, not an adjustment. |
 
 > **Worked example — why D is not optional.** CI run 30532379296 mixed both in one run: 4
 > toolkit failures were `Locator.wait_for` timeouts (class **A**), while a skills failure
@@ -164,8 +161,8 @@ worktrees).
   `LocatorDescriptor` / `ScopedLocator` fields or UPPER_CASE `[data-testid="…"]` constants
   only, every non-testid one with `suggested_testid=`. No `fallback=`/`locator=`, nothing
   built in a method body, no raw handle chained off a field, no positional picks.
-- **Never touch EliteaUI** — no `add-data-testid`, no `automation/testids` commits. A
-  missing testid is a ladder rung + hint, not work.
+- **Your PR in this repo is the only artifact.** Nothing outside it is changed to make a
+  locator work: a missing testid is a ladder rung + hint, not work.
 - Obey the preserve-the-nature rail (Step 3).
 - **Self-check before handoff** — run the reviewer's mechanical grep
   (`.agents/role-overrides.md` § Reviewer slot) on your own diff and paste the output,
@@ -211,7 +208,7 @@ gap:
 | D pollution | the debris/timing observed, the robustness fix, and that assertions were untouched |
 | B / C bug | repro + `src/` pointer, the issue number, sanctioned-RED justification |
 | E testid gone | which element, the rung + `suggested_testid` now declared (or the `question` filed) |
-| F migration gap | the ref-grep output, and that the `testid-migrator` must fix the ledger row |
+| F handle gap | the DEV DOM snapshot showing element + testid both absent, the flow that can't be reached, and that the test was left untouched |
 
 Leave board routing and issue closure to the orchestrator/human
 (`.agents/profile.md` § Issue tracker: `Approved`/`Done` are human-only).

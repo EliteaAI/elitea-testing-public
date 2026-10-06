@@ -42,11 +42,12 @@ identifies the element on DEV wins.
 | 5 | `xpath=` | **declared last resort** — nothing above works; say why in `description=` | `LocatorDescriptor(xpath="//span[text()='Repository']/ancestor::div[@role='group']//input", suggested_testid="toolkit-test-settings-repository-input", description="…why…")` |
 
 **Every non-testid declaration MUST carry `suggested_testid=`** — the
-`{section}-{element}-{type}` testid the **testid migrator** will add to
-EliteaUI and swap in. It is enforced at import time (`ValueError`), and it is what
-makes the migration mechanical (`automation/scripts/locator_inventory.py` reads it).
+`{section}-{element}-{type}` name this element *should* eventually be addressed by.
+It is enforced at import time (`ValueError`), and it is what makes the eventual
+climb to rung 1 mechanical (`automation/scripts/locator_inventory.py` reads it).
 Name it exactly as you would name the testid (call-site section, kebab-case,
-dynamic ones end in `-{}`).
+dynamic ones end in `-{}`). Writing the hint is the whole obligation — nothing in
+this repo is blocked on the testid actually existing.
 
 **Enforced at import time** (`pages/locator_descriptor.py` `_validate()` — a
 violation fails collection, it cannot ship):

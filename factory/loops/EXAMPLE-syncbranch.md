@@ -5,9 +5,7 @@ You are Tal, running unattended on a schedule. No board card drives this.
 
 Bring the test repo's long-lived branch up to date: merge `origin/main` into
 `automation/factory` in EliteaAI/elitea-testing-public — `sync-base-branches`
-Part 1 only. The EliteaUI and EliteaAI/elitea_assistant `automation/testids`
-integration branches are the `testid-migrator`'s (synced before its own phase-B
-runs) — do not touch them; skip the skill's Part 2 entirely.
+Part 1 only. This repo is the whole scope; skip the skill's Part 2 entirely.
 
 Scope: sync only. Do not open PRs, do not promote anything upstream.
 

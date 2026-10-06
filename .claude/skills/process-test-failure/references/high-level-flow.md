@@ -18,7 +18,7 @@ This document provides the executive summary of the test failure processing work
                  │
          ┌───────▼────────┐
          │  Phase 2:      │  Reproduce with enhanced logging
-         │  REPRODUCE     │  Verify on appropriate environment (localhost/DEV)
+         │  REPRODUCE     │  Verify on the env the test targets (DEV as deployed)
          └───────┬────────┘  Cross-check on other env if needed
                  │
          ┌───────▼────────┐
@@ -62,14 +62,14 @@ This document provides the executive summary of the test failure processing work
 ### Phase 2: Reproduce
 **Input:**
 - Test node ID
-- Environment (localhost/DEV)
+- Environment (DEV as deployed; a CI job may name another deployed env)
 - Original failure evidence
 
 **Output:**
 - Reproduction result: FAIL (confirmed) | PASS (not reproduced) | FLAKY (N/M)
 - Enhanced evidence with instrumented logging
-- Environment line: localhost-only | DEV-only | both | neither
-- Cross-env verification (if needed)
+- Environment line: DEV | CI-only | both | neither
+- Cross-env verification (if the failure came from a non-DEV CI job)
 
 ---
 
@@ -155,12 +155,12 @@ Root cause is:
 │
 ├─ Product defect → File bug (Path D)
 │   • Behavior wrong vs case AND vs expected
-│   • Verified on DEV (not localhost-only)
+│   • Verified on DEV as deployed, by your own run
 │   • Not duplicate
 │
 └─ Environment instability → Document (Path E)
     • DEV backend intermittent
-    • Localhost-only quirk
+    • CI-runner-only quirk (clean on DEV from this machine)
     • Not fixable in test
 ```
 
@@ -188,7 +188,7 @@ Resolution complete →
 ### ✅ Before moving past Phase 2:
 - [ ] Test reproduced with enhanced logging
 - [ ] Fresh evidence captured and uploaded
-- [ ] Environment line determined (localhost/DEV/both/neither)
+- [ ] Environment line determined (DEV/CI-only/both/neither)
 - [ ] If claiming product bug: **DEV verification complete**
 
 ### ✅ Before moving past Phase 3:

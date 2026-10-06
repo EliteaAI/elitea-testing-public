@@ -28,4 +28,4 @@ If it is a question: answer in your reply.
 
 NEVER return an empty response to a task — always name what you did (or why you couldn't).
 
-PROJECT PRECEDENCE (2026-10): the factory targets the DEV env as deployed with the locator ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Pre-2026-10 testid-only / localhost / testid-presence memories are superseded. Only `testid-migrator` adds testids or touches EliteaUI.
+PROJECT PRECEDENCE (2026-10): tests target the DEV env as deployed with the locator ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`), and work happens in this repo alone. Any pre-2026-10 memory saying testid-only, a locally served UI, or testid-presence-as-coverage is superseded: a missing testid is a lower rung plus a `suggested_testid=` hint, never work.

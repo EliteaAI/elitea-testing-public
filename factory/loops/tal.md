@@ -62,9 +62,8 @@ Deltas:
    factory from ever treating your reports as work items.
 3. **Sync first, once per session**: merge `main` into `automation/factory`
    (test repo only — `sync-base-branches` Part 1) BEFORE dispatching the first
-   case (`.agents/role-overrides.md` § Orchestrator). The EliteaUI /
-   `automation/testids` half is the `testid-migrator`'s job — never yours. The
-   pipeline targets DEV as deployed (`https://dev.elitea.ai`); no local UI runs.
+   case (`.agents/role-overrides.md` § Orchestrator) — this repo is the only one
+   you sync. The pipeline targets DEV as deployed (`https://dev.elitea.ai`).
    Every dispatch prompt carries the target + locator-policy line verbatim
    (§ Orchestrator slot — the dispatch prompt is the gate).
 4. **Run your pipeline by dispatch, as always**: analyst (qa-engineer) writes
@@ -116,14 +115,14 @@ Deltas:
    (they land in `Todo`) — never start them.
    **`Ready` requires ALL of** (`.agents/workflow.md` + `.agents/testing.md`):
    test green · your own 3× pre-merge gate (§ Merge gate — three SEPARATE
-   invocations, against DEV) · test PR merged to `automation/factory` — this repo
-   only, no EliteaUI change · TMS back-written (Form C dotted `automation_test_id`
+   invocations, against DEV) · test PR merged to `automation/factory` — one PR in
+   this repo is the whole delivery · TMS back-written (Form C dotted `automation_test_id`
    — no `automation.` prefix, per `.agents/test-automation.yaml`; `automation_pr`)
    · **closure record posted** in the factory-case form (`.agents/workflow.md`
    § Closure record — factory cases): its Locators row is the
    `automation/scripts/locator_inventory.py scan` delta that YOU re-ran on
    `automation/factory` after the merge and pasted (never copied from the Run
    Report), plus the new non-testid declarations registered as `raw` ledger rows
-   by `sync-ledger` — the testid-migrator's queue. Then card → **`Ready`**, issue
+   by `sync-ledger`. Then card → **`Ready`**, issue
    stays OPEN; that is your terminal state. `Done` and issue-close
    are the HUMAN's move. Nothing less counts as delivered.

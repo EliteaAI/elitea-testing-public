@@ -8,7 +8,7 @@ How to determine whether to file a product bug, an automation issue, or both —
 
 | Tracker | Purpose | When to File |
 |---|---|---|
-| **`elitea-testing-public`** (this repo) | Test automation work, lightweight localhost-found defects | During analysis/investigation, ANY potential defect |
+| **`elitea-testing-public`** (this repo) | Test automation work, lightweight defects found while investigating | During analysis/investigation, ANY potential defect |
 | **`elitea_issues`** (app tracker) | Application bugs visible to dev team | **Only after DEV verification + explicit human request** |
 
 **Key distinction:**
@@ -34,12 +34,12 @@ Test failure root cause:
 │   └─ FILE: Case clarification in onetest-ai-tm-Elitea
 │
 ├─ Product defect (behavior wrong vs case AND test)
-│   ├─ Verified on localhost ONLY
+│   ├─ Seen only in a CI log / a reporter's screenshot, not by your own run
 │   │   └─ FILE: Lightweight bug in elitea-testing-public, label "bug"
-│   │       Note: "localhost-only, not DEV-verified"
+│   │       Note: "not DEV-verified — second-hand evidence only"
 │   │       DO NOT escalate to elitea_issues
 │   │
-│   └─ Verified on DEV (dev.elitea.ai)
+│   └─ Verified on DEV as deployed (dev.elitea.ai), by your own run
 │       └─ FILE: Confirmed bug in elitea-testing-public, label "bug"
 │           Note: "DEV-verified, ready for escalation"
 │           SURFACE escalation option to human
@@ -99,10 +99,10 @@ grep -i "<symptom>" /tmp/existing-bugs.json
 
 ## Environment
 
-- **URL:** <https://dev.elitea.ai | http://localhost:5173>
-- **Branch:** <automation/testids | main>
+- **URL:** https://dev.elitea.ai (`APP_PREFIX` = `/app`)
+- **Test branch:** <automation/factory | main>
 - **Browser:** Chromium (Playwright <version>)
-- **Auth:** <Keycloak TEST_USER | VITE_DEV_TOKEN dev bypass>
+- **Auth:** Keycloak TEST_USER
 
 ## Steps to Reproduce
 
@@ -149,8 +149,8 @@ grep -i "<symptom>" /tmp/existing-bugs.json
 
 ## Verification Status
 
-- [x] Reproduced on localhost
-- [ ] Reproduced on DEV (dev.elitea.ai)
+- [ ] Reproduced on DEV as deployed (dev.elitea.ai), by my own run
+- [ ] Second-hand evidence only (CI log / reporter's screenshot)
 
 <If DEV-verified, add:>
 **DEV verification:** <date> — <brief result>
@@ -182,8 +182,8 @@ env -u GITHUB_TOKEN gh issue comment ${INVESTIGATION_ISSUE} --body "🐛 Filed b
 **Labels:**
 - `bug` (required)
 - `high-priority` (if severity HIGH)
-- `localhost-only` (if not DEV-verified)
-- `repro:confirmed` (if DEV-verified)
+- `repro:local-only` (if not DEV-verified — second-hand evidence only)
+- `repro:confirmed` (if DEV-verified by your own run)
 
 ---
 
@@ -368,18 +368,19 @@ When investigation reveals a **test code defect** (not product bug):
 
 **Rationale:** Test should reflect requirements (case), not broken product.
 
-### Case 2: Localhost-Only Bug
+### Case 2: Not Reproducible on DEV
 
 **Action:**
-1. File bug in `elitea-testing-public`, label `localhost-only`
-2. Note: "Not DEV-verified, may be local env quirk"
+1. File the finding in `elitea-testing-public`, label `repro:local-only`
+2. Note: "Not DEV-verified — clean on DEV as deployed from this machine"
 3. Do NOT escalate to `elitea_issues`
-4. Investigate: HMR state? `.env` difference? `automation/testids` vs `main` JSX?
+4. Investigate the gap between the two observations: which CI runner / browser
+   build / test data / user account differed from your run?
 
-**Most localhost-only "bugs" are:**
-- Local env config issues
-- HMR stale state
-- Branch-specific testid JSX not yet on `main`
+**Most non-reproducible "bugs" are:**
+- CI-runner env or timing differences
+- Stale or polluted test data on the reporting run
+- A different user/project context than the one you used
 
 ### Case 3: Intermittent Bug (Flaky)
 
@@ -407,7 +408,7 @@ When investigation reveals a **test code defect** (not product bug):
 ## Anti-Patterns
 
 ❌ **Don't:**
-- File product bug without DEV verification (localhost ≠ real)
+- File product bug without DEV verification (a CI log or a screenshot is not a repro)
 - Auto-escalate to `elitea_issues` (human-gated)
 - Skip dedup check (creates duplicate bugs)
 - File duplicate without marking it (wastes dev time)
@@ -436,7 +437,7 @@ When investigation reveals a **test code defect** (not product bug):
 - Steps to reproduce (numbered, specific)
 - Expected behavior (quote TMS case)
 - Actual behavior (what happened)
-- Environment (localhost vs DEV, clear)
+- Environment (which deployed env, and whether you ran it yourself)
 
 **RECOMMENDED:**
 - Network response (if API error)

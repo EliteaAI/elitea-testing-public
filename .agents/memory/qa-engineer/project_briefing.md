@@ -41,18 +41,19 @@ type: project
 
 ## Elitea Project Specifics (seeded by scout 2026-07-10, revised 2026-10)
 
-> **2026-10 precedence:** the factory targets the **DEV env as deployed** with the locator
-> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Any pre-2026-10
-> testid-only / localhost / testid-presence-coverage memory — here or in `.agents/memory/` —
-> is **superseded**; testid creation belongs to the `testid-migrator` only.
+> **2026-10 precedence:** work targets the **DEV env as deployed** with the locator
+> ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`), in this
+> repo alone. Any pre-2026-10 memory — here or in `.agents/memory/` — that says
+> testid-only, a locally served UI, or testid-presence-as-coverage is **superseded**:
+> a missing testid is a lower rung plus a `suggested_testid=` hint, never work.
 
 - **Explore against DEV — `https://dev.elitea.ai/app`, as deployed.** Run
   `cd automation && ../.venv/bin/python scripts/dev_storage_state.py` before the first
   browser call (the Playwright MCP loads that storage state; Keycloak sessions expire).
-  Never start the local UI and never touch EliteaUI — handles are validated on DEV.
+  Every handle is validated on DEV; nothing is built or served locally.
 - **State handles:** spec element state as ARIA state (`aria-expanded`,
   `aria-selected`) or a `data-*` attribute filter on the stable handle — never a
-  state-dependent testid (PR #581 ruling, still applies to the migrator's UI diffs).
+  state-dependent handle (`x-expanded` / `x-collapsed` variants).
 - **Handles follow the ladder — HARD OVERRIDE, `.agents/role-overrides.md`.** Handles
   Reference columns: rung | handle | `suggested_testid` | provenance (`testid on DEV ✓` /
   `ladder — no testid on DEV`). Existing DEV testid first, then role+name → label →

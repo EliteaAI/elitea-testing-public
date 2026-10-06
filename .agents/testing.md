@@ -3,12 +3,12 @@
 > Scout-generated 2026-07-10. Update when the framework, run commands, or
 > conventions change. Analyst and implementer read this before touching tests.
 >
-> **2026-10 cut-over — dev-targeted factory.** The factory analyses, builds and
-> gates against the **DEV env** with **ladder locators** (§ Locator policy); the
-> `testid-migrator` alone touches localhost:5173 and EliteaUI. Where any
-> dated entry below (merge-gate corollaries, § Unconfirmed ledger) describes a
-> localhost run or a testid-only rule, it is **history** — keep it for the
-> mechanism it records, do not follow it as procedure.
+> **2026-10 cut-over — one target, the DEV env.** Analysis, implementation and
+> every gate run against **`https://dev.elitea.ai` as deployed**, with **ladder
+> locators** (§ Locator policy). Where a dated entry below (merge-gate corollaries,
+> § Unconfirmed ledger) describes a run against a local dev server or a
+> testid-only rule, it is **history** — keep it for the mechanism it records, do
+> not follow it as procedure.
 
 ## Framework
 
@@ -34,8 +34,7 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   green from this machine against the **DEV env** (`ELITEA_URL=https://dev.elitea.ai`,
   `APP_PREFIX=/app` in `automation/.env.test`) before its PR — that is the
   *implementer's* gate. The *merge* gate is separate and stricter — see § Merge gate.
-  `http://localhost:5173` is **not** a factory target any more (2026-10) — only the
-  `testid-migrator` uses it, for phase B (§ Locator policy).
+  **DEV is the only target** — never point a run at a local dev server.
 - **Browser exploration (Playwright MCP) on DEV:** the analyst/implementer MCP starts
   with `--isolated --storage-state .playwright-mcp/dev-storage-state.json`. Refresh
   that file at the start of every session, before the first browser call —
@@ -102,7 +101,7 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 - `automation/pages/` — page objects (one class per page; `base_page.py` common nav)
 - `automation/components/` — reusable UI component helpers
 - `automation/fixtures/` + `conftest.py` — fixtures, `auth_state` (Keycloak API login
-  on DEV; skips login only on localhost via `VITE_DEV_TOKEN` — migrator runs), screenshots on failure
+  on DEV), screenshots on failure
 - `automation/api/` — API clients: generic `APIClient` uses Bearer token;
   entity clients (`ConversationAPI`, `AgentAPI`) use cookie auth from browser state
 - `automation/utils/` — helpers grouped by topic
@@ -141,20 +140,25 @@ that assumes the factory adds testids. Mechanics live in
 `.claude/rules/page-objects.md` § Locator Strategy (auto-applied) — this section
 states the policy and who owns what. See also `.agents/role-overrides.md`._
 
-### Two processes, two owners
+### One target, one locator source
 
-| | **Factory** (Tal → Sage → Axel → Sage-review) | **`testid-migrator`** (on request, separate session) |
-|---|---|---|
-| Target | DEV env as deployed (`https://dev.elitea.ai`, `/app`) | localhost:5173 on `automation/testids` (phase B) + DEV (phase A verify) |
-| Locators | the **ladder** below, existing testid first | swaps ladder locators for testids once DEV serves them |
-| EliteaUI | **never touched** — no testid commits, no UI repo knowledge | owns every testid addition (`add-data-testid`) |
-| PRs per case | **one** — test repo → `automation/factory` | one per migration run → `automation/factory` |
+**Everything in this project's test loop targets the DEV env as deployed**
+(`https://dev.elitea.ai`, `APP_PREFIX=/app`). The DEV DOM is the only ground truth
+for a locator: if DEV serves a `data-testid`, use it; otherwise take the next
+ladder rung that is unique and record a `suggested_testid=` hint. One PR per case,
+into `automation/factory`, in this repo.
 
-A factory case never waits on, edits, or reasons about the UI repo. A missing
-testid is **not** factory work any more — it is recorded as a `suggested_testid=`
-hint and becomes a ledger row the migrator picks up.
+A missing testid is **not** work — it is a hint on a lower rung. Nothing in the
+loop waits on a frontend change, and no test ever depends on a testid DEV does not
+already serve.
 
-### The ladder (factory)
+> Converting those hints into real testids is a separate, on-request process with
+> its own session, its own agent and its own procedure
+> (`.claude/skills/migrate-locators-to-testids`). It is out of scope here and
+> needs no space in your context: it never runs as part of a case, and its rules
+> load only in its own session.
+
+### The ladder
 
 First rung that **uniquely and stably** identifies the element **on DEV** wins:
 
@@ -174,7 +178,7 @@ violation fails collection):
   built in a method body, never chained raw off a field, never in a spec;
 - exactly one kind per declaration; **every non-testid declaration carries
   `suggested_testid=`** (kebab-case `{section}-{element}-{type}`, call-site section,
-  dynamic ones end `-{}`) — the migrator's work order;
+  dynamic ones end `-{}`);
 - **no positional handles** — `:nth-child`, `[2]`, `last()`, `position()`,
   absolute `/html/…`, `.nth(i)` sibling picks; scope to a declared parent instead;
 - `locator=` / `fallback=` are legacy-only — never in new or modified declarations.
@@ -183,47 +187,26 @@ Scoped and dynamic handles use `ScopedLocator(..., suggested_testid=...)` and
 `.within(scope, *args)` (any rung) or a `[data-testid=…{}]` template constant
 (testid rung). Inline `get_by_*(f"…")` in a method is non-compliant on every rung.
 
-### The metric — locator debt (replaces "coverage = testid presence")
+### The metric — locator debt
 
 `cd automation && ../.venv/bin/python scripts/locator_inventory.py scan` →
 **locator debt = non-testid declared locators / all declared locators**, plus
 **unmanaged handles** (raw calls in methods — pre-ladder legacy, never added to).
-Testid presence in EliteaUI is no longer the coverage measure; the factory
-**raises** debt by design and the migrator **burns it down**. Baseline at
-cut-over (2026-10): 1838 declared, 21 non-testid (1.14%), 389 unmanaged handles.
+This replaced an earlier "coverage = testid presence" metric, which made every case
+wait on a frontend change. Baseline at cut-over (2026-10): 1838 declared, 21
+non-testid (1.14%), 389 unmanaged handles.
 
-### Testid-migrator rules (the 2026-07 testid canon now lives here)
+Writing tests on the ladder **raises** debt by design; the separate migration
+process burns it down. Report the delta on any PR that touches `automation/pages/`;
+unmanaged handles must never increase.
 
-The migrator follows the full `add-data-testid` discipline. These rulings remain
-in force **for anyone adding a testid** — which, from 2026-10, is only the migrator:
+### Third-party internals — a permanent `css=` rung
 
-- **Ledger-driven, two-phase, deployment-gated.** `.agents/locator-migration/ledger.json`,
-  states `raw → testid-proposed → on-dev → migrated` (`removed` when a declaration
-  disappears). **Phase A**: entries `on-dev` → swap the declaration to `testid=`,
-  run the affected specs green on DEV, PR to `automation/factory`, `sync-ledger` marks
-  them `migrated`. **Phase B**: next `raw` batch → add testids in EliteaUI on
-  `automation/testids` (localhost:5173, commit + push, human cherry-picks to
-  `main`) → `testid-proposed`; `check-ui-ref --ref origin/main` + a DEV DOM check
-  move them to `on-dev`. A declaration is never swapped before DEV serves its
-  testid — `LocatorDescriptor` has no fallback.
-- **Scope = the ledger.** Testids only on elements a test declares (a ledger row).
-  Blanket-adding untested elements is still forbidden.
-- **Testid = stable identity; state via `data-*` attributes (PR #581 ruling).** No
-  testid whose presence/value changes with state; filter state with
-  `'[data-testid="x"][data-expanded="false"]'`. The import-dialog pair stays grandfathered.
-- **Same-element conditional pairs (#277):** name only the used branch, or name both
-  and reference both (absence assertion counts as a reference, #511).
-- **Shared components never hardcode feature-scoped testids**; use a generic testid
-  or a caller-supplied `testId` / `<part>TestId` prop (never `dataTestId`).
-- **Zero functional impact** in the JSX (no new DOM nodes / hooks / replaced MUI
-  built-ins to host a testid) — `add-data-testid` § Step 5.5 greps.
-- **Connected first-party repos** (Support Assistant, `../elitea_assistant`) take
-  testids in their own source on their own `automation/testids` (workflow.md §
-  Connected repos); the extra EliteaUI dependency-bump hop gates phase A there.
-- **Third-party internals** (ReactFlow, CodeMirror/Monaco line nodes, mermaid /
-  react-markdown output) cannot take testids: their ledger rows are closed by the
-  migrator with a scoped `css=` rung under a testid parent and the hint removed —
-  the #579 exception, now a migrator decision, not a factory one.
+Some elements can never carry a testid because a third-party library renders them:
+ReactFlow nodes, CodeMirror/Monaco line nodes, mermaid and react-markdown output.
+These are a legitimate **terminal** `css=` rung — a scoped selector under a
+testid-bearing parent, with no `suggested_testid=` hint, because no hint could ever
+be honoured. Say so in the declaration's `description=` (the #579 exception).
 
 ### Legacy
 
@@ -252,8 +235,8 @@ the change.
 
 ## Hooks & fixtures
 
-- `conftest.py` wires auth (`auth_state` — Keycloak on DEV/deployed envs via
-  `input[name="username"]`; skipped only on localhost, i.e. migrator runs), screenshot-on-failure,
+- `conftest.py` wires auth (`auth_state` — Keycloak on DEV via
+  `input[name="username"]`), screenshot-on-failure,
   report paths (JUnit XML + HTML paths set there, not pytest.ini).
 - AI responses arrive over WebSocket ~2s after send — use condition waits
   (`wait_for_response()` style), never sleeps.
@@ -297,9 +280,9 @@ without step wrapping is `CHANGES_REQUESTED` at review.
 
 ## Unconfirmed
 
-> Historical ledger. Entries dated before 2026-10 were observed on the localhost
-> loop; their mechanisms (networkidle vs socket polling, dev-build React warnings,
-> `VITE_DEV_TOKEN` identity gaps) are still useful when diagnosing — the procedures
+> Historical ledger. Entries dated before 2026-10 were observed under the earlier
+> run setup; their mechanisms (networkidle vs socket polling, dev-build React
+> warnings, auth-identity gaps) are still useful when diagnosing — the procedures
 > they prescribe are superseded by § Run commands / § Locator policy.
 
 - Known-flaky test list — first entry (2026-07-20, ELITEA-1835/#260 merge-gate run):

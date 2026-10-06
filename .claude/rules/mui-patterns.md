@@ -1,11 +1,11 @@
 ---
-description: MUI/EliteAUI component interaction patterns and common pitfalls
+description: MUI component interaction patterns in the Elitea UI, and common pitfalls
 paths:
   - automation/pages/**/*.py
   - automation/tests/ui/**/*.py
 ---
 
-# MUI / EliteAUI Interaction Patterns
+# MUI Interaction Patterns (Elitea UI)
 
 > **Locator policy (2026-10, dev-targeted factory — `.claude/rules/page-objects.md`
 > § Locator Strategy).** This file teaches INTERACTION mechanics — waits,
@@ -36,7 +36,7 @@ messages = page.locator('main div:has(> p)')  # BAD - too broad!
 - This matches those panels instead of messages
 - Results in incorrect message counts
 
-**Source:** EliteAUI `src/components/Chat/ChatMessageList.jsx` renders `<UserMessage>` and `<ApplicationAnswer>` inside `<MessageList>` (styled MUI `<List>`).
+**Source:** the frontend source `src/components/Chat/ChatMessageList.jsx` renders `<UserMessage>` and `<ApplicationAnswer>` inside `<MessageList>` (styled MUI `<List>`).
 
 ---
 

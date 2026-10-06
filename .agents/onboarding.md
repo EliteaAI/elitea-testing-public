@@ -1,5 +1,13 @@
 # Onboarding record — 2026-07-10 (scout / Kit)
 
+> ⚠️ **HISTORY, NOT DOCTRINE.** This is an append-only audit trail of seeding
+> decisions, kept verbatim including the ones later reversed. It is deliberately
+> **not** `@`-imported into `CLAUDE.md`, so nothing here reaches a working session.
+> For how the team works *today*, read `.agents/{workflow,testing,profile,
+> role-overrides}.md` — they win over every line below. In particular the
+> 2026-07-10 → 07-16 entries describe a two-repo, locally-served loop that was
+> retired in 2026-10 (see the last entry).
+
 ## What was found
 
 - **Repo:** `EliteaAI/elitea-testing-public`, working branch `automation/base` (new,
