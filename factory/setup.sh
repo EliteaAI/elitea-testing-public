@@ -4,7 +4,8 @@
 set -euo pipefail
 
 FACTORY="$(cd "$(dirname "$0")" && pwd)"
-cd "$(dirname "$FACTORY")"                    # the work repo
+HARNESS="$(dirname "$FACTORY")"               # the factory's own folder
+cd "$HARNESS"
 . "$FACTORY/config.env"
 TRACKING_REPO="${TRACKING_REPO#/}"; TRACKING_REPO="${TRACKING_REPO%.git}"   # tolerate "/owner/repo" and ".git"
 ok=1; fail() { echo "✗ $*"; ok=0; }; pass() { echo "✓ $*"; }; warn() { echo "△ $*"; }
@@ -12,6 +13,23 @@ ok=1; fail() { echo "✗ $*"; ok=0; }; pass() { echo "✓ $*"; }; warn() { echo 
 command -v gh >/dev/null     && pass "gh installed"     || fail "gh missing"
 command -v jq >/dev/null     && pass "jq installed"     || fail "jq missing"
 command -v claude >/dev/null && pass "claude installed" || fail "claude missing"
+
+# Every active loop MUST set WORKDIR. The harness carries no .claude/.agents of
+# its own — skills, agents, rules, hooks and the .agents/* doctrine all arrive
+# with the work repo — so a loop that leaves cwd at the harness runs its sessions
+# with no tooling and no project doctrine at all.
+SESSION_DIR=""
+for f in "$FACTORY"/loops/*.env; do
+  name="$(basename "$f" .env)"
+  case "$name" in EXAMPLE-*) continue ;; esac
+  d="$(. "$f"; echo "${WORKDIR:-}")"
+  if [ -z "$d" ]; then
+    fail "loop \"$name\" sets no WORKDIR — its sessions would run in $PWD, which has no .claude/.agents (they live in the work repo)"
+  else
+    pass "loop \"$name\" runs in $d"
+    [ -n "$SESSION_DIR" ] || SESSION_DIR="$d"
+  fi
+done
 
 # Execution toolchain — only for loops that run tests (NEEDS_EXEC=1 in
 # loops/<name>.env); read-only triage loops stay green without it.
@@ -42,7 +60,7 @@ if [ -n "$EXEC_LOOP" ]; then
     fi
     (cd automation && ../.venv/bin/python -c 'from config import settings; assert settings.elitea_api_token and settings.test_user_email and settings.test_user_password and settings.elitea_url and settings.elitea_project_id') 2>/dev/null \
       && pass "credentials resolve through config.py" || fail "config.py resolves empty credentials"
-    cd "$OLDPWD"
+    cd "$HARNESS"
   else
     fail "WORKDIR \"$EXEC_DIR\" of $(basename "$EXEC_LOOP") missing"
   fi
@@ -86,39 +104,44 @@ for l in $CHILD_LABELS; do
     || fail "label missing — run: gh label create $l -R $TRACKING_REPO"
 done
 
-grep -qs '"cleanupPeriodDays"' .claude/settings.json .claude/settings.local.json 2>/dev/null \
-  && pass "cleanupPeriodDays pinned" \
-  || fail 'conversations must outlive cases — add { "cleanupPeriodDays": 90 } to .claude/settings.json'
+# Session-side config lives in the WORK REPO, not here: the harness ships no
+# .claude/.agents at all, so these three checks must run in a loop's WORKDIR.
+if [ -n "$SESSION_DIR" ] && [ -d "$SESSION_DIR" ] && cd "$SESSION_DIR"; then
+  grep -qs '"cleanupPeriodDays"' .claude/settings.json .claude/settings.local.json 2>/dev/null \
+    && pass "cleanupPeriodDays pinned" \
+    || fail "conversations must outlive cases — add { \"cleanupPeriodDays\": 90 } to $SESSION_DIR/.claude/settings.json"
 
-# Project MCP servers (.mcp.json) need approval to load — and headless has
-# nobody to approve. Without this key, factory sessions silently run without
-# the repo's own tooling (proven on the first live run).
-if [ -f .mcp.json ]; then
-  grep -qs '"enableAllProjectMcpServers"[[:space:]]*:[[:space:]]*true' .claude/settings.json 2>/dev/null \
-    && pass "project MCP servers auto-enabled for headless sessions" \
-    || fail 'repo has .mcp.json but factory sessions cannot approve servers — add { "enableAllProjectMcpServers": true } to .claude/settings.json'
-fi
+  # Project MCP servers (.mcp.json) need approval to load — and headless has
+  # nobody to approve. Without this key, factory sessions silently run without
+  # the repo's own tooling (proven on the first live run).
+  if [ -f .mcp.json ]; then
+    grep -qs '"enableAllProjectMcpServers"[[:space:]]*:[[:space:]]*true' .claude/settings.json 2>/dev/null \
+      && pass "project MCP servers auto-enabled for headless sessions" \
+      || fail "repo has .mcp.json but factory sessions cannot approve servers — add { \"enableAllProjectMcpServers\": true } to $SESSION_DIR/.claude/settings.json"
+  fi
 
-# The seed is OPTIONAL: loop prompts are self-sufficient on board duties, so
-# an unseeded project runs fine in factory mode (interactive sessions just
-# won't follow the tracking discipline until seeded). But IF the seed exists,
-# its facts must match config.env — the same facts live twice by design
-# (config.env for scripts, profile.md for agents), filled in by hand,
-# separately: a mismatch means agents move cards on one board while the loop
-# reads another. Check it.
-if grep -qs "Work tracking" .agents/profile.md 2>/dev/null; then
-  pass "profile.md seeded with § Work tracking"
-  grep -qs "$TRACKING_REPO" .agents/profile.md \
-    && pass "seed names the same tracking repo as config.env" \
-    || fail "SPLIT-BRAIN: profile.md § Work tracking does not mention $TRACKING_REPO — seed and config.env disagree"
-  grep -qsE "#${PROJECT_NUMBER}\b" .agents/profile.md \
-    && pass "seed names board #$PROJECT_NUMBER" \
-    || fail "SPLIT-BRAIN: profile.md does not mention board #$PROJECT_NUMBER — seed and config.env disagree"
-  grep -qs "$PROJECT_OWNER" .agents/profile.md \
-    && pass "seed names owner $PROJECT_OWNER" \
-    || fail "SPLIT-BRAIN: profile.md does not mention owner $PROJECT_OWNER — seed and config.env disagree"
-else
-  pass "no seed in profile.md — fine: headed mode stays board-unaware; loop prompts carry the factory's board duties (SEED.md is an optional extra)"
+  # The seed is OPTIONAL: loop prompts are self-sufficient on board duties, so
+  # an unseeded project runs fine in factory mode (interactive sessions just
+  # won't follow the tracking discipline until seeded). But IF the seed exists,
+  # its facts must match config.env — the same facts live twice by design
+  # (config.env for scripts, profile.md for agents), filled in by hand,
+  # separately: a mismatch means agents move cards on one board while the loop
+  # reads another. Check it.
+  if grep -qs "Work tracking" .agents/profile.md 2>/dev/null; then
+    pass "profile.md seeded with § Work tracking"
+    grep -qs "$TRACKING_REPO" .agents/profile.md \
+      && pass "seed names the same tracking repo as config.env" \
+      || fail "SPLIT-BRAIN: profile.md § Work tracking does not mention $TRACKING_REPO — seed and config.env disagree"
+    grep -qsE "#${PROJECT_NUMBER}\b" .agents/profile.md \
+      && pass "seed names board #$PROJECT_NUMBER" \
+      || fail "SPLIT-BRAIN: profile.md does not mention board #$PROJECT_NUMBER — seed and config.env disagree"
+    grep -qs "$PROJECT_OWNER" .agents/profile.md \
+      && pass "seed names owner $PROJECT_OWNER" \
+      || fail "SPLIT-BRAIN: profile.md does not mention owner $PROJECT_OWNER — seed and config.env disagree"
+  else
+    pass "no seed in profile.md — fine: headed mode stays board-unaware; loop prompts carry the factory's board duties (SEED.md is an optional extra)"
+  fi
+  cd "$HARNESS"
 fi
 
 [ $ok = 1 ] && echo "── ready. ./factory/run.sh" \

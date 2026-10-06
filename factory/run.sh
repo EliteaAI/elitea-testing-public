@@ -48,7 +48,7 @@ if [ "${1:-}" = "--all" ]; then
   exit 0
 fi
 
-cd "$(dirname "$FACTORY")"                    # the work repo (default cwd)
+cd "$(dirname "$FACTORY")"                    # the factory's own folder (harness)
 . "$FACTORY/config.env"
 TRACKING_REPO="${TRACKING_REPO#/}"; TRACKING_REPO="${TRACKING_REPO%.git}"   # tolerate "/owner/repo" and ".git"
 
@@ -59,7 +59,11 @@ done
 [ -f "$FACTORY/loops/$LOOP.env" ] || { echo "no such loop: $FACTORY/loops/$LOOP.env"; exit 2; }
 [ -f "$FACTORY/loops/$LOOP.md" ]  || { echo "no loop prompt: $FACTORY/loops/$LOOP.md"; exit 2; }
 . "$FACTORY/loops/$LOOP.env"
-[ -n "${WORKDIR:-}" ] && cd "$WORKDIR"        # writers get their own clone
+# WORKDIR is MANDATORY: the harness carries no .claude/.agents of its own —
+# skills, agents, rules, hooks and the .agents/* doctrine all live in the work
+# repo — so a session started from here would run with no tooling at all.
+[ -n "${WORKDIR:-}" ] || { echo "[$LOOP] loop sets no WORKDIR — sessions need the work repo's .claude/.agents; set it in $FACTORY/loops/$LOOP.env"; exit 2; }
+cd "$WORKDIR"                                 # where the session runs; writers get their own clone
 
 STATE="$FACTORY/state"; mkdir -p "$STATE"
 # Sessions run in WORKDIR, whose own factory/ is a stateless mirror — tell them
