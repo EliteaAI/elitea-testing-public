@@ -46,3 +46,4 @@
 - [adjust-skill Step 6 (AFS) falls through split dispatches](adjust_skill_step6_afs_update_falls_through_split_dispatches.md) — assign it explicitly or resume the analyst after merge
 - [New FIX card can dup a sibling's root cause](fix_card_shared_page_object_method_dedup.md) — check open PRs/issues for the shared method/symptom before triaging fresh
 - [Check origin-ahead before the mandatory sync merge](sync_check_origin_ahead_before_local_merge.md) — factory-ops may have already synced; don't double-merge
+- [CI autotest_users lack a 2nd project](ci_autotest_users_lack_second_project_membership.md) — "no project to fork/share from" in CI is a data gap, not a code bug — go straight to `question`
