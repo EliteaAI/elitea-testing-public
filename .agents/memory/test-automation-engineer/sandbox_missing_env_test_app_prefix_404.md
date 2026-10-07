@@ -5,7 +5,7 @@ type: feedback
 aliases: [APP_PREFIX missing, no env.test, sandbox missing secrets, false bucket-list timeout, SPA 404 looks like backend timeout]
 tags: [area/environment, type/pitfall]
 created: 2026-10-06
-updated: 2026-10-06
+updated: 2026-10-07
 ---
 
 ## The trap
@@ -53,6 +53,22 @@ print(settings.app_base_url)   # must include /app
 ```
 
 This is a shell-only fix — nothing in the repo changes, nothing is committed.
+
+**Update 2026-10-07 (ELITEA-1862 adjustment session) — `.venv/` itself can be
+entirely absent, not just incomplete,** and the fix is still trivial:
+```bash
+python3 -m venv .venv
+.venv/bin/pip3 install -e ".[reporting]"   # binary is `pip3`, there is no plain `pip`
+```
+In this sandbox flavor that was the WHOLE fix — every dependency (playwright,
+pytest, pytest-rerunfailures, allure-pytest, ruff, …) came back `Requirement
+already satisfied` on the very first `pip3 install -e ".[reporting]"`, no
+`ensurepip`, no per-package install, no network wait. **Don't assume you need
+the `ensurepip`/manual-`pytest-rerunfailures` workaround below pre-emptively —
+try the two lines above first and check `pip3 list | grep rerun` before doing
+any extra work.** The earlier caution (next paragraph) still applies if THAT
+turns out false in some other sandbox flavor.
+
 If `.venv` is also missing `pip`/plugins in the same kind of bare sandbox,
 `python -m ensurepip --upgrade` bootstraps pip, and `pytest-rerunfailures` may
 need an explicit `pip install` too — `pytest.ini`'s `addopts` uses `--reruns` /
