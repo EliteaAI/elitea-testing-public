@@ -2680,6 +2680,15 @@ class ArtifactsPage(BasePage):
         LOCATOR: The bucket row has testid 'artifacts-bucket-row-{name}'.
         The menu button appears on hover with testid 'bucket-menu-{name}-menu-button'.
 
+        The hover reveal is gated by two independent mechanisms in the frontend
+        (React `onMouseEnter` state driving `display`, plus a separate CSS
+        `:hover` rule driving `visibility`) and the CSS one is occasionally racy
+        under Playwright's synthetic `hover()`, leaving the button attached but
+        stuck at `visibility: hidden`. We retry the hover a bounded number of
+        times with a short sub-timeout before falling back to the original
+        full-timeout wait, which still raises exactly as before if the button
+        never appears.
+
         Args:
             bucket_name: Name of the bucket to manage permissions for.
             timeout: Maximum wait time in milliseconds.
@@ -2695,9 +2704,37 @@ class ArtifactsPage(BasePage):
         bucket_row.hover()
         self.page.wait_for_timeout(500)
 
-        # Click the DotMenu button (appears on hover)
         menu_btn = self.page.locator(self.BUCKET_MENU_BUTTON_TESTID.format(bucket_name))
-        menu_btn.wait_for(state="visible", timeout=timeout)
+
+        # The CSS-hover-driven reveal is occasionally racy (visibility stuck
+        # hidden while the row is otherwise fully hovered). Retry by moving
+        # away and re-hovering before falling back to the full-timeout wait,
+        # which preserves the original failure mode/message on true failure.
+        retry_timeout = min(3000, timeout)
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                menu_btn.wait_for(state="visible", timeout=retry_timeout)
+                break
+            except PlaywrightTimeoutError:
+                if attempt == max_attempts:
+                    # Final attempt: raise with the original full-timeout wait
+                    # so the failure mode/message on true failure is unchanged.
+                    menu_btn.wait_for(state="visible", timeout=timeout)
+                    break
+                logger.info(
+                    "DotMenu button not yet visible for bucket '%s' (attempt %d/%d) — "
+                    "moving away and re-hovering",
+                    bucket_name,
+                    attempt,
+                    max_attempts,
+                )
+                self.page.mouse.move(0, 0)
+                self.page.wait_for_timeout(200)
+                bucket_row.hover()
+                self.page.wait_for_timeout(300)
+
+        # Click the DotMenu button (appears on hover)
         menu_btn.click(force=True)
         self.page.wait_for_timeout(300)
 
