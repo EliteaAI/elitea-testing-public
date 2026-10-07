@@ -48,3 +48,42 @@ by the orchestrator; case *content* = PR, orchestrator opens it, human merges.
 5. Set `automation_pr` on the TMS case in the SAME PR as the content change
    (the skill bundles them) — don't do a separate direct-edit back-write for
    that field when a content-change PR is already in flight.
+
+## Converse case (issue #2401, ELITEA-1866, PR #2402) — "Expected-result
+changes: none" means NO TMS PR at all, not a smaller one
+
+A class-A repair whose own PR body correctly says "Expected-result changes:
+none" (e.g. widening an expected-dict literal to tolerate a legitimately new,
+non-observable response key — nothing a human reading the TMS case's steps
+would notice) has **no case-content change to carry**. The implementer still
+opened a TMS PR here — containing only the `automation_pr` frontmatter field,
+nothing else — by analogy with Step 8's "two PRs" instruction. That PR
+shouldn't have existed: `automation_pr` is exactly the kind of field
+`test-automation.yaml` § `backwrite_on_done` already governs as a **direct
+orchestrator edit against the TMS repo's main**, no PR, done once the test PR
+is actually merged. A PR for a pure-metadata field is scope creep in the
+opposite direction from rule 5 above (rule 5 says "don't do a separate direct
+edit when a content PR is already in flight" — but there's no content PR to
+piggyback on when there's no content change).
+
+**Decision rule:** check the PR body's "Expected-result changes" line BEFORE
+deciding whether a TMS PR exists at all. "none" → close/skip any TMS PR an
+implementer opened anyway, do the `automation_pr` back-write as a direct edit
+yourself once the test PR is merged. Anything else → rule 5 applies as written.
+
+Also confirmed while fixing this: `index.json` does not store `automation_pr`
+at all (checked the actual entry — only `status`/`execution_type`/
+`automation_test_id`/etc.) — so an `automation_pr`-only back-write never needs
+an index rebuild. Don't reach for `build_index`/`_index.py` unless
+`status`/`execution_type`/`automation_test_id` actually changed.
+
+**Also:** the lead's own merge gate is non-negotiable even on an adjust-path
+PR the implementer already gated 3/3 — `.agents/testing.md` is explicit that
+the implementer's green run is never the gate. Nearly skipped this one
+because the generic `adjust-automated-test` skill text ("never merge either
+PR") reads as if the lead doesn't merge at all on this path; this entry's own
+rule 3 already said otherwise, but almost got overridden by the louder,
+more-recently-read generic skill text. When a project-specific memory entry
+and a bundled skill's generic text conflict, the memory entry (born from a
+real past correction, scoped to this project) wins — re-read it before taking
+the skill's text as the full picture, don't let recency bias decide.
