@@ -1,0 +1,27 @@
+{
+  "runs": {
+    "20261007022918": {
+      "total": 26,
+      "details": [
+        {
+          "id": "ELITEA-1862",
+          "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_image_restricted_controls.TestArtifactFilePreviewImageRestrictedControls.test_image_file_opens_directly_with_restricted_controls",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2396",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for locator when opening image file in preview/edit editor",
+          "reasoning": "Failed all 3 retry attempts with the same error: 'Locator.wait_for: Timeout 10000ms exceeded' at step 'Open file in preview/edit editor'. The 404 errors on bucket teardown suggest the bucket/file setup may have failed or the image preview UI element is not rendering as expected. Consistent failure across all retries with no flakiness in surrounding tests strongly indicates a product regression in image file preview functionality."
+        },
+        {
+          "id": "ELITEA-1826",
+          "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_multiple_files.TestArtifactsUploadMultipleFiles.test_upload_multiple_files_at_once",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2397",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout clicking element in native file picker during multiple file upload",
+          "reasoning": "Failed all 3 retry attempts with the same error: 'Locator.click: Timeout 10000ms exceeded' at step 'Select files via native file picker'. The 404 errors on bucket teardown confirm the upload never completed. Consistent failure across all retries with no flakiness in other upload-related tests (e.g., duplicate upload tests passed) suggests a specific regression in the multiple file upload UI flow, likely the file picker trigger element."
+        }
+      ]
+    }
+  }
+}
