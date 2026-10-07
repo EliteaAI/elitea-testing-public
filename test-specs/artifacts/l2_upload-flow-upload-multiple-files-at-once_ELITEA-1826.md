@@ -305,6 +305,64 @@ Name/Type/Size/Last-update metadata. Zero console errors.
 ## Blocked Steps
 None.
 
+## Adjustment — 2026-10-07 (`adjust-automated-test`, triage class A — UI drift)
+
+**Originating issue:** EliteaAI/elitea-testing-public#2397 (CI run 37560663601,
+`UI Tests DEV Stable [main] [smoke,artifacts]` — `Locator.click: Timeout 10000ms
+exceeded` at "Select files via native file picker", 3/3 identical CI retries).
+**Fix PR (merged):** EliteaAI/elitea-testing-public#2399 → `automation/factory`
+@ `0d72523b`. **Companion TMS PR (open, human sign-off pending):**
+`onetest-ai-tm-Elitea#160` — this file's Test Step 3 action text + this section.
+
+**What changed.** EliteaUI commit `471b753c` ("fix: [EL-6687] Fixed Artifacts
+section UI issues", merged 2026-09-23 — nearly two months after this case's test
+merged 2026-07-19) gated the *entire* right-hand toolbar section of
+`ArtifactTableToolbar.jsx` (search / upload / download / delete buttons) behind
+`!isEmptyFiles`, where `isEmptyFiles = rows.length === 0 && !isFetching`
+(`ArtifactTable.jsx`). Before that commit the section rendered unconditionally.
+This case's own precondition is a **freshly created, confirmed-empty** bucket
+(§ Preconditions, Test Step 2) — so as of 471b753c, the toolbar's
+`upload_files_button` (`artifacts-upload-files-button`) never mounts for this
+flow; only the empty-state panel's own "Upload files" button (rendered by
+`ArtifactTableNoFiles.jsx`, testid `artifacts-upload-files-empty-state-button`,
+already modeled pre-fix as `ArtifactsPage.upload_files_via_empty_state()` /
+`upload_files_empty_state_button`, added for ELITEA-1824) is reachable. The
+previous "click the toolbar upload icon top-right" framing (case step 3 / old
+Test Step 3) is now **structurally wrong for an empty bucket** — not a testid
+rename, a conditional-rendering change in the parent component.
+
+**Why (triage class).** Class **A — UI drift**: the intended upload flow still
+works end-to-end and is unchanged in outcome; only the DOM path to reach it from
+an empty bucket changed. Confirmed independently against the frontend source
+(`../EliteaUI`, `git fetch origin` + `git show origin/main:...`, not the
+checked-out working tree) by the analyst/triage dispatch and re-confirmed by the
+lead before the fix was accepted. Both buttons wire to the same
+`handleUploadClick` handler and the same hidden `<input type="file" multiple>` —
+`upload_files_via_empty_state()` is the same `expect_file_chooser()` + click +
+`set_files()` shape as the toolbar method it replaces, just a different click
+target. Ruled out: not class E (the toolbar testid still exists and is correct
+when a bucket has files — ELITEA-1832's seeded-bucket test proves this, it
+clicks the identical toolbar button successfully); not class F (a working,
+already-implemented handle was reachable immediately); not B/C/D (deterministic
+3/3 identical CI failures, zero network/data involved, root-caused to a dated
+frontend commit, not flake/pollution/infra — and no OPEN `bug` issue existed to
+match against, `gh issue list --label bug` returned zero issues in this repo at
+triage time).
+
+**Expected-result changes: none.** Same three files, same success toast text,
+same table metadata (Name/Type/Size/Last-update), same three `200 OK` PUT
+requests, same console-error check. Only the entry-point handle changed — no
+assertion, count, or comparison was touched, so this needed no human sign-off
+under the preserve-the-nature rail and no change to this AFS's § Expected
+Results / § Coverage Map (both still accurate as written above; only the Test
+Step 3 narrative and this section are new/updated).
+
+**Code change (reference, already merged in #2399):** test now calls
+`artifacts_page.upload_files_via_empty_state([...])` instead of
+`artifacts_page.upload_files([...])` at the Steps 3-6 allure step. No new
+locator declaration — `upload_files_empty_state_button` already existed,
+compliant, pre-fix.
+
 ## Automation Hints
 - Framework: Playwright + pytest (confirmed from `.agents/testing.md`).
 - Page object: `automation/pages/artifacts_page.py`'s `ArtifactsPage` **already has every
