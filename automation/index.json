@@ -625,6 +625,16 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_landing_page_ui.TestArtifactsLandingPageUI.test_landing_page_empty_bucket",
+      "markers": [
+        "allure_label",
+        "new_verified",
+        "p2",
+        "regression",
+        "ui"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder",
       "markers": [
         "allure_label",
