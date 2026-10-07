@@ -24,6 +24,7 @@
 | QA Engineer — Sage (analyst + reviewer) | `qa-engineer` | Analyst: execute case vs DEV (`https://dev.elitea.ai/app`), emit AFS with ladder handles. Reviewer: FRESH session, adversarial review of automation PRs |
 | Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test on DEV through page objects, ladder locators with `suggested_testid=` |
 | Testid Migrator — Tess (on request) | `testid-migrator` | Locator-debt burndown: turns `suggested_testid=` hints into real testids and swaps the declarations once they are deployed. **Out of band** — its own session, its own procedure (`.claude/skills/migrate-locators-to-testids`), started by request (a person or another party); **never dispatched from a batch, and nothing in the pipeline waits on it** |
+| Factory Ops — Rook (navigator) | `factory-ops` | "Where does this live / which branch do I touch / how does the factory pick this up" — the repository map, the operating branches, the container-vs-local topology, board #9's state machine, loop anatomy; plus the sanctioned git ops (branch/commit/push, merge `main → automation/factory`, PR into `automation/factory`). Verifies and pastes commands. **No tracker or board writes; never the merge gate** |
 | Scout — Kit | `scout` | Onboarding/seed refresh, retrospectives, optimization passes |
 
 Use the `subagent_type` value exactly — it must match a directory name in
@@ -37,6 +38,9 @@ Use the `subagent_type` value exactly — it must match a directory name in
 - **Locator migration:** `claude --agent testid-migrator` — runs on request, started
   by a person or by another party.
 - **Seed refresh / retrospective:** `claude --agent scout`.
+- **Factory orientation / branch ops:** `claude --agent factory-ops` — or dispatched
+  as a subagent for a repo/branch/env question when the answer must be verified
+  rather than recalled.
 
 ## How to hand off work (Claude Code)
 
