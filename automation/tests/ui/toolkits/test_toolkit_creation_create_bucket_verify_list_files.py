@@ -57,8 +57,9 @@ step-by-step disposition):
 29.    Verify the "List files" parameter panel (Bucket Name, Folder,
        Recursive, Include, Skip, "Run Test").
 30-31. Click "Run Test"; verify the result — the payload is parsed
-       and compared structurally to `{"total": 0, "rows": []}`, not
-       substring-matched against one serialization (#2066).
+       and compared structurally to `{"total": 0, "rows": [], "truncated":
+       False}`, not substring-matched against one serialization (#2066,
+       #2401).
 32-36. Navigate to Artifacts; search "new"; verify "new-bucket" is listed.
 37-39. Select "new-bucket"; verify the header + the empty-bucket state.
 
@@ -127,8 +128,16 @@ BUCKET_NAME = "new-bucket"
 
 # Step 31's expected tool result: `List files` against a just-created,
 # never-uploaded-to bucket. The VALUE is the case's observable and is
-# unchanged; only its serialization drifted (#2066) — see Step 31.
-EMPTY_LIST_FILES_RESULT = {"total": 0, "rows": []}
+# unchanged; only its SHAPE has drifted, twice now:
+#   - 2026-09-09 (#2066): serialization only (Python repr -> pretty JSON).
+#   - 2026-10-07 (#2401): the tool's own response schema grew a THIRD key,
+#     `truncated` — confirmed live (`DELETE`/`GET .../artifacts/artifacts/...`
+#     REST endpoint has no such key; it is specific to the `list_files` tool's
+#     own response, i.e. a pagination-style flag the tool added, not a
+#     presentation artifact). `False` is the only value that can ever be
+#     correct for a listing of a just-created, never-uploaded-to bucket —
+#     there is nothing to truncate. See AFS § Adjustment 2026-10-07.
+EMPTY_LIST_FILES_RESULT = {"total": 0, "rows": [], "truncated": False}
 SEARCH_TERM = "art"
 TOOL_KEY = "list_files"
 
@@ -767,6 +776,16 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 # will not emit either for a row count
                 # (``utils/toolkit_result_payload``, pinned by
                 # ``tests/unit/test_toolkit_result_payload.py``).
+                #
+                # 2026-10-07 (#2401): the tool's own response schema grew a
+                # THIRD key, ``truncated`` — confirmed live against the plain
+                # REST "List Artifacts" endpoint (same bucket, no such key),
+                # so this is specific to the `list_files` tool's own result
+                # shape, not a presentation artifact. `EMPTY_LIST_FILES_RESULT`
+                # now pins all three keys via the SAME full-payload equality
+                # (no relaxation — see AFS § Adjustment 2026-10-07): `False`
+                # is the only value `truncated` can correctly take for a
+                # listing of a bucket with nothing in it to truncate.
                 payload = parse_tool_result_payload(result_text)
                 assert payload == EMPTY_LIST_FILES_RESULT, (
                     f"Expected an empty result for the just-created "
