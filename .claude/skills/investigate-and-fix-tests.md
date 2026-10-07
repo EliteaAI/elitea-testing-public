@@ -155,7 +155,7 @@ For each failing test:
 4. **Push and trigger CI:**
    ```bash
    git push origin <branch>
-   env -u GITHUB_TOKEN gh workflow run test-ui-dev-all.yml \
+   env -u GITHUB_TOKEN gh workflow run test-ui-dev.yml \
      --ref <branch> -f markers="<marker_to_test>"
    ```
 

@@ -1,5 +1,5 @@
-name: UI Tests DEV Stable
-run-name: UI Tests DEV Stable [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
+name: UI Tests DEV
+run-name: UI Tests DEV [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
   schedule:
@@ -21,7 +21,7 @@ on:
         options: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         default: '9'
       markers:
-        description: 'Pytest markers (default: stable tests only - excludes new/blocked/flaky)'
+        description: 'Pytest markers. Default = stable only. Use "new or blocked or flaky" for unstable, "all" for everything.'
         default: 'not new and not blocked and not flaky'
       ref:
         description: 'Git branch/tag/SHA'
@@ -56,7 +56,7 @@ jobs:
           PUBLISH_TO_TMS: ${{ github.event_name == 'schedule' || inputs.publish_to_tms == true }}
         run: |
           # Build run name (github.run_name not available in called workflow context)
-          RUN_NAME="UI Tests DEV Stable [${{ github.ref_name }}] [${SUITES}]"
+          RUN_NAME="UI Tests DEV [${{ github.ref_name }}] [${SUITES}]"
           echo "run_name=$RUN_NAME" >> $GITHUB_OUTPUT
 
           # Maintenance report name - same sanitization as ParseWebhook in
@@ -87,7 +87,7 @@ jobs:
     needs: links
     uses: ./.github/workflows/test-ui-custom.yml
     with:
-      environment: dev-stable
+      environment: dev
       suite: ${{ github.event_name == 'schedule' && 'smoke' || inputs.suite || 'all' }}
       custom_suites: ${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
@@ -99,8 +99,9 @@ jobs:
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
       ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_DEV }}
-      ELITEA_API_TOKEN: ${{ secrets.ELITEA_API_TOKEN_DEV }}
-      ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID_DEV }}
+      # ELITEA_API_TOKEN / ELITEA_PROJECT_ID are deliberately NOT passed: the called
+      # workflow resolves them per runner from TEST_USER_TOKEN_{n}/TEST_USER_PROJECT_{n}
+      # and never reads the single-value secrets.
       # Indexed project IDs for parallel suite execution (env-specific)
       TEST_USER_PROJECT_1: ${{ secrets.TEST_USER_PROJECT_DEV_1 }}
       TEST_USER_PROJECT_2: ${{ secrets.TEST_USER_PROJECT_DEV_2 }}
@@ -125,6 +126,8 @@ jobs:
       TEST_USER_TOKEN_ADMIN: ${{ secrets.TEST_USER_TOKEN_DEV_ADMIN }}
       # Password template - actual passwords are constructed as TEMPLATE + SUFFIX
       TEST_USER_PASSWORD_TEMPLATE: ${{ secrets.TEST_USER_PASSWORD_TEMPLATE }}
+      # Team project ID for multi-user permission tests (global vars, not env-specific)
+      ELITEA_TEAM_PROJECT_ID: ${{ vars.ELITEA_TEAM_PROJECT_ID }}
       GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
       BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
       ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
@@ -181,7 +184,7 @@ jobs:
             --arg action "completed" \
             --argjson run_id ${{ github.run_id }} \
             --arg name "$RUN_NAME" \
-            --arg path ".github/workflows/test-ui-dev-stable.yml" \
+            --arg path ".github/workflows/test-ui-dev.yml" \
             --arg html_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --argjson run_number ${{ github.run_number }} \
             --arg head_branch "${{ github.ref_name }}" \
