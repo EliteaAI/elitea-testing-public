@@ -66,3 +66,4 @@
 - [main is NOT a superset of automation/base](main_and_automation_base_have_diverged_badly.md) — planted assert False + tests/unit won't collect; control-run anything red
 - [Same-run correlation = class D shortcut](same_run_correlation_is_a_class_d_triage_shortcut.md) — check sibling [FIX] cards from the same CI run before diffing code
 - [Dead literal in a [FIX] card](dead_literal_repair_delete_dont_substitute.md) — read the case first: if it says "the default", DELETE the step, do not substitute
+- [Missing .env.test → APP_PREFIX=""](sandbox_missing_env_test_app_prefix_404.md) — client-side 404 (HTTP 200!) looks like a backend timeout; `export APP_PREFIX=/app`

@@ -160,7 +160,7 @@ nodes:
         }
 
         try:
-            # Input is well-formed JSON from test-ui-dev-stable.yml notify job
+            # Input is well-formed JSON from test-ui-dev.yml notify job
             raw = alita_state.get('input', '{}')
             payload = json.loads(raw) if isinstance(raw, str) else raw
             workflow_run = payload.get('workflow_run', {})
@@ -522,8 +522,8 @@ nodes:
         import re
         file_name = alita_state.get('maintenance_file_path', 'unknown.json') or 'unknown.json'
         # Build path to the .md report file (group name without run number/id)
-        # From: ui-tests-dev-stable-main-agents,admin_153_34927456741.json
-        # To:   ui-tests-dev-stable-main-agents,admin.md
+        # From: ui-tests-dev-main-agents,admin_153_34927456741.json
+        # To:   ui-tests-dev-main-agents,admin.md
         base = file_name.replace('.json', '')
         match = re.match(r'^(.+?)_\d+_\d+$', base)
         if match:

@@ -15,7 +15,7 @@
 - [extend-existing: classify + shape](extend_existing_classification_and_shape.md) — already-covered is board-first; 3 shapes
 - [Analyst commit authority](analyst_slot_has_no_git_commit_authority.md) — batch trunk: commit the AFS; standalone: leave untracked
 - [Can't self-approve a PR via gh](gh_identity_blocks_self_approval.md) — post the verdict via gh pr comment instead
-- [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — grep AFS Priority vs @pytest.mark.p*; seen 7×, incl. module-level
+- [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — NEVER non-blocking; grep AFS Priority vs @pytest.mark.p* BEFORE drafting verdict; seen 8×
 - [Open cross-cutting defects](open_cross_cutting_defects.md) — #694, bucket-fixture 404, #551/#585, #607 (re-verify before acting)
 - [Provenance grep lies](provenance_grep_needs_case_insensitive.md) — needs -i; object-literal testId: still fails; live ≠ on-main
 - [Closed/unlabelled ≠ absent](mui_menu_unmounted_when_closed_false_negative.md) — open overflows before counting; snapshot isn't evidence
@@ -46,3 +46,5 @@
 - [Run the suite against dev.elitea.ai without editing .env.test](retarget_suite_at_dev_without_editing_env_test.md) — throwaway -p plugin; shell exports cannot win
 - [Sanctioned-RED re-anchoring drops a cross-check](sanctioned_red_reanchoring_silently_drops_a_crosscheck.md) — tick OLD hard asserts one by one; re-anchoring is the silent leak
 - [Model display-name literals rot](model_display_name_literals_rot.md) — dead catalog entry; read the case, often DELETE the step not swap it
+- [Playwright MCP has no Chrome in this container](elitea_1805_bucket_first_click_toggle_and_playwright_mcp_no_chrome.md) — browser_navigate fails; use a sync_playwright scratch script instead
+- [Missing .env.test drops APP_PREFIX silently](missing_env_test_app_prefix_silently_empty.md) — check `test -f automation/.env.test`; if absent, export APP_PREFIX=/app yourself

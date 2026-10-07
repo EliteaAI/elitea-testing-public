@@ -118,3 +118,26 @@ scoped to exactly the one changed entry (`status`/`execution_type`/
 verification. Six confirmed recurrences: stop reading this as "unlikely to
 hit me" — budget the mtime/git-diff check as a mandatory step of every
 `build_index` call, full stop, not a thing to remember to remember.
+
+**Confirmed a 7th time, #2392/ELITEA-1805 (2026-10-06) — the "fix" ALSO
+failed this time, a new symptom:** `repo:`-qualified call gave the usual clean
+message + stale mtime (no-op, as always). Re-ran with **zero args** (the
+documented fix) and got `"0 cases indexed"` — not a plausible count, and the
+mtime was STILL unchanged. So the zero-args form isn't a guaranteed fix
+either in every environment; the mtime/git-diff check must gate BOTH forms,
+not just the `repo:`-qualified one. Fell back to the `_index.py` script
+directly, which worked (mtime updated, real diff) — but on a chronically
+stale index (last real commit many sessions back), the honest full-rebuild
+diff was enormous (48k+/35k- lines, hundreds of unrelated cases) exactly as
+`tms_index_backwrite_surgical_not_full_rebuild.md` warns. Reverted that
+(`git checkout -- index.json`) and did the surgical single-entry Python edit
+instead — except in this instance it turned out **the committed index.json
+already had the correct target state for this one case** (a second
+coincidence: the index was stale enough to have never absorbed an upstream
+de-automation sweep that happened in between, so it still read
+`ready`/`automated` with the right `automation_test_id` throughout — net
+correct despite being stale). Zero-diff surgical edit, nothing to commit.
+**Lesson: never trust ANY `build_index` outcome (MCP verb in either arg
+form, or a full `_index.py` rebuild) without the mtime+diff check — and
+when the check shows "already correct," that's a real possible outcome on
+a stale index, not a sign you did something wrong.**
