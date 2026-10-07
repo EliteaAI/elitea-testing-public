@@ -437,7 +437,7 @@ which is the only design that satisfies both "the case demands these exact liter
 | Step 28: Select List files | Parameters panel appears | Step 28 | `select-option-list_files` click, combobox value updates | asserted |
 | Step 29: Verify List files parameters panel | Bucket Name/Folder/Recursive/Include/Skip/RUN TOOL all present | Step 29 | 4 `toolkit-test-param-*` handles + RUN TOOL button-text match | asserted **(NEW handles; 2 gaps found — Recursive checkbox, RUN TOOL button)** |
 | Step 30: Click RUN TOOL | Tool runs, returns result | Step 30 | button click (interim text-locator until testid added) | asserted |
-| Step 31: Verify result in center panel | Result displayed | Step 31 | substring `list_files` in the result text + the payload parsed out after the last `✅`/`❌` marker and compared structurally to `{"total": 0, "rows": []}` — **→ see § Adjustment 2026-09-09 § 7** | asserted |
+| Step 31: Verify result in center panel | Result displayed | Step 31 | substring `list_files` in the result text + the payload parsed out after the last `✅`/`❌` marker and compared structurally to `{"total": 0, "rows": [], "truncated": False}` — **→ see § Adjustment 2026-10-07** | asserted |
 | Step 32: Navigate to Artifacts | Artifacts page loads | Step 32 | direct nav to `/artifacts`, `artifacts-buckets-heading` visible | asserted *(same sidebar gap as step 1)* |
 | Step 33: Click BUCKETS search icon | Search field opens | Step 33 | `artifacts-search-buckets-button` → `artifacts-bucket-search-input` visible | asserted |
 | Step 34: Type "new" | Bucket list filters | Step 34 | search input value | asserted |
@@ -1314,3 +1314,131 @@ verbatim live evidence and a bidirectionally-verified replacement; class D robus
 specced for Step 32 / teardown; Steps 32–39 re-verified live with no observable drift; one
 new non-blocking product defect filed (#2073); every handle already on `main`; nothing
 weakened, nothing masked.
+
+---
+
+## Adjustment 2026-10-07 — `list_files` tool response schema grew a `truncated` key (issue #2401, GHA run 37585133621)
+
+**Triage class: A (product render/schema drift)** — the same lineage as the #2066
+serialization drift above, one layer deeper: this time the *shape* of the tool's own
+response grew, not just its text encoding.
+
+### 1. Ground truth before diagnosis
+
+`sync-base-branches` Part 1 had already fast-forwarded `automation/factory` to `main`
+this session (confirmed by the lead; no conflicts, imports/collection verified) before
+this repair started. `cd ../EliteaUI && git fetch origin` run before any frontend-source
+read (see § 3 below).
+
+### 2. Reproduction (DEV, clean process, before any change)
+
+```
+cd automation && HEADLESS=true ../.venv/bin/pytest \
+  tests/ui/toolkits/test_toolkit_creation_create_bucket_verify_list_files.py::TestToolkitCreationCreateBucketVerifyListFiles::test_create_artifact_toolkit_creates_bucket_verify_list_files \
+  -v -p no:cacheprovider
+…
+tests/ui/toolkits/test_toolkit_creation_create_bucket_verify_list_files.py:780 (pre-fix line 771)
+E   AssertionError: Expected an empty result for the just-created bucket, got:
+    {'total': 0, 'rows': [], 'truncated': False}
+    (raw: 'EliteatoMessageless than a minute agoThought for less than a second'
+    'my-artifact-toolkit: list_files✅ list_files (0.209s) {   "total": 0,'
+    '   "rows": [],   "truncated": false }')
+1 failed
+```
+
+Identical to the CI failure reported on issue #2401 (run 37585133621, commit `fdc2d37`,
+branch `main`). Reached Step 31 cleanly — Steps 1–30 and the pre-test cleanup all passed
+on this run, confirming the failure is isolated to this one assertion, same as the CI
+report.
+
+### 3. What actually changed — and what did NOT
+
+The **observable is unchanged and still correct**: `list_files` against the
+just-created, never-uploaded-to `new-bucket` returns an empty listing — `total: 0`,
+`rows: []`. What changed is that the tool's own response payload now carries a
+**third key**, `truncated: False`, that did not exist before.
+
+This is **not** a presentation/serialization artifact like #2066 (that one was JSON vs.
+Python-repr of the *same* two keys) — it is a genuine addition to the business payload
+the `list_files` tool returns. Confirmed by comparing against the plain REST surface for
+the same operation, which carries no such key:
+
+```
+GET /api/v2/artifacts/artifacts/default/{project_id}/{bucket}   (OpenAPI-documented,
+  dev.elitea.ai/shared/openapi/?all=true — "List Artifacts")
+→ {"retention_policy": {...}, "total": 1, "rows": [{"name": "...", "size": "...", "modified": "..."}]}
+  — no `truncated` key, confirmed live against an existing non-empty bucket.
+
+GET /api/v2/artifacts/buckets/default/{project_id}
+→ {"total": 37, "rows": [...]}   — no `truncated` key either.
+```
+
+So `truncated` is specific to the `list_files` **tool's** own response shape (it runs
+server-side inside an ad-hoc conversation, per this AFS's own § Network Behavior — there
+is no direct REST endpoint for it to inherit a schema from), not something the generic
+artifact-listing REST surface exposes. Read as a pagination-style flag ("were there more
+results than were returned") rather than a presentational choice, it is the kind of field
+a listing tool naturally grows once it supports `skip`/`include`-style limiting — which
+this tool's own TEST SETTINGS parameter panel already exposes (Step 29: Bucket Name,
+Folder, Recursive, Include, Skip).
+
+### 4. Is `False` ever wrong here? — checked, not assumed
+
+Per `.agents/role-overrides.md`'s spirit (verify a contract before accepting a new field
+as benign, don't just wave it through): `truncated: False` is the **only value that can
+ever be correct** for this exact case state — a bucket that has never had anything
+uploaded to it has nothing to truncate, with or without a `skip`/`limit`. There is no
+reading of this run's live evidence (payload parses cleanly, `total: 0`, `rows: []`,
+`truncated: False`, all internally consistent) that suggests the flag is reporting a real
+truncation falsely, or that the field is dead/always-false regardless of state — both of
+which would need the opposite classification (B, a new product bug) rather than A. No
+regression is hiding behind this: the case's own observable (nothing to list, confirmed
+visually in Steps 32–39's empty-bucket state) and the new field agree.
+
+### 5. Preserve-the-nature disposition
+
+| Case step | Observable (FROZEN) | How it is reached/identified (CHANGED) |
+|---|---|---|
+| 31 | The result references `list_files` **AND** the result for the just-created bucket is EMPTY | `EMPTY_LIST_FILES_RESULT` widened from `{"total": 0, "rows": []}` to `{"total": 0, "rows": [], "truncated": False}` — same **full-payload `==` equality** as the #2066 repair, now pinning the schema's third key at its only-correct value |
+
+**Expected-result changes: NONE — and this is a strengthening, not a relaxation,**
+stated explicitly because adding a key to the expected literal could be misread as
+loosening the check. It is the opposite: the comparison stays exact dict equality (no
+subset check, no `.get()`-with-default, no key ignored), and now ALSO fails if
+`truncated` were ever anything but `False` for this bucket state — a case the pre-fix
+2-key constant could not detect at all (it never looked at the key). Nothing is dropped,
+made conditional, or compared more loosely than before. The rejected tolerant
+alternative — asserting `payload["total"] == 0 and payload["rows"] == []` while ignoring
+any other key — was considered and set aside for the same reason the AFS's #2066 section
+already rejected it: it stops discriminating a future wrong value on a key the test does
+look at, which is a real loss of coverage this widen-the-literal fix does not take.
+
+### 6. Handles Reference — unchanged
+
+No locator touched. `truncated` is a payload *value*, read by the same
+`parse_tool_result_payload()` call already in place — the parser needs no change (its
+own unit pins, `tests/unit/test_toolkit_result_payload.py`, assert against fixed
+input/output pairs that never included this key and are unaffected). Confirmed by
+re-running that suite unmodified — see implementer gate evidence.
+
+### 7. TMS case-text drift
+
+**None.** Case step 31's expected result is *"Result is displayed"* — same reasoning the
+#2066 adjustment already recorded: the payload-shape pin is this suite's own Axis-2
+strengthening, not case text, so no `onetest-ai-tm-Elitea` edit is owed for the value.
+`automation_test_id` is unchanged. (A TMS PR is still raised per this skill's standard
+two-PR output, to update `automation_pr` on the case file — see § Report below.)
+
+### 8. Gate evidence
+
+3 separate, consecutive, clean-process invocations against DEV — see the implementer's
+Run Report / PR body for the pasted output of all three.
+
+### Status after adjustment
+
+**ready-for-automation (repair)** — class A schema drift on Step 31, confirmed via a live
+A/B against the plain REST artifact-listing surface (which carries no `truncated` key,
+ruling out a generic serialization change) and against the case's own empty-bucket
+observable (Steps 32–39, re-verified unaffected); no new testid, no handle change, no
+product defect found; the fix widens an exact-match literal to pin a new field rather
+than relaxing anything; nothing masked.
