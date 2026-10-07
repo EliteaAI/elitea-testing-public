@@ -259,3 +259,58 @@ None. All 7 case steps were executed to completion against the live local enviro
 - This case's modal-open mechanics (select Webhook → wait for settle) are identical to ELITEA-2005
   step 4 — consider extracting a shared `open_webhook_modal_settled(page, node)` helper used by
   both this test and ELITEA-2005's, rather than duplicating the wait logic.
+
+## Adjustment — ELITEA-2006/#2411 (2026-10-07, `adjust-automated-test`)
+
+**Triage class: B → C.** `test_webhook_trigger_settings_modal` started failing in CI at AFS
+Step 4 (`get_selected_webhook_type() == "gitlab"`), tracked as #2411. First triage pass
+(2026-10-07, memory entry
+`radiobuttongroup_hardcoded_name_collision_when_two_instances_coexist.md`) classified it
+**class B — new product bug**: this AFS predates the product's "Authentication" sub-section
+(secret-token/signing-token radios), which the live GitLab flow now mounts alongside the
+Webhook Type radios — a flow not present when this AFS was authored (2026-08-03) and never
+re-verified against it since. Root cause confirmed via live DOM dump (every
+`input[name="radio-buttons-group"]`'s native `.checked` property after selecting GitLab):
+
+```
+radio[0] value='github'        checked_prop=False
+radio[1] value='gitlab'        checked_prop=False
+radio[2] value='custom'        checked_prop=False
+radio[3] value='secret_token'  checked_prop=True
+radio[4] value='signing_token' checked_prop=False
+```
+
+`RadioButtonGroup.jsx:25` hardcodes native `name="radio-buttons-group"` on every instance of
+the shared component (not derived from the `testId` prop or any per-instance key). The
+Authentication sub-section mounts a *second* instance alongside the Webhook Type group, so 5
+native radio inputs share one `name` — the browser's native one-checked-per-name semantics
+then steal the checked state away from the just-selected GitLab radio, even though the
+`Mui-checked` CSS class and the webhook URL/description (both unaffected) are correct. Per
+class B's action row, the test was left untouched at that pass (no assertion weakening) and
+the defect was reported to the lead for filing.
+
+The defect is now filed and OPEN as
+[EliteaAI/elitea-testing-public#2415](https://github.com/EliteaAI/elitea-testing-public/issues/2415),
+which reclassifies this occurrence **class C — known bug persisting (matches an OPEN `bug`
+issue)**. Class C's action is "keep red, link `# Known defect: #N`, record as sanctioned
+RED" — per `.agents/testing.md` § Merge gate's Sanctioned-RED exception (deterministic,
+single-cause, linked to this one OPEN defect), the Step 4 GitLab-radio check is now
+soft-aggregated (`soft_failures` list + a single terminal `pytest.fail()`, same idiom as
+`test_support_assistant_smoke.py` / `test_agent_icon_management.py` for non-Locator values
+`expect.soft()` can't bind to) so this one known-broken check doesn't mask the rest of the
+test's coverage. Every other assertion in the test — field inventory, secret reveal,
+GitLab/Custom URL+description text updates, Apply persistence, reload persistence, no
+failed `/pipeline_trigger/` requests, no console errors — stays a hard assert, unchanged.
+
+**Expected-result changes: none.** The case's own expected result for AFS Step 4
+("GitLab selected") did not change and is not being relaxed, substituted, or made
+conditional — the assertion still checks for exactly `"gitlab"`. What changed is *how* the
+isolated, known-defect failure surfaces (aggregated + soft, per the no-masking policy's
+`expect.soft()` + `# Known defect: #N` permitted action for an isolated product defect)
+rather than failing the test outright at that line and masking every subsequent step. No TMS
+case-text update accompanies this change — this is a defect against currently-correct
+case text, not a case/UI drift, so no companion TMS PR is raised (contrast with class A/E
+drift adjustments, which do carry a TMS PR per Step 8 of `adjust-automated-test`).
+
+No locator, handle, or Concrete-Handles-table change. No new fixture. No scope change to any
+other AFS step.

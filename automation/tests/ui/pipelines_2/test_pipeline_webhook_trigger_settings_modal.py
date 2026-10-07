@@ -39,6 +39,15 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
     """Webhook settings modal: full field inventory, type switching, and persistence."""
     console_errors = []
     page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+    # Terminal failure for the known, isolated product defect #2415 is
+    # aggregated here and raised once at the end via pytest.fail(), so a
+    # single mechanism owns the soft failure in this spec (`.agents/testing.md`
+    # § Merge gate). Playwright's Python `expect.soft()` only supports Page/
+    # Locator/APIResponse, not the raw `str | None` this getter returns — same
+    # non-bindable-value situation as test_support_assistant_smoke.py /
+    # test_agent_icon_management.py, so this uses their established
+    # soft_failures + final pytest.fail() idiom instead.
+    soft_failures: list[str] = []
 
     with allure.step("Step 1 — Navigate to the fresh pipeline; verify single entry-point node"):
         pipeline_page = _navigate_to_canvas(page, pipeline_with_llm_id)
@@ -117,7 +126,27 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
 
     with allure.step("Step 4 — Switch Webhook Type to GitLab; verify URL and description update"):
         pipeline_page.select_webhook_type("gitlab", timeout=UI_ELEMENT_TIMEOUT)
-        assert pipeline_page.get_selected_webhook_type() == "gitlab"
+
+        # Known defect: #2415 — RadioButtonGroup.jsx hardcodes a single native
+        # `name="radio-buttons-group"` across every instance of the shared
+        # component. Selecting GitLab mounts a SECOND instance (the
+        # Authentication secret-token/signing-token sub-section), so 5 native
+        # radio inputs now share one `name`; the browser's native
+        # one-checked-per-name semantics then steal the checked state away
+        # from this radio even though the Mui-checked CSS class and the
+        # webhook URL/description below (unaffected, still hard-asserted) are
+        # both correct. Soft-aggregated so this ONE known-broken check doesn't
+        # mask the rest of this test's coverage — asserting the live-contract
+        # (correct) behaviour, not weakened, per the no-masking policy.
+        selected_webhook_type = pipeline_page.get_selected_webhook_type()
+        if selected_webhook_type != "gitlab":
+            soft_failures.append(
+                "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/2415: "
+                "get_selected_webhook_type() should read 'gitlab' after switching the Webhook "
+                f"Type radio, got {selected_webhook_type!r} — the Authentication sub-section's "
+                "RadioButtonGroup instance shares a hardcoded native `name` with the Webhook "
+                "Type group, so the browser's native radio semantics steal the checked state."
+            )
 
         gitlab_url = pipeline_page.get_webhook_url()
         assert gitlab_url.endswith("/gitlab") and gitlab_url != github_url, (
@@ -189,3 +218,22 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
         "Configuring/reloading/persisting the webhook trigger should not introduce console errors "
         f"across the whole flow, got: {[m.text for m in console_errors]}"
     )
+
+    # Wrapped so the sanctioned-RED signature attaches to a STEP in the allure
+    # report, not merely to the test — the gate reads per-step status across
+    # runs when confirming the signature is identical (same pattern as
+    # test_agent_icon_management.py's #2055 handling).
+    with allure.step(
+        "Sanctioned RED — raise the aggregated known-defect #2415 soft failure "
+        "(every other assertion above passed, including the GitLab URL/description "
+        "update and the Custom-type switch)"
+    ):
+        if soft_failures:
+            pytest.fail(
+                "Soft assertion failed — known isolated product defect "
+                "https://github.com/EliteaAI/elitea-testing-public/issues/2415, not test/"
+                "infrastructure. Every other check in this test (field inventory, secret "
+                "reveal, GitLab/Custom URL+description updates, Apply persistence, reload "
+                "persistence, no failed /pipeline_trigger/ requests, no console errors) "
+                "passed:\n" + "\n".join(soft_failures)
+            )
