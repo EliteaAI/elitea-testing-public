@@ -2,24 +2,32 @@
 
 Regression test: verifies the plain multi-file-at-once happy path — three
 brand-new files selected simultaneously in the native file picker and
-uploaded through the toolbar ``upload_files_button`` in ONE operation, with
-no duplicates in play. This is the "upload actually completes" counterpart
-to ELITEA-1832 (`test_artifacts_upload_duplicate_cancel.py`), whose test is
-built entirely around the duplicate-detected → Resolve-duplicates → Cancel
-path and never reaches a completed upload (zero network requests fire
-there; the Upload click is purely a client-side diff). Here, clicking
-"Upload" fires three concurrent PUT requests (one per file), all 200 OK, a
-success toast appears with the exact expected text, and all three files
-land in the file table with correct Name/Type/Size/Last-update metadata.
+uploaded via the empty-state's CENTER "Upload files" button
+(``upload_files_via_empty_state`` / ``upload_files_empty_state_button``) in
+ONE operation, with no duplicates in play. The bucket is freshly created and
+confirmed empty immediately beforehand (Step 2), so the toolbar's own upload
+button never mounts for this flow (``ArtifactTableToolbar.jsx`` gates the
+whole right-hand toolbar section behind ``!isEmptyFiles`` — EliteaUI
+``471b753c``, EL-6687); the empty-state panel's button is the only upload
+entry point reachable here. This is the "upload actually completes"
+counterpart to ELITEA-1832 (`test_artifacts_upload_duplicate_cancel.py`),
+whose test is built entirely around the duplicate-detected →
+Resolve-duplicates → Cancel path and never reaches a completed upload (zero
+network requests fire there; the Upload click is purely a client-side diff).
+Here, clicking "Upload" fires three concurrent PUT requests (one per file),
+all 200 OK, a success toast appears with the exact expected text, and all
+three files land in the file table with correct Name/Type/Size/Last-update
+metadata.
 
 Test flow:
 1. Seed a fresh, empty bucket via the ``artifact_bucket`` fixture.
 2. Select the bucket; verify it is empty (baseline).
-3-6. Click the toolbar upload button (native file chooser opens
-   immediately), select all three files — ``sample1.txt``, ``sample1.png``,
-   ``sample1.md`` — in one ``set_files()`` call (Playwright's equivalent of
-   Ctrl/Shift+click multi-select), confirm; the "Upload files to ..." modal
-   opens with ONE shared Path field pre-filled with the bucket name.
+3-6. Click the empty-state's CENTER "Upload files" button (native file
+   chooser opens immediately), select all three files — ``sample1.txt``,
+   ``sample1.png``, ``sample1.md`` — in one ``set_files()`` call
+   (Playwright's equivalent of Ctrl/Shift+click multi-select), confirm; the
+   "Upload files to ..." modal opens with ONE shared Path field pre-filled
+   with the bucket name.
 7. Click "Upload" — fires three separate PUT requests, one per file, all
    200 OK (verified after the file table confirms completion, to avoid the
    ``status: None`` race on ``capture_requests_matching()`` for
@@ -110,7 +118,7 @@ def _minimal_png_bytes() -> bytes:
 @allure.epic("Artifacts")
 @allure.feature("Upload Flow — Multiple Files")
 class TestArtifactsUploadMultipleFiles:
-    """ELITEA-1826 — Upload multiple files at once via the toolbar button.
+    """ELITEA-1826 — Upload multiple files at once via the empty-state button.
 
     Complementary/opposite scenario to ELITEA-1832
     (``test_artifacts_upload_duplicate_cancel.py``): a clean multi-file
@@ -121,7 +129,7 @@ class TestArtifactsUploadMultipleFiles:
 
     @pytest.mark.p1
     @allure.title(
-        "Upload multiple files at once via the toolbar upload button"
+        "Upload multiple files at once via the empty-state upload button"
     )
     @allure.severity(allure.severity_level.NORMAL)
     @allure.issue(
@@ -177,19 +185,32 @@ class TestArtifactsUploadMultipleFiles:
             )
 
         with allure.step(
-            "Steps 3-6 — Click the upload icon (native file explorer opens "
-            "immediately), select all three files at once via one "
-            "set_files() call (Playwright's equivalent of Ctrl/Shift+click "
-            "multi-select), confirm — verify the 'Upload files to ...' "
-            "modal opens with ONE shared Path field pre-filled with the "
-            "bucket name"
+            "Steps 3-6 — Click the empty-state's CENTER 'Upload files' "
+            "button (native file explorer opens immediately), select all "
+            "three files at once via one set_files() call (Playwright's "
+            "equivalent of Ctrl/Shift+click multi-select), confirm — verify "
+            "the 'Upload files to ...' modal opens with ONE shared Path "
+            "field pre-filled with the bucket name"
         ):
             # Steps 3/4/5/6 are one mechanically inseparable Playwright
             # action (same folding the AFS itself applies): the click, the
             # chooser firing, and set_files() with a LIST ARE the multi-file
             # confirm — there is no intermediate observable between them,
             # and no separate native "Open" click to drive.
-            artifacts_page.upload_files([str(txt_path), str(png_path), str(md_path)])
+            #
+            # Entry point: the empty-state's CENTER button, not the
+            # toolbar's — the bucket is freshly created and confirmed empty
+            # at Step 2, and ArtifactTableToolbar.jsx gates its whole
+            # right-hand section (including upload_files_button) behind
+            # `!isEmptyFiles` (EliteaUI 471b753c / EL-6687), so the toolbar
+            # button is never mounted here. upload_files_via_empty_state()
+            # targets upload_files_empty_state_button
+            # (data-testid="artifacts-upload-files-empty-state-button"),
+            # the ArtifactTableNoFiles.jsx button that IS rendered while
+            # empty — same click → file-chooser → set_files() shape.
+            artifacts_page.upload_files_via_empty_state(
+                [str(txt_path), str(png_path), str(md_path)]
+            )
             artifacts_page.wait_for_upload_path_dialog(timeout=DIALOG_TIMEOUT)
             path_text = artifacts_page.get_upload_path_prefix_text()
             assert f"{bucket_name}/" in path_text, (
