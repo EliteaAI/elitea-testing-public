@@ -1,0 +1,45 @@
+{
+  "runs": {
+    "20261007120259": {
+      "total": 132,
+      "details": [
+        {
+          "id": "ELITEA-2059",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attach_files_in_chat",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2408",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Pipeline LLM does not acknowledge file attachment \u2014 responds that file content was not included instead of processing the attachment",
+          "reasoning": "Clear assertion failure with a specific LLM response showing the pipeline is not correctly passing file content to the model. The response explicitly states 'the file content wasn't actually included in your message \u2014 I only see a reference to the file path'. This is a product behavior regression in file attachment handling, not a flaky/infra issue."
+        },
+        {
+          "id": "ELITEA-2036",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2409",
+          "failure_type": "timeout",
+          "failure_summary": "Locator.wait_for timeout (5000ms) in custom node configuration \u2014 failed on all 3 retry attempts",
+          "reasoning": "The test failed with a 5000ms Playwright locator timeout and was retried 3 times (3 FAIL screenshots captured), all failing. Consistent failure across all retries strongly suggests a real product issue (e.g., a UI element not rendering or a configuration panel not appearing) rather than a transient flaky failure."
+        },
+        {
+          "id": "ELITEA-2051",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2410",
+          "failure_type": "infrastructure",
+          "failure_summary": "Test precondition unmet: test user has no eligible source project to fork from \u2014 only belongs to the fork target project and the public project",
+          "reasoning": "The failure message is explicit: 'ELITEA-2051 precondition unmet: the acting user belongs to no project usable as a fork SOURCE'. This is a test environment/data setup issue \u2014 the CI test user account does not have the required second non-public project membership. This needs investigation to fix the environment setup or test data, not a rerun (it will keep failing until the precondition is met)."
+        },
+        {
+          "id": "ELITEA-2006",
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_webhook_trigger_settings_modal.test_webhook_trigger_settings_modal",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2411",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Webhook trigger settings modal does not return expected 'gitlab' value \u2014 assertion failed with None == 'gitlab'",
+          "reasoning": "Clear assertion failure: `assert None == 'gitlab'`. The test expected a 'gitlab' value to be present in the webhook trigger settings modal but received None. This indicates a product regression where the GitLab webhook trigger option is either missing, not selectable, or not being read back correctly from the UI."
+        }
+      ]
+    }
+  }
+}
