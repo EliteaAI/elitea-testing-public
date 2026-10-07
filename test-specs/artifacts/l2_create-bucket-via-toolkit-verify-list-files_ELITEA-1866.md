@@ -437,7 +437,7 @@ which is the only design that satisfies both "the case demands these exact liter
 | Step 28: Select List files | Parameters panel appears | Step 28 | `select-option-list_files` click, combobox value updates | asserted |
 | Step 29: Verify List files parameters panel | Bucket Name/Folder/Recursive/Include/Skip/RUN TOOL all present | Step 29 | 4 `toolkit-test-param-*` handles + RUN TOOL button-text match | asserted **(NEW handles; 2 gaps found — Recursive checkbox, RUN TOOL button)** |
 | Step 30: Click RUN TOOL | Tool runs, returns result | Step 30 | button click (interim text-locator until testid added) | asserted |
-| Step 31: Verify result in center panel | Result displayed | Step 31 | substring `list_files` in the result text + the payload parsed out after the last `✅`/`❌` marker and compared structurally to `{"total": 0, "rows": []}` — **→ see § Adjustment 2026-09-09 § 7** | asserted |
+| Step 31: Verify result in center panel | Result displayed | Step 31 | substring `list_files` in the result text + the payload parsed out after the last `✅`/`❌` marker and compared structurally to `{"total": 0, "rows": [], "truncated": False}` — **→ see § Adjustment 2026-10-07** | asserted |
 | Step 32: Navigate to Artifacts | Artifacts page loads | Step 32 | direct nav to `/artifacts`, `artifacts-buckets-heading` visible | asserted *(same sidebar gap as step 1)* |
 | Step 33: Click BUCKETS search icon | Search field opens | Step 33 | `artifacts-search-buckets-button` → `artifacts-bucket-search-input` visible | asserted |
 | Step 34: Type "new" | Bucket list filters | Step 34 | search input value | asserted |
