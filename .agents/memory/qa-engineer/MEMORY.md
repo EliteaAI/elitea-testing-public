@@ -47,3 +47,4 @@
 - [Sanctioned-RED re-anchoring drops a cross-check](sanctioned_red_reanchoring_silently_drops_a_crosscheck.md) — tick OLD hard asserts one by one; re-anchoring is the silent leak
 - [Model display-name literals rot](model_display_name_literals_rot.md) — dead catalog entry; read the case, often DELETE the step not swap it
 - [Playwright MCP has no Chrome in this container](elitea_1805_bucket_first_click_toggle_and_playwright_mcp_no_chrome.md) — browser_navigate fails; use a sync_playwright scratch script instead
+- [Missing .env.test drops APP_PREFIX silently](missing_env_test_app_prefix_silently_empty.md) — check `test -f automation/.env.test`; if absent, export APP_PREFIX=/app yourself
