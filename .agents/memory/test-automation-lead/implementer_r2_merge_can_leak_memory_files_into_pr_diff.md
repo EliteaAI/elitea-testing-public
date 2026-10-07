@@ -63,6 +63,20 @@ is reasonable from its vantage point but violates the convention from mine.
    handing to review — a `reset --hard` + rebase is mechanical but still worth
    a real-world confirmation nothing broke.
 
+## Broader trigger (confirmed #2396/ELITEA-1862, PR #2398)
+
+Not limited to R2 fix-only rounds or merge-conflict resolution: a FIRST-round
+implementer can just as easily commit its own memory-log entry as a plain
+extra commit on the feature branch before ever pushing — no conflict, no
+merge, just an ordinary `git commit` that happens to include
+`.agents/memory/**` alongside (or after) the real code commit. Same pollution,
+same fix (extract → land on the trunk directly → `reset --hard` the feature
+branch to the last pure-code commit → force-push), just a cheaper diagnosis
+step: `git log <base>..<feature> --stat` shows two cleanly separate commits
+rather than a tangled merge, so there's no need to extract-vs-rebase — reset
+straight to the code commit's SHA. Check `gh pr diff --name-only` on **every**
+implementer handoff, not just R2 rounds.
+
 ## Rule going forward
 
 - When dispatching an implementer fix-only round on a feature branch, name the

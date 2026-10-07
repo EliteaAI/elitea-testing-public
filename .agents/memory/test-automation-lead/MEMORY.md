@@ -42,3 +42,4 @@
 - [`gh run view --log` stub = false zero](gh_run_log_stub_is_a_false_zero.md) — in-progress run = 81B stub; counts lie
 - [Whole-matrix CI red = shared machinery](ci_blast_radius_points_at_shared_machinery.md) — triage the shared frame
 - [No TaskOutput tool → fallback](no_taskoutput_tool_fallback_is_listagents_plus_background_sleep.md) — ListAgents + bounded `run_in_background` sleep, still in-turn
+- [adjust-automated-test expected-result change](adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr.md) — lead opens the TMS PR, never merges it; test PR still yours to gate+merge
