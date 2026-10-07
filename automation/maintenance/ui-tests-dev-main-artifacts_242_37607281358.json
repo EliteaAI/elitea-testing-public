@@ -1,0 +1,24 @@
+{
+  "runs": {
+    "20261007103723": {
+      "total": 25,
+      "details": [
+        {
+          "id": "ELITEA-2493",
+          "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2407",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for 'Manage Permissions' modal locator to appear (10000ms exceeded) during permission setup steps",
+          "reasoning": "The test failed consistently across all 3 retry attempts with the same TimeoutError: 'Locator.wait_for: Timeout 10000ms exceeded' on steps 'Open Manage Permissions modal' and 'Add permission exception'. This is not a flaky/infra issue \u2014 it reproducibly fails every attempt. The sibling test (test_read_only_permission_allows_get_blocks_write_operations) has the identical failure pattern and is already tracked under issue #2403, strongly suggesting both tests are affected by the same underlying product bug where the Manage Permissions modal UI element is not rendering or is inaccessible."
+        },
+        {
+          "id": "ELITEA-2494",
+          "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2403"
+        }
+      ]
+    }
+  }
+}
