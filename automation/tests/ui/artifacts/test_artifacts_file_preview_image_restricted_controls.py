@@ -3,7 +3,9 @@ as Image Preview with Inactive Edit Controls.
 
 Regression test: verifies that an image file opens directly as a rendered
 ``<img>`` (no Preview/Raw choice, no code editor, ever), that Save/Discard
-are present but permanently disabled (no edit path exists for images), that
+are structurally ABSENT (no edit path exists for images — changed
+2026-10-07, see the AFS's § Adjustment: ``PreviewHeader.jsx`` gates the whole
+Save/Discard/Divider block behind ``canPreview && !isImageFileType``), that
 the render-mode toggle group and the language-select dropdown are both
 structurally ABSENT (not merely hidden), and that the 3-dot actions dropdown
 is restricted to exactly Download + Delete (Copy Content structurally
@@ -20,7 +22,8 @@ Test flow:
    Raw/Preview choice) and becomes visible (condition-based wait — the
    image blob fetch can exceed a short/networkidle-based wait).
 5. Verify the panel header shows the full path.
-6. Verify Save and Discard are present and BOTH disabled.
+6. Verify Save and Discard are structurally ABSENT (changed 2026-10-07 —
+   see the AFS's § Adjustment).
 7. Verify NO render-mode toggle group is present.
 8. Verify NO language-select dropdown is present.
 9. Verify NO CodeMirror text editor is present.
@@ -159,20 +162,27 @@ class TestArtifactFilePreviewImageRestrictedControls:
             )
 
         with allure.step(
-            "Step 6 — Verify Save and Discard are present and BOTH DISABLED"
+            "Step 6 — Verify Save and Discard are structurally ABSENT for "
+            "an image file (no edit path exists)"
         ):
-            expect(artifacts_page.file_preview_save_button).to_be_visible(
-                timeout=UI_ELEMENT_TIMEOUT
+            # Changed 2026-10-07 (ELITEA-1862 adjustment, triage class A — UI
+            # drift, EliteaAI/elitea-testing-public#2396): PreviewHeader.jsx
+            # now gates the whole Save/Discard/Divider block behind
+            # `canPreview && !isImageFileType` (confirmed on `origin/main`),
+            # so for an image file the buttons are no longer rendered at
+            # all — not merely hidden/disabled. This AFS originally specced
+            # "present and both disabled", which was correct for the
+            # behaviour live at the 2026-08-03 analysis but is superseded;
+            # see the AFS's § Adjustment. Same structural-absence idiom as
+            # Steps 7-9 below, reusing the SAME testid-rung declarations
+            # (`file_preview_save_button`/`file_preview_discard_button`) as
+            # an absence check rather than a presence+state check.
+            expect(artifacts_page.file_preview_save_button).to_have_count(
+                0, timeout=UI_ELEMENT_TIMEOUT
             )
-            expect(artifacts_page.file_preview_discard_button).to_be_visible(
-                timeout=UI_ELEMENT_TIMEOUT
+            expect(artifacts_page.file_preview_discard_button).to_have_count(
+                0, timeout=UI_ELEMENT_TIMEOUT
             )
-            assert artifacts_page.is_file_preview_save_disabled(
-                timeout=UI_ELEMENT_TIMEOUT
-            ), "Save should be DISABLED for an image file (no edit path exists)"
-            assert artifacts_page.is_file_preview_discard_disabled(
-                timeout=UI_ELEMENT_TIMEOUT
-            ), "Discard should be DISABLED for an image file (no edit path exists)"
 
         with allure.step(
             "Step 7 — Verify NO render-mode toggle group (Preview/Raw "

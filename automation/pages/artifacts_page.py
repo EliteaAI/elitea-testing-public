@@ -3101,7 +3101,7 @@ class ArtifactsPage(BasePage):
     def open_file_in_editor(self, filename: str, timeout: int = 10000) -> None:
         """Hover the file row and click its 'View/Edit file' icon to open the editor.
 
-        Shared open-flow helper for ELITEA-1851/1852/1856 (AFS Automation
+        Shared open-flow helper for ELITEA-1851/1852/1856/1862 (AFS Automation
         Hints — factored once rather than duplicated per spec).
 
         Args:
@@ -3116,16 +3116,12 @@ class ArtifactsPage(BasePage):
         trigger.wait_for(state="visible", timeout=timeout)
         trigger.click()
 
-        # The editor is "open" once its Save button renders — present
-        # (though disabled pre-edit) as soon as canPreview is true.
-        self.file_preview_save_button.wait_for(state="visible", timeout=timeout)
-        # Also wait for the file's CONTENT to have actually loaded — the
-        # editor panel's 'Copy Content' menu item is conditionally rendered
-        # on `fileContent` being truthy (PreviewHeader.jsx's `menuItems`
-        # `show` clause), which can still be fetching when the Save button
-        # first renders (separate loading state). Waiting here (once, in the
-        # shared open-flow) avoids every caller needing its own race guard
-        # before opening the 3-dot menu.
+        # Wait for the file's CONTENT to have actually loaded — the editor
+        # panel's 'Copy Content' menu item is conditionally rendered on
+        # `fileContent` being truthy (PreviewHeader.jsx's `menuItems` `show`
+        # clause), which can still be fetching right after the click.
+        # Waiting here (once, in the shared open-flow) avoids every caller
+        # needing its own race guard before opening the 3-dot menu.
         #
         # Exactly ONE of three mutually-exclusive content surfaces renders,
         # depending on file type/render-mode: CodeMirror content (code
@@ -3133,11 +3129,24 @@ class ArtifactsPage(BasePage):
         # the rendered Markdown wrapper (a markdown/html/mdx file's default
         # Preview mode, ELITEA-1857), or the <img> element (image files,
         # ELITEA-1862 — which never render CodeMirror or the mode toggle at
-        # all). Waiting on whichever one actually applies (extended
-        # ELITEA-1857/1858/1862; the CodeMirror-only wait was the original
-        # ELITEA-1851/1852/1856 shape) keeps this shared open-flow helper
-        # correct for every file type the suite exercises, without every
-        # caller needing its own type-specific race guard.
+        # all).
+        #
+        # This is the SOLE "editor is open" signal (ELITEA-1862 adjustment,
+        # 2026-10-07 — EliteaAI/elitea-testing-public#2396). This method used
+        # to ALSO wait on the Save button's visibility first, on the premise
+        # that Save renders "as soon as canPreview is true" — true for
+        # code/markdown files, but `PreviewHeader.jsx` now gates the whole
+        # Save/Discard/Divider block behind `canPreview && !isImageFileType`
+        # (confirmed live on DEV + against `origin/main`), so Save never
+        # renders at all for an image file and that wait deterministically
+        # timed out before this one ever ran — the root cause of ELITEA-1862
+        # timing out at this step for every image-file caller. content_ready
+        # alone is a strictly weaker, still-correct "editor is open" signal
+        # for every file type this suite exercises, image included — no
+        # per-type branching needed here, and no behavioural change for the
+        # code/markdown callers (ELITEA-1851/1852/1856): their Save button
+        # still renders; content_ready still waits for their content surface
+        # either way.
         content_ready = self.file_preview_code_content.or_(self.file_preview_image).or_(
             self.file_preview_markdown_content
         )
