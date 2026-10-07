@@ -56,3 +56,19 @@ window for a process restart to silently kill it mid-work.
   applicability. Background resume is a real capability with a real cost profile;
   factory mode's process-restart risk makes that cost bite harder than in an
   interactive session.
+
+## Seen 3× — #2411/ELITEA-2006 (2026-10-07), caught BEFORE any interruption this time
+
+The tell is visible in the **result shape itself**, with no need to wait or poll first:
+a foreground `Agent()` call's result IS the subagent's full final report, inline, in
+the same tool round (confirmed again this session — the first dispatch returned a
+multi-paragraph "[Subagent hand-back]" report directly). A `SendMessage` call to
+resume an agent returns only `{"success":true,"message":"Resuming agent...",...}` —
+an ack, never the content. Seeing that ack shape is itself the signal to stop and not
+wait for a reply in the same turn — don't even bother with one `ListAgents` check to
+confirm "running" (though it did, here); `TaskStop` the resumed agent immediately and
+re-dispatch foreground with "here's what's already on disk, verify + finish it,
+don't redo it." Zero turns lost this time (direct from ack to `TaskStop` to fresh
+foreground dispatch), vs. the two interrupted rounds in the #88 occurrence — the
+partial work the resumed agent had made (one isolated code edit, no AFS/commit yet)
+was intact and reusable exactly as `interrupted_dispatch_recovery.md` predicts.

@@ -67,3 +67,4 @@
 - [Same-run correlation = class D shortcut](same_run_correlation_is_a_class_d_triage_shortcut.md) — check sibling [FIX] cards from the same CI run before diffing code
 - [Dead literal in a [FIX] card](dead_literal_repair_delete_dont_substitute.md) — read the case first: if it says "the default", DELETE the step, do not substitute
 - [Missing .env.test → APP_PREFIX=""](sandbox_missing_env_test_app_prefix_404.md) — client-side 404 (HTTP 200!) looks like a backend timeout; `export APP_PREFIX=/app`
+- [Custom pipeline node deprecated](pipeline_custom_node_type_deprecated_hidden_from_picker.md) — EL-6616 hid it from Add Node menu forever; never "fix" the locator
