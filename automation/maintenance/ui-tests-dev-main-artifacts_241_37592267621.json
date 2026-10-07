@@ -1,0 +1,18 @@
+{
+  "runs": {
+    "20261007082324": {
+      "total": 25,
+      "details": [
+        {
+          "id": "ELITEA-2494",
+          "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations",
+          "resolution": "to_rerun",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2403",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for Manage Permissions modal elements (Open/Close modal, Add permission exception locators exceeded 5000\u201310000ms)",
+          "reasoning": "The failure is a Playwright TimeoutError on UI locators for the Manage Permissions modal ('Open Manage Permissions modal', 'Close Manage Permissions modal', 'Add permission exception'). The test was retried 3 times and failed all 3 retries, but the sibling test 'test_no_access_permission_blocks_all_api_operations' \u2014 which likely interacts with the same modal \u2014 also had an initial FAIL screenshot before passing on retry. This pattern strongly suggests the Manage Permissions modal was intermittently slow/unresponsive during this specific CI run (possible backend slowness or UI rendering delay), rather than a product regression. All 24 other artifact tests passed. A clean rerun is warranted before escalating to INVESTIGATE."
+        }
+      ]
+    }
+  }
+}
