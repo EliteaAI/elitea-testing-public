@@ -40,6 +40,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 NAVIGATION_TIMEOUT = 15000
 
 
+@pytest.mark.tms("ELITEA-1869")
 @pytest.mark.p0
 @pytest.mark.regression
 def test_back_button_from_agent_detail_returns_to_intact_agents_list(page):

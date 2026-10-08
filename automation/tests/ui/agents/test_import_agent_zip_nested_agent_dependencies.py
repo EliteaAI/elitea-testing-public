@@ -95,6 +95,7 @@ def _create_agent(page, name: str, description: str, instructions: str) -> int:
 class TestImportAgentZipNestedAgentDependencies:
     """Import agent .zip with nested agent dependencies (ELITEA-1902, l3)."""
 
+    @pytest.mark.tms("ELITEA-1895", "ELITEA-1902")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1902_import-agent-zip-with-nested-agent-dependencies.md",
         "onetest-ai Test Case link",

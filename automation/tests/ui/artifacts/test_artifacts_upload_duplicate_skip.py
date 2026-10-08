@@ -84,6 +84,7 @@ class TestArtifactUploadDuplicateSkip:
     unchanged.
     """
 
+    @pytest.mark.tms("ELITEA-1829")
     @pytest.mark.p2
     @allure.title(
         "'Skip' in 'Resolve duplicates' uploads only the non-duplicate "

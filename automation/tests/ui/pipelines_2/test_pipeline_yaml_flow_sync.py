@@ -37,6 +37,7 @@ UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 15_000
 
 
+@pytest.mark.tms("ELITEA-2028")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
@@ -174,6 +175,7 @@ def test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save(page, pipeli
     assert not failed_requests, f"No failed network requests expected at any step: {failed_requests}"
 
 
+@pytest.mark.tms("ELITEA-2067")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

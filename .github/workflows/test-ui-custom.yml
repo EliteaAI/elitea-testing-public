@@ -694,6 +694,15 @@ jobs:
           tar -xzf allure.tgz -C /opt
           echo "/opt/allure-2.27.0/bin" >> $GITHUB_PATH
 
+      # Only the reporting scripts — this job publishes artifacts, it does not
+      # run tests, so it has no reason to pull the whole suite.
+      - name: Checkout reporting scripts
+        uses: actions/checkout@v4
+        with:
+          path: repo
+          sparse-checkout: automation/scripts
+          sparse-checkout-cone-mode: true
+
       - name: Download all Allure results
         uses: actions/download-artifact@v4
         with:
@@ -726,6 +735,27 @@ jobs:
             # Fallback: download and use one of the pre-generated HTML reports
             echo "Attempting fallback to pre-generated report..."
           }
+
+      # Per-TMS-case results for the run summary. Reads the case ids the tests
+      # themselves declare via @pytest.mark.tms(...) (surfaced as Allure tag
+      # labels by automation/utils/tms_case_ids.py) — no TMS index at runtime.
+      # Never fails the job: a reporting aid must not red a green run.
+      - name: TMS case results summary
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 repo/automation/scripts/tms_run_report.py aggregated-results \
+            --json tms-case-results.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload TMS case results
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: tms-case-results
+          path: tms-case-results.json
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Checkout gh-pages branch
         uses: actions/checkout@v4

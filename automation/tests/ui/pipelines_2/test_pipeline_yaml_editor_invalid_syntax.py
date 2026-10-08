@@ -42,6 +42,7 @@ INVALID_TRANSITION_LINE = "transition END invalid_no_colon_xyz123"
 EXPECTED_ERROR_SUBSTRING = "Invalid pipeline YAML data"
 
 
+@pytest.mark.tms("ELITEA-2068")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

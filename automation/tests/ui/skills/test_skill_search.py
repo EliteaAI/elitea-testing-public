@@ -91,6 +91,7 @@ def three_search_skills(page, skill_api):
 class TestSkillSearch:
     """Search Skills by Name (P2/L3): partial, exact, no-match, clear."""
 
+    @pytest.mark.tms("ELITEA-1739")
     @allure.issue("ELITEA-1739", "onetest-ai Test Case link")
     @pytest.mark.p2
     @pytest.mark.regression

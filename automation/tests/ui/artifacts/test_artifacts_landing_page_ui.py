@@ -108,6 +108,7 @@ class TestArtifactsLandingPageUI:
     bucket can guarantee for the full run.
     """
 
+    @pytest.mark.tms("ELITEA-1805")
     @pytest.mark.p2
     @allure.title(
         "Artifacts landing page renders the correct empty-bucket UI"

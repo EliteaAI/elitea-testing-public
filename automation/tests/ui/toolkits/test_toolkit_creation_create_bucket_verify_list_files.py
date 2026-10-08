@@ -247,6 +247,7 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
     module docstring and AFS § Test Data / § Cleanup.
     """
 
+    @pytest.mark.tms("ELITEA-1866")
     @pytest.mark.p1
     @allure.title(
         "Create an Artifact toolkit (creates a bucket as a side effect), "

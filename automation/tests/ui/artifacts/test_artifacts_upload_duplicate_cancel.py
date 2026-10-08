@@ -101,6 +101,7 @@ class TestArtifactUploadDuplicateCancel:
     file count, and existing file metadata completely unchanged.
     """
 
+    @pytest.mark.tms("ELITEA-1832")
     @pytest.mark.p2
     @allure.title(
         "Cancel in 'Resolve duplicates' modal aborts entire upload, "

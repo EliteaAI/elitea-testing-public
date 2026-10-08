@@ -75,6 +75,7 @@ _PRINTER_VALUES = {
 _END_INTERNAL_ID = "EliteAPipelineEnd"  # ReactFlow's internal id for the synthetic END node post-reload
 
 
+@pytest.mark.tms("ELITEA-2016")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

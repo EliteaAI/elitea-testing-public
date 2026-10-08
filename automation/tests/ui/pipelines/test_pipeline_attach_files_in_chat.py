@@ -44,6 +44,7 @@ _MESSAGE_TEXT = "Please summarize the content of the attached file."
 _ATTACHMENT_ACK_KEYWORD = "attach"  # matches "attachment"/"attached" in either observed AI phrasing
 
 
+@pytest.mark.tms("ELITEA-2059")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
@@ -179,6 +180,7 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
         assert not console_errors, f"No step should introduce console errors: {console_errors}"
 
 
+@pytest.mark.tms("ELITEA-2066")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

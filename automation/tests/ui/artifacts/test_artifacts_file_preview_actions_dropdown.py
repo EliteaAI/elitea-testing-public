@@ -80,6 +80,7 @@ class TestArtifactFilePreviewActionsDropdown:
     copy, download fidelity, and a real backend delete.
     """
 
+    @pytest.mark.tms("ELITEA-1856")
     @pytest.mark.p2
     @allure.title(
         "Editor panel's actions dropdown contains Copy Content, Download, "

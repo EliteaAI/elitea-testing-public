@@ -70,6 +70,12 @@ class ToolkitConfig:
     credential_check: dict = field(default_factory=dict)  # {url, auth_env_vars} for pre-validation
     extra_form_fields: dict = field(default_factory=dict)
     skip_reason: str = ""              # if set, pytest.skip() with this reason
+    # TMS case this toolkit's parameterized runs cover. The parameterized tests
+    # cover a DIFFERENT case per toolkit, so the id cannot sit on the test
+    # function — it is attached per-param from here (see
+    # tests/ui/toolkits/test_toolkit_parameterized.py::_all_toolkit_ids).
+    # Empty means no TMS case maps to this toolkit yet.
+    tms_case_id: str = ""
 
 
 TOOLKIT_CONFIGS = {
@@ -99,6 +105,7 @@ TOOLKIT_CONFIGS = {
         # objects. NOT the "Branches in <owner>/<repo>:" prose — that is the
         # LLM's narration of the array (ELITEA-1140 AFS § Q1).
         tool_output_success_pattern=r'^\[\s*\{[^}]*"name"\s*:',
+        tms_case_id="ELITEA-1141",
     ),
 
     "jira": ToolkitConfig(
@@ -143,6 +150,7 @@ TOOLKIT_CONFIGS = {
         # "Found 0 projects:"; confluence's pattern deliberately admits `[]`) —
         # triage a future `[]` red as a data precondition, not an oracle bug.
         tool_output_success_pattern=r'^\[\s*\{\s*"id"\s*:\s*"[^"]*",\s*"key"\s*:',
+        tms_case_id="ELITEA-1140",
     ),
 
     "gitlab": ToolkitConfig(
@@ -251,5 +259,6 @@ TOOLKIT_CONFIGS = {
         # The non-empty branch names the observed first key ("id") so the
         # pattern cannot also match github's array of {"name", "protected"}.
         tool_output_success_pattern=r'^\[\s*(\]|\{\s*"id"\s*:)',
+        tms_case_id="ELITEA-1140",
     ),
 }

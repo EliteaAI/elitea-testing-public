@@ -58,6 +58,7 @@ def _config_sections(pipeline_page):
         yield attr, getattr(pipeline_page, attr)
 
 
+@pytest.mark.tms("ELITEA-2072")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2072_pipeline-collapse-left-panel.md",

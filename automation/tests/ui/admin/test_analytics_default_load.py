@@ -54,6 +54,7 @@ class TestAnalyticsDefaultLoad:
     """ELITEA-2310 — Analytics page loads with default date range and all
     seven tabs visible."""
 
+    @pytest.mark.tms("ELITEA-2310")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "settings-analytics/ELITEA-2310_analytics-page-default-load.md",

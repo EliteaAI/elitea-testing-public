@@ -80,6 +80,7 @@ class TestArtifactFilePreviewImageRestrictedControls:
     every edit-related control structurally restricted.
     """
 
+    @pytest.mark.tms("ELITEA-1862")
     @pytest.mark.p2
     @allure.title(
         "Image file opens directly as image preview with inactive/absent edit controls"

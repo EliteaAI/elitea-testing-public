@@ -292,6 +292,7 @@ class TestAgentPublishUnpublishVersion:
     """Publish a Draft version — status changes and Unpublish becomes
     available (ELITEA-1892, l2/p1)."""
 
+    @pytest.mark.tms("ELITEA-1892")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1892_publish-draft-version-status-changes-unpublish-available.md",
         "onetest-ai Test Case link",

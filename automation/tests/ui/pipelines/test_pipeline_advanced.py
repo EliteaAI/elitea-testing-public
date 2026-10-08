@@ -152,6 +152,7 @@ class TestYamlEditor:
 class TestDiscardChanges:
     """PIPE-022: Discard changes reverts unsaved edits."""
 
+    @pytest.mark.tms("ELITEA-2048")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_discard_reverts_name_change(self, page, pipeline_id, pipeline_api):

@@ -166,6 +166,7 @@ def _resolve_source_project_id(browser_cookies: list[dict]) -> int:
 class TestPipelineForkToDifferentProject:
     """Fork pipeline to a different project (ELITEA-2051, l2)."""
 
+    @pytest.mark.tms("ELITEA-2051")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2051_pipeline-fork.md",
         "onetest-ai Test Case link",

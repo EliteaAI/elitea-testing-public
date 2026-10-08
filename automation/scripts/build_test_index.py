@@ -18,6 +18,11 @@ import pytest
 # Markers to exclude from the index (internal/infrastructure markers)
 EXCLUDED_MARKERS = frozenset({
     'allure_link',
+    # Injected by utils.tms_case_ids from @pytest.mark.tms during collection —
+    # an Allure reporting detail, not a selectable marker. The case ids
+    # themselves are indexed separately as 'tms_case_ids'.
+    'allure_label',
+    'tms',
     'usefixtures',
     'parametrize',
     'filterwarnings',
@@ -54,10 +59,22 @@ class TestCollector:
                 .replace('::', '.')
             )
 
-            self.tests.append({
+            entry = {
                 'automation_test_id': automation_test_id,
                 'markers': markers,
-            })
+            }
+
+            # TMS case id(s) declared via @pytest.mark.tms(...) — hardcoded in the
+            # test source, so the index records the mapping as the tests assert it.
+            case_ids = sorted(dict.fromkeys(
+                str(arg)
+                for marker in item.iter_markers(name='tms')
+                for arg in marker.args
+            ))
+            if case_ids:
+                entry['tms_case_ids'] = case_ids
+
+            self.tests.append(entry)
 
 
 def main():

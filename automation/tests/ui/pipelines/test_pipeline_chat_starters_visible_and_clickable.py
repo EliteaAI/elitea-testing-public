@@ -37,6 +37,7 @@ _PIPELINE_DESCRIPTION = "Automated analysis for ELITEA-2053 chat starters"
 _CHAT_STARTER = "Analyze this data"
 
 
+@pytest.mark.tms("ELITEA-2053")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2053_pipeline-chat-starters.md",

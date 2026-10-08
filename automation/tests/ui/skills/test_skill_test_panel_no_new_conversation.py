@@ -35,6 +35,7 @@ CONVERSATIONS_ENDPOINT_MARKER = "elitea_core/conversations"
 class TestSkillTestPanelNoNewConversation:
     """ELITEA-2441 — SkillTestPanel does not create a new Chat conversation."""
 
+    @pytest.mark.tms("ELITEA-2441")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "skills/ELITEA-2441_test-panel-does-not-create-a-new-chat-conversation.md",

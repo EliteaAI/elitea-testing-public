@@ -44,6 +44,7 @@ def _is_known_1021_warning(msg) -> bool:
     )
 
 
+@pytest.mark.tms("ELITEA-2007")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

@@ -46,6 +46,7 @@ UI_ELEMENT_TIMEOUT = 10000         # UI elements
 class TestImageCreation:
     """Tests for chat image creation functionality."""
 
+    @pytest.mark.tms("ELITEA-0679")
     @pytest.mark.parametrize("prompt", [
         pytest.param(
             "Generate an image of a sunset over mountains",

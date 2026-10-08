@@ -50,6 +50,7 @@ def _is_known_554_toolkits_404(msg) -> bool:
     return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
 
 
+@pytest.mark.tms("ELITEA-1900")
 @pytest.mark.p3
 @pytest.mark.regression
 def test_agent_name_truncated_at_32_characters(page):

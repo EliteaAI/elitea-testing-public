@@ -73,6 +73,7 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
 class TestImportAgentRecreatesSkillsWithNewIds:
     """Import Agent with attached Skills recreates Skills with new IDs (ELITEA-1795, l3)."""
 
+    @pytest.mark.tms("ELITEA-1795")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1795_import-agent-recreates-skills-with-new-ids.md",
         "onetest-ai Test Case link",

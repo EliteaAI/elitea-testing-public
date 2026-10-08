@@ -52,6 +52,7 @@ def _add_node_and_get_new_id(pipeline_page, internal_type: str) -> str:
     return new_ids.pop()
 
 
+@pytest.mark.tms("ELITEA-2061")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

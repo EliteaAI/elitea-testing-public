@@ -58,6 +58,7 @@ def _url_version_id(page) -> str:
     return urlparse(page.url).path.rstrip("/").split("/")[-1]
 
 
+@pytest.mark.tms("ELITEA-2003")
 def test_delete_pipeline_version_falls_back_to_base(page, pipeline_id):
     """Deleting a non-base version via the three-dot menu removes it from
     the VERSION dropdown and the pipeline automatically falls back to

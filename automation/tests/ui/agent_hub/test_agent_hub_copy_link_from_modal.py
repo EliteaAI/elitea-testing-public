@@ -43,6 +43,7 @@ NAVIGATION_TIMEOUT = 15_000
 class TestAgentHubCopyLinkFromModal:
     """ELITEA-2359: Agent Hub — copy link from modal navigates to agent (l2, medium)."""
 
+    @pytest.mark.tms("ELITEA-2359")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent_hub/ELITEA-2359_copy-link-from-agent-hub-modal-navigates-to-agent.md",

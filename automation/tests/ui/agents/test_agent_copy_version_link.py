@@ -156,6 +156,7 @@ def _is_known_554_toolkits_404(msg) -> bool:
 class TestAgentCopyVersionLink:
     """Copy version link produces a version-specific URL (ELITEA-1898, l2/p2)."""
 
+    @pytest.mark.tms("ELITEA-1898")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1898_copy-version-link-produces-version-specific-url.md",
         "onetest-ai Test Case link",

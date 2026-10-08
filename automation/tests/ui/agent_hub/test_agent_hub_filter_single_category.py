@@ -49,6 +49,7 @@ EXPECTED_AGENT_NAMES = {
 class TestAgentHubFilterSingleCategory:
     """ELITEA-2352: Agent Hub — filter agents by single category (l3, medium)."""
 
+    @pytest.mark.tms("ELITEA-2352")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent-hub/ELITEA-2352_agent-hub-filter-agents-by-single-category.md",

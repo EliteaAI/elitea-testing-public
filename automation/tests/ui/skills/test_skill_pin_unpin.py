@@ -25,6 +25,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.re
 class TestSkillPinUnpin:
     """ELITEA-2435 — Skill detail-page pin/unpin round trip."""
 
+    @pytest.mark.tms("ELITEA-2435")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "skills/ELITEA-2435_skill-pin-unpin-flow.md",

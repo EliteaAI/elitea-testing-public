@@ -59,6 +59,7 @@ _DEFAULT_VARIABLES = ["input", "messages"]
 _EXPECTED_TYPE_OPTIONS = ["String", "Number", "List", "Json"]
 
 
+@pytest.mark.tms("ELITEA-2042")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
@@ -211,6 +212,7 @@ def test_state_panel_default_and_custom_variables(page, pipeline_id):
         assert not console_errors, f"No step should introduce console errors: {console_errors}"
 
 
+@pytest.mark.tms("ELITEA-2044")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

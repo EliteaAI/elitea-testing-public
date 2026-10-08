@@ -79,6 +79,7 @@ def _slug_chars(text: str) -> str:
     return "".join(ch for ch in text.lower() if ch.isalnum())
 
 
+@pytest.mark.tms("ELITEA-2012", "ELITEA-2050")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2012_pipeline-import-via-file.md",

@@ -63,6 +63,7 @@ EXPECTED_WELCOME_MESSAGE_EMPTY_TEXT = "No welcome message set – the agent will
 class TestAgentHubOpenAgentDetailModal:
     """ELITEA-2356: Agent Hub — open agent detail modal (l3, medium)."""
 
+    @pytest.mark.tms("ELITEA-2356")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent_hub/ELITEA-2356_agent-hub-open-agent-detail-modal.md",

@@ -34,6 +34,7 @@ CATALOG_AGENT_NAME = "User Story Creator"
 class TestAgentHubCloseAgentDetailModal:
     """ELITEA-2357: Agent Hub — close agent detail modal with X button (l3, medium)."""
 
+    @pytest.mark.tms("ELITEA-2357")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent_hub/ELITEA-2357_agent-hub-close-agent-detail-modal-with-x-button.md",

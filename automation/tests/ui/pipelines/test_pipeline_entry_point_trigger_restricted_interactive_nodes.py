@@ -62,6 +62,7 @@ ALL_THREE_ENABLED = {"chat_message": True, "schedule": True, "webhook": True}
 CHAT_MESSAGE_ONLY_ENABLED = {"chat_message": True, "schedule": False, "webhook": False}
 
 
+@pytest.mark.tms("ELITEA-2008")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

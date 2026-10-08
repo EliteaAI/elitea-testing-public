@@ -39,6 +39,7 @@ EXPECTED_RESPONSE_SUBSTRING = "PONG"
 class TestAgentEmbeddedChatSendMessage:
     """Embedded chat — Enter-key send yields a non-empty response (ELITEA-1874, p1)."""
 
+    @pytest.mark.tms("ELITEA-1874")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1874_embedded-chat-send-message-and-verify-response-is-non-empty.md",
         "onetest-ai Test Case link",

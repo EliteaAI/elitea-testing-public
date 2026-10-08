@@ -194,6 +194,7 @@ class TestAgentVersionSelectorOrder:
     """Version selector lists all versions in correct order with expected
     metadata (ELITEA-1891, l2/p1)."""
 
+    @pytest.mark.tms("ELITEA-1891")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1891_version-selector-lists-all-versions-in-correct-order.md",
         "onetest-ai Test Case link",

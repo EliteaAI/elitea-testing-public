@@ -179,6 +179,7 @@ class TestMessageActions:
 class TestConversationUIElements:
     """TC-CHAT-010 to TC-CHAT-013: Conversation UI element tests."""
 
+    @pytest.mark.tms("ELITEA-0501")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
@@ -302,6 +303,7 @@ class TestConversationUIElements:
                 f"(AUTOTEST_ATTACH_7X9). Got: {ai_response[:200]}..."
             )
 
+    @pytest.mark.tms("ELITEA-0501")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_internal_tools_panel_shows_all_tools(self, page, conversation_id):
@@ -343,6 +345,7 @@ class TestConversationUIElements:
 class TestHashSearch:
     """TC-CHAT-017 to TC-CHAT-018: # search functionality tests."""
 
+    @pytest.mark.tms("ELITEA-0501")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
@@ -365,6 +368,7 @@ class TestHashSearch:
                     "# mention feature may be disabled in this environment"
                 )
 
+    @pytest.mark.tms("ELITEA-0501")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1

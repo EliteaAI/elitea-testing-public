@@ -109,6 +109,7 @@ def _cleanup_soft_failures(
 class TestAgentHubLikeAgentListView:
     """ELITEA-2354: Agent Hub — like an agent from the list view (l3, medium)."""
 
+    @pytest.mark.tms("ELITEA-2354")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent_hub/ELITEA-2354_agent-hub-like-an-agent-from-the-list-view.md",

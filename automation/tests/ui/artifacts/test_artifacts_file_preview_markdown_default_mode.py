@@ -79,6 +79,7 @@ class TestArtifactFilePreviewMarkdownDefaultMode:
     rendered, with Save/Discard inactive and editing blocked.
     """
 
+    @pytest.mark.tms("ELITEA-1857")
     @pytest.mark.p2
     @allure.title(
         "Markdown file opens in Preview mode by default with Save/Discard inactive"

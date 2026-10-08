@@ -63,6 +63,7 @@ def _copy_link_via_menuitem(page, detail_page: PipelineDetailPage, menuitem, tim
     return page.evaluate("async () => await navigator.clipboard.readText()")
 
 
+@pytest.mark.tms("ELITEA-2049")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
