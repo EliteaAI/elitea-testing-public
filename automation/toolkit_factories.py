@@ -194,7 +194,7 @@ def confluence_toolkit_settings(credential_elitea_title: str) -> dict:
                 "elitea_title": credential_elitea_title,
                 "private": True,
             },
-            "space": settings.confluence_space,
+            "space_key": settings.confluence_space,
             "cloud": True,
             "limit": 50,
             # Explicitly select tools so the Test Settings dropdown is populated
