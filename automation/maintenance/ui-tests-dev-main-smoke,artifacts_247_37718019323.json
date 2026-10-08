@@ -1,0 +1,24 @@
+{
+  "runs": {
+    "20261008024826": {
+      "total": 27,
+      "details": [
+        {
+          "id": "ELITEA-2493",
+          "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2419",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for 'Add permission exception' locator in bucket permissions UI",
+          "reasoning": "The test failed consistently across all 3 retries with the same error: 'Locator.wait_for: Timeout 10000ms exceeded' on the 'Add permission exception' step. This is not a flaky/intermittent failure \u2014 it reproducibly fails every attempt. The sibling test (test_read_only_permission) has the exact same failure pattern and is already tracked as a known issue (#2403), strongly suggesting this is a real product regression in the bucket permissions feature that affects both tests. This test should be linked to the same or a related tracking issue."
+        },
+        {
+          "id": "ELITEA-2494",
+          "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2403"
+        }
+      ]
+    }
+  }
+}
