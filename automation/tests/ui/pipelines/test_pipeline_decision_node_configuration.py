@@ -51,6 +51,7 @@ _DESCRIPTION_TEMPLATE = (
 _OUTPUT_TARGETS = ["bug_responder", "feature_responder", "question_responder"]
 
 
+@pytest.mark.tms("ELITEA-2034")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

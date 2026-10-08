@@ -21,6 +21,7 @@ FILTER_RAIL_TIMEOUT = 10_000
 class TestCatalogEmptyState:
     """Agent Hub empty state verification when search matches zero agents."""
 
+    @pytest.mark.tms("ELITEA-2367")
     @pytest.mark.p2
     @pytest.mark.regression
     @pytest.mark.agent_hub

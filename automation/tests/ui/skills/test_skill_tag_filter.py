@@ -51,6 +51,7 @@ def cleanup_skill_ids(skill_api):
 class TestSkillTagFilter:
     """Filter the Skills grid by tag — shared tags, unique tags, and clear (ELITEA-1740)."""
 
+    @pytest.mark.tms("ELITEA-1740")
     @allure.issue("ELITEA-1740", "onetest-ai Test Case link")
     @pytest.mark.p3
     @pytest.mark.regression

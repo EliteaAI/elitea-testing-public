@@ -42,6 +42,7 @@ SAVE_RESPONSE_TIMEOUT = 15_000
 _USER_MESSAGE_VALUE = "Please review this response before continuing."
 
 
+@pytest.mark.tms("ELITEA-2014")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

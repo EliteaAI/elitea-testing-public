@@ -55,6 +55,7 @@ CONFIGURATIONS_URL_SUBSTRING = "/configurations/"
 class TestAIProvidersPageSections:
     """ELITEA-2392 — AI Providers page loads all integration sections without error."""
 
+    @pytest.mark.tms("ELITEA-2392")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "settings-ai-providers/ELITEA-2392_ai-providers-page-sections-load-without-error.md",

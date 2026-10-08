@@ -82,6 +82,7 @@ def _create_skill(page, name: str, instructions: str) -> int:
 class TestTildeMentionListsOnlyAttachedSkills:
     """`~` mention in Agent Instructions lists only currently attached Skills (ELITEA-1791, l3/p2)."""
 
+    @pytest.mark.tms("ELITEA-1791")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1791_tilde-mention-lists-only-attached-skills.md",
         "onetest-ai Test Case link",

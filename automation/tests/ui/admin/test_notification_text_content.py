@@ -45,6 +45,7 @@ NOTIFICATIONS_LIST_URL_MARKER = "sort_by=created_at"
 class TestNotificationTextContent:
     """ELITEA-2257 — Notification text content renders correctly for known notification types."""
 
+    @pytest.mark.tms("ELITEA-2257")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "settings-notifications/ELITEA-2257_notification-text-content-renders-correctly.md",

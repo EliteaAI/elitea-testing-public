@@ -32,6 +32,7 @@ ACTION_TIMEOUT = 10_000
 class TestSkillTestPanelResponseActions:
     """ELITEA-2442 — Read aloud / Copy to clipboard enabled+clickable on test-panel responses."""
 
+    @pytest.mark.tms("ELITEA-2442")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "skills/ELITEA-2442_read-aloud-and-copy-to-clipboard-are-enabled-on-test-p.md",

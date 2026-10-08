@@ -154,6 +154,7 @@ def _pick_fixture_model(credential_api) -> tuple[str, str]:
 class TestImportAgentValidMdFile:
     """Import a valid, hand-authored agent .md file (ELITEA-1901, l2)."""
 
+    @pytest.mark.tms("ELITEA-1901")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1901_import-valid-agent-md-file-appears-in-list-with-correct-config.md",
         "onetest-ai Test Case link",

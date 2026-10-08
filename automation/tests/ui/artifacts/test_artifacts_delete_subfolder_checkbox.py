@@ -111,6 +111,7 @@ class TestArtifactDeleteSubfolderCheckbox:
     every other bucket item is unaffected.
     """
 
+    @pytest.mark.tms("ELITEA-1847")
     @pytest.mark.p1
     @allure.title(
         "Selecting a subfolder via checkbox and confirming toolbar delete "
@@ -370,6 +371,7 @@ class TestArtifactDeleteSubfolderCheckbox:
     EXPECTED_CONFIRM_MESSAGE = "Are you sure to delete the selected files?"
     EXPECTED_SUCCESS_TOAST = "The selected files have been successfully deleted."
 
+    @pytest.mark.tms("ELITEA-1846")
     @pytest.mark.p1
     @allure.title(
         "Selecting 2 individual files via checkbox (partial selection) drives "

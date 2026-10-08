@@ -99,6 +99,7 @@ def _build_dedicated_agent_payload(name: str) -> dict:
 class TestAgentRemoveVariable:
     """Remove a variable and verify removal persists (ELITEA-1884, p3)."""
 
+    @pytest.mark.tms("ELITEA-1884")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1884_remove-a-variable-and-verify-removal-persists.md",
         "onetest-ai Test Case link",

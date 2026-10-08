@@ -33,6 +33,7 @@ _PIPELINE_DESCRIPTION = "Pipeline for welcome message automation case"
 _WELCOME_MESSAGE = "Hello! How can I help you today?"
 
 
+@pytest.mark.tms("ELITEA-2052")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2052_pipeline-welcome-message.md",

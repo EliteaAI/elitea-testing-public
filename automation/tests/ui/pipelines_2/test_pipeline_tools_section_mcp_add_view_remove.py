@@ -36,6 +36,7 @@ UI_ELEMENT_TIMEOUT = 10_000
 _EXPECTED_TOOL = "ask_wiki_question"
 
 
+@pytest.mark.tms("ELITEA-2065")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

@@ -28,6 +28,7 @@ _PRINTER_VALUE = "## GitHub Issue Triage Complete\\n\\n{triage_summary}"
 _FINAL_MESSAGE = "Type 'ok' to end"
 
 
+@pytest.mark.tms("ELITEA-2039")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

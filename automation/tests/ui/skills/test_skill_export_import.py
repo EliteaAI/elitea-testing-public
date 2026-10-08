@@ -62,6 +62,7 @@ def cleanup_skill_ids(skill_api):
 class TestSkillExportImport:
     """Export a skill's base version and import it as a new skill (ELITEA-1737)."""
 
+    @pytest.mark.tms("ELITEA-1737")
     @allure.issue("ELITEA-1737", "onetest-ai Test Case link")
     @pytest.mark.p2
     @pytest.mark.regression
@@ -300,6 +301,7 @@ class TestSkillExportImportNonBaseVersion:
     the source skill's original base-version content.
     """
 
+    @pytest.mark.tms("ELITEA-1738")
     @allure.issue("ELITEA-1738", "onetest-ai Test Case link")
     @pytest.mark.p3
     @pytest.mark.regression
@@ -579,6 +581,7 @@ class TestSkillImportMissingFrontmatter:
     See test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md
     """
 
+    @pytest.mark.tms("ELITEA-2438")
     @allure.issue("ELITEA-2438", "onetest-ai Test Case link")
     @pytest.mark.p2
     @pytest.mark.regression

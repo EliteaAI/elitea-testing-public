@@ -58,6 +58,7 @@ def _extract_node_yaml_block(yaml_text: str, node_id: str) -> str:
     return "\n".join(lines[start:end])
 
 
+@pytest.mark.tms("ELITEA-2032")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2032_pipeline-edge-deletion.md",

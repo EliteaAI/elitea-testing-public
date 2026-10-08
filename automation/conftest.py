@@ -78,6 +78,13 @@ from fixtures.cleanup_fixtures import (
 )
 
 # ---------------------------------------------------------------------------
+# Plugins
+# ---------------------------------------------------------------------------
+# utils.tms_case_ids provides @pytest.mark.tms(...) — prefixes the Allure test
+# name with the TMS case id and adds it as an Allure tag + link.
+pytest_plugins = ["utils.tms_case_ids"]
+
+# ---------------------------------------------------------------------------
 # Configuration constants (sourced from settings — backed by .env.test)
 # ---------------------------------------------------------------------------
 ELITEA_URL = settings.elitea_url

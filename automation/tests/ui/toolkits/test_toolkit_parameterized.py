@@ -66,9 +66,19 @@ def _enabled_toolkit_ids() -> list[str]:
     return enabled
 
 
-def _all_toolkit_ids() -> list[str]:
-    """Return all toolkit IDs for skip-aware parameterization."""
-    return list(TOOLKIT_CONFIGS.keys())
+def _all_toolkit_ids() -> list:
+    """Return all toolkit IDs for skip-aware parameterization.
+
+    Each toolkit covers a different TMS case, so the `tms` marker cannot sit on
+    the test function — it is attached per-param from the toolkit's own
+    `tms_case_id`. `id=` keeps the node id the bare toolkit id (`[github]`),
+    which is what the TMS `automation_test_id` refs already point at.
+    """
+    params = []
+    for tk_id, cfg in TOOLKIT_CONFIGS.items():
+        marks = [pytest.mark.tms(cfg.tms_case_id)] if cfg.tms_case_id else []
+        params.append(pytest.param(tk_id, marks=marks, id=tk_id))
+    return params
 
 
 # ---------------------------------------------------------------------------

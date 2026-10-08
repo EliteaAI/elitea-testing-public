@@ -93,6 +93,7 @@ class TestPipelineDashboard:
                 f"Pipeline '{pipeline_name}' should appear in the dashboard"
             )
 
+    @pytest.mark.tms("ELITEA-2024")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2024_pipeline-dashboard-view-toggle-card-vs-table.md", "onetest-ai Test Case link")
     @pytest.mark.p1
@@ -245,6 +246,7 @@ class TestCreatePipeline:
                 "Save should be disabled without description"
             )
 
+    @pytest.mark.tms("ELITEA-2020")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2020_create-pipeline-minimal.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_create_pipeline_minimal_via_sidebar_button(self, page, pipeline_api):
@@ -460,6 +462,7 @@ class TestDeletePipeline:
             except Exception:
                 pass
 
+    @pytest.mark.tms("ELITEA-2022")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2022_delete-pipeline.md", "onetest-ai Test Case link")
     @pytest.mark.p1
@@ -582,6 +585,7 @@ class TestSearchPipeline:
                 "zzzz_nonexistent_pipeline_12345", timeout=3000,
             ), "Non-existent pipeline should not appear in results"
 
+    @pytest.mark.tms("ELITEA-2023")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2023_pipeline-dashboard-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_search_placeholder_and_dashboard_grid_filters_and_clears(self, page, pipeline_api):

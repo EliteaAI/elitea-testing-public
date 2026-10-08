@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression, pytest.mark.new_verified]
 
 
+@pytest.mark.tms("ELITEA-2025")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
     "pipelines/ELITEA-2025_pipeline-dashboard-pin-to-top.md",

@@ -41,6 +41,7 @@ PUBLIC_APPLICATIONS_PATH = "/public_applications/prompt_lib/"
 class TestAgentHubSearchBarFiltersInRealTime:
     """ELITEA-2363: Agent Hub — search bar filters agents in real time (l3, medium)."""
 
+    @pytest.mark.tms("ELITEA-2363")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent-hub/ELITEA-2363_agent-hub-search-bar-filters-agents-in-real-time.md",

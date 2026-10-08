@@ -266,6 +266,7 @@ class TestExecutePipelineStreaming:
     MODEL_DISPLAY_NAME = "GPT-5 mini"
     MIN_RESPONSE_LENGTH = 200
 
+    @pytest.mark.tms("ELITEA-2017", "ELITEA-2058")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/pipelines/"

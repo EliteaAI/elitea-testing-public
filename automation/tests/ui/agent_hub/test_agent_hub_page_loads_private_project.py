@@ -61,6 +61,7 @@ OTHER_CATEGORY_LABELS = [
 class TestAgentHubPageLoadsPrivateProject:
     """ELITEA-2350: Agent Hub — page loads successfully for Private project (l2, high)."""
 
+    @pytest.mark.tms("ELITEA-2350")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent-hub/ELITEA-2350_agent-hub-page-loads-successfully-for-private-project.md",

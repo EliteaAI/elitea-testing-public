@@ -45,6 +45,7 @@ NAVIGATION_TIMEOUT = 15_000
 VERSION_NAME = "v1_test"
 
 
+@pytest.mark.tms("ELITEA-2002", "ELITEA-2063")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2002_create-pipeline-version.md",

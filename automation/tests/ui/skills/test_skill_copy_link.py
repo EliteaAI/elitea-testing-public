@@ -97,6 +97,7 @@ def _version_id_segment(url: str, skill_id) -> str | None:
 class TestSkillCopyLink:
     """Copy Link copies a valid URL pointing to the correct Skill and version (ELITEA-2439, l2/p2)."""
 
+    @pytest.mark.tms("ELITEA-2439")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "skills/ELITEA-2439_copy-link-copies-a-valid-url-pointing-to-the-correct-skill-and-version.md",

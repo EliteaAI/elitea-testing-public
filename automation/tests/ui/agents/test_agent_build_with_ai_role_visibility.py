@@ -47,6 +47,7 @@ class TestAgentBuildWithAIButtonRoleVisibility:
     verified live here for the admin-equivalent role. The editor-role half
     is out of scope for this spec (see module docstring)."""
 
+    @pytest.mark.tms("ELITEA-1903")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agents/build_with_ai/ELITEA-1903_build-with-ai-button-visible-for-admin-and-editor-roles.md",

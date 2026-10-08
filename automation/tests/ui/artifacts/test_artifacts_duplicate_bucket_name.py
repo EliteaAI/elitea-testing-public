@@ -93,6 +93,7 @@ class TestArtifactDuplicateBucketName:
     before and after the duplicate-creation attempt.
     """
 
+    @pytest.mark.tms("ELITEA-1809")
     @pytest.mark.p2
     @allure.title("Duplicate bucket name is rejected; no duplicate is created")
     @allure.severity(allure.severity_level.NORMAL)

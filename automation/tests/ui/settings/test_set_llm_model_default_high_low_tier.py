@@ -83,6 +83,7 @@ def _display_name_for(items: list, name: str) -> str:
 class TestSetLLMModelTiers:
     """ELITEA-2397 — Set a LLM model as Default / High-tier / Low-tier."""
 
+    @pytest.mark.tms("ELITEA-2397", "ELITEA-2414")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "settings/ai-configuration/ELITEA-2397_set-a-llm-model-as-default-high-tier-low-tier.md",

@@ -65,6 +65,7 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
 class TestGhostSkillAfterAgentRemoved:
     """Ghost skill not shown after Agent participant removed (ELITEA-1793, l3)."""
 
+    @pytest.mark.tms("ELITEA-1793")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1793_ghost-skill-not-shown-after-agent-participant-removed.md",
         "onetest-ai Test Case link",

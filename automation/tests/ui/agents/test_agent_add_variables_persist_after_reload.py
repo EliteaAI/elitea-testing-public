@@ -95,6 +95,7 @@ def _is_save_response(response: Response) -> bool:
 class TestAgentAddVariablesPersistAfterReload:
     """Add two variables and verify they persist after reload (ELITEA-1883, p3)."""
 
+    @pytest.mark.tms("ELITEA-1883")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1883_add-two-variables-and-verify-they-persist-after-reload.md",
         "onetest-ai Test Case link",

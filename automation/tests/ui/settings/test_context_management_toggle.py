@@ -73,6 +73,7 @@ def _is_autosave_get_response(response: Response) -> bool:
 class TestContextManagementToggle:
     """Verify the Context Management toggle mounts/unmounts token fields + Automatic Summarization."""
 
+    @pytest.mark.tms("ELITEA-2374")
     def test_context_management_toggle_enables_disables_fields(self, page):
         """Toggling Context Management OFF unmounts token fields + summarization; ON restores them.
 
@@ -208,6 +209,7 @@ class TestContextManagementToggle:
                 logger.info("Cleanup: restoring Context Management to ON after test failure")
                 profile.enable_context_management()
 
+    @pytest.mark.tms("ELITEA-2377")
     def test_automatic_summarization_toggle_enables_disables_own_fields(self, page):
         """Toggling Automatic Summarization OFF disables its own fields; ON re-enables them (ELITEA-2377).
 
@@ -345,6 +347,7 @@ class TestContextManagementToggle:
                 logger.info("Cleanup: restoring Automatic Summarization to ON after test failure")
                 profile.enable_automatic_summarization()
 
+    @pytest.mark.tms("ELITEA-2378")
     def test_target_summary_tokens_range_validation(self, page):
         """Target Summary Tokens rejects values outside [100, 4096] client-side (ELITEA-2378).
 

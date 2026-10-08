@@ -24,6 +24,7 @@ from pages.agent_hub_page import AgentHubPage
 class TestAgentHubTrendingCategory:
     """Test suite for Agent Hub Trending category filter behavior (ELITEA-2366)."""
 
+    @pytest.mark.tms("ELITEA-2366")
     def test_agent_hub_trending_category_displays_agents(self, page: Page):
         """Verify Trending category filter shows agents when selected.
 

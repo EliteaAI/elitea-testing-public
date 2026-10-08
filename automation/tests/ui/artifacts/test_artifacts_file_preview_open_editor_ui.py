@@ -78,6 +78,7 @@ class TestArtifactFilePreviewOpenEditorUI:
     menu, close icon, and URL update.
     """
 
+    @pytest.mark.tms("ELITEA-1851")
     @pytest.mark.p1
     @allure.title(
         "Opening a supported text file via the View/Edit icon shows the "

@@ -31,6 +31,7 @@ _TASK_VALUE = "User Input: {input}"
 _CHAT_HISTORY_VALUE = "[]"
 
 
+@pytest.mark.tms("ELITEA-2004")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
@@ -198,6 +199,7 @@ _WALK_FIXED_VALUE = "Extract these four values from the given input"
 _WALK_FSTRING_VALUE = "input: {input}"
 
 
+@pytest.mark.tms("ELITEA-2040")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
@@ -348,6 +350,7 @@ _YAML_CHAT_HISTORY_VALUE = "[]"
 _YAML_OUTPUT_VARIABLE = "output1"
 
 
+@pytest.mark.tms("ELITEA-2027")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

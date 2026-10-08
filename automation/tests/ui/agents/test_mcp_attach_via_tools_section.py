@@ -53,6 +53,7 @@ logger = logging.getLogger("elitea.tests.agents")
 class TestMcpAttachViaToolsSection:
     """Attach MCP via Tools Section (ELITEA-1950, l3)."""
 
+    @pytest.mark.tms("ELITEA-1950")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/mcp/"

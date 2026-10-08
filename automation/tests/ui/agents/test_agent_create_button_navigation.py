@@ -38,6 +38,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 NAVIGATION_TIMEOUT = 15000
 
 
+@pytest.mark.tms("ELITEA-1870")
 @pytest.mark.p0
 @pytest.mark.regression
 def test_create_button_navigates_to_create_agent_page(page):

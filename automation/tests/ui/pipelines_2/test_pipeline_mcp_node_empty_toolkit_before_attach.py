@@ -35,6 +35,7 @@ _REPO_NAME_VALUE = "EliteaAI/elitea-testing-public"
 _QUESTION_VALUE = "What is this repository about?"
 
 
+@pytest.mark.tms("ELITEA-1955")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/mcp/"

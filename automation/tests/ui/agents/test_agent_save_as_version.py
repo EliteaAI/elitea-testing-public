@@ -87,6 +87,7 @@ class TestAgentSaveAsVersion:
     (ELITEA-1888, lcritical/p0), extended with the switch-back round trip
     (ELITEA-1890, lextend)."""
 
+    @pytest.mark.tms("ELITEA-1888", "ELITEA-1890")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1888_save-as-version-creates-named-version-visible-in-dropdown.md",
         "onetest-ai Test Case link (ELITEA-1888)",

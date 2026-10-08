@@ -127,6 +127,7 @@ class TestArtifactsUploadMultipleFiles:
     than the duplicate-detection/Cancel flow that test exercises.
     """
 
+    @pytest.mark.tms("ELITEA-1826")
     @pytest.mark.p1
     @allure.title(
         "Upload multiple files at once via the empty-state upload button"

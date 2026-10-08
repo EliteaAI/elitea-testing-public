@@ -58,6 +58,7 @@ def _is_known_1021_warning(msg) -> bool:
     )
 
 
+@pytest.mark.tms("ELITEA-2005")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
@@ -218,6 +219,7 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
     )
 
 
+@pytest.mark.tms("ELITEA-2041")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

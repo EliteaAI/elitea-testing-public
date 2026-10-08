@@ -42,6 +42,7 @@ _ATTACHMENTS_VARIABLE = "input_attachments"
 _DEFAULT_VARIABLES = ["input", "messages"]
 
 
+@pytest.mark.tms("ELITEA-2043")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

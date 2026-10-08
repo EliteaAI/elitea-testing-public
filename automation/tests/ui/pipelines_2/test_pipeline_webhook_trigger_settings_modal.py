@@ -29,6 +29,7 @@ UI_ELEMENT_TIMEOUT = 10_000
 MODAL_TIMEOUT = 10_000
 
 
+@pytest.mark.tms("ELITEA-2006")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
