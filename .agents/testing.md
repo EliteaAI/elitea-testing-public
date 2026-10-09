@@ -116,6 +116,26 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 New tests carry: priority marker + feature marker + `regression` (and `smoke` only
 for critical-path fast tests).
 
+## TMS case id in the test (mandatory on case-derived tests)
+
+**A test built from a TMS case declares that case id in its own source, so the
+case id reaches the report** — the run shows which TMS case each result belongs
+to without anyone cross-referencing a spreadsheet. The implementer writes it
+while building the test; it is not a back-write.
+
+On this project the declaration is `@pytest.mark.tms("ELITEA-2003")`. Forms,
+multi-case and per-parameter usage, and what it renders:
+`.claude/rules/ui-tests.md` / `.claude/rules/api-tests.md` § Markers; mechanism:
+`automation/utils/tms_case_ids.py` (its module docstring).
+
+A test with no TMS case behind it (framework unit tests, helper tests written
+outside any case) names no case id — there is none to name. That is the only
+exemption, not a loophole for a case-derived test.
+
+Distinct from the `automation_test_id` back-write below: that one is written by
+the orchestrator post-merge and is a machine correlation key. Both name the same
+case; neither substitutes for the other.
+
 ## Coverage tagging (TMS traceability)
 
 The `automation_test_id` back-written to the TMS case is the **CI correlation key**.
@@ -254,7 +274,8 @@ with allure.step("Step 2 — Send the combined multi-file prompt via embedded ch
 ```
 
 One `allure.step` per AFS step (assertions live inside their step's block). A test
-without step wrapping is `CHANGES_REQUESTED` at review.
+without step wrapping is `CHANGES_REQUESTED` at review — same severity as a
+case-derived test missing its TMS case id (§ TMS case id in the test above).
 
 ## Reporters & evidence
 

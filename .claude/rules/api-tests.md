@@ -366,6 +366,24 @@ def test_something(agent_api):
     pass
 ```
 
+**TMS case marker — mandatory on every case-derived test:**
+
+```python
+@pytest.mark.tms("ELITEA-0679")   # the TMS case this test automates
+@pytest.mark.api
+@pytest.mark.p0
+def test_something(agent_api):
+    pass
+```
+
+Same rule as the UI side: declare the TMS case id(s) with `@pytest.mark.tms(...)`
+so the id reaches the Allure report (name prefix, tag, link). Single id, several
+ids (`@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")`), or per-`pytest.param` for
+a parametrized test covering a different case per parameter — see
+`.claude/rules/ui-tests.md` § Markers for the forms. No TMS case backs the test
+→ no marker, the only exemption. Policy: `.agents/testing.md` § TMS case id in
+the test.
+
 ## Common Anti-Patterns
 
 ❌ **Don't test implementation details:**
