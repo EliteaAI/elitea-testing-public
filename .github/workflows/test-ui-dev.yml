@@ -51,9 +51,11 @@ jobs:
       - name: Add report links to run summary
         id: links
         env:
-          SUITES: ${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || inputs.suite || 'all' }}
+          SUITES: ${{ inputs.custom_suites || inputs.suite || 'all' }}
+          # Schedule forces results processing ON (so the maintenance report is fed)
+          # but NOT TMS publishing — that follows the dispatch default, i.e. off.
           RESULTS_PROCESSING: ${{ github.event_name == 'schedule' || inputs.enable_results_processing == true }}
-          PUBLISH_TO_TMS: ${{ github.event_name == 'schedule' || inputs.publish_to_tms == true }}
+          PUBLISH_TO_TMS: ${{ inputs.publish_to_tms == true }}
         run: |
           # Build run name (github.run_name not available in called workflow context)
           RUN_NAME="UI Tests DEV [${{ github.ref_name }}] [${SUITES}]"
@@ -88,13 +90,20 @@ jobs:
     uses: ./.github/workflows/test-ui-custom.yml
     with:
       environment: dev
-      suite: ${{ github.event_name == 'schedule' && 'smoke' || inputs.suite || 'all' }}
-      custom_suites: ${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || '' }}
+      # A scheduled run uses the dispatch defaults: `inputs.*` are all empty on a
+      # schedule event, so every fallback below applies — i.e. the nightly runs the
+      # FULL suite ('all' -> every dir under automation/tests/ui), stable markers.
+      # The one thing the schedule still forces is results processing (see the
+      # `links` and `notify` jobs) so the maintenance report keeps being fed.
+      suite: ${{ inputs.suite || 'all' }}
+      custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
       markers: ${{ inputs.markers || 'not new and not blocked and not flaky' }}
       ref: ${{ inputs.ref || 'main' }}
-      publish_to_tms: ${{ github.event_name == 'schedule' || inputs.publish_to_tms }}
-      tms_report_suffix: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.tms_report_suffix || '' }}
+      publish_to_tms: ${{ inputs.publish_to_tms || false }}
+      tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}
+      # Inert unless publish_to_tms is true — the correlation steps live inside the
+      # callee's `publish-tms` job, which is itself gated on that input.
       update_correlation: true
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
