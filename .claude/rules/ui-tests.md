@@ -375,6 +375,26 @@ def test_something(page):
 - `p2` - Medium priority
 - `p3` - Low priority
 
+**TMS case marker — mandatory on every case-derived test:**
+
+```python
+@pytest.mark.tms("ELITEA-0679")   # the TMS case this test automates
+@pytest.mark.p1
+@pytest.mark.ui
+def test_something(page):
+    pass
+```
+
+A new test that automates a TMS case declares the case id with
+`@pytest.mark.tms(...)` — one id, several ids
+(`@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")`), or per-`pytest.param` for a
+parametrized test covering different cases per parameter. No TMS case backs it
+(framework unit tests, helper/smoke tests written outside a case) → no marker;
+that's the only exemption, never a loophole for a test that does trace to a
+case. Full policy, mechanism and the canonical example:
+`.agents/testing.md` § TMS case marker. A case-derived test merged without it
+is `CHANGES_REQUESTED`, same as a missing `allure.step` wrap.
+
 ## UI Test Coverage Requirements
 
 **Every UI feature needs these test types:**

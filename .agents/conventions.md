@@ -27,6 +27,10 @@ This file only records what those don't.
   bodies; every non-testid one carries `suggested_testid=`** (validated at import).
 - **Step reporting:** test steps wrapped in `with allure.step("Step N — …"):` so they
   surface in Allure reports (see `.agents/testing.md` § Step reporting).
+- **TMS traceability:** a case-derived test carries `@pytest.mark.tms("ELITEA-<id>")`
+  (several ids, or per-`pytest.param`, when one test covers several cases) — see
+  `.agents/testing.md` § TMS case marker. Tests with no backing TMS case (framework
+  unit tests, helper/smoke tests) carry no `tms` marker.
 - **Config:** everything through `from config import settings` (pydantic-settings);
   no `os.environ` reads scattered in tests; `.env.test` is authoritative over shell env.
 - **Lint:** ruff — `E,F,I,W,UP`, line length 120, target py311. Run
@@ -49,6 +53,7 @@ This file only records what those don't.
 - Never populate `LocatorDescriptor(fallback=…)` — dead code, strictly forbidden
 - Never build locators inside methods or spec files — class fields only
 - Never ship a test whose steps aren't wrapped in `allure.step`
+- Never ship a case-derived test without its `@pytest.mark.tms("ELITEA-<id>")`
 - Never commit/print `.env` / `.env.test`
 - Never edit the frontend source — it is a read-only reference, not a work surface
 - No `sleep`/`waitForTimeout` — framework waits only
