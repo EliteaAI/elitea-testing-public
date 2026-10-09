@@ -21,7 +21,7 @@ from playwright.sync_api import Download, Locator, Page, Response, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.artifacts")
@@ -2673,6 +2673,125 @@ class ArtifactsPage(BasePage):
     BUCKET_ROW_TESTID = '[data-testid="artifacts-bucket-row-{}"]'
     BUCKET_MENU_BUTTON_TESTID = '[data-testid="bucket-menu-{}-menu-button"]'
 
+    # --- Manage Permissions modal (ladder rungs — DEV serves no testids here) ---
+    # ManagePermissionsModal passes no testid props to Modal.BaseModal, so every
+    # handle below renders with data-testid=undefined on DEV: rung 1 is simply
+    # unavailable and each declaration carries the testid it should get.
+    # Rung 2 is unavailable: BaseModal hardcodes aria-labelledby="alert-dialog-title"
+    # but renders its heading with id="variables-dialog-title", so the reference
+    # dangles and the dialog's computed accessible name is EMPTY — verified on DEV
+    # (get_by_role("dialog", name="Manage Permissions") matches 0). Rungs 3/4 cannot
+    # tell one BaseModal from another either, so the title heading is the only
+    # non-positional discriminator.
+    permissions_modal = LocatorDescriptor(
+        xpath='//div[@role="dialog"][.//h2[normalize-space()="Manage Permissions"]]',
+        description=(
+            "Manage Permissions dialog. No testid (ManagePermissionsModal passes "
+            "none), no accessible name (BaseModal's aria-labelledby points at a "
+            "non-existent id), no label, and no id/attribute CSS that distinguishes "
+            "it from any other BaseModal — so the title <h2> is the discriminator."
+        ),
+        suggested_testid="manage-permissions-modal",
+    )
+    # BaseModal's close control is an icon button: aria-label="Close" (capital C)
+    # and NO text node at all — the glyph is an injected <svg> via
+    # startIcon={<CloseIcon />}. Both halves of the previous selector
+    # ('button[aria-label="close"], button:has-text("×")') matched nothing.
+    PERMISSIONS_MODAL_CLOSE_BUTTON = ScopedLocator(
+        role="button",
+        name="Close",
+        exact=True,
+        description="BaseModal close icon button; accessible name comes from aria-label=\"Close\"",
+        suggested_testid="manage-permissions-close-button",
+    )
+    # MUI loading placeholder rendered by BucketAccessTable while the
+    # permissions + users queries are in flight. A skeleton has no role, label
+    # or stable id, so this is a terminal css rung on MUI's public class.
+    PERMISSIONS_MODAL_SKELETON = ScopedLocator(
+        css=".MuiSkeleton-root",
+        description="loading placeholder; no higher rung exists for a skeleton (no role/label/id)",
+        suggested_testid="manage-permissions-loading-skeleton",
+    )
+    # Matches both post-fetch branches: the grid toolbar's "Add exception"
+    # button and the empty state's "Add Exceptions" CTA (substring, case
+    # insensitive). Present only once the skeletons are gone — which is what
+    # makes it the modal's content-ready signal.
+    PERMISSIONS_ADD_EXCEPTION_BUTTON = ScopedLocator(
+        role="button",
+        name="Add exception",
+        description="toolbar add-exception button, or the empty state's 'Add Exceptions' CTA",
+        suggested_testid="bucket-access-add-exception-button",
+    )
+    # The exceptions "table" is a CSS grid of <Box> divs — there is no <tr> in
+    # this modal, which is why the previous 'tr:has-text(...)' primary was dead
+    # code. BucketAccessTable passes none of GridTableRow's testid props, and
+    # the row carries only an emotion-generated class, so the only non-positional
+    # handle is a text-anchored xpath: the innermost div that both contains the
+    # user's text and owns an "Edit exception" control. Takes the user
+    # name/email TWICE — .within(modal, user, user).
+    PERMISSION_EXCEPTION_ROW = ScopedLocator(
+        xpath=(
+            './/div[.//*[@aria-label="Edit exception"]][contains(normalize-space(.), "{}")]'
+            '[not(.//div[.//*[@aria-label="Edit exception"]]'
+            '[contains(normalize-space(.), "{}")])]'
+        ),
+        description=(
+            "exception row: grid <Box> div with no testid, no role and only an emotion "
+            "css-* class, so rungs 1-4 cannot address it; innermost-match predicate "
+            "keeps it non-positional"
+        ),
+        suggested_testid="bucket-access-exception-row-{}",
+    )
+    # MUI puts the Tooltip's a11y attribute on its direct child — the
+    # <Box component="span"> wrapper — not on the button, so the button has no
+    # accessible name of its own and rung 2 cannot reach it.
+    PERMISSION_EXCEPTION_EDIT_BUTTON = ScopedLocator(
+        css='[aria-label="Edit exception"] button',
+        description=(
+            "pencil icon button; its accessible name sits on the Tooltip's span wrapper, "
+            "not on the button, so role+name does not resolve"
+        ),
+        suggested_testid="bucket-access-exception-edit-button",
+    )
+    # --- Edit exception dialog (opened by the pencil) ---
+    # Same BaseModal accessible-name defect as permissions_modal above — the
+    # title heading is the only non-positional discriminator.
+    edit_exception_dialog = LocatorDescriptor(
+        xpath='//div[@role="dialog"][.//h2[normalize-space()="Edit exception"]]',
+        description=(
+            "Edit exception dialog. No testid, and BaseModal's dangling "
+            "aria-labelledby leaves the dialog with an empty accessible name, so "
+            "rungs 1-4 cannot address it; anchored on its title <h2>."
+        ),
+        suggested_testid="edit-exception-modal",
+    )
+    # MUI Select rendered with a stable generated id (`simple-select-{label}`),
+    # not a generated class — a legitimate css rung.
+    EDIT_EXCEPTION_PERMISSION_SELECT = ScopedLocator(
+        css="#simple-select-Permissions",
+        description="MUI Select trigger; stable id, no role+name of its own",
+        suggested_testid="edit-exception-permission-select",
+    )
+    # Options DO carry testids on DEV — rung 1, templated by permission value.
+    PERMISSION_OPTION_TESTID = '[data-testid="select-option-{}"]'
+    # UI label -> the option's testid suffix. Keyed by the exact strings the
+    # tests pass (test_bucket_permissions_api.py's PERMISSION_* constants), so a
+    # typo fails loudly here instead of timing out on a dropdown.
+    PERMISSION_OPTION_VALUES = {
+        "Read/write (default)": "read_write",
+        "Read-only": "read_only",
+        "No access": "no_access",
+    }
+    #: The permission that IS the default — selecting it removes the exception.
+    PERMISSION_READ_WRITE_DEFAULT = "Read/write (default)"
+    EDIT_EXCEPTION_SAVE_BUTTON = ScopedLocator(
+        role="button",
+        name="Save",
+        exact=True,
+        description="Save button inside the Edit exception dialog",
+        suggested_testid="edit-exception-save-button",
+    )
+
     @action("Open Manage Permissions modal")
     def open_manage_permissions(self, bucket_name: str, timeout: int = 10000) -> None:
         """Open the Manage Permissions modal for a bucket via its DotMenu.
@@ -2747,10 +2866,32 @@ class ArtifactsPage(BasePage):
         self._wait_for_permissions_modal(timeout=timeout)
         logger.info("Manage Permissions modal opened for '%s'", bucket_name)
 
-    def _wait_for_permissions_modal(self, timeout: int = 10000) -> None:
-        """Wait for the Manage Permissions modal to be visible."""
-        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+    def _wait_for_permissions_modal(self, timeout: int = 10000) -> Locator:
+        """Wait for the Manage Permissions modal to be visible AND loaded.
+
+        The dialog shell appears long before its body: `BucketAccessTable`
+        gates on two RTK-Query calls (`isLoadingPerms || isLoadingUsers`) and
+        renders five MUI skeletons while either is in flight. Waiting on the
+        shell alone hands back a modal whose exceptions list does not exist
+        yet, which made `user_has_exception()` answer `False` for a user that
+        does have an exception.
+
+        Content-ready = the skeletons are gone AND the post-fetch body is
+        rendered. Both branches (the populated grid and the "No exceptions
+        added yet" empty state) expose an add-exception control, so that one
+        handle covers either outcome.
+
+        Returns the modal locator so callers can scope into it.
+        """
+        modal = self.permissions_modal
         modal.wait_for(state="visible", timeout=timeout)
+        skeleton = self.PERMISSIONS_MODAL_SKELETON.within(modal).first
+        if skeleton.count():
+            skeleton.wait_for(state="detached", timeout=timeout)
+        self.PERMISSIONS_ADD_EXCEPTION_BUTTON.within(modal).first.wait_for(
+            state="visible", timeout=timeout
+        )
+        return modal
 
     @action("Add permission exception")
     def add_permission_exception(
@@ -2876,39 +3017,40 @@ class ArtifactsPage(BasePage):
         logger.info("Editing permission exception: user=%s, new_permission=%s",
                     user_name_or_email, new_permission)
 
-        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        try:
+            option_value = self.PERMISSION_OPTION_VALUES[new_permission]
+        except KeyError:
+            raise ValueError(
+                f"Unknown permission {new_permission!r}; expected one of "
+                f"{sorted(self.PERMISSION_OPTION_VALUES)}"
+            ) from None
 
-        # Find the user row and click edit button
-        user_row = modal.locator(f'div:has-text("{user_name_or_email}")').first
-        user_row.hover()
-        self.page.wait_for_timeout(300)
+        modal = self._wait_for_permissions_modal(timeout=timeout)
 
-        edit_btn = user_row.locator('button').filter(has=self.page.locator('svg')).last
-        edit_btn.click(force=True)
-        self.page.wait_for_timeout(500)
+        # The exceptions list is a CSS grid of <Box> divs — there is no <tr> in
+        # this modal, and the row carries only an emotion-generated class, so
+        # PERMISSION_EXCEPTION_ROW anchors on the user's text plus the row's own
+        # "Edit exception" control.
+        row = self.PERMISSION_EXCEPTION_ROW.within(
+            modal, user_name_or_email, user_name_or_email
+        )
+        row.wait_for(state="visible", timeout=timeout)
 
-        # Wait for Edit dialog
-        edit_dialog = self.page.locator('[role="dialog"]:has-text("Edit exception")')
+        self.PERMISSION_EXCEPTION_EDIT_BUTTON.within(row).click(timeout=timeout)
+
+        edit_dialog = self.edit_exception_dialog
         edit_dialog.wait_for(state="visible", timeout=timeout)
 
-        # Select new permission
-        permission_select = edit_dialog.locator('[role="combobox"], select').first
-        if permission_select.count() == 0:
-            permission_select = edit_dialog.get_by_label("Permissions")
-        permission_select.click()
-        self.page.wait_for_timeout(300)
+        self.EDIT_EXCEPTION_PERMISSION_SELECT.within(edit_dialog).click(timeout=timeout)
+        option = self.page.locator(self.PERMISSION_OPTION_TESTID.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        # The option list is a MUI Popper over the dialog — wait for it to
+        # detach rather than sleeping, so the Save click can't be swallowed by
+        # the closing overlay.
+        option.wait_for(state="detached", timeout=timeout)
 
-        # Select permission option
-        perm_option = self.page.locator(f'[role="option"]:has-text("{new_permission}")').first
-        perm_option.wait_for(state="visible", timeout=timeout)
-        perm_option.click()
-        self.page.wait_for_timeout(300)
-
-        # Click Save button
-        save_btn = edit_dialog.get_by_role("button", name="Save")
-        save_btn.click()
-
-        # Wait for dialog to close
+        self.EDIT_EXCEPTION_SAVE_BUTTON.within(edit_dialog).click(timeout=timeout)
         edit_dialog.wait_for(state="hidden", timeout=timeout)
         logger.info("Edited permission for '%s' to: %s", user_name_or_email, new_permission)
 
@@ -2934,70 +3076,55 @@ class ArtifactsPage(BasePage):
         """
         logger.info("Restoring default permission for user=%s", user_name_or_email)
 
-        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
-        modal.wait_for(state="visible", timeout=timeout)
-
-        # Find the user row in exceptions table
-        user_row = modal.locator(f'tr:has-text("{user_name_or_email}")').first
-        if user_row.count() == 0:
-            user_row = modal.locator(f'div:has-text("{user_name_or_email}")').first
-
-        user_row.wait_for(state="visible", timeout=timeout)
-
-        # Click Edit exception button (pencil icon with aria-label="Edit exception")
-        edit_btn = user_row.locator('button').filter(
-            has=self.page.locator('svg')
-        ).first
-        # Or find by parent span with aria-label
-        edit_wrapper = user_row.locator('[aria-label="Edit exception"] button').first
-        if edit_wrapper.count() > 0:
-            edit_wrapper.click()
-        else:
-            edit_btn.click()
-        self.page.wait_for_timeout(500)
-
-        # Wait for Edit exception dialog
-        edit_dialog = self.page.locator('[role="dialog"]').filter(
-            has=self.page.locator('span:text-is("Edit exception")')
+        self.edit_permission_exception(
+            user_name_or_email=user_name_or_email,
+            new_permission=self.PERMISSION_READ_WRITE_DEFAULT,
+            timeout=timeout,
         )
-        edit_dialog.wait_for(state="visible", timeout=timeout)
 
-        # Click on Permissions dropdown
-        permissions_dropdown = edit_dialog.locator('#simple-select-Permissions')
-        permissions_dropdown.click()
-        self.page.wait_for_timeout(300)
-
-        # Select "Read/write (default)" option by testid
-        read_write_option = self.page.locator('[data-testid="select-option-read_write"]')
-        read_write_option.wait_for(state="visible", timeout=timeout)
-        read_write_option.click()
-        self.page.wait_for_timeout(300)
-
-        # Click Save button
-        save_btn = edit_dialog.get_by_role("button", name="Save")
-        save_btn.click()
-
-        # Wait for dialog to close
-        edit_dialog.wait_for(state="hidden", timeout=timeout)
-        self.page.wait_for_timeout(500)
+        # The row disappears once the exception is gone (Read/write IS the
+        # default, so there is no exception left to list) — that, not a sleep,
+        # is what says the mutation landed and the list refetched.
+        modal = self.permissions_modal
+        self.PERMISSION_EXCEPTION_ROW.within(
+            modal, user_name_or_email, user_name_or_email
+        ).wait_for(state="detached", timeout=timeout)
         logger.info("Restored default permission for '%s'", user_name_or_email)
 
-    def user_has_exception(self, user_name_or_email: str) -> bool:
-        """Check if user already has an exception in the open Manage Permissions modal."""
-        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
-        user_row = modal.locator(f':text("{user_name_or_email}")')
-        return user_row.count() > 0
+    def user_has_exception(self, user_name_or_email: str, timeout: int = 10000) -> bool:
+        """Whether the user already has an exception in the open modal.
+
+        Settles the modal body first: the exceptions list is fetched
+        asynchronously, so a snapshot taken right after
+        `open_manage_permissions()` returns sees skeletons and answers `False`
+        for a user that does have an exception — which silently skipped the
+        pre-clean branch in both permission tests.
+
+        Asks the exception row itself rather than "any text node in the
+        dialog", so an unrelated mention of the name cannot read as a row.
+        """
+        modal = self._wait_for_permissions_modal(timeout=timeout)
+        row = self.PERMISSION_EXCEPTION_ROW.within(
+            modal, user_name_or_email, user_name_or_email
+        )
+        return row.count() > 0
 
     @action("Close Manage Permissions modal")
     def close_manage_permissions_modal(self, timeout: int = 5000) -> None:
-        """Close the Manage Permissions modal by clicking the X button."""
-        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
-        close_btn = modal.locator('button[aria-label="close"], button:has-text("×")').first
-        if close_btn.count() == 0:
-            # Try clicking outside the modal or pressing Escape
-            self.page.keyboard.press("Escape")
-        else:
-            close_btn.click()
+        """Close the Manage Permissions modal by clicking its close button.
+
+        No Escape fallback: the previous version clicked
+        `button[aria-label="close"], button:has-text("×")`, neither half of
+        which matches anything on DEV (the label is `Close` with a capital C,
+        and the glyph is an injected `<svg>` with no text node). Its
+        `count() == 0` branch therefore always fired, and because `BaseModal`
+        does honour Escape the method still passed — turning a dead locator
+        into an invisible defect that surfaced far away, as a
+        `wait_for(state="hidden")` timeout in CI. A broken handle must fail at
+        the handle.
+        """
+        modal = self.permissions_modal
+        self.PERMISSIONS_MODAL_CLOSE_BUTTON.within(modal).click(timeout=timeout)
         modal.wait_for(state="hidden", timeout=timeout)
         logger.info("Manage Permissions modal closed")
 
