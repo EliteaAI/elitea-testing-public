@@ -402,8 +402,26 @@ Forms — pick the one that matches the test:
 ```
 
 Function-, class- and module-level (`pytestmark`) declarations all work — use
-the scope that matches which case(s) the tests in scope cover. An explicit
-`@allure.title(...)` always wins and is never prefixed.
+the scope that matches which case(s) the tests in scope cover.
+
+The prefix lands on the **effective** title — whatever Allure would display
+anyway — so the case id reaches the suite tree whether or not the test sets its
+own title:
+
+```python
+@pytest.mark.tms("ELITEA-2003")                       # no allure.title
+→ [ELITEA-2003] test_delete_pipeline_version_falls_back_to_base
+
+@pytest.mark.tms("ELITEA-2493")                       # with allure.title
+@allure.title("No Access: All API operations return 403 Forbidden")
+→ [ELITEA-2493] No Access: All API operations return 403 Forbidden
+```
+
+Write `@allure.title(...)` for readability, never to control the prefix.
+Placeholder titles (`"… rejected: {invalid_name!r}"`) are substituted first and
+prefixed after. `historyId` / `fullName` / `testCaseId` come from the pytest
+nodeid, not the display name, so prefixing never disturbs Allure history,
+trends, retry grouping, or the TMS `automation_test_id` correlation key.
 
 Canonical example: `automation/tests/ui/chat/test_image_creation.py` —
 `@pytest.mark.tms("ELITEA-0679")` directly above `@pytest.mark.parametrize`.

@@ -13,6 +13,19 @@ The hooks below turn that marker into three things in the Allure report:
 3. an Allure **link** per case id (``link_type=TEST_CASE``), rendered as a
    clickable TMS reference on the test-case page
 
+The prefix goes on the **effective** title — whatever Allure would display for
+the test anyway. A test with no ``@allure.title`` shows its prefixed function
+name; a test that sets one shows that title, prefixed::
+
+    @pytest.mark.tms("ELITEA-2493")
+    @allure.title("No Access: All API operations return 403 Forbidden")
+    → [ELITEA-2493] No Access: All API operations return 403 Forbidden
+
+so the case id is in the suite tree either way, which is the point of the
+marker. Placeholder titles (``"… rejected: {invalid_name!r}"``) are substituted
+first and prefixed after, because the effective title is resolved through
+allure-pytest's own ``allure_name`` rather than re-implemented here.
+
 Nothing here reads an index at runtime: the ids are hardcoded in the tests, so
 a local run and a CI run produce identical names.
 
@@ -32,7 +45,14 @@ Invariants worth knowing before changing this module:
   the pytest **nodeid**, never from the display name — so prefixing does not
   break Allure history, trends, retry grouping, or the TMS ``automation_test_id``
   correlation key (`.agents/test-automation.yaml` § backwrite_on_done).
-* An explicit ``@allure.title(...)`` on a test always wins; it is never prefixed.
+* The effective title comes from ``allure_pytest.utils.allure_name`` — the same
+  function the allure-pytest listener itself calls (``listener.py``, end of
+  ``runtest_setup``). It returns the ``@allure.title`` formatted against the
+  test's params/funcargs, or ``item.name`` when there is no explicit title. We
+  prefix its result, so there is exactly one definition of "the title" and
+  placeholder substitution is never re-implemented. If allure-pytest renames or
+  moves that helper, the import below fails loudly at collection — which is the
+  intended failure mode, not a silently unprefixed report.
 * The title is applied in ``runtest_call``/``runtest_teardown``, not in
   ``runtest_setup``: allure-pytest's own listener rewrites ``test_result.name``
   at the end of setup, so anything set earlier is discarded.
@@ -41,6 +61,7 @@ Invariants worth knowing before changing this module:
 import allure
 import pytest
 from allure_commons.types import LabelType, LinkType
+from allure_pytest.utils import allure_name
 
 #: Marker name tests use to declare their TMS case id(s).
 TMS_MARKER = "tms"
@@ -70,19 +91,35 @@ def format_title(case_ids: list[str], test_name: str) -> str:
     return f"[{' '.join(case_ids)}] {test_name}"
 
 
+def effective_title(item) -> str:
+    """Return the title Allure would display for ``item`` without this plugin.
+
+    Delegates to allure-pytest's own ``allure_name``, mirroring how its listener
+    calls it: the ``@allure.title`` string formatted against the test's
+    parametrize values, or the pytest ``item.name`` when no title is set. The
+    ``callspec`` attributes exist only on parametrized items, hence the getattrs.
+    """
+    callspec = getattr(item, "callspec", None)
+    params = getattr(callspec, "params", {}) or {}
+    param_id = getattr(callspec, "id", None)
+    return allure_name(item, params, param_id)
+
+
 def _apply_title(item) -> None:
-    """Prefix the Allure display name, unless the test sets its own title."""
+    """Prefix the Allure display name with the declared TMS case id(s).
+
+    Applies to the *effective* title, so a test that sets ``@allure.title``
+    keeps its wording and still shows its case id (see the module docstring).
+    """
     case_ids = tms_case_ids(item)
     if not case_ids:
         return
 
-    # An explicit @allure.title() is a deliberate human choice — leave it alone.
-    test_function = getattr(item, "function", None)
-    if getattr(test_function, "__allure_display_name__", None):
-        return
-
-    # item.name (not originalname) keeps the parametrize id: test_x[github].
-    allure.dynamic.title(format_title(case_ids, item.name))
+    # Safe to run twice (runtest_call then runtest_teardown, plus any rerun):
+    # dynamic.title() assigns the report's test_result.name, while
+    # effective_title() reads item.obj.__allure_display_name__ / item.name —
+    # untouched sources. So the prefix is recomputed from scratch, never stacked.
+    allure.dynamic.title(format_title(case_ids, effective_title(item)))
 
 
 def pytest_configure(config):
