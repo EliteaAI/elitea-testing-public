@@ -377,9 +377,12 @@ def test_something(agent_api):
 ```
 
 Same rule as the UI side: declare the TMS case id(s) with `@pytest.mark.tms(...)`
-(single id, several ids, or per-`pytest.param` for a parametrized test covering
-different cases). No TMS case backs the test → no marker — the only exemption.
-Full policy and the canonical example: `.agents/testing.md` § TMS case marker.
+so the id reaches the Allure report (name prefix, tag, link). Single id, several
+ids (`@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")`), or per-`pytest.param` for
+a parametrized test covering a different case per parameter — see
+`.claude/rules/ui-tests.md` § Markers for the forms. No TMS case backs the test
+→ no marker, the only exemption. Policy: `.agents/testing.md` § TMS case id in
+the test.
 
 ## Common Anti-Patterns
 

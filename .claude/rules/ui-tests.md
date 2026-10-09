@@ -386,14 +386,34 @@ def test_something(page):
 ```
 
 A new test that automates a TMS case declares the case id with
-`@pytest.mark.tms(...)` — one id, several ids
-(`@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")`), or per-`pytest.param` for a
-parametrized test covering different cases per parameter. No TMS case backs it
-(framework unit tests, helper/smoke tests written outside a case) → no marker;
-that's the only exemption, never a loophole for a test that does trace to a
-case. Full policy, mechanism and the canonical example:
-`.agents/testing.md` § TMS case marker. A case-derived test merged without it
-is `CHANGES_REQUESTED`, same as a missing `allure.step` wrap.
+`@pytest.mark.tms(...)`, so the id reaches the Allure report — as a test-name
+prefix (`[ELITEA-0679] test_something`), a filterable tag, and a link.
+
+Forms — pick the one that matches the test:
+
+```python
+@pytest.mark.tms("ELITEA-2003")                        # one case
+@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")         # one test, several cases
+
+@pytest.mark.parametrize("prompt", [                   # a case per parameter
+    pytest.param("minimal", marks=pytest.mark.tms("ELITEA-1111")),
+    pytest.param("detailed", marks=pytest.mark.tms("ELITEA-2222")),
+])
+```
+
+Function-, class- and module-level (`pytestmark`) declarations all work — use
+the scope that matches which case(s) the tests in scope cover. An explicit
+`@allure.title(...)` always wins and is never prefixed.
+
+Canonical example: `automation/tests/ui/chat/test_image_creation.py` —
+`@pytest.mark.tms("ELITEA-0679")` directly above `@pytest.mark.parametrize`.
+Mechanism: `automation/utils/tms_case_ids.py` (module docstring). Policy:
+`.agents/testing.md` § TMS case id in the test.
+
+No TMS case backs the test (framework unit tests, helper/smoke tests written
+outside a case) → no marker; that's the only exemption, never a loophole for a
+test that does trace to a case. A case-derived test merged without it is
+`CHANGES_REQUESTED`, same as a missing `allure.step` wrap.
 
 ## UI Test Coverage Requirements
 

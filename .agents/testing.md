@@ -116,66 +116,27 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 New tests carry: priority marker + feature marker + `regression` (and `smoke` only
 for critical-path fast tests).
 
-## TMS case marker — `@pytest.mark.tms` (mandatory on case-derived tests, AUTHORITATIVE)
+## TMS case id in the test (mandatory on case-derived tests)
 
-_This section is the single source for the in-test TMS marker — other docs
-(`.claude/rules/ui-tests.md`, `.claude/rules/api-tests.md`, `.agents/conventions.md`)
-point here rather than restating the mechanism._
+**A test built from a TMS case declares that case id in its own source, so the
+case id reaches the report** — the run shows which TMS case each result belongs
+to without anyone cross-referencing a spreadsheet. The implementer writes it
+while building the test; it is not a back-write.
 
-**Hard rule: every new test that originates from a TMS case declares the case
-id(s) it covers, in source, with `@pytest.mark.tms(...)`.** The implementer
-writes this as part of building the test — it is not a back-write and not an
-afterthought.
+On this project the declaration is `@pytest.mark.tms("ELITEA-2003")`. Forms,
+multi-case and per-parameter usage, and what it renders:
+`.claude/rules/ui-tests.md` / `.claude/rules/api-tests.md` § Markers; mechanism:
+`automation/utils/tms_case_ids.py` (its module docstring).
 
-Implementation: `automation/utils/tms_case_ids.py`, loaded as a pytest plugin
-(`automation/conftest.py` → `pytest_plugins = ["utils.tms_case_ids"]`); the
-marker is declared in `automation/pytest.ini`. **Read that module's docstring
-for the full mechanism** (what it produces in Allure, the `historyId`/`fullName`
-safety property, hook ordering) — this doc states the policy, not the mechanics,
-so the two never drift apart.
+A test with no TMS case behind it (framework unit tests, helper tests written
+outside any case) names no case id — there is none to name. That is the only
+exemption, not a loophole for a case-derived test.
 
-Supported forms (all already implemented — pick whichever matches the test):
-- single id: `@pytest.mark.tms("ELITEA-2003")`
-- several ids on one test: `@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")`
-  (rendered de-duplicated and sorted)
-- per-parameter ids on a parametrized test — common here, since one
-  parametrized test often covers several cases: mark the `pytest.param(...)`
-  instead of the function, e.g.
-  `pytest.param("minimal", marks=pytest.mark.tms("ELITEA-1111"))`
-- function-, class-, and module-level (`pytestmark`) declarations all work —
-  use the scope that matches which case(s) the test(s) in scope cover.
-
-Canonical example: `automation/tests/ui/chat/test_image_creation.py:49` —
-`@pytest.mark.tms("ELITEA-0679")` directly above `@pytest.mark.parametrize`,
-inside `class TestImageCreation`.
-
-**No TMS case, no marker — and that is the only exemption.** Framework unit
-tests (`automation/tests/unit/`), helper/smoke tests written outside any case,
-or anything else with no TMS case backing it carry no `tms` marker, because
-there is no case id to name. This does **not** extend to a case-derived test:
-if the test traces to a TMS case, the marker is mandatory, full stop. Don't
-read the exemption as license to skip it when a case exists.
-
-**Two different artifacts carry a case id — don't conflate them:**
-
-| Artifact | Who writes it | When | Purpose |
-|---|---|---|---|
-| `@pytest.mark.tms(...)` in test source | implementer, while writing the test | implementation time | Allure name prefix + tag + link — traceability inside the test run itself |
-| `automation_test_id` in the TMS case file (§ Coverage tagging below) | orchestrator | post-merge, back-write | CI correlation key — machine-matched against the JUnit `code_ref` for `automation_coverage` |
-
-Both name the same TMS case, but they are different artifacts for different
-consumers, written by different roles at different times. Writing one is never
-a substitute for the other, and neither role should assume the other covered it.
-
-**Reviewer consequence:** a case-derived test merged without its `tms` marker
-is `CHANGES_REQUESTED` — the same severity as a missing `allure.step` wrap
-(§ Step reporting below).
+Distinct from the `automation_test_id` back-write below: that one is written by
+the orchestrator post-merge and is a machine correlation key. Both name the same
+case; neither substitutes for the other.
 
 ## Coverage tagging (TMS traceability)
-
-See also § above — `@pytest.mark.tms` is a different artifact from the
-back-write described here; both carry a case id, neither substitutes for the
-other.
 
 The `automation_test_id` back-written to the TMS case is the **CI correlation key**.
 It must be the **dotted, `tests.`-rooted "Form C"**:
@@ -314,7 +275,7 @@ with allure.step("Step 2 — Send the combined multi-file prompt via embedded ch
 
 One `allure.step` per AFS step (assertions live inside their step's block). A test
 without step wrapping is `CHANGES_REQUESTED` at review — same severity as a
-case-derived test missing its `@pytest.mark.tms(...)` (§ TMS case marker above).
+case-derived test missing its TMS case id (§ TMS case id in the test above).
 
 ## Reporters & evidence
 

@@ -29,7 +29,7 @@ This file only records what those don't.
   surface in Allure reports (see `.agents/testing.md` § Step reporting).
 - **TMS traceability:** a case-derived test carries `@pytest.mark.tms("ELITEA-<id>")`
   (several ids, or per-`pytest.param`, when one test covers several cases) — see
-  `.agents/testing.md` § TMS case marker. Tests with no backing TMS case (framework
+  `.agents/testing.md` § TMS case id in the test. Tests with no backing TMS case (framework
   unit tests, helper/smoke tests) carry no `tms` marker.
 - **Config:** everything through `from config import settings` (pydantic-settings);
   no `os.environ` reads scattered in tests; `.env.test` is authoritative over shell env.
