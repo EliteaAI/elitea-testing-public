@@ -1,0 +1,25 @@
+{
+  "runs": {
+    "20261009030725": {
+      "total": 27,
+      "details": [
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations[chromium]",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2424",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations[chromium]",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2424",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        }
+      ]
+    }
+  }
+}
