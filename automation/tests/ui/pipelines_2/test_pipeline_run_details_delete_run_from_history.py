@@ -57,6 +57,7 @@ def _run_pipeline_and_wait(pipeline_page, message: str):
     )
 
 
+@pytest.mark.tms("ELITEA-2454")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

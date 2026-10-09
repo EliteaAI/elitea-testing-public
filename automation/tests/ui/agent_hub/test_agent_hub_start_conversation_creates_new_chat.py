@@ -56,6 +56,7 @@ CATALOG_AGENT_NAME = "User Story Creator"
 class TestAgentHubStartConversationCreatesNewChat:
     """ELITEA-2360: Agent Hub — start conversation creates new chat and redirects (l2, medium)."""
 
+    @pytest.mark.tms("ELITEA-2360")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent_hub/ELITEA-2360.md",

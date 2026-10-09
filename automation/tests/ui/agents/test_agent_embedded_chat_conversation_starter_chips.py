@@ -223,6 +223,7 @@ class TestConversationStarterChipsVisibleAndClickable:
     """Conversation starter chips visible before any message + clickable
     (ELITEA-1886, p2)."""
 
+    @pytest.mark.tms("ELITEA-1886")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agents/ELITEA-1886_conversation-starter-chips-appear-in-chat-panel-and-are-clickable.md",

@@ -55,6 +55,7 @@ PAN_DY = 80
 PIPELINE_NETWORK_SUBSTRING = "prompt_lib"
 
 
+@pytest.mark.tms("ELITEA-2019")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2019_pipeline-canvas-zoom-and-pan.md",
@@ -188,6 +189,7 @@ AUTO_ARRANGE_DRAG_DX = 150
 AUTO_ARRANGE_DRAG_DY = -120
 
 
+@pytest.mark.tms("ELITEA-2057")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2057_pipeline-canvas-control-panel.md",

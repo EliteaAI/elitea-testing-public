@@ -29,6 +29,7 @@ FORM_SAVE_TIMEOUT = 15_000
 logger = logging.getLogger("elitea.tests.pipelines")
 
 
+@pytest.mark.tms("ELITEA-2013")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2013_pipeline-tags-add-and-filter.md",

@@ -65,6 +65,7 @@ TOUR_TOTAL_STEPS = len(TOUR_STEP_TITLES)
 class TestHelpCenterSidebarTour:
     """ELITEA-2227: Sidebar Interactive Tour completes via Next through all steps."""
 
+    @pytest.mark.tms("ELITEA-2227")
     def test_sidebar_interactive_tour_completes_via_next(self, page):
         with allure.step('Step 1 — Navigate to Help Center and click "Sidebar Interactive Tour"'):
             help_center = HelpCenterPage(page)

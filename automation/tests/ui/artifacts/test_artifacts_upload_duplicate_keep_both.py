@@ -71,6 +71,7 @@ class TestArtifactUploadDuplicateKeepBoth:
     the bucket listing; and both have distinct 'lastModified' timestamps.
     """
 
+    @pytest.mark.tms("ELITEA-1831")
     @pytest.mark.p2
     @allure.title(
         "'Keep both' in 'Resolve duplicates' saves both the original and "

@@ -45,6 +45,7 @@ class TestSupportAssistantLauncher:
     - 2.2.3: Opening/closing does not lose conversation state
     """
 
+    @pytest.mark.tms("ELITEA-1796")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0626_support-assistant-floating-launcher-is-visible-on-every-main-applicati.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0625_support-assistant-panel-opens-on-launcher-click-and-closes-on-x-button.md", "onetest-ai Test Case link")
     @allure.issue(
@@ -85,6 +86,7 @@ class TestSupportAssistantLauncher:
                 "Launcher should remain visible after closing widget"
             )
 
+    @pytest.mark.tms("ELITEA-1797")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0643_conversation-is-retained-when-the-support-assistant-panel-is-closed-an.md", "onetest-ai Test Case link")
     def test_widget_state_persists_after_close_reopen(self, page):
         """Conversation state persists when closing and reopening widget.
@@ -135,6 +137,7 @@ class TestSupportAssistantMessaging:
     - 3.2.9: Input re-enabled after response
     """
 
+    @pytest.mark.tms("ELITEA-1798")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0647_user-sends-a-message-via-the-send-button-and-receives-a-complete-assis.md", "onetest-ai Test Case link")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1798_send-message-and-receive-ai-response.md",
@@ -192,6 +195,7 @@ class TestSupportAssistantNewSession:
     ~100-message-group threshold.
     """
 
+    @pytest.mark.tms("ELITEA-1799")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0641_clicking-new-chat-opens-a-clean-session-without-affecting-the-previous.md", "onetest-ai Test Case link")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1799_new-chat-creates-fresh-session.md",
@@ -309,6 +313,7 @@ class TestSupportAssistantHistory:
     - 6.2.3: Can continue messaging in restored session
     """
 
+    @pytest.mark.tms("ELITEA-1800")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0641_clicking-new-chat-opens-a-clean-session-without-affecting-the-previous.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0643_conversation-is-retained-when-the-support-assistant-panel-is-closed-an.md", "onetest-ai Test Case link")
     @allure.issue(
@@ -371,6 +376,7 @@ class TestSupportAssistantViewModes:
     - 2.3.3: Collapse back to widget mode
     """
 
+    @pytest.mark.tms("ELITEA-1801")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0624_support-assistant-expands-to-full-view-mode-and-collapses-back-to-widg.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1801_expand-to-full-view-and-collapse-back.md", "onetest-ai Test Case link")
     def test_expand_collapse_fullview(self, page):
@@ -415,6 +421,7 @@ class TestSupportAssistantAttachments:
     - 7.1.3: Selected file appears as preview
     """
 
+    @pytest.mark.tms("ELITEA-1802")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0577_support-assistant-files-can-be-attached-via-click-to-browse-drag-and-d.md", "onetest-ai Test Case link")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1802_attach-button-present-and-opens-file-picker.md",

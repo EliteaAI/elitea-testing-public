@@ -74,6 +74,7 @@ OLDER_RUN_INDEX = 1
 class TestPipelineRunHistoryViewExecutions:
     """Run History panel — viewing past pipeline executions (ELITEA-2011, p2)."""
 
+    @pytest.mark.tms("ELITEA-2011")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/pipelines/ELITEA-2011_pipeline-run-history-view-executions.md",
@@ -235,6 +236,7 @@ class TestPipelineRunHistoryPanelClose:
     embedded chat are restored, with no conversations re-fetch.
     """
 
+    @pytest.mark.tms("ELITEA-2070")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/pipelines/ELITEA-2070_pipeline-run-history-panel.md",

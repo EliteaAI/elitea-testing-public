@@ -61,6 +61,7 @@ def _is_known_defect_1215(text: str) -> bool:
 class TestAgentHubLikeAgentFromModal:
     """ELITEA-2358: Agent Hub — like an agent from the expanded detail modal (l2, medium)."""
 
+    @pytest.mark.tms("ELITEA-2358")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent_hub/ELITEA-2358_agent-hub-like-an-agent-from-the-expanded-detail-modal.md",

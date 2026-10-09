@@ -37,6 +37,7 @@ _STEP_LIMIT = "50"
 _EDITOR_NOTES = "Test pipeline for automation"
 
 
+@pytest.mark.tms("ELITEA-2021", "ELITEA-2054", "ELITEA-2055")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2021_create-pipeline-full-details.md",

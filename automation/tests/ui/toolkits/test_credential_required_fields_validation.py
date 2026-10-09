@@ -42,6 +42,7 @@ USERNAME_VALUE = "autotest2.user@example.com"
 class TestCredentialRequiredFieldsValidation:
     """ELITEA-1975 — Create Credential form required-field Save-gating."""
 
+    @pytest.mark.tms("ELITEA-1975")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "credentials/ELITEA-1975_create-credential-required-fields-validation.md",

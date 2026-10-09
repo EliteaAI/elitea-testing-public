@@ -66,6 +66,7 @@ def _is_known_secrets_403(msg) -> bool:
 class TestPinConversationViaPinOnTop:
     """ELITEA-2149: Chat – Pin a Conversation via Pin on Top Option (l3, medium)."""
 
+    @pytest.mark.tms("ELITEA-2149", "ELITEA-2461")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2149_chat-pin-a-conversation-via-pin-on-top-option.md",
         "onetest-ai Test Case link",

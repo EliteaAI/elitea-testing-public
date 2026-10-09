@@ -77,6 +77,7 @@ class TestBuildWithAISkillFromAgent:
     """ELITEA-1999: Build with AI from Agent — created Skill is auto-attached
     and the user is redirected back to the Agent editor (l2, high)."""
 
+    @pytest.mark.tms("ELITEA-1999")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agents/ELITEA-1999_build-with-ai-skill-from-agent-auto-attaches-and-redirects.md",

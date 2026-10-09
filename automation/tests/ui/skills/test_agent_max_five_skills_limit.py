@@ -104,6 +104,7 @@ def _create_skill(page, name: str, instructions: str) -> int:
 class TestAgentMaxFiveSkillsLimit:
     """Maximum 5 Skills can be attached to one Agent (ELITEA-1790, l2/p1)."""
 
+    @pytest.mark.tms("ELITEA-1790")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1790_maximum-5-skills-attached-to-one-agent.md",
         "onetest-ai Test Case link",

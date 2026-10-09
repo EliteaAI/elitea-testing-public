@@ -85,6 +85,7 @@ class TestArtifactFilePreviewMarkdownRawEditSave:
     saves, persists, and auto-shows in Preview in the same session.
     """
 
+    @pytest.mark.tms("ELITEA-1858")
     @pytest.mark.p2
     @allure.title(
         "Markdown file Raw tab enables editing; Save persists and Preview "

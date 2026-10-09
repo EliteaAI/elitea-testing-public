@@ -76,6 +76,7 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
 class TestRemoveAttachedSkillFromAgent:
     """Remove attached Skill from Agent (ELITEA-1792, l3)."""
 
+    @pytest.mark.tms("ELITEA-1792")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1792_remove-attached-skill-from-agent.md",
         "onetest-ai Test Case link",

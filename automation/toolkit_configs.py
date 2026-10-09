@@ -66,10 +66,21 @@ class ToolkitConfig:
     # Empty means "never captured" — the test then asserts the tool ran and
     # that the UI carried a result through, and classifies nothing.
     tool_output_success_pattern: str = ""
-    test_tool_params: dict = field(default_factory=dict)  # field_label -> value for tool params
+    # Tool-parameter values for the Test Settings panel, keyed by the tool
+    # schema's PROPERTY KEY (e.g. "label"), not its displayed title ("Label").
+    # The panel's fields are addressed by data-testid
+    # `toolkit-test-param-{key}[-input]`, which the UI templates from the
+    # property key (ToolkitTestSettings.jsx) — so the key is the handle.
+    test_tool_params: dict = field(default_factory=dict)  # schema property key -> value
     credential_check: dict = field(default_factory=dict)  # {url, auth_env_vars} for pre-validation
     extra_form_fields: dict = field(default_factory=dict)
     skip_reason: str = ""              # if set, pytest.skip() with this reason
+    # TMS case this toolkit's parameterized runs cover. The parameterized tests
+    # cover a DIFFERENT case per toolkit, so the id cannot sit on the test
+    # function — it is attached per-param from here (see
+    # tests/ui/toolkits/test_toolkit_parameterized.py::_all_toolkit_ids).
+    # Empty means no TMS case maps to this toolkit yet.
+    tms_case_id: str = ""
 
 
 TOOLKIT_CONFIGS = {
@@ -99,6 +110,7 @@ TOOLKIT_CONFIGS = {
         # objects. NOT the "Branches in <owner>/<repo>:" prose — that is the
         # LLM's narration of the array (ELITEA-1140 AFS § Q1).
         tool_output_success_pattern=r'^\[\s*\{[^}]*"name"\s*:',
+        tms_case_id="ELITEA-1141",
     ),
 
     "jira": ToolkitConfig(
@@ -143,6 +155,7 @@ TOOLKIT_CONFIGS = {
         # "Found 0 projects:"; confluence's pattern deliberately admits `[]`) —
         # triage a future `[]` red as a data precondition, not an oracle bug.
         tool_output_success_pattern=r'^\[\s*\{\s*"id"\s*:\s*"[^"]*",\s*"key"\s*:',
+        tms_case_id="ELITEA-1140",
     ),
 
     "gitlab": ToolkitConfig(
@@ -226,12 +239,14 @@ TOOLKIT_CONFIGS = {
         settings_fn="confluence_toolkit_settings",
         ui_card_text="Confluence",
         ui_form_fields={
-            "Space": settings.confluence_space,
+            "Space Key": settings.confluence_space,
         },
         test_tool_name="List pages",
         test_tool_result_indicator="list_pages_with_label",
         test_tool_result_content="page",
-        test_tool_params={"Label": "test"},
+        # Schema property key of getPagesWithLabel.label (api_wrapper.py) —
+        # the panel renders it with the pydantic-derived title "Label".
+        test_tool_params={"label": "test"},
         chat_message="Use the list_pages_with_label tool to list pages with label 'test' in Confluence",
         chat_response_keywords=["page", "list", "label"],
         # Captured live 2026-08-27 against epamelitea.atlassian.net, space AT.
@@ -251,5 +266,6 @@ TOOLKIT_CONFIGS = {
         # The non-empty branch names the observed first key ("id") so the
         # pattern cannot also match github's array of {"name", "protected"}.
         tool_output_success_pattern=r'^\[\s*(\]|\{\s*"id"\s*:)',
+        tms_case_id="ELITEA-1140",
     ),
 }

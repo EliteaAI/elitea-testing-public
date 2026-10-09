@@ -30,6 +30,7 @@ AI_RESPONSE_TIMEOUT = 30_000
 class TestSkillTestPanelVersionInstructions:
     """ELITEA-2440 — test panel reflects the currently selected version's instructions."""
 
+    @pytest.mark.tms("ELITEA-2440")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "skills/ELITEA-2440_test-panel-uses-the-currently-selected-skill-versions-instru.md",

@@ -90,6 +90,7 @@ EXPECTED_TOTAL_CARD_COUNT = len(BUSINESS_ANALYST_AGENTS) + len(ELITEA_CATEGORY_A
 class TestAgentHubFilterMultipleCategories:
     """ELITEA-2353: Agent Hub — filter agents by multiple categories simultaneously (l2, high)."""
 
+    @pytest.mark.tms("ELITEA-2353")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "agent-hub/ELITEA-2353_agent-hub-filter-agents-by-multiple-categories.md",

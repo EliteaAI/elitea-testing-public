@@ -66,9 +66,19 @@ def _enabled_toolkit_ids() -> list[str]:
     return enabled
 
 
-def _all_toolkit_ids() -> list[str]:
-    """Return all toolkit IDs for skip-aware parameterization."""
-    return list(TOOLKIT_CONFIGS.keys())
+def _all_toolkit_ids() -> list:
+    """Return all toolkit IDs for skip-aware parameterization.
+
+    Each toolkit covers a different TMS case, so the `tms` marker cannot sit on
+    the test function — it is attached per-param from the toolkit's own
+    `tms_case_id`. `id=` keeps the node id the bare toolkit id (`[github]`),
+    which is what the TMS `automation_test_id` refs already point at.
+    """
+    params = []
+    for tk_id, cfg in TOOLKIT_CONFIGS.items():
+        marks = [pytest.mark.tms(cfg.tms_case_id)] if cfg.tms_case_id else []
+        params.append(pytest.param(tk_id, marks=marks, id=tk_id))
+    return params
 
 
 # ---------------------------------------------------------------------------
@@ -452,9 +462,22 @@ class TestToolkitTestSettings:
             test_settings.wait_for_panel(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 6 — Fill tool-specific parameters"):
-            if cfg.test_tool_params:
-                for field_label, value in cfg.test_tool_params.items():
-                    _fill_test_settings_param(page, field_label, value)
+            # Keyed by the tool schema's property key, which is what the
+            # panel templates its field testids from
+            # (`toolkit-test-param-{key}-input`, ToolkitTestSettings.jsx).
+            # This replaces a local helper that matched the field's visible
+            # label via `span:text("…")` and then picked the input by
+            # bounding box (x > 700). It could never match — MUI's
+            # `Typography` renders the label as a `<p>`, not a `<span>`
+            # (CommonStringField.jsx) — and the helper warned-and-returned
+            # instead of failing, so the parameter was silently left empty,
+            # the form stayed invalid, and Step 7 timed out on a permanently
+            # disabled Run Test button. Also retires a positional handle,
+            # per `.agents/testing.md` § Locator policy.
+            for field_key, value in cfg.test_tool_params.items():
+                test_settings.fill_param_field(
+                    field_key, value, timeout=UI_ELEMENT_TIMEOUT,
+                )
 
         with allure.step("Step 7 — Click the Run Test button"):
             # Dismiss any popups (NPS survey, banners) that may block the button
@@ -870,37 +893,3 @@ def _fill_toolkit_form_fields(page, cfg: ToolkitConfig):
                 field.click()
                 field.type(value)
                 page.wait_for_timeout(300)
-
-
-def _fill_test_settings_param(page, field_label: str, value: str):
-    """Fill a parameter field in the Test Settings panel (right side).
-
-    MUI TextField inputs in Test Settings have no accessible name/label
-    association. We find them by locating the label span text (e.g.
-    "Label *") in the right panel and then finding the sibling input
-    inside the same ``index-config-field`` container.
-    """
-    # Find the config field container that has the label text on the right side
-    field_input = page.locator(
-        f'.index-config-field:has(span:text("{field_label}")) input'
-    )
-
-    # Filter to the right panel (x > 700) if there are duplicates
-    target = None
-    for i in range(field_input.count()):
-        inp = field_input.nth(i)
-        if inp.is_visible():
-            bb = inp.bounding_box()
-            if bb and bb["x"] > 700:
-                target = inp
-                break
-
-    if target is None:
-        logger.warning("Could not find param field '%s' in Test Settings panel", field_label)
-        return
-
-    target.scroll_into_view_if_needed()
-    target.click()
-    target.fill(value)
-    page.wait_for_timeout(300)
-    logger.info("Filled Test Settings param '%s' = '%s'", field_label, value)

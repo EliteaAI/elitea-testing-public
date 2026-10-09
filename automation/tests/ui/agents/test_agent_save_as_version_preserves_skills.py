@@ -91,6 +91,7 @@ def _create_skill(page, name: str, instructions: str) -> int:
 class TestAgentSaveAsVersionPreservesSkills:
     """Agent "Save As Version" preserves all attached Skills (ELITEA-1889, l1/p0)."""
 
+    @pytest.mark.tms("ELITEA-1889")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1889_agent-save-as-version-preserves-skills.md",
         "onetest-ai Test Case link",

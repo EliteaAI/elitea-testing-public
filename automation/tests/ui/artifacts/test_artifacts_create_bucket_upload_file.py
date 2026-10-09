@@ -108,6 +108,7 @@ class TestArtifactCreateBucketAndUploadFile:
     the bucket name is generated in setup and deleted in a manual teardown.
     """
 
+    @pytest.mark.tms("ELITEA-1808")
     @pytest.mark.p1
     @allure.title(
         "Create a bucket via the '+ Artifact Bucket' form and upload a file "

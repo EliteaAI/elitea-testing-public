@@ -126,6 +126,7 @@ class TestArtifactDownloadMultipleFilesZip:
     files, flattened to the ZIP root, byte-identical to what was seeded.
     """
 
+    @pytest.mark.tms("ELITEA-1840")
     @pytest.mark.p1
     @allure.title(
         "Selecting 2 files via checkbox and clicking 'Download files' "

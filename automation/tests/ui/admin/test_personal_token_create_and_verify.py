@@ -35,6 +35,7 @@ ROW_WAIT_TIMEOUT = 15_000
 class TestPersonalTokenCreateAndVerify:
     """Personal Tokens table/form checks (ELITEA-2284, ELITEA-2286)."""
 
+    @pytest.mark.tms("ELITEA-2284")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "settings-personal-tokens/ELITEA-2284_expired-tokens-show-icon-and-active-tokens-show-icon-with-re.md",
@@ -66,6 +67,7 @@ class TestPersonalTokenCreateAndVerify:
                 f"Expected the Expiration cell to read 'Expired', got {status_text!r}"
             )
 
+    @pytest.mark.tms("ELITEA-2286")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "settings-personal-tokens/ELITEA-2286_token-name-validation-invalid-characters-rejected.md",

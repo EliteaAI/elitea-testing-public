@@ -35,6 +35,7 @@ _CODE_VALUE = "import json\nresult = input.upper()"
 _OUTPUT_VARIABLE = "result"
 
 
+@pytest.mark.tms("ELITEA-2009")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

@@ -81,6 +81,7 @@ class TestArtifactDownloadSingleFileDropdown:
     exact filename fidelity, and byte-identical content.
     """
 
+    @pytest.mark.tms("ELITEA-1839")
     @pytest.mark.p1
     @allure.title(
         "Single file downloads immediately via the actions dropdown, "

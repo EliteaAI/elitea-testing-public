@@ -27,6 +27,7 @@ TOAST_TIMEOUT = 10_000
 COPY_TOAST_TEXT = "The code has been copied to the clipboard."
 
 
+@pytest.mark.tms("ELITEA-2026")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2026_pipeline-yaml-editor-view.md",

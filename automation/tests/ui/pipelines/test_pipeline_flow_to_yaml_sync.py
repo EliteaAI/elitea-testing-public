@@ -32,6 +32,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p1, pytest.mark
 UI_ELEMENT_TIMEOUT = 10_000
 
 
+@pytest.mark.tms("ELITEA-2029")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

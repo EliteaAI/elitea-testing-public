@@ -44,6 +44,7 @@ _SEARCH_QUERY_PARAM = "search_query"  # raw schema key behind the "SEARCH
 _SEARCH_QUERY_VALUE = "{input} error"
 
 
+@pytest.mark.tms("ELITEA-2036")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

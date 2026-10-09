@@ -62,6 +62,7 @@ EXPECTED_NODE_TYPES = [
 ]
 
 
+@pytest.mark.tms("ELITEA-2030")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2030_pipeline-add-node-menu.md",

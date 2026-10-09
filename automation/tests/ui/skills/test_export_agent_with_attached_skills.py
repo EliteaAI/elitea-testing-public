@@ -76,6 +76,7 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
 class TestExportAgentWithAttachedSkills:
     """Export Agent with attached Skills (ELITEA-1794, l3)."""
 
+    @pytest.mark.tms("ELITEA-1794", "ELITEA-1896")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1794_export-agent-with-attached-skills.md",
         "onetest-ai Test Case link",

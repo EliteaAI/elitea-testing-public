@@ -46,6 +46,7 @@ NEGATIVE_ASSERTION_WINDOW_MS = 1500
 class TestAgentEmbeddedChatShiftEnter:
     """Embedded chat — Shift+Enter newline vs Enter-submit (ELITEA-1875, p1)."""
 
+    @pytest.mark.tms("ELITEA-1875")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1875_embedded-chat-shift-enter-inserts-new-line-enter-sends-message.md",
         "onetest-ai Test Case link",

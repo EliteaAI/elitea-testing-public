@@ -105,6 +105,7 @@ class TestArtifactFilePreviewEditSave:
     editor auto-close, updated row metadata, and a fresh-fetch reopen.
     """
 
+    @pytest.mark.tms("ELITEA-1852")
     @pytest.mark.p1
     @allure.title("Editing file content and saving persists the change")
     @allure.severity(allure.severity_level.CRITICAL)

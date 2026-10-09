@@ -41,6 +41,7 @@ _INPUT_VARIABLE = "issue_details"
 _OUTPUT_VARIABLE = "normalized_issue"
 
 
+@pytest.mark.tms("ELITEA-2035")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

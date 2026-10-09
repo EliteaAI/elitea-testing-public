@@ -45,6 +45,7 @@ _OUTPUT_VARIABLE = "triage_summary"
 _TASK_VALUE = "Triage this critical GitHub issue. Issue: {normalized_issue}"
 
 
+@pytest.mark.tms("ELITEA-2038")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

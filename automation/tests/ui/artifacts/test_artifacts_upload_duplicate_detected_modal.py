@@ -63,6 +63,7 @@ class TestArtifactUploadDuplicateDetectedModal:
     any of them.
     """
 
+    @pytest.mark.tms("ELITEA-1828")
     @pytest.mark.p2
     @allure.title(
         "Uploading a same-named file opens the 'Resolve duplicates' modal "

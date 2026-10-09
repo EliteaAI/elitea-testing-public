@@ -29,6 +29,7 @@ UI_ELEMENT_TIMEOUT = 10_000
 class TestSkillVersionSetDefault:
     """ELITEA-2437 — VERSION dropdown pin/set-as-default control."""
 
+    @pytest.mark.tms("ELITEA-2437")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
         "skills/ELITEA-2437_skill-version-dropdown-set-default.md",

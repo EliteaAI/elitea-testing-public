@@ -8,6 +8,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2310"
       ]
     },
     {
@@ -45,6 +48,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2257"
       ]
     },
     {
@@ -56,6 +62,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2284"
       ]
     },
     {
@@ -67,6 +76,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2286"
       ]
     },
     {
@@ -77,6 +89,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2357"
       ]
     },
     {
@@ -87,6 +102,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2359"
       ]
     },
     {
@@ -97,6 +115,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2353"
       ]
     },
     {
@@ -107,6 +128,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2352"
       ]
     },
     {
@@ -117,6 +141,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2358"
       ]
     },
     {
@@ -127,6 +154,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2354"
       ]
     },
     {
@@ -137,6 +167,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2356"
       ]
     },
     {
@@ -147,6 +180,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2350"
       ]
     },
     {
@@ -157,6 +193,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2363"
       ]
     },
     {
@@ -167,6 +206,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2360"
       ]
     },
     {
@@ -175,6 +217,9 @@
         "agents",
         "p2",
         "regression"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2366"
       ]
     },
     {
@@ -185,6 +230,9 @@
         "p2",
         "regression",
         "tryfirst"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2367"
       ]
     },
     {
@@ -195,6 +243,9 @@
         "p3",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1883"
       ]
     },
     {
@@ -204,6 +255,9 @@
         "p0",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1869"
       ]
     },
     {
@@ -214,6 +268,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1903"
       ]
     },
     {
@@ -288,6 +345,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1898"
       ]
     },
     {
@@ -297,6 +357,9 @@
         "p0",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1870"
       ]
     },
     {
@@ -307,6 +370,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1886"
       ]
     },
     {
@@ -317,6 +383,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1874"
       ]
     },
     {
@@ -327,6 +396,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1875"
       ]
     },
     {
@@ -337,6 +409,9 @@
         "p3",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1899"
       ]
     },
     {
@@ -347,6 +422,9 @@
         "p3",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1900"
       ]
     },
     {
@@ -357,6 +435,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1892"
       ]
     },
     {
@@ -366,6 +447,9 @@
         "p3",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1884"
       ]
     },
     {
@@ -376,6 +460,10 @@
         "p0",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1888",
+        "ELITEA-1890"
       ]
     },
     {
@@ -385,6 +473,9 @@
         "p0",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1889"
       ]
     },
     {
@@ -395,6 +486,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1891"
       ]
     },
     {
@@ -432,6 +526,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1999"
       ]
     },
     {
@@ -442,6 +539,9 @@
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1901"
       ]
     },
     {
@@ -452,6 +552,10 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1895",
+        "ELITEA-1902"
       ]
     },
     {
@@ -462,12 +566,14 @@
         "p3",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1950"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1811-leading-digit]",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
@@ -477,7 +583,6 @@
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1814-space]",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
@@ -487,7 +592,6 @@
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1814-special-char]",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
@@ -497,7 +601,6 @@
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1814-underscore]",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
@@ -507,137 +610,162 @@
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_create_bucket_upload_file.TestArtifactCreateBucketAndUploadFile.test_create_bucket_via_form_and_upload_file_via_bucket_menu",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1808"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_delete_subfolder_checkbox.TestArtifactDeleteSubfolderCheckbox.test_delete_multiple_files_partial_selection",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1846"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_delete_subfolder_checkbox.TestArtifactDeleteSubfolderCheckbox.test_delete_subfolder_via_checkbox",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1847"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_download_multiple_files_zip.TestArtifactDownloadMultipleFilesZip.test_download_multiple_files_as_zip",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1840"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_download_single_file_dropdown.TestArtifactDownloadSingleFileDropdown.test_download_single_file_via_dropdown",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1839"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_duplicate_bucket_name.TestArtifactDuplicateBucketName.test_duplicate_bucket_name_is_not_allowed",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1809"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_actions_dropdown.TestArtifactFilePreviewActionsDropdown.test_actions_dropdown_copy_download_delete",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1856"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_edit_save.TestArtifactFilePreviewEditSave.test_edit_file_content_and_save_changes",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1852"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_image_restricted_controls.TestArtifactFilePreviewImageRestrictedControls.test_image_file_opens_directly_with_restricted_controls",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1862"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_markdown_default_mode.TestArtifactFilePreviewMarkdownDefaultMode.test_markdown_file_opens_in_preview_mode_by_default",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1857"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_markdown_raw_edit_save.TestArtifactFilePreviewMarkdownRawEditSave.test_raw_tab_enables_editing_and_save_persists",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1858"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_open_editor_ui.TestArtifactFilePreviewOpenEditorUI.test_open_supported_text_file_shows_editor_ui",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1851"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_landing_page_ui.TestArtifactsLandingPageUI.test_landing_page_empty_bucket",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1805"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder",
       "markers": [
-        "allure_label",
         "p0",
         "regression",
         "ui"
@@ -646,71 +774,85 @@
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_cancel.TestArtifactUploadDuplicateCancel.test_cancel_stops_entire_upload_including_non_duplicate",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1832"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_detected_modal.TestArtifactUploadDuplicateDetectedModal.test_duplicate_detected_opens_resolve_duplicates_modal",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1828"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_keep_both.TestArtifactUploadDuplicateKeepBoth.test_keep_both_uploads_renamed_copy_alongside_original",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1831"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_skip.TestArtifactUploadDuplicateSkip.test_skip_uploads_only_non_duplicate_file",
       "markers": [
-        "allure_label",
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1829"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_multiple_files.TestArtifactsUploadMultipleFiles.test_upload_multiple_files_at_once",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1826"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations",
       "markers": [
-        "allure_label",
         "p0",
         "regression",
         "security",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2493"
       ]
     },
     {
       "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations",
       "markers": [
-        "allure_label",
         "p0",
         "regression",
         "security",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2494"
       ]
     },
     {
@@ -741,6 +883,9 @@
       "markers": [
         "p1",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0501"
       ]
     },
     {
@@ -749,6 +894,9 @@
         "p1",
         "smoke",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0501"
       ]
     },
     {
@@ -756,6 +904,9 @@
       "markers": [
         "p1",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0501"
       ]
     },
     {
@@ -763,6 +914,9 @@
       "markers": [
         "p1",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0501"
       ]
     },
     {
@@ -846,6 +1000,9 @@
         "p1",
         "slow",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0679"
       ]
     },
     {
@@ -855,6 +1012,9 @@
         "p2",
         "slow",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0679"
       ]
     },
     {
@@ -874,6 +1034,10 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2149",
+        "ELITEA-2461"
       ]
     },
     {
@@ -884,6 +1048,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2227"
       ]
     },
     {
@@ -894,6 +1061,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2030"
       ]
     },
     {
@@ -921,6 +1091,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2048"
       ]
     },
     {
@@ -995,6 +1168,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2038"
       ]
     },
     {
@@ -1005,6 +1181,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2059"
       ]
     },
     {
@@ -1015,6 +1194,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2066"
       ]
     },
     {
@@ -1025,6 +1207,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2064"
       ]
     },
     {
@@ -1035,6 +1220,10 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2018",
+        "ELITEA-2060"
       ]
     },
     {
@@ -1045,6 +1234,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2057"
       ]
     },
     {
@@ -1055,6 +1247,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2019"
       ]
     },
     {
@@ -1065,6 +1260,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2053"
       ]
     },
     {
@@ -1075,6 +1273,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2009"
       ]
     },
     {
@@ -1085,6 +1286,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2448"
       ]
     },
     {
@@ -1095,6 +1299,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2449"
       ]
     },
     {
@@ -1105,6 +1312,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2447"
       ]
     },
     {
@@ -1115,6 +1325,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2446"
       ]
     },
     {
@@ -1125,6 +1338,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2072"
       ]
     },
     {
@@ -1135,6 +1351,11 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2021",
+        "ELITEA-2054",
+        "ELITEA-2055"
       ]
     },
     {
@@ -1145,6 +1366,10 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2002",
+        "ELITEA-2063"
       ]
     },
     {
@@ -1156,6 +1381,9 @@
         "regression",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2036"
       ]
     },
     {
@@ -1166,6 +1394,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2025"
       ]
     },
     {
@@ -1176,6 +1407,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2034"
       ]
     },
     {
@@ -1186,6 +1420,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2016"
       ]
     },
     {
@@ -1196,6 +1433,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2003"
       ]
     },
     {
@@ -1206,6 +1446,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2031"
       ]
     },
     {
@@ -1216,6 +1459,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2032"
       ]
     },
     {
@@ -1226,6 +1472,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2008"
       ]
     },
     {
@@ -1236,6 +1485,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2041"
       ]
     },
     {
@@ -1246,6 +1498,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2005"
       ]
     },
     {
@@ -1275,6 +1530,10 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2017",
+        "ELITEA-2058"
       ]
     },
     {
@@ -1321,6 +1580,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2029"
       ]
     },
     {
@@ -1331,6 +1593,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2051"
       ]
     },
     {
@@ -1341,6 +1606,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2014"
       ]
     },
     {
@@ -1351,6 +1619,10 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2012",
+        "ELITEA-2050"
       ]
     },
     {
@@ -1361,6 +1633,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2056"
       ]
     },
     {
@@ -1371,6 +1646,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2027"
       ]
     },
     {
@@ -1381,6 +1659,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2004"
       ]
     },
     {
@@ -1391,6 +1672,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2040"
       ]
     },
     {
@@ -1401,6 +1685,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2045"
       ]
     },
     {
@@ -1410,6 +1697,9 @@
         "p0",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2020"
       ]
     },
     {
@@ -1447,6 +1737,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2022"
       ]
     },
     {
@@ -1511,6 +1804,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2024"
       ]
     },
     {
@@ -1558,6 +1854,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2023"
       ]
     },
     {
@@ -1569,6 +1868,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1954"
       ]
     },
     {
@@ -1580,6 +1882,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1955"
       ]
     },
     {
@@ -1591,6 +1896,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2037"
       ]
     },
     {
@@ -1601,6 +1909,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2062"
       ]
     },
     {
@@ -1611,6 +1922,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2061"
       ]
     },
     {
@@ -1629,6 +1943,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2039"
       ]
     },
     {
@@ -1639,6 +1956,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2454"
       ]
     },
     {
@@ -1649,6 +1969,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2453"
       ]
     },
     {
@@ -1659,6 +1982,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2450"
       ]
     },
     {
@@ -1669,6 +1995,10 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2452",
+        "ELITEA-2453"
       ]
     },
     {
@@ -1679,6 +2009,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2451"
       ]
     },
     {
@@ -1689,6 +2022,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2070"
       ]
     },
     {
@@ -1699,6 +2035,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2011"
       ]
     },
     {
@@ -1709,6 +2048,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2007"
       ]
     },
     {
@@ -1719,6 +2061,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2035"
       ]
     },
     {
@@ -1729,6 +2074,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2043"
       ]
     },
     {
@@ -1739,6 +2087,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2042"
       ]
     },
     {
@@ -1750,6 +2101,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2044"
       ]
     },
     {
@@ -1760,6 +2114,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2046"
       ]
     },
     {
@@ -1770,6 +2127,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2444"
       ]
     },
     {
@@ -1780,6 +2140,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2443"
       ]
     },
     {
@@ -1790,6 +2153,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2013"
       ]
     },
     {
@@ -1800,6 +2166,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2049"
       ]
     },
     {
@@ -1811,6 +2180,9 @@
         "regression",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2010"
       ]
     },
     {
@@ -1822,6 +2194,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2065"
       ]
     },
     {
@@ -1832,6 +2207,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2006"
       ]
     },
     {
@@ -1842,6 +2220,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2052"
       ]
     },
     {
@@ -1852,6 +2233,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2068"
       ]
     },
     {
@@ -1862,6 +2246,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2026"
       ]
     },
     {
@@ -1872,6 +2259,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2067"
       ]
     },
     {
@@ -1882,6 +2272,9 @@
         "pipelines",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2028"
       ]
     },
     {
@@ -1892,6 +2285,9 @@
         "regression",
         "settings",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2392"
       ]
     },
     {
@@ -1902,6 +2298,9 @@
         "regression",
         "settings",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2377"
       ]
     },
     {
@@ -1912,6 +2311,9 @@
         "regression",
         "settings",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2374"
       ]
     },
     {
@@ -1922,6 +2324,9 @@
         "regression",
         "settings",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2378"
       ]
     },
     {
@@ -1932,6 +2337,10 @@
         "regression",
         "settings",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2397",
+        "ELITEA-2414"
       ]
     },
     {
@@ -1941,6 +2350,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1791"
       ]
     },
     {
@@ -1950,6 +2362,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1790"
       ]
     },
     {
@@ -1960,6 +2375,10 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1794",
+        "ELITEA-1896"
       ]
     },
     {
@@ -1970,6 +2389,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1793"
       ]
     },
     {
@@ -1979,6 +2401,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1795"
       ]
     },
     {
@@ -1988,6 +2413,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1792"
       ]
     },
     {
@@ -1997,6 +2425,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1789"
       ]
     },
     {
@@ -2007,6 +2438,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2439"
       ]
     },
     {
@@ -2017,6 +2451,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1737"
       ]
     },
     {
@@ -2027,6 +2464,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1738"
       ]
     },
     {
@@ -2037,6 +2477,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2438"
       ]
     },
     {
@@ -2047,6 +2490,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2435"
       ]
     },
     {
@@ -2056,6 +2502,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1739"
       ]
     },
     {
@@ -2065,6 +2514,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1740"
       ]
     },
     {
@@ -2075,6 +2527,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2441"
       ]
     },
     {
@@ -2085,6 +2540,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2442"
       ]
     },
     {
@@ -2095,6 +2553,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2440"
       ]
     },
     {
@@ -2105,6 +2566,9 @@
         "regression",
         "skills",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2437"
       ]
     },
     {
@@ -2127,6 +2591,9 @@
         "smoke",
         "support_assistant",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1802"
       ]
     },
     {
@@ -2135,6 +2602,9 @@
         "smoke",
         "support_assistant",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1800"
       ]
     },
     {
@@ -2143,6 +2613,9 @@
         "smoke",
         "support_assistant",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1796"
       ]
     },
     {
@@ -2151,6 +2624,9 @@
         "smoke",
         "support_assistant",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1797"
       ]
     },
     {
@@ -2159,6 +2635,9 @@
         "smoke",
         "support_assistant",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1798"
       ]
     },
     {
@@ -2167,6 +2646,9 @@
         "smoke",
         "support_assistant",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1799"
       ]
     },
     {
@@ -2175,6 +2657,9 @@
         "smoke",
         "support_assistant",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1801"
       ]
     },
     {
@@ -2216,17 +2701,22 @@
         "p0",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1975"
       ]
     },
     {
       "automation_test_id": "tests.ui.toolkits.test_toolkit_creation_create_bucket_verify_list_files.TestToolkitCreationCreateBucketVerifyListFiles.test_create_artifact_toolkit_creates_bucket_verify_list_files",
       "markers": [
-        "allure_label",
         "new_verified",
         "p1",
         "regression",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1866"
       ]
     },
     {
@@ -2251,6 +2741,9 @@
         "p1",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1182"
       ]
     },
     {
@@ -2269,6 +2762,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {
@@ -2278,6 +2774,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1141"
       ]
     },
     {
@@ -2296,6 +2795,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {
@@ -2316,6 +2818,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {
@@ -2326,6 +2831,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1141"
       ]
     },
     {
@@ -2346,6 +2854,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {
@@ -2364,6 +2875,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {
@@ -2373,6 +2887,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1141"
       ]
     },
     {
@@ -2391,6 +2908,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {
@@ -2409,6 +2929,9 @@
         "p1",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {
@@ -2418,6 +2941,9 @@
         "p1",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1141"
       ]
     },
     {
@@ -2436,6 +2962,9 @@
         "p1",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1140"
       ]
     },
     {

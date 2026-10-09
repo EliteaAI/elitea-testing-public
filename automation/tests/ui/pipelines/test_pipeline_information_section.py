@@ -88,6 +88,7 @@ def _is_known_1368_error(msg) -> bool:
     return _KNOWN_1368_ERROR_SNIPPET in msg.text
 
 
+@pytest.mark.tms("ELITEA-2056")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2056_pipeline-information-section.md",

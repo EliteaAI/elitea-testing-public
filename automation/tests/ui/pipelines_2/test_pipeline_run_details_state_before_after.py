@@ -68,6 +68,7 @@ def _is_known_1267_stepper_prop_leak(msg) -> bool:
     return "non-boolean attribute" in msg.text
 
 
+@pytest.mark.tms("ELITEA-2452", "ELITEA-2453")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

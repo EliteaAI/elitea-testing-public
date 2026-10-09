@@ -86,6 +86,7 @@ def _create_skill(page, name: str, instructions: str) -> int:
 class TestAttachSkillToAgentWithVersionSelector:
     """Attach a Skill to an Agent and verify version selector (ELITEA-1789, l3)."""
 
+    @pytest.mark.tms("ELITEA-1789")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1789_attach-skill-to-agent-with-version-selector.md",
         "onetest-ai Test Case link",

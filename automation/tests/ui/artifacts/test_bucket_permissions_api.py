@@ -154,6 +154,7 @@ class TestBucketPermissionsAPI:
     at the API level. Tests the "No access" and "Read-only" permission types.
     """
 
+    @pytest.mark.tms("ELITEA-2493")
     @pytest.mark.p0
     @allure.title("No Access: All API operations return 403 Forbidden")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -263,6 +264,7 @@ class TestBucketPermissionsAPI:
                 admin_artifacts.close_manage_permissions_modal()
                 logger.info("Cleanup: Removed User B's exception (default permissions restored)")
 
+    @pytest.mark.tms("ELITEA-2494")
     @pytest.mark.p0
     @allure.title("Read-only: GET allowed, POST/DELETE return 403 Forbidden")
     @allure.severity(allure.severity_level.CRITICAL)
