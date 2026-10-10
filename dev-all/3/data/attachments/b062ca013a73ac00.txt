@@ -1,0 +1,1 @@
+WARNING  tests.ui.admin.test_analytics_agents_pipelines_tab:test_analytics_agents_pipelines_tab.py:201 Pagination assertion skipped: only 6 agents/pipelines (need >20 for pagination)

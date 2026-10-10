@@ -1,0 +1,8 @@
+WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
+ERROR    elitea.steps:actions.py:49 Step failed: Edit permission exception — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("//div[@role=\"dialog\"][.//h2[normalize-space()=\"Manage Permissions\"]]").locator("xpath=.//div[.//*[@aria-label=\"Edit exception\"]][contains(normalize-space(.), \"autotest_user_9\")][not(.//div[.//*[@aria-label=\"Edit exception\"]][contains(normalize-space(.), \"autotest_user_9\")])]") to be visible
+
+ERROR    elitea.steps:actions.py:49 Step failed: Remove permission exception — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("//div[@role=\"dialog\"][.//h2[normalize-space()=\"Manage Permissions\"]]").locator("xpath=.//div[.//*[@aria-label=\"Edit exception\"]][contains(normalize-space(.), \"autotest_user_9\")][not(.//div[.//*[@aria-label=\"Edit exception\"]][contains(normalize-space(.), \"autotest_user_9\")])]") to be visible

@@ -1,0 +1,1 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Send message — Page.wait_for_function: Timeout 5000ms exceeded.

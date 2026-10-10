@@ -1,0 +1,7 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Remove permission exception — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[role=\"dialog\"]:has-text(\"Manage Permissions\")").locator("div:has-text(\"autotest_user_9\")").first to be visible
+ERROR    elitea.steps:actions.py:49 Step failed: Close Manage Permissions modal — Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("[role=\"dialog\"]:has-text(\"Manage Permissions\")") to be hidden
+    14 × locator resolved to visible <div role="dialog" tabindex="-1" aria-modal="true" data-mui-focusable="" aria-labelledby="alert-dialog-title" aria-describedby="alert-dialog-description" class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation24 MuiDialog-paper MuiDialog-paperScrollPaper MuiDialog-paperWidthFalse css-ynhsdv">…</div>
