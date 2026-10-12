@@ -2779,7 +2779,8 @@ class ArtifactsPage(BasePage):
     # typo fails loudly here instead of timing out on a dropdown.
     PERMISSION_OPTION_VALUES = {
         "Read/write (default)": "read_write",
-        "Read-only": "read_only",
+        # Not "read_only" — DEV serves data-testid="select-option-read" (verified live).
+        "Read-only": "read",
         "No access": "no_access",
     }
     #: The permission that IS the default — selecting it removes the exception.
