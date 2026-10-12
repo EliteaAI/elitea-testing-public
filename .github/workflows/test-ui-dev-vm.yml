@@ -43,6 +43,29 @@ run-name: UI Tests DEV-VM [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suite
 #      BEFORE the matrix fans out and fails loudly instead. Cheap (one curl) and
 #      it keeps the fix local — session_fixtures.py is shared with DEV and is
 #      deliberately not touched.
+#   6. `password_suffix_override` EXPOSED as a dispatch input. The called
+#      workflow accepts it on workflow_call but test-ui-dev.yml never passes it.
+#      Needed here because DEV-VM is a SEPARATE Keycloak realm (see below), so
+#      its autotest users may carry different passwords; this is the only
+#      credential lever available without editing the shared callee. Empty =
+#      per-user suffix, exactly as on DEV.
+#
+# ⚠️ KNOWN BLOCKER — DEV-VM IS A SEPARATE KEYCLOAK REALM.
+#   https://dev.elitea.ai     -> realm `dev`
+#   https://dev-vm.elitea.ai  -> realm `dev-vm`
+#   A realm is its own user database, so the DEV `autotest_user_{1..9,admin}`
+#   accounts (and the DEV API tokens) do not authenticate against DEV-VM.
+#   Verified 2026-10-12 against the live host: the login POST returns HTTP 200
+#   with Keycloak's "Invalid username or password", and the DEV bearer token gets
+#   302'd to login on /api/v2/. Keycloak deliberately returns the same message
+#   for "no such user" and "wrong password", so which of the two it is cannot be
+#   told from the response.
+#   This is NOT fixable inside this file: the user names are derived inside the
+#   called workflow (`autotest_user_<suffix>`, test-ui-custom.yml:525) and the
+#   accounts themselves have to exist in the `dev-vm` realm. Until the autotest
+#   users are provisioned there (or their credentials supplied), every test will
+#   skip at `auth_state` — and the `verify` job below will correctly fail the run
+#   instead of reporting a false green.
 
 on:
   # Uncomment to run nightly (DEV runs at 23:00; offset to avoid two publishes
@@ -84,6 +107,10 @@ on:
         description: 'Send results for processing'
         type: boolean
         default: false
+      password_suffix_override:
+        description: 'DEV-VM only: constant password suffix (TEMPLATE + suffix) for every user. Empty = per-user suffix, as on DEV. DEV-VM is a separate Keycloak realm, so its autotest users may need a different password.'
+        type: string
+        default: ''
 
 jobs:
   preflight:
@@ -130,11 +157,34 @@ jobs:
             exit 1
           fi
 
+          # Which Keycloak realm does this host authenticate against? The DEV
+          # autotest users live in the `dev` realm; a different realm is a
+          # different user database, so they will not log in. Warn, don't fail —
+          # the run may be using credentials that DO exist in that realm.
+          # The realm appears in the auto-submit OIDC form in the page BODY, not
+          # in the effective URL (forward-auth does not redirect) — so grep the
+          # body, don't read %{url_effective}.
+          REALM=$(curl -sS -L --max-time 30 \
+            "https://${TARGET_HOST}/forward-auth/auth_oidc/login" 2>/dev/null \
+            | grep -o '/realms/[^/"]*' | head -1 | sed 's#/realms/##')
+          echo "    keycloak realm -> ${REALM:-unknown}"
+
           {
             echo "## ✅ Preflight"
             echo ""
             echo "\`${TARGET_HOST}\` reachable — \`/app/\` → ${APP_CODE}, \`/api/v2/\` → ${API_CODE}."
+            echo ""
+            echo "Keycloak realm: \`${REALM:-unknown}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$REALM" ] && [ "$REALM" != "dev" ]; then
+            echo "::warning title=Different Keycloak realm::${TARGET_HOST} authenticates against realm '${REALM}', not 'dev'. The DEV autotest_user_* accounts live in the 'dev' realm and will NOT log in here unless they were also provisioned in '${REALM}'. Expect every test to skip at auth_state (the Verify job will fail the run)."
+            {
+              echo ""
+              echo "> ⚠️ Realm \`${REALM}\` ≠ \`dev\`. DEV autotest users are not guaranteed to exist here —"
+              echo "> if auth fails, every test skips and the **Verify** job fails the run by design."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   links:
     # Runs first so its summary is shown at the top of the run page
@@ -197,6 +247,9 @@ jobs:
       ref: ${{ inputs.ref || 'main' }}
       publish_to_tms: ${{ inputs.publish_to_tms || false }}
       tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}
+      # Workaround 6 — the callee supports this on workflow_call but
+      # test-ui-dev.yml never passes it. See the realm note in the header.
+      password_suffix_override: ${{ inputs.password_suffix_override || '' }}
       # Inert unless publish_to_tms is true — the correlation steps live inside the
       # callee's `publish-tms` job, which is itself gated on that input.
       update_correlation: true
