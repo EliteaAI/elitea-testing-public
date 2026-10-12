@@ -1,12 +1,12 @@
-name: UI Tests DE-VM
-run-name: UI Tests DE-VM [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
+name: UI Tests DEV-VM
+run-name: UI Tests DEV-VM [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 # TEMPORARY workflow — a clone of test-ui-dev.yml pointed at a different HOST.
 #
 # Everything except the host is identical to DEV: every credential, project id,
 # token and toolkit secret is read from the SAME `*_DEV*` keys. Only ELITEA_URL /
 # ELITEA_API_BASE are overridden, and they are overridden HERE as literals rather
-# than via new `*_DE_VM` secrets — so no repo secret has to be added for this to
+# than via new `*_DEV_VM` secrets — so no repo secret has to be added for this to
 # run, and nothing has to be cleaned up afterwards beyond deleting this file.
 #
 # Nothing outside this file is touched: test-ui-custom.yml (the called base
@@ -20,11 +20,11 @@ run-name: UI Tests DE-VM [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites
 #      secret's presence to detect workflow_call mode (:248, :432), so a literal
 #      satisfies both. GitHub masks any value passed through `secrets:`, so the
 #      host shows as *** in logs — expected, same as on DEV.
-#   2. ENV NAME = `de-vm`, not `dev`. The callee derives artifact names, the
+#   2. ENV NAME = `dev-vm`, not `dev`. The callee derives artifact names, the
 #      gh-pages report path (`<env>/<run>/`) and the TMS RUN_ID from it, so
 #      reusing `dev` would overwrite real DEV reports and collide with DEV run
 #      ids. `environment` is a free-form string on the workflow_call side
-#      (test-ui-custom.yml:93-96), so `de-vm` needs no change there. Credentials
+#      (test-ui-custom.yml:93-96), so `dev-vm` needs no change there. Credentials
 #      are unaffected: they are passed explicitly below, never looked up by env
 #      name.
 #   3. NO SCHEDULE. Dispatch-only while this target is temporary — a second
@@ -33,7 +33,16 @@ run-name: UI Tests DE-VM [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites
 #      and `notify` jobs already handle the schedule event.
 #   4. `enable_results_processing` / `publish_to_tms` default OFF, as on DEV
 #      dispatch. Turning them on writes a maintenance report named after THIS
-#      workflow and a TMS run id tagged `DE-VM` — separate from DEV either way.
+#      workflow and a TMS run id tagged `DEV-VM` — separate from DEV either way.
+#   5. PREFLIGHT GUARD (`preflight` job). Added after run 38224093312, which was
+#      a FALSE GREEN: the host did not resolve, so the `auth_state` fixture's
+#      blanket `except` turned a DNS error into `pytest.skip()`
+#      (automation/fixtures/session_fixtures.py:107-111) and all ~120 tests
+#      skipped while every job exited 0. The suite cannot distinguish "bad
+#      credentials" from "host unreachable", so this workflow checks the host
+#      BEFORE the matrix fans out and fails loudly instead. Cheap (one curl) and
+#      it keeps the fix local — session_fixtures.py is shared with DEV and is
+#      deliberately not touched.
 
 on:
   # Uncomment to run nightly (DEV runs at 23:00; offset to avoid two publishes
@@ -77,9 +86,60 @@ on:
         default: false
 
 jobs:
+  preflight:
+    # Workaround 5 — fail loudly on an unreachable host instead of skipping ~120
+    # tests and reporting success. See the header note for the incident.
+    name: Preflight — host reachable
+    runs-on: ubuntu-latest
+    env:
+      TARGET_HOST: dev-vm.elitea.ai
+    steps:
+      - name: Resolve and reach the target host
+        run: |
+          set -uo pipefail
+
+          echo "Target host: ${TARGET_HOST}"
+
+          # curl's exit code is the portable signal here: 6 == "couldn't resolve
+          # host", 0 == reached it. (`getent hosts` is not available on every
+          # platform and reports NXDOMAIN for resolvable names on macOS, so it
+          # is not used — verified while building this.)
+          APP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' -L --max-time 30 \
+            "https://${TARGET_HOST}/app/" 2>/dev/null)
+          CURL_RC=$?
+
+          if [ "$CURL_RC" -eq 6 ]; then
+            echo "::error title=Host does not resolve::${TARGET_HOST} did not resolve from this runner (curl exit 6). Nothing was tested. If the host is internal-only a GitHub-hosted runner cannot reach it and a self-hosted runner is required."
+            exit 1
+          fi
+          if [ "$CURL_RC" -ne 0 ]; then
+            echo "::error title=Host unreachable::https://${TARGET_HOST}/app/ could not be contacted (curl exit ${CURL_RC} — connection failed or timed out). Nothing was tested."
+            exit 1
+          fi
+
+          API_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+            "https://${TARGET_HOST}/api/v2/" 2>/dev/null || echo "000")
+
+          echo "    /app/      -> ${APP_CODE}"
+          echo "    /api/v2/   -> ${API_CODE}"
+
+          # Reachable but broken should stop here too, not 45 minutes into a
+          # matrix that skips everything.
+          if [ "$APP_CODE" -ge 500 ]; then
+            echo "::error title=Host returning ${APP_CODE}::https://${TARGET_HOST}/app/ returned ${APP_CODE}. The environment looks down; not fanning out the matrix."
+            exit 1
+          fi
+
+          {
+            echo "## ✅ Preflight"
+            echo ""
+            echo "\`${TARGET_HOST}\` reachable — \`/app/\` → ${APP_CODE}, \`/api/v2/\` → ${API_CODE}."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   links:
     # Runs first so its summary is shown at the top of the run page
     name: Run reports
+    needs: preflight
     runs-on: ubuntu-latest
     outputs:
       run_name: ${{ steps.links.outputs.run_name }}
@@ -94,7 +154,7 @@ jobs:
           PUBLISH_TO_TMS: ${{ inputs.publish_to_tms == true }}
         run: |
           # Build run name (github.run_name not available in called workflow context)
-          RUN_NAME="UI Tests DE-VM [${{ github.ref_name }}] [${SUITES}]"
+          RUN_NAME="UI Tests DEV-VM [${{ github.ref_name }}] [${SUITES}]"
           echo "run_name=$RUN_NAME" >> $GITHUB_OUTPUT
 
           # Maintenance report name - same sanitization as ParseWebhook in
@@ -120,7 +180,7 @@ jobs:
               echo "> ⚠️ Publishing to TMS is disabled for this run, so the dashboard will not be updated."
             fi
             echo ""
-            echo "> 🧪 Temporary target: this run uses the DEV credential set against the DE-VM host."
+            echo "> 🧪 Temporary target: this run uses the DEV credential set against the DEV-VM host."
           } >> $GITHUB_STEP_SUMMARY
 
   test:
@@ -129,7 +189,7 @@ jobs:
     with:
       # Workaround 2 — own env name so artifacts / gh-pages / TMS run ids do not
       # collide with the real DEV workflow's.
-      environment: de-vm
+      environment: dev-vm
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
@@ -142,11 +202,11 @@ jobs:
       update_correlation: true
     secrets:
       # Workaround 1 — THE ONLY DIFFERENCE FROM test-ui-dev.yml: the host.
-      # Literals, not `*_DE_VM` secrets, so this needs no repo-secret setup.
-      # If a real ELITEA_URL_DE_VM / ELITEA_API_BASE_DE_VM secret is added later,
-      # swap these two lines for `${{ secrets.ELITEA_URL_DE_VM }}` etc.
-      ELITEA_URL: https://de-vm.elitea.ai
-      ELITEA_API_BASE: https://de-vm.elitea.ai/api/v2
+      # Literals, not `*_DEV_VM` secrets, so this needs no repo-secret setup.
+      # If a real ELITEA_URL_DEV_VM / ELITEA_API_BASE_DEV_VM secret is added later,
+      # swap these two lines for `${{ secrets.ELITEA_URL_DEV_VM }}` etc.
+      ELITEA_URL: https://dev-vm.elitea.ai
+      ELITEA_API_BASE: https://dev-vm.elitea.ai/api/v2
       # Everything below is byte-identical to test-ui-dev.yml — the DEV keys.
       # ELITEA_API_TOKEN / ELITEA_PROJECT_ID are deliberately NOT passed: the called
       # workflow resolves them per runner from TEST_USER_TOKEN_{n}/TEST_USER_PROJECT_{n}
@@ -194,6 +254,64 @@ jobs:
       CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
       CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}
 
+  verify:
+    # Second half of workaround 5. Preflight catches an unreachable host; this
+    # catches the general false green — anything that makes `auth_state` skip
+    # (expired token, wrong password, env up but not logged-in-able) still exits
+    # 0 in every matrix job, because a skip is not a failure to pytest.
+    # A run where nothing actually executed must not look green.
+    name: Verify tests actually ran
+    needs: test
+    if: always() && needs.test.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download JUnit results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-dev-vm-*-${{ github.run_number }}
+          path: results
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Fail if every test skipped
+        run: |
+          set -uo pipefail
+          TOTAL=0; SKIPPED=0
+
+          shopt -s globstar nullglob
+          FILES=(results/**/junit.xml)
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "::error title=No results::No junit.xml artifacts were produced, so no test outcome can be verified."
+            exit 1
+          fi
+
+          for xml in "${FILES[@]}"; do
+            t=$(grep -o 'tests="[0-9]*"'   "$xml" | head -1 | grep -o '[0-9]*' || echo 0)
+            s=$(grep -o 'skipped="[0-9]*"' "$xml" | head -1 | grep -o '[0-9]*' || echo 0)
+            TOTAL=$((TOTAL + t)); SKIPPED=$((SKIPPED + s))
+          done
+
+          EXECUTED=$((TOTAL - SKIPPED))
+          echo "collected=$TOTAL skipped=$SKIPPED executed=$EXECUTED"
+
+          {
+            echo "## 🧪 Execution check"
+            echo ""
+            echo "| Collected | Skipped | Actually executed |"
+            echo "|---|---|---|"
+            echo "| $TOTAL | $SKIPPED | $EXECUTED |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$TOTAL" -gt 0 ] && [ "$EXECUTED" -eq 0 ]; then
+            echo "::error title=False green::All $TOTAL collected tests were SKIPPED — nothing ran. The usual cause is session auth failing (auth_state skips on any exception, incl. DNS/login errors), not a real pass. Check a test job's log for 'Authentication failed'."
+            {
+              echo ""
+              echo "> ❌ **All $TOTAL tests skipped — nothing executed.** This run proves nothing."
+              echo "> Most likely session auth failed against the target host."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
   notify:
     name: Notify intake pipeline
     needs: [links, test]
@@ -233,7 +351,7 @@ jobs:
             --arg action "completed" \
             --argjson run_id ${{ github.run_id }} \
             --arg name "$RUN_NAME" \
-            --arg path ".github/workflows/test-ui-de-vm.yml" \
+            --arg path ".github/workflows/test-ui-dev-vm.yml" \
             --arg html_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --argjson run_number ${{ github.run_number }} \
             --arg head_branch "${{ github.ref_name }}" \
