@@ -113,6 +113,10 @@ on:
         description: 'Constant password suffix (TEMPLATE + suffix) for EVERY user. Defaults to "0" — the stage2 schema, which DEV-VM also uses. Empty = per-user suffix (the DEV schema; it does not work on this host).'
         type: string
         default: '0'
+      default_model_name:
+        description: 'LLM model name (DEFAULT_MODEL_NAME). Empty = repo variable DEFAULT_MODEL_NAME_DEV_VM, else DEFAULT_MODEL_NAME, else the dev-vm fallback below. DEV-VM does NOT serve the repo default gpt-5.2.'
+        type: string
+        default: ''
 
 jobs:
   preflight:
@@ -257,6 +261,15 @@ jobs:
       # The `|| '0'` keeps the schema correct on a schedule event too, where
       # every `inputs.*` is empty.
       password_suffix_override: ${{ inputs.password_suffix_override || '0' }}
+      # MODEL OVERRIDE. DEV-VM does not serve the repo default `gpt-5.2`
+      # (GET /api/v2/configurations/models/{project_id} lists 21 models, none of
+      # them gpt-5.2). A model the env lacks makes every LLM-backed run fail with
+      # "Temporary server error, please try again" / task_failed, which looks like
+      # a pipeline-engine defect but is only model resolution. `gpt-5.4-mini` is
+      # served here and verified green locally against dev-vm.
+      # Override order: this workflow's input -> repo var DEFAULT_MODEL_NAME_DEV_VM
+      # -> repo var DEFAULT_MODEL_NAME -> the literal fallback below.
+      default_model_name: ${{ inputs.default_model_name || vars.DEFAULT_MODEL_NAME_DEV_VM || vars.DEFAULT_MODEL_NAME || 'gpt-5.4-mini' }}
       # Inert unless publish_to_tms is true — the correlation steps live inside the
       # callee's `publish-tms` job, which is itself gated on that input.
       update_correlation: true
