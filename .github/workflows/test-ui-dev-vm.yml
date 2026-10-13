@@ -43,29 +43,31 @@ run-name: UI Tests DEV-VM [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suite
 #      BEFORE the matrix fans out and fails loudly instead. Cheap (one curl) and
 #      it keeps the fix local — session_fixtures.py is shared with DEV and is
 #      deliberately not touched.
-#   6. `password_suffix_override` EXPOSED as a dispatch input. The called
-#      workflow accepts it on workflow_call but test-ui-dev.yml never passes it.
-#      Needed here because DEV-VM is a SEPARATE Keycloak realm (see below), so
-#      its autotest users may carry different passwords; this is the only
-#      credential lever available without editing the shared callee. Empty =
-#      per-user suffix, exactly as on DEV.
+#   6. PASSWORD SCHEMA = stage2's, not DEV's. On DEV each user has its own
+#      password suffix (TEMPLATE + "1".."9"/"Admin"). On DEV-VM, as on stage2,
+#      EVERY user (1-9, ADMIN and User B) shares TEMPLATE + "0". The callee
+#      already implements this via `password_suffix_override`
+#      (test-ui-custom.yml:492-508) and accepts it on workflow_call;
+#      test-ui-dev.yml never passes it and test-ui-stage2.yml hardcodes '0'
+#      (test-ui-stage2.yml:53). Here it is a dispatch input defaulting to '0' —
+#      the schema is the default, and overridable without an edit if DEV-VM's
+#      users are ever re-provisioned on a different scheme.
 #
-# ⚠️ KNOWN BLOCKER — DEV-VM IS A SEPARATE KEYCLOAK REALM.
+# ℹ️ DEV-VM IS A SEPARATE KEYCLOAK REALM — which is why the schema above matters.
 #   https://dev.elitea.ai     -> realm `dev`
 #   https://dev-vm.elitea.ai  -> realm `dev-vm`
-#   A realm is its own user database, so the DEV `autotest_user_{1..9,admin}`
-#   accounts (and the DEV API tokens) do not authenticate against DEV-VM.
-#   Verified 2026-10-12 against the live host: the login POST returns HTTP 200
-#   with Keycloak's "Invalid username or password", and the DEV bearer token gets
-#   302'd to login on /api/v2/. Keycloak deliberately returns the same message
-#   for "no such user" and "wrong password", so which of the two it is cannot be
-#   told from the response.
-#   This is NOT fixable inside this file: the user names are derived inside the
-#   called workflow (`autotest_user_<suffix>`, test-ui-custom.yml:525) and the
-#   accounts themselves have to exist in the `dev-vm` realm. Until the autotest
-#   users are provisioned there (or their credentials supplied), every test will
-#   skip at `auth_state` — and the `verify` job below will correctly fail the run
-#   instead of reporting a false green.
+#   A realm is its own user database, so the `autotest_user_{1..9,admin}` accounts
+#   here are distinct accounts from DEV's that happen to share names. That is
+#   exactly why they can carry a different password scheme, and why run
+#   38226392582 failed with Keycloak's "Invalid username or password" (HTTP 200,
+#   form re-rendered) while the DEV per-user suffixes were being used: the
+#   usernames resolved, the passwords did not.
+#   If auth still fails with the '0' suffix, the remaining possibilities are that
+#   the accounts are not provisioned in this realm at all, or that the template
+#   itself differs. Keycloak returns the same message for "no such user" and
+#   "wrong password", so the response cannot distinguish them — that check has to
+#   happen in the realm. Either way the run will not report a false green: every
+#   test skips at `auth_state` and the `verify` job fails the run.
 
 on:
   # Uncomment to run nightly (DEV runs at 23:00; offset to avoid two publishes
@@ -108,9 +110,9 @@ on:
         type: boolean
         default: false
       password_suffix_override:
-        description: 'DEV-VM only: constant password suffix (TEMPLATE + suffix) for every user. Empty = per-user suffix, as on DEV. DEV-VM is a separate Keycloak realm, so its autotest users may need a different password.'
+        description: 'Constant password suffix (TEMPLATE + suffix) for EVERY user. Defaults to "0" — the stage2 schema, which DEV-VM also uses. Empty = per-user suffix (the DEV schema; it does not work on this host).'
         type: string
-        default: ''
+        default: '0'
 
 jobs:
   preflight:
@@ -247,9 +249,14 @@ jobs:
       ref: ${{ inputs.ref || 'main' }}
       publish_to_tms: ${{ inputs.publish_to_tms || false }}
       tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}
-      # Workaround 6 — the callee supports this on workflow_call but
-      # test-ui-dev.yml never passes it. See the realm note in the header.
-      password_suffix_override: ${{ inputs.password_suffix_override || '' }}
+      # Workaround 6 — password schema. DEV-VM uses the SAME schema as stage2:
+      # every user (1-9, ADMIN and User B) has password TEMPLATE + "0", so the
+      # per-user-suffix scheme DEV uses does not apply here. The callee accepts
+      # this input on workflow_call; test-ui-dev.yml never passes it, and
+      # test-ui-stage2.yml hardcodes '0' (test-ui-stage2.yml:53).
+      # The `|| '0'` keeps the schema correct on a schedule event too, where
+      # every `inputs.*` is empty.
+      password_suffix_override: ${{ inputs.password_suffix_override || '0' }}
       # Inert unless publish_to_tms is true — the correlation steps live inside the
       # callee's `publish-tms` job, which is itself gated on that input.
       update_correlation: true
