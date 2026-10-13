@@ -13,37 +13,42 @@
 
 ## Test Results Matrix
 
-| Test Case | #253 | #254 | #255 | Tracking Issue |
-|-----------|--------|--------|--------|----------------|
-| tests.ui.agent_hub.test_agent_hub_filter_multiple_categories.TestAgentHubFilterMultipleCategories.test_agent_hub_filter_by_multiple_categories[chromium] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.agent_hub.test_agent_hub_filter_single_category.TestAgentHubFilterSingleCategory.test_agent_hub_filter_by_single_category[chromium] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.agent_hub.test_agent_hub_like_agent_list_view.TestAgentHubLikeAgentListView.test_agent_hub_like_agent_from_list_view[chromium] | 🟣 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.agent_hub.test_agent_hub_search_bar_filters_in_real_time.TestAgentHubSearchBarFiltersInRealTime.test_agent_hub_search_bar_filters_in_real_time[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1811-leading-digit] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1814-special-char] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1814-underscore] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.artifacts.test_artifacts_create_bucket_upload_file.TestArtifactCreateBucketAndUploadFile.test_create_bucket_via_form_and_upload_file_via_bucket_menu[chromium] | 🟣 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.artifacts.test_artifacts_duplicate_bucket_name.TestArtifactDuplicateBucketName.test_duplicate_bucket_name_is_not_allowed[chromium] | 🟢 | 🟣 | 🟢 | - |
-| tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.chat.test_agent_with_toolkit_chat.TestAgentWithToolkitInChat.test_agent_with_toolkit_executes_in_chat[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.chat.test_chat_interface.TestConversationUIElements.test_attach_files_button_sends_file_with_message[chromium] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.chat.test_image_creation.TestImageCreation.test_create_image[chromium-minimal_prompt] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.pipelines_2.test_pipeline_webhook_trigger_settings_modal.test_webhook_trigger_settings_modal[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.skills.test_skill_test_panel_no_new_conversation.TestSkillTestPanelNoNewConversation.test_test_panel_does_not_create_new_chat_conversation[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.skills.test_skill_test_panel_version_instructions.TestSkillTestPanelVersionInstructions.test_test_panel_uses_selected_skill_version_instructions[chromium] | 🟣 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestAgentCredentialIndicators.test_agent_credential_indicators_e2e[chromium] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-github] | 🟢 | 🟣 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-jira] | 🟢 | 🟢 | 🟣 | [#2429](https://github.com/EliteaAI/elitea-testing-public/issues/2429) |
-| **Total executed** | 260 | 260 | 260 | - |
+| Test Case | #253 | #254 | #255 | #264 | Tracking Issue |
+|-----------|--------|--------|--------|--------|----------------|
+| tests.ui.agent_hub.test_agent_hub_copy_link_from_modal.TestAgentHubCopyLinkFromModal.test_copy_link_from_modal_navigates_to_agent[chromium] | 🟢 | 🟢 | 🟢 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.agent_hub.test_agent_hub_filter_multiple_categories.TestAgentHubFilterMultipleCategories.test_agent_hub_filter_by_multiple_categories[chromium] | 🟢 | 🟢 | 🟣 | 🟢 | - |
+| tests.ui.agent_hub.test_agent_hub_filter_single_category.TestAgentHubFilterSingleCategory.test_agent_hub_filter_by_single_category[chromium] | 🟢 | 🟢 | 🟣 | 🟢 | - |
+| tests.ui.agent_hub.test_agent_hub_like_agent_list_view.TestAgentHubLikeAgentListView.test_agent_hub_like_agent_from_list_view[chromium] | 🟣 | 🟢 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.agent_hub.test_agent_hub_search_bar_filters_in_real_time.TestAgentHubSearchBarFiltersInRealTime.test_agent_hub_search_bar_filters_in_real_time[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1811-leading-digit] | 🟢 | 🟢 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1814-special-char] | 🟢 | 🟢 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1814-underscore] | 🟢 | 🟢 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.artifacts.test_artifacts_create_bucket_upload_file.TestArtifactCreateBucketAndUploadFile.test_create_bucket_via_form_and_upload_file_via_bucket_menu[chromium] | 🟣 | 🟢 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.artifacts.test_artifacts_duplicate_bucket_name.TestArtifactDuplicateBucketName.test_duplicate_bucket_name_is_not_allowed[chromium] | 🟢 | 🟣 | 🟢 | 🟢 | - |
+| tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations[chromium] | 🟣 | 🟣 | 🟣 | 🟢 | - |
+| tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations[chromium] | 🟣 | 🟣 | 🟣 | 🟢 | - |
+| tests.ui.chat.test_agent_with_toolkit_chat.TestAgentWithToolkitInChat.test_agent_with_toolkit_executes_in_chat[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.chat.test_chat_interface.TestConversationUIElements.test_attach_files_button_sends_file_with_message[chromium] | 🟢 | 🟢 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.chat.test_image_creation.TestImageCreation.test_create_image[chromium-minimal_prompt] | 🟢 | 🟢 | 🟣 | 🟢 | - |
+| tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section[chromium] | 🟢 | 🟢 | 🟢 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.pipelines_2.test_pipeline_webhook_trigger_settings_modal.test_webhook_trigger_settings_modal[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.skills.test_skill_test_panel_no_new_conversation.TestSkillTestPanelNoNewConversation.test_test_panel_does_not_create_new_chat_conversation[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.skills.test_skill_test_panel_version_instructions.TestSkillTestPanelVersionInstructions.test_test_panel_uses_selected_skill_version_instructions[chromium] | 🟣 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantHistory.test_history_restore_and_continue[chromium] | 🟢 | 🟢 | 🟢 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestAgentCredentialIndicators.test_agent_credential_indicators_e2e[chromium] | 🟢 | 🟢 | 🟣 | 🟢 | - |
+| tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[chromium-github] | 🟢 | 🟢 | 🟢 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-confluence] | 🟢 | 🟢 | 🟢 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-github] | 🟢 | 🟣 | 🟣 | 🟣 | [#2434](https://github.com/EliteaAI/elitea-testing-public/issues/2434) |
+| tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-jira] | 🟢 | 🟢 | 🟣 | 🟢 | - |
+| **Total executed** | 260 | 260 | 260 | 260 | - |
 
 ## Summary
 
-- **Runs Shown:** 3 (max 10)
-- **Total Test Cases:** 23
-- **With Tracking Issues:** 22
+- **Runs Shown:** 4 (max 10)
+- **Total Test Cases:** 28
+- **With Tracking Issues:** 20
 
 *Generated automatically from maintenance files*
