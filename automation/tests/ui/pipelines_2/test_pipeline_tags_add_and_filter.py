@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 
 import allure
 import pytest
+from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
@@ -107,7 +108,9 @@ def test_pipeline_tags_add_and_filter(page, pipeline_api):
                 f"Pipeline 1's form should show tags {{{tag_regression!r}, {tag_smoke!r}}}, "
                 f"got: {pipeline_1_form_tags!r}"
             )
-            form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
+            form_page.save_and_wait_for_creation(
+                str(settings.elitea_project_id), timeout=FORM_SAVE_TIMEOUT
+            )
             detail_page.wait_for_detail_page_load()
             pipeline_1_id = int(detail_page.get_pipeline_id())
             created_pipeline_ids.append(pipeline_1_id)
@@ -133,7 +136,9 @@ def test_pipeline_tags_add_and_filter(page, pipeline_api):
                 f"Pipeline 2's form should show tags {{{tag_regression!r}, {tag_integration!r}}}, "
                 f"got: {pipeline_2_form_tags!r}"
             )
-            form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
+            form_page.save_and_wait_for_creation(
+                str(settings.elitea_project_id), timeout=FORM_SAVE_TIMEOUT
+            )
             detail_page.wait_for_detail_page_load()
             pipeline_2_id = int(detail_page.get_pipeline_id())
             created_pipeline_ids.append(pipeline_2_id)

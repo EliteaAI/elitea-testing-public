@@ -279,32 +279,6 @@ class PipelineFormPage(BasePage):
     # Save/Cancel/Discard actions
     # ------------------------------------------------------------------
 
-    def click_save(self, timeout: int = 10000):
-        """Click the Save button and wait for network.
-
-        Uses JavaScript click to bypass MUI overlay interception.
-
-        Args:
-            timeout: Maximum wait time for save to complete.
-        """
-        logger.info("Clicking Save")
-        self.save_button.evaluate("el => el.click()")
-        self.wait_for_network(timeout=timeout)
-
-    def save_and_wait_for_navigation(self, timeout: int = 15000):
-        """Click Save and wait for navigation to detail page.
-
-        Encapsulates save + navigation + detail page load wait.
-
-        Args:
-            timeout: Maximum wait time for save and navigation.
-        """
-        self.click_save(timeout=timeout)
-        # After save on create, URL changes to /pipelines/all/{id}
-        # Wait for URL to change
-        self.page.wait_for_url("**/pipelines/all/*", timeout=timeout)
-        self.wait_for_network(timeout=10000)
-
     def save_and_wait_for_creation(self, project_id: str, timeout: int = 15000) -> dict:
         """Click Save on the create form and wait for the create POST's 2xx response.
 

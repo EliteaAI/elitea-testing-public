@@ -33,6 +33,7 @@ Usage:
 """
 
 import pytest
+from config import settings
 from tests.ui.pipeline_helpers import _navigate_to_detail, _navigate_to_canvas
 import allure
 
@@ -401,7 +402,17 @@ class TestMultiNodeTopology:
             _add_llm_node_and_connect(pipelines)
 
         with allure.step("Step 3 — Save pipeline"):
-            pipelines.click_save(timeout=FORM_SAVE_TIMEOUT)
+            # Waits on the update PUT's own response rather than on network
+            # silence: this app holds a persistent Socket.IO polling transport
+            # open, so `networkidle` can resolve in a gap between polls BEFORE
+            # React dispatches the save — and the Step 4 reload then races the
+            # write (#1847).
+            save_response = pipelines.save_and_wait_for_update(
+                str(settings.elitea_project_id), pipeline_id, timeout=FORM_SAVE_TIMEOUT
+            )
+            assert save_response is not None, (
+                "Save should return the persisted pipeline version"
+            )
 
         with allure.step("Step 4 — Reload page"):
             pipelines.page.reload()

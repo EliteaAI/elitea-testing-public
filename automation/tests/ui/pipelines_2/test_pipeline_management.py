@@ -205,7 +205,16 @@ class TestCreatePipeline:
             assert form_page.is_save_enabled(), (
                 "Save button should be enabled after filling required fields"
             )
-            form_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+            # Waits on the create POST's own response rather than on network
+            # silence: this app holds a persistent Socket.IO polling transport
+            # open, so `networkidle` can resolve in a gap between polls BEFORE
+            # React dispatches the save (#1847).
+            create_response = form_page.save_and_wait_for_creation(
+                str(settings.elitea_project_id), timeout=FORM_SAVE_TIMEOUT
+            )
+            assert create_response.get("name") == pipeline_name, (
+                f"Create response should carry the new name, got {create_response.get('name')!r}"
+            )
 
         with allure.step("Step 4 — Verify navigation to detail page"):
             detail_page = PipelineDetailPage(page)
@@ -302,7 +311,14 @@ class TestCreatePipeline:
             )
 
         with allure.step("Step 6 — Click Save"):
-            form_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+            # Waits on the create POST's own response rather than on network
+            # silence — see the note in test_create_pipeline_via_ui (#1847).
+            create_response = form_page.save_and_wait_for_creation(
+                str(settings.elitea_project_id), timeout=FORM_SAVE_TIMEOUT
+            )
+            assert create_response.get("name") == pipeline_name, (
+                f"Create response should carry the new name, got {create_response.get('name')!r}"
+            )
 
         with allure.step("Step 7 — Verify URL includes the new numeric pipeline ID"):
             detail_page = PipelineDetailPage(page)
@@ -356,9 +372,19 @@ class TestEditPipeline:
         with allure.step("Step 2 — Update pipeline name"):
             detail_page.update_name(new_name)
 
-        with allure.step("Step 3 — Save changes"):
+        with allure.step("Step 3 — Save changes and verify the update response carries the new name"):
             assert detail_page.is_save_enabled(), "Save should be enabled after name change"
-            detail_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+            # Waits on the update PUT's own response rather than on network
+            # silence: this app holds a persistent Socket.IO polling transport
+            # open, so `networkidle` can resolve in a gap between polls BEFORE
+            # React dispatches the PUT — and the Step 4 reload then races the
+            # write, reading back the old name (#1847).
+            save_response = detail_page.save_and_wait_for_update(
+                str(settings.elitea_project_id), pipeline_id, timeout=FORM_SAVE_TIMEOUT
+            )
+            assert save_response.get("name") == new_name, (
+                f"Update response should carry the new name, got {save_response.get('name')!r}"
+            )
 
         with allure.step("Step 4 — Reload and verify name persisted"):
             detail_page.reload_and_wait()
@@ -379,8 +405,16 @@ class TestEditPipeline:
         with allure.step("Step 2 — Update pipeline description"):
             detail_page.update_description(new_desc)
 
-        with allure.step("Step 3 — Save changes"):
-            detail_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+        with allure.step("Step 3 — Save changes and verify the update response carries the new description"):
+            # Waits on the update PUT's own response rather than on network
+            # silence — see the note in test_edit_pipeline_name (#1847).
+            save_response = detail_page.save_and_wait_for_update(
+                str(settings.elitea_project_id), pipeline_id, timeout=FORM_SAVE_TIMEOUT
+            )
+            assert save_response.get("description") == new_desc, (
+                f"Update response should carry the new description, "
+                f"got {save_response.get('description')!r}"
+            )
 
         with allure.step("Step 4 — Reload and verify description persisted"):
             detail_page.reload_and_wait()
