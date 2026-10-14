@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "automation_test_id": "tests.ui.admin.test_analytics_default_load.TestAnalyticsDefaultLoad.test_analytics_page_default_load",
+      "automation_test_id": "tests.ui.admin.test_analytics_default_load.TestAnalyticsDefaultLoad.test_analytics_page_default_load[chromium]",
       "markers": [
         "admin",
         "new_verified",
@@ -14,7 +14,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestBlockedToolLiveReload.test_blocked_tool_live_reload_case_insensitive",
+      "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestBlockedToolLiveReload.test_blocked_tool_live_reload_case_insensitive[chromium]",
       "markers": [
         "admin",
         "guardrails",
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestBlockedToolkitLiveReload.test_blocked_toolkit_live_reload_case_insensitive",
+      "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestBlockedToolkitLiveReload.test_blocked_toolkit_live_reload_case_insensitive[chromium]",
       "markers": [
         "admin",
         "guardrails",
@@ -32,7 +32,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestSensitiveToolLiveReload.test_sensitive_tool_live_reload_case_insensitive",
+      "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestSensitiveToolLiveReload.test_sensitive_tool_live_reload_case_insensitive[chromium]",
       "markers": [
         "admin",
         "guardrails",
@@ -41,7 +41,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.admin.test_notification_text_content.TestNotificationTextContent.test_notification_text_content_renders_correctly",
+      "automation_test_id": "tests.ui.admin.test_notification_text_content.TestNotificationTextContent.test_notification_text_content_renders_correctly[chromium]",
       "markers": [
         "admin",
         "new_verified",
@@ -54,7 +54,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_expired_token_shows_expired_icon_and_label",
+      "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_expired_token_shows_expired_icon_and_label[chromium]",
       "markers": [
         "admin",
         "new_verified",
@@ -68,7 +68,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_invalid_token_name_shows_error_and_keeps_generate_disabled",
+      "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_invalid_token_name_shows_error_and_keeps_generate_disabled[chromium]",
       "markers": [
         "admin",
         "new_verified",
@@ -82,7 +82,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_close_agent_detail_modal.TestAgentHubCloseAgentDetailModal.test_agent_hub_close_agent_detail_modal",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_close_agent_detail_modal.TestAgentHubCloseAgentDetailModal.test_agent_hub_close_agent_detail_modal[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -95,7 +95,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_copy_link_from_modal.TestAgentHubCopyLinkFromModal.test_copy_link_from_modal_navigates_to_agent",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_copy_link_from_modal.TestAgentHubCopyLinkFromModal.test_copy_link_from_modal_navigates_to_agent[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -108,7 +108,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_multiple_categories.TestAgentHubFilterMultipleCategories.test_agent_hub_filter_by_multiple_categories",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_multiple_categories.TestAgentHubFilterMultipleCategories.test_agent_hub_filter_by_multiple_categories[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -121,7 +121,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_single_category.TestAgentHubFilterSingleCategory.test_agent_hub_filter_by_single_category",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_single_category.TestAgentHubFilterSingleCategory.test_agent_hub_filter_by_single_category[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -134,7 +134,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_like_agent_from_modal.TestAgentHubLikeAgentFromModal.test_agent_hub_like_agent_from_modal",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_like_agent_from_modal.TestAgentHubLikeAgentFromModal.test_agent_hub_like_agent_from_modal[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -147,7 +147,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_like_agent_list_view.TestAgentHubLikeAgentListView.test_agent_hub_like_agent_from_list_view",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_like_agent_list_view.TestAgentHubLikeAgentListView.test_agent_hub_like_agent_from_list_view[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -160,7 +160,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_open_agent_detail_modal.TestAgentHubOpenAgentDetailModal.test_agent_hub_open_agent_detail_modal",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_open_agent_detail_modal.TestAgentHubOpenAgentDetailModal.test_agent_hub_open_agent_detail_modal[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -173,7 +173,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_page_loads_private_project.TestAgentHubPageLoadsPrivateProject.test_agent_hub_page_loads_private_project",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_page_loads_private_project.TestAgentHubPageLoadsPrivateProject.test_agent_hub_page_loads_private_project[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -186,7 +186,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_search_bar_filters_in_real_time.TestAgentHubSearchBarFiltersInRealTime.test_agent_hub_search_bar_filters_in_real_time",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_search_bar_filters_in_real_time.TestAgentHubSearchBarFiltersInRealTime.test_agent_hub_search_bar_filters_in_real_time[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -199,7 +199,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_start_conversation_creates_new_chat.TestAgentHubStartConversationCreatesNewChat.test_agent_hub_start_conversation_creates_new_chat",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_start_conversation_creates_new_chat.TestAgentHubStartConversationCreatesNewChat.test_agent_hub_start_conversation_creates_new_chat[chromium]",
       "markers": [
         "chat",
         "new_verified",
@@ -212,7 +212,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_trending_category.TestAgentHubTrendingCategory.test_agent_hub_trending_category_displays_agents",
+      "automation_test_id": "tests.ui.agent_hub.test_agent_hub_trending_category.TestAgentHubTrendingCategory.test_agent_hub_trending_category_displays_agents[chromium]",
       "markers": [
         "agents",
         "p2",
@@ -223,7 +223,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agent_hub.test_empty_state.TestCatalogEmptyState.test_empty_state_when_search_matches_no_agents",
+      "automation_test_id": "tests.ui.agent_hub.test_empty_state.TestCatalogEmptyState.test_empty_state_when_search_matches_no_agents[chromium]",
       "markers": [
         "agent_hub",
         "allure_description",
@@ -236,7 +236,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_add_variables_persist_after_reload.TestAgentAddVariablesPersistAfterReload.test_add_two_variables_and_verify_they_persist_after_reload",
+      "automation_test_id": "tests.ui.agents.test_agent_add_variables_persist_after_reload.TestAgentAddVariablesPersistAfterReload.test_add_two_variables_and_verify_they_persist_after_reload[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -249,7 +249,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_back_navigation.test_back_button_from_agent_detail_returns_to_intact_agents_list",
+      "automation_test_id": "tests.ui.agents.test_agent_back_navigation.test_back_button_from_agent_detail_returns_to_intact_agents_list[chromium]",
       "markers": [
         "agents",
         "p0",
@@ -261,7 +261,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai_role_visibility.TestAgentBuildWithAIButtonRoleVisibility.test_build_with_ai_button_visible_for_admin_role",
+      "automation_test_id": "tests.ui.agents.test_agent_build_with_ai_role_visibility.TestAgentBuildWithAIButtonRoleVisibility.test_build_with_ai_button_visible_for_admin_role[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -274,7 +274,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_counter_turns_red_at_limit",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_counter_turns_red_at_limit[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -282,7 +282,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_counter_visible_and_updates",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_counter_visible_and_updates[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -290,7 +290,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_fullscreen_counter_and_warning",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_conversation_starter_fullscreen_counter_and_warning[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -298,7 +298,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_multiple_conversation_starters_have_counters",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestConversationStarterCharacterCounter.test_multiple_conversation_starters_have_counters[chromium]",
       "markers": [
         "agents",
         "p2",
@@ -306,7 +306,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_counter_turns_red_at_limit",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_counter_turns_red_at_limit[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -314,7 +314,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_counter_visible_and_updates_realtime",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_counter_visible_and_updates_realtime[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -322,7 +322,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_fullscreen_counter_and_warning",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_fullscreen_counter_and_warning[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -330,7 +330,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_text_truncated_with_warning",
+      "automation_test_id": "tests.ui.agents.test_agent_character_limits.TestWelcomeMessageCharacterCounter.test_welcome_message_text_truncated_with_warning[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -338,7 +338,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_copy_version_link.TestAgentCopyVersionLink.test_copy_version_link_produces_version_specific_url",
+      "automation_test_id": "tests.ui.agents.test_agent_copy_version_link.TestAgentCopyVersionLink.test_copy_version_link_produces_version_specific_url[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -351,7 +351,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_create_button_navigation.test_create_button_navigates_to_create_agent_page",
+      "automation_test_id": "tests.ui.agents.test_agent_create_button_navigation.test_create_button_navigates_to_create_agent_page[chromium]",
       "markers": [
         "agents",
         "p0",
@@ -363,7 +363,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_conversation_starter_chips.TestConversationStarterChipsVisibleAndClickable.test_conversation_starter_chips_visible_and_clickable",
+      "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_conversation_starter_chips.TestConversationStarterChipsVisibleAndClickable.test_conversation_starter_chips_visible_and_clickable[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -376,7 +376,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_send_message.TestAgentEmbeddedChatSendMessage.test_send_message_via_enter_and_verify_non_empty_response",
+      "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_send_message.TestAgentEmbeddedChatSendMessage.test_send_message_via_enter_and_verify_non_empty_response[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -389,7 +389,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_shift_enter.TestAgentEmbeddedChatShiftEnter.test_shift_enter_new_line_enter_sends",
+      "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_shift_enter.TestAgentEmbeddedChatShiftEnter.test_shift_enter_new_line_enter_sends[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -402,7 +402,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+      "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -415,7 +415,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_name_character_limit.test_agent_name_truncated_at_32_characters",
+      "automation_test_id": "tests.ui.agents.test_agent_name_character_limit.test_agent_name_truncated_at_32_characters[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -428,7 +428,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_publish_unpublish_version.TestAgentPublishUnpublishVersion.test_publish_draft_version_then_unpublish_reverts_to_draft",
+      "automation_test_id": "tests.ui.agents.test_agent_publish_unpublish_version.TestAgentPublishUnpublishVersion.test_publish_draft_version_then_unpublish_reverts_to_draft[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -441,7 +441,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_remove_variable.TestAgentRemoveVariable.test_remove_variable_and_verify_removal_persists",
+      "automation_test_id": "tests.ui.agents.test_agent_remove_variable.TestAgentRemoveVariable.test_remove_variable_and_verify_removal_persists[chromium]",
       "markers": [
         "agents",
         "p3",
@@ -453,7 +453,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_save_as_version.TestAgentSaveAsVersion.test_save_as_version_creates_named_version_visible_in_dropdown",
+      "automation_test_id": "tests.ui.agents.test_agent_save_as_version.TestAgentSaveAsVersion.test_save_as_version_creates_named_version_visible_in_dropdown[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -467,7 +467,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_save_as_version_preserves_skills.TestAgentSaveAsVersionPreservesSkills.test_agent_save_as_version_preserves_skills",
+      "automation_test_id": "tests.ui.agents.test_agent_save_as_version_preserves_skills.TestAgentSaveAsVersionPreservesSkills.test_agent_save_as_version_preserves_skills[chromium]",
       "markers": [
         "agents",
         "p0",
@@ -479,7 +479,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order",
+      "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -492,7 +492,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestAddToolkitToAgent.test_add_toolkit_to_agent",
+      "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestAddToolkitToAgent.test_add_toolkit_to_agent[chromium]",
       "markers": [
         "agents",
         "p0",
@@ -501,7 +501,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestChatWithAgentToolkit.test_agent_chat_with_github_toolkit",
+      "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestChatWithAgentToolkit.test_agent_chat_with_github_toolkit[chromium]",
       "markers": [
         "agents",
         "p0",
@@ -510,7 +510,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestRemoveToolkitFromAgent.test_remove_toolkit_from_agent",
+      "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestRemoveToolkitFromAgent.test_remove_toolkit_from_agent[chromium]",
       "markers": [
         "agents",
         "p1",
@@ -519,7 +519,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_build_with_ai_skill_from_agent.TestBuildWithAISkillFromAgent.test_build_with_ai_skill_auto_attaches_and_redirects_to_agent",
+      "automation_test_id": "tests.ui.agents.test_build_with_ai_skill_from_agent.TestBuildWithAISkillFromAgent.test_build_with_ai_skill_auto_attaches_and_redirects_to_agent[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -532,7 +532,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
+      "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -545,7 +545,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_import_agent_zip_nested_agent_dependencies.TestImportAgentZipNestedAgentDependencies.test_import_agent_zip_nested_agent_dependencies",
+      "automation_test_id": "tests.ui.agents.test_import_agent_zip_nested_agent_dependencies.TestImportAgentZipNestedAgentDependencies.test_import_agent_zip_nested_agent_dependencies[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -559,7 +559,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.agents.test_mcp_attach_via_tools_section.TestMcpAttachViaToolsSection.test_mcp_attach_via_tools_section",
+      "automation_test_id": "tests.ui.agents.test_mcp_attach_via_tools_section.TestMcpAttachViaToolsSection.test_mcp_attach_via_tools_section[chromium]",
       "markers": [
         "agents",
         "mcp",
@@ -572,43 +572,55 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1811-leading-digit]",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1811-leading-digit]",
       "markers": [
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1811"
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1814-space]",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1814-space]",
       "markers": [
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1814"
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1814-special-char]",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1814-special-char]",
       "markers": [
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1814"
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[ELITEA-1814-underscore]",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format[chromium-ELITEA-1814-underscore]",
       "markers": [
         "new_verified",
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1814"
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_create_bucket_upload_file.TestArtifactCreateBucketAndUploadFile.test_create_bucket_via_form_and_upload_file_via_bucket_menu",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_create_bucket_upload_file.TestArtifactCreateBucketAndUploadFile.test_create_bucket_via_form_and_upload_file_via_bucket_menu[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -620,7 +632,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_delete_subfolder_checkbox.TestArtifactDeleteSubfolderCheckbox.test_delete_multiple_files_partial_selection",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_delete_subfolder_checkbox.TestArtifactDeleteSubfolderCheckbox.test_delete_multiple_files_partial_selection[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -632,7 +644,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_delete_subfolder_checkbox.TestArtifactDeleteSubfolderCheckbox.test_delete_subfolder_via_checkbox",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_delete_subfolder_checkbox.TestArtifactDeleteSubfolderCheckbox.test_delete_subfolder_via_checkbox[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -644,7 +656,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_download_multiple_files_zip.TestArtifactDownloadMultipleFilesZip.test_download_multiple_files_as_zip",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_download_multiple_files_zip.TestArtifactDownloadMultipleFilesZip.test_download_multiple_files_as_zip[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -656,7 +668,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_download_single_file_dropdown.TestArtifactDownloadSingleFileDropdown.test_download_single_file_via_dropdown",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_download_single_file_dropdown.TestArtifactDownloadSingleFileDropdown.test_download_single_file_via_dropdown[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -668,7 +680,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_duplicate_bucket_name.TestArtifactDuplicateBucketName.test_duplicate_bucket_name_is_not_allowed",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_duplicate_bucket_name.TestArtifactDuplicateBucketName.test_duplicate_bucket_name_is_not_allowed[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -680,7 +692,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_actions_dropdown.TestArtifactFilePreviewActionsDropdown.test_actions_dropdown_copy_download_delete",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_actions_dropdown.TestArtifactFilePreviewActionsDropdown.test_actions_dropdown_copy_download_delete[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -692,7 +704,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_edit_save.TestArtifactFilePreviewEditSave.test_edit_file_content_and_save_changes",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_edit_save.TestArtifactFilePreviewEditSave.test_edit_file_content_and_save_changes[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -704,7 +716,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_image_restricted_controls.TestArtifactFilePreviewImageRestrictedControls.test_image_file_opens_directly_with_restricted_controls",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_image_restricted_controls.TestArtifactFilePreviewImageRestrictedControls.test_image_file_opens_directly_with_restricted_controls[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -716,7 +728,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_markdown_default_mode.TestArtifactFilePreviewMarkdownDefaultMode.test_markdown_file_opens_in_preview_mode_by_default",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_markdown_default_mode.TestArtifactFilePreviewMarkdownDefaultMode.test_markdown_file_opens_in_preview_mode_by_default[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -728,7 +740,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_markdown_raw_edit_save.TestArtifactFilePreviewMarkdownRawEditSave.test_raw_tab_enables_editing_and_save_persists",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_markdown_raw_edit_save.TestArtifactFilePreviewMarkdownRawEditSave.test_raw_tab_enables_editing_and_save_persists[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -740,7 +752,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_open_editor_ui.TestArtifactFilePreviewOpenEditorUI.test_open_supported_text_file_shows_editor_ui",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_file_preview_open_editor_ui.TestArtifactFilePreviewOpenEditorUI.test_open_supported_text_file_shows_editor_ui[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -752,7 +764,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_landing_page_ui.TestArtifactsLandingPageUI.test_landing_page_empty_bucket",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_landing_page_ui.TestArtifactsLandingPageUI.test_landing_page_empty_bucket[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -764,7 +776,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder[chromium]",
       "markers": [
         "p0",
         "regression",
@@ -772,7 +784,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_cancel.TestArtifactUploadDuplicateCancel.test_cancel_stops_entire_upload_including_non_duplicate",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_cancel.TestArtifactUploadDuplicateCancel.test_cancel_stops_entire_upload_including_non_duplicate[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -784,7 +796,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_detected_modal.TestArtifactUploadDuplicateDetectedModal.test_duplicate_detected_opens_resolve_duplicates_modal",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_detected_modal.TestArtifactUploadDuplicateDetectedModal.test_duplicate_detected_opens_resolve_duplicates_modal[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -796,7 +808,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_keep_both.TestArtifactUploadDuplicateKeepBoth.test_keep_both_uploads_renamed_copy_alongside_original",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_keep_both.TestArtifactUploadDuplicateKeepBoth.test_keep_both_uploads_renamed_copy_alongside_original[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -808,7 +820,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_skip.TestArtifactUploadDuplicateSkip.test_skip_uploads_only_non_duplicate_file",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_skip.TestArtifactUploadDuplicateSkip.test_skip_uploads_only_non_duplicate_file[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -820,7 +832,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_multiple_files.TestArtifactsUploadMultipleFiles.test_upload_multiple_files_at_once",
+      "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_multiple_files.TestArtifactsUploadMultipleFiles.test_upload_multiple_files_at_once[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -832,7 +844,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations",
+      "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_no_access_permission_blocks_all_api_operations[chromium]",
       "markers": [
         "p0",
         "regression",
@@ -844,7 +856,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations",
+      "automation_test_id": "tests.ui.artifacts.test_bucket_permissions_api.TestBucketPermissionsAPI.test_read_only_permission_allows_get_blocks_write_operations[chromium]",
       "markers": [
         "p0",
         "regression",
@@ -856,30 +868,36 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_agent_with_toolkit_chat.TestAgentWithToolkitInChat.test_agent_with_toolkit_executes_in_chat",
+      "automation_test_id": "tests.ui.chat.test_agent_with_toolkit_chat.TestAgentWithToolkitInChat.test_agent_with_toolkit_executes_in_chat[chromium]",
       "markers": [
         "agents",
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0143"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestContextAndSettings.test_edit_context_settings",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestContextAndSettings.test_edit_context_settings[chromium]",
       "markers": [
         "p2",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestConversationUIElements.test_attach_files_button_sends_file_with_message",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestConversationUIElements.test_attach_files_button_sends_file_with_message[chromium]",
       "markers": [
         "p1",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0500"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestConversationUIElements.test_internal_tools_panel_shows_all_tools",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestConversationUIElements.test_internal_tools_panel_shows_all_tools[chromium]",
       "markers": [
         "p1",
         "ui"
@@ -889,7 +907,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestConversationUIElements.test_model_selector_opens_menu",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestConversationUIElements.test_model_selector_opens_menu[chromium]",
       "markers": [
         "p1",
         "smoke",
@@ -900,7 +918,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestHashSearch.test_add_participant_via_hash_search",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestHashSearch.test_add_participant_via_hash_search[chromium]",
       "markers": [
         "p1",
         "ui"
@@ -910,7 +928,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestHashSearch.test_hash_search_participants",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestHashSearch.test_hash_search_participants[chromium]",
       "markers": [
         "p1",
         "ui"
@@ -920,14 +938,14 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestMessageActions.test_copy_message_to_clipboard",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestMessageActions.test_copy_message_to_clipboard[chromium]",
       "markers": [
         "p1",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestPageLoadAndRendering.test_chat_page_loads_with_functional_input",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestPageLoadAndRendering.test_chat_page_loads_with_functional_input[chromium]",
       "markers": [
         "p0",
         "smoke",
@@ -935,21 +953,21 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSearchAndErrorHandling.test_handle_message_send_failure",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSearchAndErrorHandling.test_handle_message_send_failure[chromium]",
       "markers": [
         "p1",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSearchAndErrorHandling.test_search_conversations_dialog",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSearchAndErrorHandling.test_search_conversations_dialog[chromium]",
       "markers": [
         "p1",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSendingMessages.test_cannot_send_empty_message",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSendingMessages.test_cannot_send_empty_message[chromium]",
       "markers": [
         "p1",
         "smoke",
@@ -957,28 +975,28 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSendingMessages.test_send_text_message",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSendingMessages.test_send_text_message[chromium]",
       "markers": [
         "p0",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSidebarNavigation.test_navigate_to_agents_from_sidebar",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSidebarNavigation.test_navigate_to_agents_from_sidebar[chromium]",
       "markers": [
         "p1",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSidebarNavigation.test_open_close_sidebar",
+      "automation_test_id": "tests.ui.chat.test_chat_interface.TestSidebarNavigation.test_open_close_sidebar[chromium]",
       "markers": [
         "p1",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[10k_tokens]",
+      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[chromium-10k_tokens]",
       "markers": [
         "chat",
         "p1",
@@ -986,7 +1004,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[32k_tokens]",
+      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[chromium-32k_tokens]",
       "markers": [
         "chat",
         "p2",
@@ -994,7 +1012,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_image_creation.TestImageCreation.test_create_image[detailed_description]",
+      "automation_test_id": "tests.ui.chat.test_image_creation.TestImageCreation.test_create_image[chromium-detailed_description]",
       "markers": [
         "chat",
         "p1",
@@ -1006,7 +1024,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_image_creation.TestImageCreation.test_create_image[minimal_prompt]",
+      "automation_test_id": "tests.ui.chat.test_image_creation.TestImageCreation.test_create_image[chromium-minimal_prompt]",
       "markers": [
         "chat",
         "p2",
@@ -1018,7 +1036,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_open_existing_conversation_from_this_week_section.TestOpenExistingConversationFromThisWeekSection.test_open_existing_conversation_from_this_week_section",
+      "automation_test_id": "tests.ui.chat.test_open_existing_conversation_from_this_week_section.TestOpenExistingConversationFromThisWeekSection.test_open_existing_conversation_from_this_week_section[chromium]",
       "markers": [
         "chat",
         "p2",
@@ -1027,7 +1045,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_pin_conversation.TestPinConversationViaPinOnTop.test_pin_conversation_via_pin_on_top",
+      "automation_test_id": "tests.ui.chat.test_pin_conversation.TestPinConversationViaPinOnTop.test_pin_conversation_via_pin_on_top[chromium]",
       "markers": [
         "chat",
         "new_verified",
@@ -1041,7 +1059,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTour.test_sidebar_interactive_tour_completes_via_next",
+      "automation_test_id": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTour.test_sidebar_interactive_tour_completes_via_next[chromium]",
       "markers": [
         "help_center",
         "new_verified",
@@ -1054,7 +1072,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_add_node_menu.test_add_node_menu_lists_types_adds_node_and_dismisses",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_add_node_menu.test_add_node_menu_lists_types_adds_node_and_dismisses[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1067,7 +1085,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestActionsMenu.test_export_pipeline_if_available",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestActionsMenu.test_export_pipeline_if_available[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1076,7 +1094,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestActionsMenu.test_three_dot_menu_lists_items",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestActionsMenu.test_three_dot_menu_lists_items[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1085,7 +1103,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestDiscardChanges.test_discard_reverts_name_change",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestDiscardChanges.test_discard_reverts_name_change[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1097,7 +1115,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestDiscardChanges.test_save_discard_button_states_toggle_on_edit_and_discard",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestDiscardChanges.test_save_discard_button_states_toggle_on_edit_and_discard[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1106,7 +1124,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMakeEntrypoint.test_make_node_entrypoint",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMakeEntrypoint.test_make_node_entrypoint[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1115,7 +1133,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMultiNodeTopology.test_save_multi_node_pipeline",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMultiNodeTopology.test_save_multi_node_pipeline[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1124,7 +1142,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMultiNodeTopology.test_three_node_chain",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMultiNodeTopology.test_three_node_chain[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1133,7 +1151,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_flow_yaml_round_trip",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_flow_yaml_round_trip[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1142,7 +1160,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_yaml_content_reflects_pipeline",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_yaml_content_reflects_pipeline[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1151,7 +1169,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_yaml_view_toggle",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_yaml_view_toggle[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1160,7 +1178,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_agent_node_integration.test_agent_node_fresh_attach",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_agent_node_integration.test_agent_node_fresh_attach[chromium]",
       "markers": [
         "agents",
         "new_verified",
@@ -1174,7 +1192,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attach_files_in_chat",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attach_files_in_chat[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1187,7 +1205,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attachments_toggle_persists_across_save_and_reload",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attachments_toggle_persists_across_save_and_reload[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1200,7 +1218,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_pipeline_as_tool.test_attach_pipeline_as_tool",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_pipeline_as_tool.test_attach_pipeline_as_tool[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1213,7 +1231,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_delete_node.test_delete_middle_node_removes_its_edges_and_persists",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_delete_node.test_delete_middle_node_removes_its_edges_and_persists[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1227,7 +1245,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1240,7 +1258,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_zoom_pan_and_fit_view",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_zoom_pan_and_fit_view[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1253,7 +1271,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_chat_starters_visible_and_clickable.test_pipeline_chat_starters_visible_and_clickable",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_chat_starters_visible_and_clickable.test_pipeline_chat_starters_visible_and_clickable[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1266,7 +1284,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_configuration.test_code_node_configuration_and_persistence",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_configuration.test_code_node_configuration_and_persistence[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1279,7 +1297,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_elitea_client_user_info.test_code_node_elitea_client_user_info",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_elitea_client_user_info.test_code_node_elitea_client_user_info[chromium]",
       "markers": [
         "new_verified",
         "p3",
@@ -1292,7 +1310,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_input_filtering.test_code_node_input_filtering_selective_state_access",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_input_filtering.test_code_node_input_filtering_selective_state_access[chromium]",
       "markers": [
         "new_verified",
         "p3",
@@ -1305,7 +1323,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_multi_var_dict_return.test_code_node_return_dict_multiple_state_vars",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_multi_var_dict_return.test_code_node_return_dict_multiple_state_vars[chromium]",
       "markers": [
         "new_verified",
         "p3",
@@ -1318,7 +1336,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_reads_state_variable.test_code_node_reads_elitea_state_variable",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_reads_state_variable.test_code_node_reads_elitea_state_variable[chromium]",
       "markers": [
         "new_verified",
         "p3",
@@ -1331,7 +1349,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_collapse_left_panel.test_collapse_and_expand_left_configuration_panel",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_collapse_left_panel.test_collapse_and_expand_left_configuration_panel[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1344,7 +1362,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_create_full_details_persist.test_create_pipeline_full_details_persist_after_reload",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_create_full_details_persist.test_create_pipeline_full_details_persist_after_reload[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1359,7 +1377,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_create_version.test_create_pipeline_version_save_list_switch_preserves_canvas_state",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_create_version.test_create_pipeline_version_save_list_switch_preserves_canvas_state[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1373,7 +1391,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1387,7 +1405,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_dashboard_pin_to_top.test_pipeline_dashboard_pin_to_top",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_dashboard_pin_to_top.test_pipeline_dashboard_pin_to_top[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1400,7 +1418,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_decision_node_configuration.test_decision_node_configuration_and_edge_wiring",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_decision_node_configuration.test_decision_node_configuration_and_edge_wiring[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1413,7 +1431,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_decision_node_execution.test_decision_node_routes_execution_to_correct_branch",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_decision_node_execution.test_decision_node_routes_execution_to_correct_branch[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1426,7 +1444,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_delete_version.test_delete_pipeline_version_falls_back_to_base",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_delete_version.test_delete_pipeline_version_falls_back_to_base[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1439,7 +1457,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_edge_creation.test_drag_connect_creates_edge_replacing_prior_transition",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_edge_creation.test_drag_connect_creates_edge_replacing_prior_transition[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1452,7 +1470,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_edge_deletion.test_delete_edge_resets_source_transition_and_persists",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_edge_deletion.test_delete_edge_resets_source_transition_and_persists[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1465,7 +1483,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_restricted_interactive_nodes.test_entry_point_trigger_restricted_interactive_nodes",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_restricted_interactive_nodes.test_entry_point_trigger_restricted_interactive_nodes[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1478,7 +1496,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_shown_only_on_entry_point_node",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_shown_only_on_entry_point_node[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1491,7 +1509,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_types_persist",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_types_persist[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1504,7 +1522,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipeline.test_message_count_starts_at_zero_and_grows",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipeline.test_message_count_starts_at_zero_and_grows[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1513,7 +1531,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipeline.test_pipeline_response_is_meaningful",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipeline.test_pipeline_response_is_meaningful[chromium]",
       "markers": [
         "new_verified",
         "p0",
@@ -1523,7 +1541,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipelineStreaming.test_long_response_streams_progressively",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipelineStreaming.test_long_response_streams_progressively[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1537,7 +1555,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineChatMessages.test_multiple_executions_accumulate",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineChatMessages.test_multiple_executions_accumulate[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1546,7 +1564,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineChatMessages.test_user_message_visible",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineChatMessages.test_user_message_visible[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1555,7 +1573,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_empty_pipeline_execution",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_empty_pipeline_execution[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1564,7 +1582,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_navigate_away_and_reexecute",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_navigate_away_and_reexecute[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1573,7 +1591,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_flow_to_yaml_sync.test_add_node_in_flow_view_syncs_to_yaml",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_flow_to_yaml_sync.test_add_node_in_flow_view_syncs_to_yaml[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1586,7 +1604,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1599,7 +1617,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_hitl_node_configuration.test_hitl_node_configuration_and_router_mapping",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_hitl_node_configuration.test_hitl_node_configuration_and_router_mapping[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1612,7 +1630,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_import_via_file.test_pipeline_import_via_file",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_import_via_file.test_pipeline_import_via_file[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1626,7 +1644,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section",
+      "automation_test_id": "tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1639,7 +1657,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_config_verified_via_yaml",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_config_verified_via_yaml[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1652,7 +1670,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_system_task_chat_history_config",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_system_task_chat_history_config[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1665,7 +1683,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_system_type_walks_fixed_fstring_variable",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_system_type_walks_fixed_fstring_variable[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1678,7 +1696,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_structured_output_state_variables.test_llm_structured_output_parses_into_state_variables",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_structured_output_state_variables.test_llm_structured_output_parses_into_state_variables[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1691,7 +1709,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestCreatePipeline.test_create_pipeline_minimal_via_sidebar_button",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestCreatePipeline.test_create_pipeline_minimal_via_sidebar_button[chromium]",
       "markers": [
         "new_verified",
         "p0",
@@ -1703,7 +1721,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestCreatePipeline.test_create_pipeline_required_fields_validation",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestCreatePipeline.test_create_pipeline_required_fields_validation[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1712,7 +1730,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestCreatePipeline.test_create_pipeline_via_ui",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestCreatePipeline.test_create_pipeline_via_ui[chromium]",
       "markers": [
         "new_verified",
         "p0",
@@ -1722,7 +1740,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_api",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_api[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1731,7 +1749,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_ui_menu",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_ui_menu[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1743,7 +1761,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_edit_pipeline_description",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_edit_pipeline_description[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1752,7 +1770,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_edit_pipeline_name",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_edit_pipeline_name[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1761,7 +1779,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_pipeline_detail_page_loads",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_pipeline_detail_page_loads[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1770,7 +1788,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_pipeline_has_configuration_and_history_tabs",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_pipeline_has_configuration_and_history_tabs[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1779,7 +1797,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineDashboard.test_pipeline_created_via_api_visible_in_dashboard",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineDashboard.test_pipeline_created_via_api_visible_in_dashboard[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1788,7 +1806,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineDashboard.test_pipeline_dashboard_loads",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineDashboard.test_pipeline_dashboard_loads[chromium]",
       "markers": [
         "new_verified",
         "p0",
@@ -1798,7 +1816,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineDashboard.test_view_toggle_table_and_card",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineDashboard.test_view_toggle_table_and_card[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1810,7 +1828,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineIsolation.test_fixture_cleanup_cycle",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineIsolation.test_fixture_cleanup_cycle[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1820,7 +1838,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineIsolation.test_fixture_creates_fresh_pipeline",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineIsolation.test_fixture_creates_fresh_pipeline[chromium]",
       "markers": [
         "new_verified",
         "p0",
@@ -1830,7 +1848,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestSearchPipeline.test_search_pipeline_by_name",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestSearchPipeline.test_search_pipeline_by_name[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1839,7 +1857,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestSearchPipeline.test_search_pipeline_no_results",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestSearchPipeline.test_search_pipeline_no_results[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1848,7 +1866,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestSearchPipeline.test_search_placeholder_and_dashboard_grid_filters_and_clears",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestSearchPipeline.test_search_placeholder_and_dashboard_grid_filters_and_clears[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -1860,7 +1878,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_mcp_node_change_toolkit_and_tool.test_mcp_node_change_toolkit_and_tool",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_mcp_node_change_toolkit_and_tool.test_mcp_node_change_toolkit_and_tool[chromium]",
       "markers": [
         "mcp",
         "new_verified",
@@ -1874,7 +1892,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_mcp_node_empty_toolkit_before_attach.test_mcp_node_empty_toolkit_before_attach",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_mcp_node_empty_toolkit_before_attach.test_mcp_node_empty_toolkit_before_attach[chromium]",
       "markers": [
         "mcp",
         "new_verified",
@@ -1888,7 +1906,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_mcp_node_fresh_attach.test_mcp_node_fresh_attach",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_mcp_node_fresh_attach.test_mcp_node_fresh_attach[chromium]",
       "markers": [
         "mcp",
         "new_verified",
@@ -1902,7 +1920,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_multiple_browser_tabs.test_pipeline_multiple_browser_tabs",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_multiple_browser_tabs.test_pipeline_multiple_browser_tabs[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1915,7 +1933,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_node_auto_increment_naming.test_node_auto_increment_naming_by_type",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_node_auto_increment_naming.test_node_auto_increment_naming_by_type[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1928,7 +1946,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_nodes.TestAddNode.test_add_human_in_the_loop_node_and_connect_to_end",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_nodes.TestAddNode.test_add_human_in_the_loop_node_and_connect_to_end[chromium]",
       "markers": [
         "p1",
         "pipelines",
@@ -1936,7 +1954,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_printer_node_configuration.test_printer_node_configuration_and_persistence",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_printer_node_configuration.test_printer_node_configuration_and_persistence[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1949,7 +1967,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_delete_run_from_history.test_run_details_delete_run_from_history",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_delete_run_from_history.test_run_details_delete_run_from_history[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1962,7 +1980,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_multiple_state_variables.test_run_details_multiple_state_variables_different_types",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_multiple_state_variables.test_run_details_multiple_state_variables_different_types[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1975,7 +1993,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_panel.test_run_details_panel_opens_after_execution",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_panel.test_run_details_panel_opens_after_execution[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -1988,7 +2006,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_state_before_after.test_run_details_state_before_after_per_node",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_state_before_after.test_run_details_state_before_after_per_node[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2002,7 +2020,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_timeline_steps.test_run_details_timeline_steps_display",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_timeline_steps.test_run_details_timeline_steps_display[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2015,7 +2033,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_history_view_executions.TestPipelineRunHistoryPanelClose.test_run_history_panel_closes_and_restores_chat",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_history_view_executions.TestPipelineRunHistoryPanelClose.test_run_history_panel_closes_and_restores_chat[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2028,7 +2046,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_history_view_executions.TestPipelineRunHistoryViewExecutions.test_run_history_panel_lists_and_shows_execution_details",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_history_view_executions.TestPipelineRunHistoryViewExecutions.test_run_history_panel_lists_and_shows_execution_details[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2041,7 +2059,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_schedule_trigger_settings_modal.test_schedule_trigger_settings_modal",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_schedule_trigger_settings_modal.test_schedule_trigger_settings_modal[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2054,7 +2072,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_modifier_node_configuration.test_state_modifier_node_configuration_and_persistence",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_modifier_node_configuration.test_state_modifier_node_configuration_and_persistence[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2067,7 +2085,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_panel_attachments_module.test_state_panel_attachments_module",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_panel_attachments_module.test_state_panel_attachments_module[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2080,7 +2098,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_panel_default_and_custom_variables.test_state_panel_default_and_custom_variables",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_panel_default_and_custom_variables.test_state_panel_default_and_custom_variables[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2093,7 +2111,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_panel_default_and_custom_variables.test_state_panel_delete_custom_variable",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_state_panel_default_and_custom_variables.test_state_panel_delete_custom_variable[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2107,7 +2125,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_structured_output_toggle_persistence.test_pipeline_structured_output_toggle_persistence",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_structured_output_toggle_persistence.test_pipeline_structured_output_toggle_persistence[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2120,7 +2138,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_subgraph_state_isolation.test_subgraph_state_sharing_non_common_state_isolation",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_subgraph_state_isolation.test_subgraph_state_sharing_non_common_state_isolation[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2133,7 +2151,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_subgraph_state_sharing.test_subgraph_state_sharing_common_vars",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_subgraph_state_sharing.test_subgraph_state_sharing_common_vars[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2146,7 +2164,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_tags_add_and_filter.test_pipeline_tags_add_and_filter",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_tags_add_and_filter.test_pipeline_tags_add_and_filter[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2159,7 +2177,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_three_dot_menu_actions.test_pipeline_three_dot_menu_actions",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_three_dot_menu_actions.test_pipeline_three_dot_menu_actions[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2172,7 +2190,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_toolkit_node_config_and_input_mapping.test_toolkit_node_config_and_input_mapping",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_toolkit_node_config_and_input_mapping.test_toolkit_node_config_and_input_mapping[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2186,7 +2204,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_tools_section_mcp_add_view_remove.test_tools_section_mcp_add_view_remove",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_tools_section_mcp_add_view_remove.test_tools_section_mcp_add_view_remove[chromium]",
       "markers": [
         "mcp",
         "new_verified",
@@ -2200,7 +2218,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_webhook_trigger_settings_modal.test_webhook_trigger_settings_modal",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_webhook_trigger_settings_modal.test_webhook_trigger_settings_modal[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2213,7 +2231,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_welcome_message_shown_before_first_input.test_pipeline_welcome_message_shown_before_first_input",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_welcome_message_shown_before_first_input.test_pipeline_welcome_message_shown_before_first_input[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2226,7 +2244,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_editor_invalid_syntax.test_yaml_editor_invalid_syntax_blocks_save",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_editor_invalid_syntax.test_yaml_editor_invalid_syntax_blocks_save[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2239,7 +2257,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_editor_view.test_pipeline_yaml_editor_view",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_editor_view.test_pipeline_yaml_editor_view[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2252,7 +2270,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_flow_sync.test_yaml_edit_persists_after_save_and_reload",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_flow_sync.test_yaml_edit_persists_after_save_and_reload[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2265,7 +2283,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_flow_sync.test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save",
+      "automation_test_id": "tests.ui.pipelines_2.test_pipeline_yaml_flow_sync.test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2278,7 +2296,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.settings.test_ai_providers_page_sections_load_without_error.TestAIProvidersPageSections.test_ai_providers_page_sections_load_without_error",
+      "automation_test_id": "tests.ui.settings.test_ai_providers_page_sections_load_without_error.TestAIProvidersPageSections.test_ai_providers_page_sections_load_without_error[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2291,7 +2309,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_automatic_summarization_toggle_enables_disables_own_fields",
+      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_automatic_summarization_toggle_enables_disables_own_fields[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2304,7 +2322,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_context_management_toggle_enables_disables_fields",
+      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_context_management_toggle_enables_disables_fields[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2317,7 +2335,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_target_summary_tokens_range_validation",
+      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_target_summary_tokens_range_validation[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2330,7 +2348,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.settings.test_set_llm_model_default_high_low_tier.TestSetLLMModelTiers.test_set_llm_model_default_high_low_tier",
+      "automation_test_id": "tests.ui.settings.test_set_llm_model_default_high_low_tier.TestSetLLMModelTiers.test_set_llm_model_default_high_low_tier[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2344,7 +2362,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_agent_instructions_tilde_mention.TestTildeMentionListsOnlyAttachedSkills.test_tilde_mention_in_instructions_lists_only_attached_skills",
+      "automation_test_id": "tests.ui.skills.test_agent_instructions_tilde_mention.TestTildeMentionListsOnlyAttachedSkills.test_tilde_mention_in_instructions_lists_only_attached_skills[chromium]",
       "markers": [
         "p2",
         "regression",
@@ -2356,7 +2374,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_agent_max_five_skills_limit.TestAgentMaxFiveSkillsLimit.test_max_five_skills_attach_limit",
+      "automation_test_id": "tests.ui.skills.test_agent_max_five_skills_limit.TestAgentMaxFiveSkillsLimit.test_max_five_skills_attach_limit[chromium]",
       "markers": [
         "p1",
         "regression",
@@ -2368,7 +2386,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_export_agent_with_attached_skills.TestExportAgentWithAttachedSkills.test_export_agent_with_attached_skills",
+      "automation_test_id": "tests.ui.skills.test_export_agent_with_attached_skills.TestExportAgentWithAttachedSkills.test_export_agent_with_attached_skills[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2382,7 +2400,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_ghost_skill_after_agent_removed.TestGhostSkillAfterAgentRemoved.test_ghost_skill_not_shown_after_agent_participant_removed",
+      "automation_test_id": "tests.ui.skills.test_ghost_skill_after_agent_removed.TestGhostSkillAfterAgentRemoved.test_ghost_skill_not_shown_after_agent_participant_removed[chromium]",
       "markers": [
         "chat",
         "p3",
@@ -2395,7 +2413,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_import_agent_recreates_skills_with_new_ids.TestImportAgentRecreatesSkillsWithNewIds.test_import_agent_recreates_skills_with_new_ids",
+      "automation_test_id": "tests.ui.skills.test_import_agent_recreates_skills_with_new_ids.TestImportAgentRecreatesSkillsWithNewIds.test_import_agent_recreates_skills_with_new_ids[chromium]",
       "markers": [
         "p2",
         "regression",
@@ -2407,7 +2425,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_remove_attached_skill_from_agent.TestRemoveAttachedSkillFromAgent.test_remove_attached_skill_from_agent",
+      "automation_test_id": "tests.ui.skills.test_remove_attached_skill_from_agent.TestRemoveAttachedSkillFromAgent.test_remove_attached_skill_from_agent[chromium]",
       "markers": [
         "p2",
         "regression",
@@ -2419,7 +2437,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_agent_version_selector.TestAttachSkillToAgentWithVersionSelector.test_attach_skill_to_agent_with_version_selector",
+      "automation_test_id": "tests.ui.skills.test_skill_agent_version_selector.TestAttachSkillToAgentWithVersionSelector.test_attach_skill_to_agent_with_version_selector[chromium]",
       "markers": [
         "p2",
         "regression",
@@ -2431,7 +2449,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_copy_link.TestSkillCopyLink.test_copy_link_copies_valid_url_to_correct_skill_and_version",
+      "automation_test_id": "tests.ui.skills.test_skill_copy_link.TestSkillCopyLink.test_copy_link_copies_valid_url_to_correct_skill_and_version[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2444,7 +2462,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImport.test_export_and_import_skill_base_version",
+      "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImport.test_export_and_import_skill_base_version[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2457,7 +2475,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version",
+      "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version[chromium]",
       "markers": [
         "new_verified",
         "p3",
@@ -2470,7 +2488,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillImportMissingFrontmatter.test_import_skill_missing_frontmatter_shows_validation_error",
+      "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillImportMissingFrontmatter.test_import_skill_missing_frontmatter_shows_validation_error[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2483,7 +2501,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_pin_unpin.TestSkillPinUnpin.test_skill_pin_moves_to_top_and_unpin_reverts",
+      "automation_test_id": "tests.ui.skills.test_skill_pin_unpin.TestSkillPinUnpin.test_skill_pin_moves_to_top_and_unpin_reverts[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2496,7 +2514,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_search.TestSkillSearch.test_search_skills_by_name",
+      "automation_test_id": "tests.ui.skills.test_skill_search.TestSkillSearch.test_search_skills_by_name[chromium]",
       "markers": [
         "p2",
         "regression",
@@ -2508,7 +2526,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_tag_filter.TestSkillTagFilter.test_filter_skills_by_tag",
+      "automation_test_id": "tests.ui.skills.test_skill_tag_filter.TestSkillTagFilter.test_filter_skills_by_tag[chromium]",
       "markers": [
         "p3",
         "regression",
@@ -2520,7 +2538,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_test_panel_no_new_conversation.TestSkillTestPanelNoNewConversation.test_test_panel_does_not_create_new_chat_conversation",
+      "automation_test_id": "tests.ui.skills.test_skill_test_panel_no_new_conversation.TestSkillTestPanelNoNewConversation.test_test_panel_does_not_create_new_chat_conversation[chromium]",
       "markers": [
         "new_verified",
         "p3",
@@ -2533,7 +2551,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_test_panel_response_actions.TestSkillTestPanelResponseActions.test_test_panel_response_actions_enabled",
+      "automation_test_id": "tests.ui.skills.test_skill_test_panel_response_actions.TestSkillTestPanelResponseActions.test_test_panel_response_actions_enabled[chromium]",
       "markers": [
         "new_verified",
         "p3",
@@ -2546,7 +2564,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_test_panel_version_instructions.TestSkillTestPanelVersionInstructions.test_test_panel_uses_selected_skill_version_instructions",
+      "automation_test_id": "tests.ui.skills.test_skill_test_panel_version_instructions.TestSkillTestPanelVersionInstructions.test_test_panel_uses_selected_skill_version_instructions[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2559,7 +2577,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_version_set_default.TestSkillVersionSetDefault.test_version_dropdown_set_default_shows_control_and_confirmation",
+      "automation_test_id": "tests.ui.skills.test_skill_version_set_default.TestSkillVersionSetDefault.test_version_dropdown_set_default_shows_control_and_confirmation[chromium]",
       "markers": [
         "new_verified",
         "p2",
@@ -2572,21 +2590,21 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.smoke.test_ui_smoke.TestHomePage.test_main_content_visible",
+      "automation_test_id": "tests.ui.smoke.test_ui_smoke.TestHomePage.test_main_content_visible[chromium]",
       "markers": [
         "smoke",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.smoke.test_ui_smoke.TestHomePage.test_page_loads",
+      "automation_test_id": "tests.ui.smoke.test_ui_smoke.TestHomePage.test_page_loads[chromium]",
       "markers": [
         "smoke",
         "ui"
       ]
     },
     {
-      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantAttachments.test_attach_button_present_and_opens_picker",
+      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantAttachments.test_attach_button_present_and_opens_picker[chromium]",
       "markers": [
         "smoke",
         "support_assistant",
@@ -2597,7 +2615,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantHistory.test_history_restore_and_continue",
+      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantHistory.test_history_restore_and_continue[chromium]",
       "markers": [
         "smoke",
         "support_assistant",
@@ -2608,7 +2626,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantLauncher.test_launcher_visible_and_opens_widget",
+      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantLauncher.test_launcher_visible_and_opens_widget[chromium]",
       "markers": [
         "smoke",
         "support_assistant",
@@ -2619,7 +2637,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantLauncher.test_widget_state_persists_after_close_reopen",
+      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantLauncher.test_widget_state_persists_after_close_reopen[chromium]",
       "markers": [
         "smoke",
         "support_assistant",
@@ -2630,7 +2648,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantMessaging.test_send_message_and_receive_response",
+      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantMessaging.test_send_message_and_receive_response[chromium]",
       "markers": [
         "smoke",
         "support_assistant",
@@ -2641,7 +2659,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantNewSession.test_new_chat_creates_fresh_session",
+      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantNewSession.test_new_chat_creates_fresh_session[chromium]",
       "markers": [
         "smoke",
         "support_assistant",
@@ -2652,7 +2670,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantViewModes.test_expand_collapse_fullview",
+      "automation_test_id": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantViewModes.test_expand_collapse_fullview[chromium]",
       "markers": [
         "smoke",
         "support_assistant",
@@ -2663,7 +2681,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.test_maintenance_handling.test_api_maintenance_error_triggerable",
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_api_maintenance_error_triggerable[chromium]",
       "markers": [
         "api",
         "maintenance",
@@ -2671,7 +2689,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_banner_dismissed_automatically",
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_banner_dismissed_automatically[chromium]",
       "markers": [
         "maintenance",
         "p2",
@@ -2679,7 +2697,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_detection_captures_screenshot",
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_detection_captures_screenshot[chromium]",
       "markers": [
         "maintenance",
         "p2",
@@ -2687,14 +2705,14 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_state_boolean_check",
+      "automation_test_id": "tests.ui.test_maintenance_handling.test_maintenance_state_boolean_check[chromium]",
       "markers": [
         "maintenance",
         "p2"
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_credential_required_fields_validation.TestCredentialRequiredFieldsValidation.test_create_credential_required_fields_validation",
+      "automation_test_id": "tests.ui.toolkits.test_credential_required_fields_validation.TestCredentialRequiredFieldsValidation.test_create_credential_required_fields_validation[chromium]",
       "markers": [
         "credentials",
         "new_verified",
@@ -2707,7 +2725,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_creation_create_bucket_verify_list_files.TestToolkitCreationCreateBucketVerifyListFiles.test_create_artifact_toolkit_creates_bucket_verify_list_files",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_creation_create_bucket_verify_list_files.TestToolkitCreationCreateBucketVerifyListFiles.test_create_artifact_toolkit_creates_bucket_verify_list_files[chromium]",
       "markers": [
         "new_verified",
         "p1",
@@ -2720,23 +2738,29 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestAgentCredentialIndicators.test_agent_credential_indicators_e2e",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestAgentCredentialIndicators.test_agent_credential_indicators_e2e[chromium]",
       "markers": [
         "p2",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1182"
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestPipelineCredentialIndicators.test_pipeline_credential_indicators_e2e",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestPipelineCredentialIndicators.test_pipeline_credential_indicators_e2e[chromium]",
       "markers": [
         "p2",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1182"
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestToolkitCredentialIndicators.test_toolkit_credential_indicators_e2e",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestToolkitCredentialIndicators.test_toolkit_credential_indicators_e2e[chromium]",
       "markers": [
         "p1",
         "toolkits",
@@ -2747,7 +2771,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[bitbucket]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[chromium-bitbucket]",
       "markers": [
         "new_verified",
         "p0",
@@ -2756,7 +2780,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[confluence]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[chromium-confluence]",
       "markers": [
         "new_verified",
         "p0",
@@ -2768,7 +2792,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[github]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[chromium-github]",
       "markers": [
         "new_verified",
         "p0",
@@ -2780,7 +2804,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[gitlab]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[chromium-gitlab]",
       "markers": [
         "new_verified",
         "p0",
@@ -2789,7 +2813,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[jira]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[chromium-jira]",
       "markers": [
         "new_verified",
         "p0",
@@ -2801,7 +2825,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[bitbucket]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[chromium-bitbucket]",
       "markers": [
         "credentials",
         "new_verified",
@@ -2811,7 +2835,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[confluence]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[chromium-confluence]",
       "markers": [
         "credentials",
         "new_verified",
@@ -2824,7 +2848,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[github]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[chromium-github]",
       "markers": [
         "credentials",
         "new_verified",
@@ -2837,7 +2861,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[gitlab]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[chromium-gitlab]",
       "markers": [
         "credentials",
         "new_verified",
@@ -2847,7 +2871,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[jira]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateCredential.test_create_credential[chromium-jira]",
       "markers": [
         "credentials",
         "new_verified",
@@ -2860,7 +2884,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[bitbucket]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-bitbucket]",
       "markers": [
         "new_verified",
         "p0",
@@ -2869,7 +2893,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[confluence]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-confluence]",
       "markers": [
         "new_verified",
         "p0",
@@ -2881,7 +2905,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[github]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-github]",
       "markers": [
         "new_verified",
         "p0",
@@ -2893,7 +2917,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[gitlab]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-gitlab]",
       "markers": [
         "new_verified",
         "p0",
@@ -2902,7 +2926,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[jira]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[chromium-jira]",
       "markers": [
         "new_verified",
         "p0",
@@ -2914,7 +2938,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[bitbucket]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[chromium-bitbucket]",
       "markers": [
         "new_verified",
         "p1",
@@ -2923,7 +2947,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[confluence]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[chromium-confluence]",
       "markers": [
         "new_verified",
         "p1",
@@ -2935,7 +2959,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[github]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[chromium-github]",
       "markers": [
         "new_verified",
         "p1",
@@ -2947,7 +2971,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[gitlab]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[chromium-gitlab]",
       "markers": [
         "new_verified",
         "p1",
@@ -2956,7 +2980,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[jira]",
+      "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[chromium-jira]",
       "markers": [
         "new_verified",
         "p1",
@@ -2968,7 +2992,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_speed_and_volume_controls",
+      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_speed_and_volume_controls[chromium]",
       "markers": [
         "p1",
         "ui",
@@ -2976,7 +3000,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_preview_personalization",
+      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_preview_personalization[chromium]",
       "markers": [
         "p1",
         "ui",
@@ -2984,7 +3008,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_selection_from_chat",
+      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_selection_from_chat[chromium]",
       "markers": [
         "p1",
         "ui",
@@ -2992,7 +3016,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_settings_not_visible_by_default",
+      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_settings_not_visible_by_default[chromium]",
       "markers": [
         "p1",
         "ui",
@@ -3000,7 +3024,7 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_settings_sync",
+      "automation_test_id": "tests.ui.voice.test_voice_configuration.TestVoiceConfiguration.test_voice_settings_sync[chromium]",
       "markers": [
         "p1",
         "ui",
