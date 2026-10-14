@@ -56,10 +56,22 @@ EXPECTED_VALIDATION_ERROR = (
 
 # One row per source case/sub-case — see module docstring.
 INVALID_BUCKET_NAME_CASES = [
-    pytest.param("ELITEA-1811", "1bucket", id="ELITEA-1811-leading-digit"),
-    pytest.param("ELITEA-1814", "new-bucket$", id="ELITEA-1814-special-char"),
-    pytest.param("ELITEA-1814", "bucket_one", id="ELITEA-1814-underscore"),
-    pytest.param("ELITEA-1814", "bucket one", id="ELITEA-1814-space"),
+    pytest.param(
+        "ELITEA-1811", "1bucket",
+        marks=pytest.mark.tms("ELITEA-1811"), id="ELITEA-1811-leading-digit",
+    ),
+    pytest.param(
+        "ELITEA-1814", "new-bucket$",
+        marks=pytest.mark.tms("ELITEA-1814"), id="ELITEA-1814-special-char",
+    ),
+    pytest.param(
+        "ELITEA-1814", "bucket_one",
+        marks=pytest.mark.tms("ELITEA-1814"), id="ELITEA-1814-underscore",
+    ),
+    pytest.param(
+        "ELITEA-1814", "bucket one",
+        marks=pytest.mark.tms("ELITEA-1814"), id="ELITEA-1814-space",
+    ),
 ]
 
 

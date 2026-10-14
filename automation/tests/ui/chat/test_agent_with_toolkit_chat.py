@@ -94,6 +94,7 @@ class TestAgentWithToolkitInChat:
     """Test agent + toolkit execution in real chat (not agent detail preview)."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0143")
     @pytest.mark.p0
     def test_agent_with_toolkit_executes_in_chat(
         self,
