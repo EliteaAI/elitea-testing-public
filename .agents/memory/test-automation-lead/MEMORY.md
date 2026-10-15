@@ -50,3 +50,4 @@
 - [Sibling clone may lack git identity](sibling_clone_git_identity_can_be_unset_silent_noop_commit.md) — unset user.name/email fails commit; push then silently no-ops
 - [Old CI failure msg ≠ current state](ci_autotest_users_lack_second_project_membership.md) — walk recent job logs before trusting a card's quoted error as still true
 - [Recurring failure after the fix shipped = new cause](recurring_test_failure_after_fix_shipped_is_a_new_cause.md) — check `git merge-base --is-ancestor` before saying "rides the old PR"
+- [Sandbox APP_PREFIX/MCP-browser gaps are independent](sandbox_app_prefix_and_mcp_browser_can_both_be_broken_independently.md) — missing `/app` looks like a timeout; MCP-broken ≠ triage-blocked, script it directly
