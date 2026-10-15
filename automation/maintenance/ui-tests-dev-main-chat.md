@@ -13,13 +13,13 @@
 
 ## Test Results Matrix
 
-| Test Case | #234 | Tracking Issue |
-|-----------|--------|----------------|
-| **Total executed** | 21 | - |
+| Test Case | #234 | #277 | Tracking Issue |
+|-----------|--------|--------|----------------|
+| **Total executed** | 21 | 21 | - |
 
 ## Summary
 
-- **Runs Shown:** 1 (max 10)
+- **Runs Shown:** 2 (max 10)
 - **Total Test Cases:** 0
 - **With Tracking Issues:** 0
 
