@@ -292,9 +292,11 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 "first paint) and the API response's skill_id is new/unique"
             ):
                 skills_json = skills_response_info.value.json()
-                assert skills_json.get("max_skills") == 5, (
-                    f"Expected max_skills=5 in application_skills response, "
-                    f"got: {skills_json!r}"
+                max_skills = skills_json.get("max_skills")
+                assert isinstance(max_skills, int) and max_skills > 0, (
+                    f"Expected a positive int max_skills in application_skills response "
+                    f"(read live from the platform, never hardcoded — see AFS § Adjustment "
+                    f"2026-10-15), got: {skills_json!r}"
                 )
                 skills_entries = skills_json.get("skills") or []
                 assert len(skills_entries) == 1, (
