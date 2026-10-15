@@ -1,0 +1,26 @@
+{
+  "runs": {
+    "20261015090802": {
+      "total": 53,
+      "details": [
+        {
+          "id": "ELITEA-2045",
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_llm_structured_output_state_variables.test_llm_structured_output_parses_into_state_variables",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2435",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Pipeline run completed with 'Error' status instead of 'Completed' when testing LLM structured output with state variables",
+          "reasoning": "Clear assertion failure: `assert 'Error' == 'Completed'` \u2014 the pipeline execution itself returned an error state. This is a product behavior issue (LLM node or structured output parsing failing at runtime), not a UI/infrastructure flakiness. The test did not retry successfully unlike other flaky tests in this run, indicating a consistent failure. Needs investigation into why the LLM pipeline run errors out."
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_edit_pipeline_description",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2436",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        }
+      ]
+    }
+  }
+}
