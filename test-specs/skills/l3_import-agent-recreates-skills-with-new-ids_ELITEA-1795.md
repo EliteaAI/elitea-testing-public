@@ -18,6 +18,13 @@
   and the imported Agent is correctly linked to that new Skill. No product defect
   found. One UI-only async-timing quirk observed and documented (not a defect —
   see Known Defects).
+- **Status (CURRENT, 2026-10-15 adjustment pass — issue #2444)**:
+  `ready-for-automation`. Repair triage of a MERGED test that went red in DEV CI.
+  **Triage class A (UI drift / intentional product change) — same root cause as
+  sibling #2443/ELITEA-1790.** The case's own flow and every other observable are
+  unchanged; only the hardcoded `max_skills == 5` literal is stale. **Read
+  § Adjustment — 2026-10-15 at the end of this file; where it conflicts with
+  anything above, it wins.**
 
 ## Preconditions
 - User is logged in (on localhost, `auth_state` fixture skips login).
@@ -141,6 +148,19 @@ total, all created and torn down within the run.
      skills counter/card) rather than asserting immediately after the
      post-import redirect** — asserting on the very first paint is a race and
      will be flaky.
+     **⚠️ Amended 2026-10-15 (§ Adjustment below) — the quoted `"max_skills": 5`
+     above is a STALE illustrative value from the original 2026-07-14
+     exploration run, now obsolete.** It was never the Expected Result being
+     verified (the counter text and the attached-skill card are); it was
+     incidental content of the example response payload quoted for context.
+     `max_skills` is read live from the platform (`application_skills` API
+     field) and the test asserts only that it is present as a positive
+     integer — it is never compared against a specific number, "5" or
+     otherwise. The "0/5" → "1/5" counter-display narration in this step and
+     Known Defects is harmless prose (it survives unchanged because the
+     implementer's assertion is `startswith("1/")`, which anchors on the
+     numerator, not the denominator) — see § Adjustment — 2026-10-15 for the
+     full rationale and the one assertion that actually changes.
 8. **(Case steps 5–6)** Navigate to the Skills section (`${BASE_URL}/skills/all`)
    and locate the newly created Skill; verify its ID is new/unique, distinct
    from the source Skill's ID.
@@ -199,7 +219,7 @@ total, all created and torn down within the run.
 | Import-Complete Agents/Skills name lists | `agent-import-complete-list-agents` / `agent-import-complete-list-skills` | on-automation/testids only (draft EliteaUI#552) | `IWModalSucceedContent`'s per-category container, dynamic `agent-import-complete-list-{key}` (agents/skills/toolkits/pipelines); asserted via substring-in-text-content rather than locating by the literal name |
 | Import-Complete "Got it" button | `agent-import-complete-got-it-button` | on-automation/testids only (draft EliteaUI#552) | Auto-navigates to the new Agent's detail page on click |
 | Imported Agent detail page Skills counter | same as ELITEA-1794/1789/1792 pattern — accordion region text `"{n}/5 skills added."` | on-main ✓ | **Timing-sensitive** — see Known Defects; do not assert immediately after the post-import auto-navigation |
-| `application_skills` API endpoint (wait-condition for the timing issue) | `GET /api/v2/elitea_core/application_skills/prompt_lib/{project}/{agent-id}` → `200 OK`, body `{"skills": [{"name", "skill_id", "version_id", "version_name", ...}], "max_skills": n}` | n/a (network call, not a UI handle) | Implementer waits on this URL pattern via `page.expect_response` before asserting the imported Agent's attached Skill, instead of asserting on first paint |
+| `application_skills` API endpoint (wait-condition for the timing issue) | `GET /api/v2/elitea_core/application_skills/prompt_lib/{project}/{agent-id}` → `200 OK`, body `{"skills": [{"name", "skill_id", "version_id", "version_name", ...}], "max_skills": n}` | n/a (network call, not a UI handle) | Implementer waits on this URL pattern via `page.expect_response` before asserting the imported Agent's attached Skill, instead of asserting on first paint. **Amended 2026-10-15 (§ Adjustment below): `max_skills` is a LIVE platform value (currently 50 on DEV, was 5 before EL-6930, 2026-10-13) — read and asserted as "present, positive int", never hardcoded against a specific number. Do not reinstate a literal comparison here.** |
 | Skill controls (overflow) menu / Delete-skill menu item / Delete-agent menu item / Delete-confirmation dialog | same testids as ELITEA-1794 (`skill-controls-menu-button`, `skill-delete-menu-item`, `delete-agent-menuitem`, `delete-confirm-name-input` → inner `#name`, `getByRole('button', {name:'Delete'})` scoped to dialog) | on-main ✓ (except `delete-confirm-name-input`: on-automation/testids only, draft EliteaUI#525; and the dialog's own Delete button: needs-adding) | |
 
 ## Expected Results
@@ -260,7 +280,9 @@ total, all created and torn down within the run.
   fresh reload (or after waiting for that specific network response), the
   Skills section correctly shows "1/5 skills added." with the Skill's card,
   and the API response itself (`{"skills": [{"skill_id": 303, ...}], "max_skills":
-  5}`) was already correct even during the "0/5" UI flash — confirming the data
+  5}` — **stale illustrative value, see § Adjustment — 2026-10-15; the field is
+  read live and not asserted against a specific number**) was already correct
+  even during the "0/5" UI flash — confirming the data
   layer was never wrong, only the UI's initial paint lagged behind an async
   fetch. **This is a UI-timing quirk, not a data-correctness defect** — the
   case's actual pass criterion ("Skill from export is listed as attached") is
@@ -309,3 +331,162 @@ imported Agent. All four were deleted live in this run.
 
 ## Blocked Steps
 None — case executed end-to-end, all 8 case steps confirmed live, no blockers.
+
+---
+
+## Adjustment — 2026-10-15 (repair pass, tracking issue #2444)
+
+**Trigger:** CI run #278 ("UI Tests DEV [main] [skills]", commit `8f324f5`)
+failed `test_import_agent_recreates_skills_with_new_ids` at line 295:
+`assert skills_json.get("max_skills") == 5` → `assert 50 == 5`. GitHub issue
+[EliteaAI/elitea-testing-public#2444](https://github.com/EliteaAI/elitea-testing-public/issues/2444).
+**Analyst:** qa-engineer (Sage), analyst/triage slot · **Skill:**
+`adjust-automated-test` Steps 1/2 (triage) + Steps 4–6 (AFS/TMS edit) this
+round. Step 7 (code) is a separate implementer dispatch.
+
+### Triage verdict — class A (UI drift from an intentional product change)
+
+**Not re-derived from scratch — this is the identical root cause already
+established and closed on sibling issue #2443 (ELITEA-1790), confirmed to
+apply here too.** Full original investigation (three independent live
+confirmations, the configurability check, the OpenAPI cross-check) lives in
+`test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md` §
+Adjustment — 2026-10-15 and on the closure record of issue #2443
+(`gh issue view 2443 --repo EliteaAI/elitea-testing-public`). Summary, not a
+re-investigation:
+
+**Root cause**: `EliteaUI` `origin/main` commit `8a1ae6b9` ("feat: [EL-6930]
+Skill limit from the API and attached skill search", 2026-10-13) replaced the
+frontend-hardcoded per-Agent Skill attach cap of `5` with the API's own
+`application_skills.max_skills` field. The field is confirmed **not
+configurable anywhere** (no project-settings control, no OpenAPI write path —
+established by #2443's analyst; not re-verified here, per the dispatch).
+
+### Live confirmation — current value, 2026-10-15 (this pass)
+
+This case's own merged test already carries the proof, dated the same day as
+this adjustment: the latest local gate run
+(`automation/reports/archive/junit_20261015_225143.xml`,
+`automation/screenshots/test_import_agent_recreates_skills_with_new_ids_FAIL_20261015_225142.png`)
+shows the exact live API response at the moment of failure:
+
+```
+AssertionError: Expected max_skills=5 in application_skills response, got:
+{'skills': [{'name': 'el-1795-skill-b46b7b18', ..., 'skill_id': 423, ...}],
+'max_skills': 50}
+assert 50 == 5
+```
+
+`max_skills` is **50** on DEV right now — matching #2443's finding exactly
+(same field, same value, same root cause). This junit/screenshot pair from
+this run's own gate is sufficient live confirmation for this lighter case; no
+separate API probe was needed since the test itself just produced the current
+value as part of its own (expected, pre-fix) failure.
+
+### Why this case's fix is lighter than #2443's
+
+#2443/ELITEA-1790's case is fundamentally about **exercising the boundary** —
+attaching Skills until the limit engages — so its fix had to solve "how do we
+cheaply reach a limit of 50 without 50 slow UI attaches" (chosen design:
+bulk-attach via API, one real boundary-crossing UI attach, limit read live).
+
+**This case (ELITEA-1795) never attaches more than ONE skill** (via Agent
+import, not the attach-popper flow) and never exercises the limit boundary at
+all — `max_skills` only appears here as one field of an API response the test
+reads for an unrelated reason (confirming the imported Agent is linked to the
+new Skill). The single hardcoded literal at line 295
+(`assert skills_json.get("max_skills") == 5`) is the entire defect. Nothing
+about attach counts, bulk setup, or boundary-crossing applies — there is no
+design question to resolve, no new `SkillAPI` method needed, and no change to
+the test's flow (Steps 1–10 unchanged). The counter-text assertions elsewhere
+in the test (`"1/"` prefix via `startswith("1/")`, see Automation Hints) were
+already written loosely and anchor on the numerator, not the denominator —
+they do not need to change.
+
+### Updated Test Data / Steps / Expected Results language
+
+Everywhere this AFS said a literal **"5"** framed as the max_skills value
+being verified (not as counter-display narration, which stays — see below),
+replace with: **"the platform's current limit, read live from the
+`application_skills` API's `max_skills` field — never asserted against a
+specific number by this case."**
+
+- Step 7 (Case step 4) and Known Defects: the quoted example response
+  `"max_skills": 5` is now an obsolete illustrative value from the original
+  2026-07-14 run — annotated in place (see inline amendments above), not
+  deleted, so the quirk's own history is traceable.
+- Handles Reference, `application_skills` API endpoint row: amended in place
+  (see above) to state the live-value policy.
+- **What does NOT change**: the "0/5" → "1/5" counter-DISPLAY text throughout
+  this AFS (Steps/Known Defects/Coverage Map) is harmless narration — the
+  denominator in that display string is a UI rendering detail this case has
+  never asserted on (the implementer's own assertion is
+  `counter_text.startswith("1/")`, see
+  `automation/tests/ui/skills/test_import_agent_recreates_skills_with_new_ids.py:325-331`).
+  Only the one hardcoded numeric comparison against the `application_skills`
+  API's `max_skills` field is wrong; nothing about Steps 1–10's flow,
+  fidelity, or other assertion strengths changes.
+
+### § Fidelity Declaration (this adjustment)
+
+**One row, and it is a `none`.** This adjustment touches a single assertion's
+comparison value; no interface, substitution, or transit/terminal question is
+introduced. The test still attaches exactly one Skill via the real Agent
+import UI flow, exactly as before.
+
+### MUST NOT change (preserve-the-nature rail)
+
+- No `expect.soft`, `pytest.skip`, `test.fail`, weakened comparison, or
+  conditional assertion is introduced.
+- Every other assertion in the test (imported Agent/Skill IDs differ from
+  source, Skill content matches verbatim including the planted marker,
+  `skills` list has exactly one entry, that entry's name matches, zero
+  console errors, Agent saves cleanly) is unchanged in kind and strength.
+- The wait strategy (`page.expect_response` on the `application_skills` URL
+  pattern, then `wait_for_skills_counter("1/", ...)`) is unchanged — this
+  adjustment does not touch timing/wait logic, only the one comparison value.
+- Test flow (Steps 1–10), fixtures, cleanup, and TMS marker are all unchanged.
+
+### Fix instruction for the implementer (Step 7, separate dispatch)
+
+**File:** `automation/tests/ui/skills/test_import_agent_recreates_skills_with_new_ids.py`,
+lines 295–298.
+
+Replace:
+```python
+assert skills_json.get("max_skills") == 5, (
+    f"Expected max_skills=5 in application_skills response, "
+    f"got: {skills_json!r}"
+)
+```
+with an isinstance/positive-int check — no literal comparison against any
+specific number:
+```python
+max_skills = skills_json.get("max_skills")
+assert isinstance(max_skills, int) and max_skills > 0, (
+    f"Expected a positive int max_skills in application_skills response "
+    f"(read live from the platform, never hardcoded — see AFS § Adjustment "
+    f"2026-10-15), got: {skills_json!r}"
+)
+```
+No other line in this file changes. No new page-object method, no new
+`SkillAPI` call, no change to the wait strategy or any other assertion.
+
+### Gate
+
+Per `.agents/testing.md` § Merge gate — 3 separate consecutive invocations,
+clean process each, run by the lead before merge:
+
+```bash
+cd automation && HEADLESS=true ../.venv/bin/pytest \
+  tests/ui/skills/test_import_agent_recreates_skills_with_new_ids.py::TestImportAgentRecreatesSkillsWithNewIds::test_import_agent_recreates_skills_with_new_ids \
+  -v -p no:cacheprovider     # ×3
+```
+
+Expect clean green 3/3 — no sanctioned-RED signature, no linked open defect.
+
+### Status
+
+`ready-for-automation` — this is a repair; the case was always automatable
+and nothing about automatability changed. The fix is a one-line comparison
+swap with no design question pending for Step 7.
