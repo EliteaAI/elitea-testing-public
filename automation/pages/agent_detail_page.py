@@ -2196,6 +2196,19 @@ class AgentDetailPage(AgentFormPage):
         .../skill/prompt_lib/{project}/{id} -> 201); no agent-level Save is
         required afterward.
 
+        **Caller responsibility, not this method's** (ELITEA-1790
+        2026-10-15 adjustment, issue #2443): the popper's item list is
+        unfiltered/unsearched here and is server-sorted `created_at
+        desc` at a fixed `PAGE_SIZE=20` (`skillsApi.js`), excluding
+        already-attached skills. A caller that creates many OTHER skills
+        (e.g. a bulk-attach-via-API setup phase) between creating
+        *skill_name* and calling this method risks pushing it past page 1,
+        where this method's `.filter(has_text=...)` will time out. Callers
+        with that shape should create/attach the Skill this method will
+        target LAST, so it stays among the most recent — not something
+        this shared method (8 merged callers) can safely special-case by
+        searching, since a change to its own body is additive-only here.
+
         Args:
             skill_name: Exact name of the skill to attach.
             timeout: Maximum wait time in milliseconds.

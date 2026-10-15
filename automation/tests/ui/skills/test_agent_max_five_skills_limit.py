@@ -1,23 +1,38 @@
-"""Maximum 5 Skills can be attached to one Agent (ELITEA-1790).
+"""Maximum Skills that can be attached to one Agent (ELITEA-1790).
 
-Verifies that the platform enforces a maximum of 5 Skills per Agent: the
-counter increments "0/5" -> "5/5" as Skills 1-5 are attached, and once 5/5
-is reached the add-skill control becomes **disabled** (not merely rejecting
-a 6th click) with an accessible tooltip explaining why — stronger
-enforcement than the case text's own bar ("an error message *or* disabled
-state"). Persistence across a full page reload is also confirmed (each
-attach is auto-saved via API; there is no explicit agent-level Save for
-this action).
+Verifies that the platform enforces a maximum number of Skills per Agent,
+read LIVE from the API's ``application_skills.max_skills`` field rather than
+a hardcoded literal: the counter increments "0/{max_skills}" ->
+"{max_skills}/{max_skills}" as Skills are attached, and once the limit is
+reached the add-skill control becomes **disabled** (not merely rejecting a
+click) with an accessible tooltip explaining why — stronger enforcement than
+the case text's own bar ("an error message *or* disabled state"). Persistence
+across a full page reload is also confirmed (each attach is auto-saved via
+API; there is no explicit agent-level Save for this action).
 
 No product defect found — the limit is enforced correctly and the
 enforcement exceeds the case's own expectation.
 
-The test OWNS its precondition: it creates all 6 distinct Skills the case
-calls for (5 to attach + a 6th that is never attached), under run-unique
-names, and reads nothing out of whatever data happens to pre-exist in the
-target project. Prior to 2026-08-27 it created 5 and borrowed a 6th from
-the project's existing Skills, which made it pass on a dirty environment
-and fail on a clean one (issue #1811).
+**2026-10-15 adjustment (issue #2443):** EL-6930 (EliteaUI commit
+``8a1ae6b9``, 2026-10-13) moved the per-Agent Skill cap from a
+frontend-hardcoded ``5`` to the API's own ``max_skills`` field, which
+currently serves ``50`` on DEV. ``max_skills`` is confirmed NOT configurable
+anywhere (no project-settings control, no OpenAPI write path, pure
+server-side global) — live-verified during this adjustment, so attaching the
+limit's worth of Skills one at a time through the UI would be both
+unavailable-by-design and bad test design (dozens of UI round-trips with no
+additional proof over a handful). The fix: read ``max_skills`` live once,
+bulk-attach everything below the boundary via the API (``skill_api``'s new
+``attach_skill_to_agent``/``get_application_skills`` methods — a declared
+TRANSIT substitution, see the AFS's Fidelity Declaration), and keep the
+boundary-crossing attach and the over-limit attempt on the real UI, exactly
+as before. The test never hardcodes ``5`` or ``50`` — if the platform's
+limit moves again, this test keeps working without another adjustment round.
+
+The test OWNS its precondition: it creates every distinct Skill the case
+calls for (``max_skills`` to attach + one that is never attached), under
+run-unique names, and reads nothing out of whatever data happens to
+pre-exist in the target project (issue #1811, 2026-08-27 adjustment).
 
 Spec: test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md
 """
@@ -43,12 +58,18 @@ FORM_SAVE_TIMEOUT = 15_000
 
 logger = logging.getLogger("elitea.tests.skills")
 
-SKILL_COUNT = 6  # the case's Test Data: "Number of Skills to create | 6"
-ATTACH_COUNT = 5  # the platform's documented per-Agent maximum
+# How many Skills are created through the real UI create form, independent
+# of the live max_skills value — enough to prove the create flow still
+# works (matching the case's original "create N distinct Skills" framing)
+# without turning setup into dozens of UI round-trips. One (created first)
+# is never attached; the other (created LAST, after the bulk-API batch —
+# see the attach_skill() docstring gotcha) is the boundary-crossing attach
+# target.
+UI_CREATED_SKILL_COUNT = 2
 AGENT_NAME = "elitea-1790-max5skills-agent"
 
 
-def _run_unique_skill_names(count: int = SKILL_COUNT) -> list[str]:
+def _run_unique_skill_names(count: int) -> list[str]:
     """Return ``count`` run-unique skill names, e.g. ``el1790-3f9a2c11-s1``.
 
     Run-uniqueness is REQUIRED, not cosmetic: both the attach-popper
@@ -64,7 +85,8 @@ def _run_unique_skill_names(count: int = SKILL_COUNT) -> list[str]:
     ``SKILL_NAME_RE`` in EliteaUI
     ``src/[fsd]/features/skill/lib/validation/skillValidationSchema.validation.js``
     (verified on ``origin/main``), which mirrors the backend's
-    ``validate_skill_name``. These names are 18 characters.
+    ``validate_skill_name``. Comfortably inside the limit even at the
+    current ``max_skills=50`` (count=51 -> names up to 20 chars).
     """
     run_id = uuid4().hex[:8]
     return [f"el1790-{run_id}-s{n}" for n in range(1, count + 1)]
@@ -86,7 +108,7 @@ def _create_skill(page, name: str, instructions: str) -> int:
     form_page.fill_form(
         name=name,
         instructions=instructions,
-        description=f"Test skill for ELITEA-1790 max-5-skills-per-agent verification — {name}.",
+        description=f"Test skill for ELITEA-1790 max-skills-per-agent verification — {name}.",
     )
     form_page.wait_for_form_validation()
     assert form_page.is_save_enabled(), (
@@ -102,7 +124,13 @@ def _create_skill(page, name: str, instructions: str) -> int:
 
 
 class TestAgentMaxFiveSkillsLimit:
-    """Maximum 5 Skills can be attached to one Agent (ELITEA-1790, l2/p1)."""
+    """Maximum Skills can be attached to one Agent (ELITEA-1790, l2/p1).
+
+    Name kept stable across the 2026-10-15 adjustment (EL-6930: the limit
+    moved from a hardcoded 5 to a live API field) for ``automation_test_id``
+    continuity — the file/class/function name is implementation history, not
+    an observable this case asserts.
+    """
 
     @pytest.mark.tms("ELITEA-1790")
     @allure.issue(
@@ -112,88 +140,84 @@ class TestAgentMaxFiveSkillsLimit:
     @pytest.mark.p1
     @pytest.mark.regression
     def test_max_five_skills_attach_limit(self, page, agent_api, skill_api):
-        """Create 6 Skills + an Agent, attach 5 of the Skills one at a time,
-        verify the add-skill control disables at 5/5 with a tooltip (rather
-        than a literal 6th-click rejection), and verify persistence via a
-        full page reload.
+        """Create an Agent, read the live per-Agent Skill limit, create and
+        attach that many Skills (bulk-attaching everything below the
+        boundary via the API, the boundary-crossing attach via the real
+        UI), verify the add-skill control disables at the limit with a
+        tooltip, and verify persistence via a full page reload.
 
-        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
-        1. Create 6 distinct Skills via the UI, under run-unique names — the
-           first 5 are the attach set, the 6th is never attached and backs
-           Step 9's "no 6th attach" assertions. The case's own Test Data
-           table instructs the test to create 6, so the precondition is
-           owned by the test rather than borrowed from pre-existing project
-           data.
-        1b. Confirm all 6 created Skills read back from the project.
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md,
+        § Adjustment — 2026-10-15):
+        1. Create the never-attached Skill via the UI — proves the create
+           flow still works (this case's original "create N distinct
+           Skills" framing).
         2. Create an Agent.
-        3. Skills section starts at 0/5, add-skill control enabled.
-        4-8. Attach Skills 1-5 one at a time; counter increments "N/5 skills
-           added." and a card renders after each attach.
-        9. Add-skill control becomes disabled the instant 5/5 is reached,
-           with an accessible tooltip — a 6th skill cannot be attached.
-        10. Confirm persistence via a full page reload (attach is
+        2b. Read the live per-Agent Skill limit (``max_skills``) from the
+            ``application_skills`` API, right after the Agent exists and
+            before any attach. Never hardcoded.
+        3. Skills section starts at 0/{max_skills}, add-skill control
+           enabled.
+        4. Create the bulk-attach Skills (``max_skills - 1``, via the API —
+           setup, not the observable).
+        5. Bulk-attach them via the API (declared transit substitution —
+           the case's observable, the control disabling at the real limit,
+           is produced by the product's own count and is read at steps
+           7/8 below, both still real-UI).
+        6. Create the boundary Skill via the UI, LAST — the single
+           most-recently-created Skill in the project at this point, which
+           is what keeps it reachable through the real "+ Skill" popper
+           (see the gotcha note below). Then confirm all
+           ``max_skills + 1`` created Skills read back from the project
+           (the case's "N distinct Skills exist" precondition).
+        7. Attach the boundary Skill through the real UI — the one attach
+           whose result this case actually verifies — reaching
+           {max_skills}/{max_skills}.
+        8. Add-skill control becomes disabled the instant the limit is
+           reached, with an accessible tooltip.
+        8 (continued). Attempt to attach the never-attached Skill —
+           blocked before any request fires.
+        9. Confirm persistence via a full page reload (attach is
            auto-saved via API; no explicit agent-level Save is available).
+
+        **Automation gotcha (live-confirmed during this adjustment, issue
+        #2443):** the "+ Skill" popper's item list (`SkillMenu.jsx` ->
+        `useSkillListQuery`) is unfiltered/unsearched here and is
+        server-sorted `created_at desc` at a fixed `PAGE_SIZE=20`
+        (`skillsApi.js`), excluding already-attached skills. A Skill
+        created *before* the bulk-attach-via-API batch falls off page 1 and
+        is unreachable through `AgentDetailPage.attach_skill()`'s
+        `.filter(has_text=...)` — confirmed by a first attempt that created
+        the boundary Skill before the bulk batch and timed out locating it
+        in the popper. Creating it LAST (step 6, after the bulk batch)
+        keeps it the single most-recent Skill in the project, which is what
+        makes it reachable regardless of how large `max_skills` is.
         """
-        skill_names = _run_unique_skill_names()
-        attach_names = skill_names[:ATTACH_COUNT]
-        sixth_skill_name = skill_names[ATTACH_COUNT]
-        created_skill_ids = []  # all 6 — the cleanup set
-        skill_ids = []  # the 5 that get attached
-        sixth_skill_id = None
         agent_id = None
+        agent_version_id = None
+        max_skills = None
+        created_skill_ids = []  # every Skill this run creates — the cleanup set
+        bulk_attach_skills = []  # [{"id": int, "version_id": int, "name": str}, ...]
+        boundary_skill_id = None
+        boundary_skill_name = None
+        overlimit_skill_id = None
+        overlimit_skill_name = None
         attach_requests = None  # CapturedRequests, needs stop() in finally
         console_messages = None  # CapturedConsoleMessages, needs stop() in finally
 
         try:
             with allure.step(
-                "Step 1 — Create 6 distinct Skills via UI (5 to attach, "
-                "plus a 6th that is never attached)"
+                "Step 1 — Create the never-attached Skill via the UI "
+                "(proves the create flow still works)"
             ):
-                for n, name in enumerate(skill_names, start=1):
-                    skill_id = _create_skill(
-                        page,
-                        name,
-                        f"You are test skill {n} created for ELITEA-1790 "
-                        f"verification. Respond with SKILL{n}.",
-                    )
-                    created_skill_ids.append(skill_id)
-                skill_ids = created_skill_ids[:ATTACH_COUNT]
-                sixth_skill_id = created_skill_ids[ATTACH_COUNT]
-                assert len(skill_ids) == 5, (
-                    f"Expected 5 freshly-created skills, got {len(skill_ids)}"
+                ui_skill_names = _run_unique_skill_names(UI_CREATED_SKILL_COUNT)
+                overlimit_skill_name, boundary_skill_name = ui_skill_names
+                overlimit_skill_id = _create_skill(
+                    page,
+                    overlimit_skill_name,
+                    "You are the never-attached test skill created for "
+                    "ELITEA-1790 verification. Respond with OVERLIMIT.",
                 )
-
-            with allure.step(
-                "Step 1b — Confirm the 6 created Skills exist in the "
-                "project (read back from the server, not assumed from the "
-                "create-call return values)"
-            ):
-                # The case's Test Data table says the number of Skills to
-                # create is 6, so this test creates all 6 and owns its own
-                # precondition. It deliberately reads NOTHING out of
-                # pre-existing project data: the previous shape created 5 and
-                # looked a 6th up in the project, which made it pass on a
-                # dirty environment and fail on a clean one (issue #1811).
-                # The false positive that shape's naming-prefix filter guarded
-                # against — an orphan from a hard-killed run matching this
-                # test's then-fixed names and satisfying the name-based
-                # is_skill_attached() check — is now eliminated at the source
-                # by the run-unique names, not defended against by a filter.
-                assert len(set(created_skill_ids)) == SKILL_COUNT, (
-                    f"Expected {SKILL_COUNT} distinct freshly-created skill "
-                    f"ids, got: {created_skill_ids!r}"
-                )
-                project_skill_ids = {
-                    s["id"] for s in skill_api.list_skills(limit=500).get("rows", [])
-                }
-                missing_skill_ids = [
-                    sid for sid in created_skill_ids if sid not in project_skill_ids
-                ]
-                assert not missing_skill_ids, (
-                    f"All {SKILL_COUNT} created Skills must be present in the "
-                    "project to satisfy the case's precondition of 6 distinct "
-                    f"Skills; missing ids: {missing_skill_ids!r}"
-                )
+                created_skill_ids.append(overlimit_skill_id)
 
             with allure.step("Step 2 — Create an Agent"):
                 list_page = AgentsListPage(page)
@@ -204,7 +228,7 @@ class TestAgentMaxFiveSkillsLimit:
                 form_page.fill_form(
                     name=AGENT_NAME,
                     description=(
-                        "Agent for ELITEA-1790 max-5-skills-per-agent verification."
+                        "Agent for ELITEA-1790 max-skills-per-agent verification."
                     ),
                 )
                 form_page.wait_for_form_validation()
@@ -217,10 +241,31 @@ class TestAgentMaxFiveSkillsLimit:
                 detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
                 detail_page.verify_on_detail_page()
                 agent_id = int(detail_page.get_agent_id())
-                logger.info("Created agent %r with id=%d", AGENT_NAME, agent_id)
+                agent_version_id = int(detail_page.get_version_id())
+                logger.info(
+                    "Created agent %r with id=%d, version_id=%d",
+                    AGENT_NAME, agent_id, agent_version_id,
+                )
 
             with allure.step(
-                "Step 3 — Skills section starts at 0/5, add-skill control enabled"
+                "Step 2b — Read the live per-Agent Skill limit (max_skills) "
+                "from the application_skills API, before any attach"
+            ):
+                application_skills = skill_api.get_application_skills(agent_version_id)
+                max_skills = application_skills.get("max_skills")
+                assert isinstance(max_skills, int) and max_skills > 0, (
+                    "application_skills.max_skills should be a positive int, "
+                    f"got: {application_skills!r}"
+                )
+                assert application_skills.get("skills") == [], (
+                    "A freshly-created Agent should have no Skills attached yet, "
+                    f"got: {application_skills!r}"
+                )
+                logger.info("Live per-Agent Skill limit: max_skills=%d", max_skills)
+
+            with allure.step(
+                "Step 3 — Skills section starts at 0/{max_skills}, "
+                "add-skill control enabled"
             ):
                 detail_page.ensure_skills_section_visible(timeout=UI_ELEMENT_TIMEOUT)
                 assert "0/" in detail_page.get_skills_counter_text(), (
@@ -230,49 +275,166 @@ class TestAgentMaxFiveSkillsLimit:
                     timeout=UI_ELEMENT_TIMEOUT
                 ), "add-skill button should be enabled before any skills are attached"
 
-            with allure.step("Steps 4-8 — Attach Skills 1-5 one at a time"):
-                # Capture every skill-attach PATCH (method, url, response
-                # status) from here on, so the blocked-6th-attach step below
-                # can assert on real network traffic (status 201 per attach,
-                # no additional PATCH after 5/5) rather than only UI state —
-                # this is what the AFS Axis 2 row actually claims.
+            with allure.step(
+                "Step 4 — Create the bulk-attach Skills via the API "
+                "(max_skills - 1 of them — setup for the precondition, not "
+                "the observable)"
+            ):
+                bulk_count = max_skills - 1
+                bulk_skill_names = _run_unique_skill_names(bulk_count) if bulk_count > 0 else []
+                for name in bulk_skill_names:
+                    skill = skill_api.create_skill(
+                        name=name,
+                        description=(
+                            f"Test skill for ELITEA-1790 max-skills-per-agent "
+                            f"verification — {name}."
+                        ),
+                        instructions=(
+                            f"You are a bulk-attach test skill ({name}) created "
+                            "for ELITEA-1790 verification. Respond with BULK."
+                        ),
+                    )
+                    skill_version_id = skill["versions"][0]["id"]
+                    bulk_attach_skills.append(
+                        {"id": skill["id"], "version_id": skill_version_id, "name": name}
+                    )
+                    created_skill_ids.append(skill["id"])
+                logger.info(
+                    "Created %d Skills via the API for bulk-attach", len(bulk_attach_skills)
+                )
+
+            with allure.step(
+                "Step 5 — Bulk-attach max_skills - 1 Skills via the API "
+                "(declared transit substitution — reaching the precondition, "
+                "not the observable; the boundary attach and the over-limit "
+                "attempt below both stay real-UI)"
+            ):
+                for skill in bulk_attach_skills:
+                    skill_api.attach_skill_to_agent(
+                        agent_version_id=agent_version_id,
+                        skill_id=skill["id"],
+                        skill_version_id=skill["version_id"],
+                    )
+                # Ground-truth verification via the API's own read-back —
+                # the equivalent, for an API-driven setup phase, of the
+                # per-attach network-count assertions the real-UI steps use.
+                application_skills_after_bulk = skill_api.get_application_skills(
+                    agent_version_id
+                )
+                attached_ids_after_bulk = {
+                    s["skill_id"] for s in application_skills_after_bulk.get("skills", [])
+                }
+                expected_bulk_ids = {s["id"] for s in bulk_attach_skills}
+                assert attached_ids_after_bulk == expected_bulk_ids, (
+                    f"Expected exactly the bulk-attached skill ids to be attached "
+                    f"after Step 5, got: {attached_ids_after_bulk!r} vs expected "
+                    f"{expected_bulk_ids!r}"
+                )
+
+                # The UI's RTK Query cache doesn't know about API-driven
+                # attaches until it refetches — reload once to observe the
+                # real count before the boundary attach (mirrors the
+                # pre-adjustment test's "4/5, limit not yet engaged"
+                # checkpoint, generalized to the dynamic limit).
+                page.reload()
+                detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+                counter_after_bulk = detail_page.wait_for_skills_counter(
+                    f"{bulk_count}/", timeout=UI_ELEMENT_TIMEOUT,
+                )
+                assert f"{bulk_count}/{max_skills}" in counter_after_bulk, (
+                    f"Skills counter should show {bulk_count}/{max_skills} after "
+                    f"the bulk attach, got: {counter_after_bulk!r}"
+                )
+                assert not detail_page.is_add_skill_button_disabled(
+                    timeout=UI_ELEMENT_TIMEOUT
+                ), (
+                    "add-skill button should still be enabled with "
+                    f"{bulk_count}/{max_skills} attached — the limit has not "
+                    "yet engaged"
+                )
+
+            with allure.step(
+                "Step 6 — Create the boundary Skill via the UI, LAST (it "
+                "must be the single most-recently-created Skill in the "
+                "project to stay reachable through the unfiltered '+ Skill' "
+                "popper — see the automation gotcha in this test's "
+                "docstring), then confirm all max_skills + 1 created Skills "
+                "read back from the project (the case's 'N distinct Skills "
+                "exist' precondition)"
+            ):
+                boundary_skill_id = _create_skill(
+                    page,
+                    boundary_skill_name,
+                    "You are the boundary-crossing test skill created for "
+                    "ELITEA-1790 verification. Respond with BOUNDARY.",
+                )
+                created_skill_ids.append(boundary_skill_id)
+
+                expected_total = max_skills + 1
+                assert len(set(created_skill_ids)) == expected_total, (
+                    f"Expected {expected_total} distinct freshly-created skill "
+                    f"ids, got: {created_skill_ids!r}"
+                )
+                project_skill_ids = {
+                    s["id"] for s in skill_api.list_skills(limit=500).get("rows", [])
+                }
+                missing_skill_ids = [
+                    sid for sid in created_skill_ids if sid not in project_skill_ids
+                ]
+                assert not missing_skill_ids, (
+                    f"All {expected_total} created Skills must be present in the "
+                    f"project to satisfy the case's precondition; missing ids: "
+                    f"{missing_skill_ids!r}"
+                )
+
+                # _create_skill() left the browser on the new skill's detail
+                # page — return to the agent before attaching.
+                detail_page.navigate(agent_id)
+
+            with allure.step(
+                "Step 7 — Attach the boundary Skill through the real UI — "
+                "the one attach whose result this case actually verifies"
+            ):
                 attach_requests = detail_page.capture_requests_matching(
                     "skill/prompt_lib", method="PATCH"
                 )
-                # Console-error capture across the attach flow, the blocked
-                # 6th-attach attempt, and the reload.
                 console_messages = detail_page.capture_console_errors()
-                for idx, name in enumerate(attach_names, start=1):
-                    detail_page.attach_skill(name, timeout=UI_ELEMENT_TIMEOUT)
-                    counter = detail_page.get_skills_counter_text()
-                    assert f"{idx}/5" in counter, (
-                        f"Skills counter should show {idx}/5 after attaching "
-                        f"skill #{idx} ('{name}'), got: {counter!r}"
-                    )
-                    assert detail_page.is_skill_attached(name), (
-                        f"Skill card for '{name}' should render after attaching"
-                    )
-                    assert len(attach_requests) == idx, (
-                        f"Expected exactly {idx} skill-attach PATCH request(s) "
-                        f"after attaching skill #{idx}, captured: {attach_requests!r}"
-                    )
-                    assert attach_requests[-1]["status"] == 201, (
-                        f"Skill-attach PATCH for skill #{idx} ('{name}') should "
-                        f"return 201, captured: {attach_requests[-1]!r}"
-                    )
-                    assert not console_messages, (
-                        f"Expected no console errors after attaching skill #{idx} "
-                        f"('{name}'), got: {[m.text for m in console_messages]}"
-                    )
+
+                detail_page.attach_skill(boundary_skill_name, timeout=UI_ELEMENT_TIMEOUT)
+                counter_after_boundary = detail_page.get_skills_counter_text()
+                assert f"{max_skills}/{max_skills}" in counter_after_boundary, (
+                    f"Skills counter should show {max_skills}/{max_skills} after "
+                    f"the boundary attach, got: {counter_after_boundary!r}"
+                )
+                assert detail_page.is_skill_attached(boundary_skill_name), (
+                    f"Skill card for '{boundary_skill_name}' should render after "
+                    "the boundary attach"
+                )
+                assert len(attach_requests) == 1, (
+                    "Expected exactly 1 skill-attach PATCH request for the "
+                    f"boundary attach, captured: {attach_requests!r}"
+                )
+                assert attach_requests[-1]["status"] == 201, (
+                    "The boundary attach's PATCH should return 201, captured: "
+                    f"{attach_requests[-1]!r}"
+                )
+                assert not console_messages, (
+                    "Expected no console errors after the boundary attach, "
+                    f"got: {[m.text for m in console_messages]}"
+                )
 
             with allure.step(
-                "Step 9 — Add-skill control becomes disabled at 5/5, with a "
-                "tooltip explaining why (proactive disable, exceeding the "
-                "case's own bar of 'error message OR disabled state')"
+                "Step 8 — Add-skill control becomes disabled at "
+                "{max_skills}/{max_skills}, with a tooltip explaining why "
+                "(proactive disable, exceeding the case's own bar of "
+                "'error message OR disabled state')"
             ):
                 assert detail_page.is_add_skill_button_disabled(
                     timeout=UI_ELEMENT_TIMEOUT
-                ), "add-skill button should be disabled once 5/5 skills are attached"
+                ), (
+                    "add-skill button should be disabled once "
+                    f"{max_skills}/{max_skills} skills are attached"
+                )
 
                 tooltip = detail_page.get_add_skill_button_tooltip(
                     timeout=UI_ELEMENT_TIMEOUT
@@ -283,63 +445,66 @@ class TestAgentMaxFiveSkillsLimit:
                 )
 
             with allure.step(
-                "Step 9 (continued) — no 6th skill is attached; counter and "
-                "attached-skill set remain unchanged; no additional "
-                "skill-attach PATCH fires. Per the AFS, the control is "
+                "Step 8 (continued) — the never-attached skill is not "
+                "attached; counter and attached-skill set remain unchanged; "
+                "no additional skill-attach PATCH fires. The control is "
                 "genuinely disabled at the actionability level (a real "
                 "Playwright click() would time out) — asserted via the "
                 "disabled-state check above, not a literal click-and-"
-                "expect-error. The 'no popper opens' claim in the AFS is "
-                "NOT separately asserted here: the popper's only trigger is "
-                "this same disabled button, so 'does the popper open' is "
-                "untestable by construction once toBeDisabled() holds — see "
-                "the AFS amendment note for this row."
+                "expect-error."
             ):
                 counter_before = detail_page.get_skills_counter_text()
-                assert not detail_page.is_skill_attached(sixth_skill_name), (
-                    f"Skill '{sixth_skill_name}' must not be attached — the "
-                    "limit blocks a 6th attach before it can ever be attempted"
+                assert not detail_page.is_skill_attached(overlimit_skill_name), (
+                    f"Skill '{overlimit_skill_name}' must not be attached — the "
+                    "limit blocks the attach before it can ever be attempted"
                 )
                 assert detail_page.get_skills_counter_text() == counter_before, (
                     "Skills counter must remain unchanged with the add-skill "
                     "control disabled"
                 )
-                # Real network-traffic assertion (not just UI state): exactly
-                # the 5 PATCH requests from Steps 4-8 have fired — no 6th one,
-                # for any skill id, appeared after reaching 5/5.
-                assert len(attach_requests) == 5, (
+                # Real network-traffic assertion (not just UI state): no
+                # additional PATCH fired beyond the single boundary attach
+                # from Step 7, for any skill id.
+                assert len(attach_requests) == 1, (
                     "No additional skill-attach PATCH request should fire "
                     f"once the limit is reached, captured: {attach_requests!r}"
                 )
-                sixth_skill_id_suffix = f"/{sixth_skill_id}"
+                overlimit_skill_id_suffix = f"/{overlimit_skill_id}"
                 assert not any(
-                    req["url"].endswith(sixth_skill_id_suffix) for req in attach_requests
+                    req["url"].endswith(overlimit_skill_id_suffix)
+                    for req in attach_requests
                 ), (
-                    f"No PATCH request should ever target the 6th skill "
-                    f"(id={sixth_skill_id}), captured: {attach_requests!r}"
+                    "No PATCH request should ever target the never-attached "
+                    f"skill (id={overlimit_skill_id}), captured: {attach_requests!r}"
                 )
                 assert not console_messages, (
-                    "Expected no console errors after the blocked 6th-attach "
+                    "Expected no console errors after the blocked attach "
                     f"attempt, got: {[m.text for m in console_messages]}"
                 )
 
             with allure.step(
-                "Step 10 — Agent persists with exactly 5 Skills attached "
-                "(auto-saved per-attach; confirmed via full page reload, "
-                "no explicit agent-level Save is available for this action)"
+                "Step 9 — Agent persists with exactly max_skills Skills "
+                "attached (auto-saved per-attach; confirmed via full page "
+                "reload, no explicit agent-level Save is available for "
+                "this action)"
             ):
                 page.reload()
                 detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
                 counter_after_reload = detail_page.wait_for_skills_counter(
-                    "5/", timeout=UI_ELEMENT_TIMEOUT,
+                    f"{max_skills}/", timeout=UI_ELEMENT_TIMEOUT,
                 )
-                assert "5/5" in counter_after_reload, (
-                    "Skills counter should still show 5/5 after reload, "
-                    f"got: {counter_after_reload!r}"
+                assert f"{max_skills}/{max_skills}" in counter_after_reload, (
+                    f"Skills counter should still show {max_skills}/{max_skills} "
+                    f"after reload, got: {counter_after_reload!r}"
                 )
-                for name in attach_names:
-                    assert detail_page.is_skill_attached(name), (
-                        f"Skill card for '{name}' should still render after reload"
+                assert detail_page.is_skill_attached(boundary_skill_name), (
+                    f"Skill card for '{boundary_skill_name}' should still "
+                    "render after reload"
+                )
+                for skill in bulk_attach_skills:
+                    assert detail_page.is_skill_attached(skill["name"]), (
+                        f"Skill card for '{skill['name']}' should still render "
+                        "after reload"
                     )
                 assert detail_page.is_add_skill_button_disabled(
                     timeout=UI_ELEMENT_TIMEOUT
@@ -358,7 +523,7 @@ class TestAgentMaxFiveSkillsLimit:
 
             # Cleanup per AFS: delete the agent first (teardown hygiene —
             # remove the thing with attached-state dependencies first), then
-            # all 6 created skills, tolerating individual failures (mirrors
+            # every created skill, tolerating individual failures (mirrors
             # ELITEA-1735/1737/1738/1739/1789's cleanup pattern). The test
             # deletes only data it created; pre-existing project data is
             # never touched.
@@ -382,10 +547,10 @@ class TestAgentMaxFiveSkillsLimit:
         # Cleanup verification — only reached if the flow above didn't raise
         # (an exception in the try block propagates past `finally`, so this
         # never runs on top of an already-failed test and can't mask it).
-        # Confirms the 6 created skills and the agent are actually gone, not
+        # Confirms every created skill and the agent are actually gone, not
         # just that the delete calls didn't raise.
         with allure.step(
-            "Cleanup verification — this run's 6 created skills and the "
+            "Cleanup verification — this run's created skills and the "
             "Agent are gone"
         ):
             remaining_skill_ids = {
@@ -393,8 +558,8 @@ class TestAgentMaxFiveSkillsLimit:
             }
             leaked_skill_ids = set(created_skill_ids) & remaining_skill_ids
             assert not leaked_skill_ids, (
-                f"Cleanup should have deleted all {SKILL_COUNT} created "
-                f"skills; still present: {leaked_skill_ids!r}"
+                f"Cleanup should have deleted all {len(created_skill_ids)} "
+                f"created skills; still present: {leaked_skill_ids!r}"
             )
             remaining_agent_ids = {
                 a["id"] for a in agent_api.list_agents().get("rows", [])
