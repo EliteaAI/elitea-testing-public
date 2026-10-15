@@ -472,6 +472,7 @@ class TestVoiceConfiguration:
                     logger.warning("Failed to restore settings: %s", e)
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/voice/voice-configuration-settings/ELITEA-1341_voice-mini-player-not-visible-by-default-regression.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-1341")
     @pytest.mark.p1
     def test_voice_settings_not_visible_by_default(self, page, conversation_api):
         """TC5: Voice settings are NOT displayed in Chat by default.
