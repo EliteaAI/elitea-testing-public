@@ -186,10 +186,42 @@ class PersonalTokensPage(BasePage):
             f"**{CREATE_PERSONAL_TOKEN_PATH}", timeout=NAVIGATION_TIMEOUT
         )
 
+    def search(self, term: str) -> None:
+        """Type *term* into the Personal Tokens search box.
+
+        Unlike the Credentials list's ``SearchBar.jsx`` (ELITEA-1965 —
+        explicit Enter/icon activation required), this page's search wires
+        straight into `PersonalTokens.jsx`'s `onChangeSearch: setSearch` ->
+        `TokensSection.jsx`'s `filteredTokens` `useMemo`, which filters the
+        already-fetched token list **client-side on every keystroke** — no
+        Enter press, no network round-trip, confirmed live on DEV (typing
+        drops the rendered row count immediately). Do not add a
+        `.press("Enter")` here — there is no explicit-activation gate on
+        this control, and waiting for one would just add a dead wait.
+
+        Uses `press_sequentially()`, not `fill()` — MUI/React requires real
+        keyboard events to fire `onChange` (`.claude/rules/mui-patterns.md`).
+
+        Args:
+            term: Text to type into the search input.
+        """
+        self.search_input.click()
+        self.search_input.press_sequentially(term, delay=20)
+
     def get_row_by_name(self, name: str):
         """Return the token row Locator filtered by exact row text match on
         *name* (sanctioned chaining off the already-testid-scoped
-        :attr:`token_row`, same pattern as :meth:`get_first_row_action_icon`)."""
+        :attr:`token_row`, same pattern as :meth:`get_first_row_action_icon`).
+
+        The underlying table paginates (`TokensTable.jsx`'s
+        `GridTablePagination`, 10 rows/page) and this filter only resolves
+        against currently-RENDERED rows — i.e. only the current page, not
+        the full token list. As the live project's token count grows past
+        one page, a target row can land on a later page and this will
+        correctly report zero matches even though the row still exists.
+        Callers that need a specific row to be robust against that growth
+        should call :meth:`search` with the row's name first, to filter the
+        table down to it, before calling this."""
         return self.token_row.filter(has_text=name)
 
     def get_row_name_cell(self, row):
