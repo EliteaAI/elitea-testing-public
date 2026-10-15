@@ -7,6 +7,15 @@ steps 2-3 (expired token -> gray icon + "Expired" label), read-only against
 existing live data.
 AFS: test-specs/settings-personal-tokens/lextend_expired-and-active-token-expiration-icons_ELITEA-2284.md
 
+Adjustment (issue #2441, 2026-10, class D — data-volume/pagination): the
+live project's token count grew 5 -> 14 since the AFS baseline, pushing the
+"Marian" row onto page 2 of the table's pagination
+(`TokensTable.jsx`'s `GridTablePagination`). `get_row_by_name` only matches
+rendered rows, so step 2 now calls `tokens_page.search("Marian")` first to
+filter the table down to the target row before locating it. No expected
+result changed; see the AFS's "## Adjustment" section for the full
+diagnosis.
+
 Covers ELITEA-2286 ("Token name validation — only alphanumeric
 characters, underscores, and hyphens are allowed") —
 `test_invalid_token_name_shows_error_and_keeps_generate_disabled` verifies
@@ -53,6 +62,13 @@ class TestPersonalTokenCreateAndVerify:
             tokens_page.navigate()
 
         with allure.step("Step 2 — Locate an existing expired token row"):
+            # Adjustment (issue #2441, ELITEA-2284, class D — data-volume/
+            # pagination): the live project's token count grew from 5 (AFS
+            # baseline, 2026-08-05) to 14, pushing "Marian" onto page 2 of
+            # the table's pagination. get_row_by_name() only matches
+            # currently-rendered rows, so search first to filter the table
+            # down to this row before locating it.
+            tokens_page.search("Marian")
             row = tokens_page.get_row_by_name("Marian")
             expect(row).to_have_count(1, timeout=ROW_WAIT_TIMEOUT)
 

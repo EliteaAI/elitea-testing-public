@@ -68,13 +68,19 @@ live data — no token creation needed for this half.
   test) — it is not this AFS's job to create an expired token (expiration is
   time-based; a freshly-created token can't be made "expired" without either
   waiting real time or a backend seed hook neither of which exists here).
+  **Superseded 2026-10 (issue #2441, see § Adjustment):** the `New`-fallback
+  provision is stale — `New` no longer exists in the live token list at all.
+  `Marian` is the only confirmed-expired token now; do not try to resurrect
+  `New` as a fallback.
 
 ## Test Data
 ### reuse-existing
-- An existing expired token row, matched by name `Marian` or `New` (either
-  suffices — both confirmed `data-expiration-state="expired"` live). Use
-  `tokens_page.get_row_by_name("Marian")` (or fall back to `"New"` if
-  `Marian` is ever removed — page object supports either without change).
+- An existing expired token row, matched by name `Marian`. **Superseded
+  2026-10 (issue #2441):** `New` no longer exists in the live token list —
+  `Marian` is the only confirmed-expired fallback now. Use
+  `tokens_page.search("Marian")` then `tokens_page.get_row_by_name("Marian")`
+  — the search-first lookup is required because the token list now spans
+  multiple pages (see § Adjustment).
 
 (No `generate-per-test` / `generate-shared-with-cleanup` test data — the gap
 half of this case is fully read-only, per `.agents/testing.md` § Test data
@@ -83,7 +89,10 @@ strategy / implementation Hard Rule 10.)
 ## Test Steps
 1. Navigate to Settings → Personal Tokens (`tokens_page.navigate()`).
    - **Verify**: token rows are visible.
-2. Locate the row named `Marian` (`get_row_by_name("Marian")`).
+2. Search for `Marian` (`tokens_page.search("Marian")`) to filter the table
+   down to it — the token list now spans multiple pages (see §
+   Adjustment), so the row must be filtered into view before being located
+   — then locate the row (`get_row_by_name("Marian")`).
    - **Verify**: exactly one matching row exists.
 3. Verify the Expiration column shows the expired-state icon (gray
    `RemoveIcon` via `data-expiration-state="expired"`) and the exact text
@@ -152,6 +161,7 @@ def test_expired_token_shows_expired_icon_and_label(self, page):
         tokens_page.navigate()
 
     with allure.step("Step 2 — Locate an existing expired token row"):
+        tokens_page.search("Marian")
         row = tokens_page.get_row_by_name("Marian")
         expect(row).to_have_count(1, timeout=ROW_WAIT_TIMEOUT)
 
@@ -215,7 +225,54 @@ None.
 ## Automation Hints
 - Framework: Playwright + pytest (per `.agents/testing.md`), same as the
   covering spec.
-- Page object: `automation/pages/personal_tokens_page.py` — no changes
-  needed, `get_row_by_name` + `get_row_expiration_status` already exist.
+- Page object: `automation/pages/personal_tokens_page.py` — a `search()`
+  method was added 2026-10 (issue #2441, see § Adjustment);
+  `get_row_by_name` + `get_row_expiration_status` already existed.
 - No fixture changes; `page` fixture only, same as the covering spec's
   `test_create_personal_token_and_verify_in_table`.
+
+## Adjustment
+
+**Issue**: EliteaAI/elitea-testing-public#2441 ([FIX][ELITEA-2284]) — CI run
+#276 failed `test_expired_token_shows_expired_icon_and_label` with
+`AssertionError: Locator expected to have count 1`, actual `0`, on
+`tokens_page.get_row_by_name("Marian")`.
+
+**Triage class**: D — data-volume/pagination. NOT product drift, NOT a
+product bug.
+
+**Root cause**: the live project (`${ELITEA_PROJECT_ID}`) grew from 5 personal
+tokens at this AFS's 2026-08-05 baseline to 14 (`GET /api/v2/auth/token/`,
+confirmed live 2026-10-15). `Marian` (`expires: "Mon, 24 Aug 2026
+18:38:39 GMT"`, genuinely in the past) is still a real expired token, but
+with 14 rows sorted by name, it now lands on page 2 of `TokensTable.jsx`'s
+`GridTablePagination` (`TOKENS_TABLE_CONFIG.DEFAULT_PAGE_SIZE = 10`,
+confirmed in `EliteaUI/src/[fsd]/features/settings/ui/personal-tokes/TokensTable.jsx`
+on `origin/main`). `PersonalTokensPage.get_row_by_name()` filters
+`[data-testid="token-row"]`, which only resolves against currently-rendered
+DOM elements — i.e. only the current page — so it correctly found 0
+matches: not because `Marian` is gone, but because it's one page away.
+
+**UI verified correct**: filtering the table to just "Marian" via the
+search box shows `data-expiration-state="expired"` on
+`[data-testid="token-expiration-status"]` with text content exactly
+`"Expired"` — matches the existing assertion byte-for-byte. No product
+defect.
+
+**Fix**: added `PersonalTokensPage.search(term)` (clicks
+`search_input`, `press_sequentially()` — MUI/React onChange requirement),
+which wires into `TokensSection.jsx`'s `filteredTokens` `useMemo` —
+client-side filtering on every keystroke, no Enter needed (confirmed live;
+unlike the Credentials list's explicit-activation `SearchBar.jsx` per
+ELITEA-1965 — do not add `.press("Enter")` here). Step 2 now calls
+`tokens_page.search("Marian")` before `get_row_by_name("Marian")`.
+`get_row_by_name()`'s docstring was tightened to note it only matches the
+current page's rendered rows.
+
+**Expected-result changes**: none. Step 3's expiration-state/text
+assertions are byte-identical to before — this is a "how it's reached" fix
+only (preserve-the-nature rail), not a weakening of what's verified.
+
+**Stale provision retired**: the old `New`-fallback (Preconditions / Test
+Data) is superseded — `New` no longer exists in the live token list at
+all. `Marian` is the only confirmed-expired token now.
