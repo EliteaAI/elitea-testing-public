@@ -1720,6 +1720,84 @@ class SkillAPI:
         resp = self._session.delete(url)
         _raise_for_status(resp)
 
+    def attach_skill_to_agent(
+        self, agent_version_id: int, skill_id: int, skill_version_id: int
+    ) -> dict:
+        """Attach a Skill to an Agent version directly via the API.
+
+        ``PATCH /elitea_core/skill/prompt_lib/{project}/{skill_id}`` with a
+        ``SkillUpdateRelationModel``-shaped body — the SAME mutation
+        ``SkillMenu.jsx``'s popper-selection handler fires under the hood
+        when a Skill is attached through the UI (confirmed live during the
+        ELITEA-1790 2026-10-15 adjustment pass, issue #2443: identical PATCH,
+        identical ``201`` response, identical ``application_skills`` readback
+        before/after). Added so a test can bulk-attach Skills *below* the
+        boundary without driving the UI popper once per attach — the
+        boundary-crossing attach itself still goes through
+        ``AgentDetailPage.attach_skill()`` (declared transit substitution,
+        see the AFS's Fidelity Declaration for this pass).
+
+        Args:
+            agent_version_id: The Agent *version* id (``entity_version_id``
+                in the payload) — e.g. ``AgentDetailPage.get_version_id()``,
+                int()'d.
+            skill_id: The numeric Skill id — also the PATCH URL's path
+                segment (the API attaches via the Skill's own endpoint, not
+                the Agent's).
+            skill_version_id: The Skill *version* id to attach (usually the
+                same int as ``skill_id`` for a Skill's first/only "base"
+                version — see ``SkillAPI.create_skill()``'s returned
+                ``version_details.id``).
+
+        Returns:
+            The API's JSON response, e.g. ``{"skill_id": ..., "skill_version_id":
+            ..., "skill_name": ..., "version_name": "base"}``.
+        """
+        url = self._skill_url(skill_id)
+        payload = {
+            "has_relation": True,
+            "entity_version_id": agent_version_id,
+            "skill_version_id": skill_version_id,
+            "entity_type": "agent",
+        }
+        logger.debug(
+            "ATTACH skill %s skill_id=%d skill_version_id=%d agent_version_id=%d",
+            url, skill_id, skill_version_id, agent_version_id,
+        )
+        resp = self._session.patch(url, json=payload)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def get_application_skills(self, agent_version_id: int) -> dict:
+        """Return the Skills attached to an Agent version, and the live limit.
+
+        ``GET /elitea_core/application_skills/prompt_lib/{project}/{agent_version_id}``
+        — returns ``{"skills": [...], "max_skills": <int>}``. ``max_skills``
+        is the platform's current per-Agent Skill cap, read live rather than
+        assumed: EL-6930 (2026-10-13) moved this from a frontend-hardcoded
+        ``5`` to this API field, which currently serves ``50`` on DEV but is
+        not itself writable anywhere (no project-settings control, no
+        OpenAPI write path — confirmed during the ELITEA-1790 2026-10-15
+        adjustment pass, issue #2443). Callers that need the limit should
+        read it from here once, at the start of the flow, rather than
+        hardcoding either ``5`` or ``50``.
+
+        Args:
+            agent_version_id: The Agent *version* id (not the Agent id).
+
+        Returns:
+            dict with ``skills`` (list of attached-skill summaries) and
+            ``max_skills`` (int).
+        """
+        url = (
+            f"{self.base_url}/elitea_core/application_skills/prompt_lib/"
+            f"{self.project_id}/{agent_version_id}"
+        )
+        logger.debug("GET application_skills %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
