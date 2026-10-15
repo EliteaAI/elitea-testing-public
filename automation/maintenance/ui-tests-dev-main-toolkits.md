@@ -13,14 +13,14 @@
 
 ## Test Results Matrix
 
-| Test Case | #237 | Tracking Issue |
-|-----------|--------|----------------|
-| ELITEA-1866 | 🔴 | [#2401](https://github.com/EliteaAI/elitea-testing-public/issues/2401) |
-| **Total executed** | 25 | - |
+| Test Case | #237 | #280 | Tracking Issue |
+|-----------|--------|--------|----------------|
+| ELITEA-1866 | 🔴 | 🟠 | [#2401](https://github.com/EliteaAI/elitea-testing-public/issues/2401) |
+| **Total executed** | 25 | 17 | - |
 
 ## Summary
 
-- **Runs Shown:** 1 (max 10)
+- **Runs Shown:** 2 (max 10)
 - **Total Test Cases:** 1
 - **With Tracking Issues:** 1
 
