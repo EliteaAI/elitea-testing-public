@@ -5272,6 +5272,19 @@ class PipelineDetailPage(PipelineFormPage):
         text = (self.llm_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
+    def get_llm_node_toolkits_value(self) -> str:
+        """Read the LLM node's currently-selected Toolkits display text (chip text).
+
+        Mirrors :meth:`get_llm_node_output_value` — reads the testid-anchored
+        field's own ``text_content()`` directly, no need to open the
+        dropdown first (ELITEA-2059 adjust round: this case's pipeline wires
+        the toolkit into ``tool_names`` at creation time via the API — AFS §
+        Automation Hints' recommended fixture shape — so the test only ever
+        READS the resulting chip, never opens the select to change it).
+        """
+        text = (self.llm_node_toolkits_select.text_content() or "").replace("​", "")
+        return text.strip()
+
     # ------------------------------------------------------------------
     # Code node inline config (ELITEA-2009)
     # ------------------------------------------------------------------

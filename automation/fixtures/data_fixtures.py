@@ -15,7 +15,13 @@ Fixtures:
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
 - pipeline_with_variable_task_llm_id: Fresh executable pipeline with LLM node,
   TASK mapped ``type: variable, value: input`` (forwards the user's message,
-  incl. attachment reference, into the LLM node — ELITEA-2059)
+  incl. attachment reference, into the LLM node — ELITEA-2059, pre-adjustment)
+- pipeline_with_artifact_toolkit_llm_id: Fresh executable pipeline with LLM
+  node + an Artifact toolkit (bucket ``attachments``) attached AND wired into
+  the node's Toolkits select, TASK as an f-string naming ``{input}``/
+  ``{input_attachments}``, and ``state.input_attachments`` declared — the
+  mechanism actually required for a chat attachment's content to reach the
+  LLM (ELITEA-2059, post-adjustment per issue #2408)
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
 - github_toolkit_with_selected_tools: GitHub toolkit with settings.selected_tools
@@ -309,6 +315,128 @@ def pipeline_with_variable_task_llm_id(pipeline_api: PipelineAPI, request):
         logger.info("Deleted variable-TASK LLM pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete variable-TASK LLM pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_with_artifact_toolkit_llm_id(pipeline_api: PipelineAPI, toolkit_api: ToolkitAPI, request):
+    """Create a pipeline with a single LLM node, an Artifact toolkit (bucket
+    ``attachments``) attached in TOOLS and wired into the node's Toolkits
+    select, and the node's TASK/state configured so a chat attachment's
+    actual content reaches the LLM.
+
+    Satisfies the CORRECTED ELITEA-2059 precondition (AFS
+    ``l2_pipeline-attach-files-in-chat_ELITEA-2059.md`` § Preconditions,
+    post-adjustment per issue #2408's human-reviewed triage). A bare LLM
+    node (:func:`pipeline_with_variable_task_llm_id`'s shape) has no
+    mechanism to read an attachment's bytes — it only sees a path-like
+    reference in the message text and honestly replies "I can't access the
+    contents". Confirmed live this adjust round (both an API-authored
+    pipeline and the full UI-driven attach flow): content resolution only
+    works once ALL of the following hold together:
+
+      1. an Artifact toolkit (bucket ``attachments``) is attached in the
+         pipeline's TOOLS section (this fixture's ``tools=`` param);
+      2. that SAME toolkit is bound into the node's ``tool_names`` mapping
+         with (at least) ``read_file`` — attaching to TOOLS alone, without
+         this node-level binding, never issues a ``read_file`` call;
+      3. ``task`` is ``type: fstring`` (NOT ``type: variable`` — the
+         documented LLM-node gotcha: silently passes empty content) with a
+         value that names BOTH ``{input}`` and ``{input_attachments}``;
+      4. the pipeline's YAML ``state`` declares
+         ``input_attachments: {type: list, default: []}`` — per
+         ``.claude/skills/elitea-pipeline/references/workflows.md`` §
+         "File attachments into a pipeline", THIS (not the chat UI's
+         Attachments-module toggle) is what actually populates the
+         variable at runtime.
+
+    Built via :meth:`PipelineAPI.create_pipeline_with_nodes`'s ``tools=``/
+    ``state=`` params (added this adjust round) — the same generic helper
+    :func:`pipeline_with_fstring_llm_id` already uses, extended with the
+    toolkit attach + node-level wiring. ``input: []`` on the node mirrors
+    :func:`pipeline_with_fstring_llm_id`'s own proven-working shape (its
+    fstring ``task`` references ``{input}`` with an empty ``input:`` list)
+    rather than the YAML-schema doc's general "fstring vars must be listed
+    in input" guidance, which describes the legacy ``prompt:`` form, not the
+    modern ``input_mapping.task`` form this project's fixtures all use.
+
+    Yields:
+        dict: ``{"pipeline_id": int, "toolkit_name": str}`` — the toolkit's
+        OWN (already-clean: alnum/underscore/hyphen only, no spaces) name
+        doubles as its ``tool_names`` dict key and its
+        ``[data-testid="select-option-{toolkit_name}"]`` value, since
+        ``ToolkitsSelect.jsx``'s ``genToolkitName``/``cleanString`` falls
+        through to the toolkit's own ``name`` field for the ``artifact``
+        type (no ``toolkit_name``-flagged schema property) — confirmed live
+        this adjust round (e.g. ``select-option-autotest2059_attachments_toolkit``).
+    """
+    raw_toolkit_name = f"autotest_2059tk_{request.node.name}"
+    toolkit_name = raw_toolkit_name.replace("[", "").replace("]", "")[:32]
+
+    toolkit = toolkit_api.create_artifact_toolkit(
+        name=toolkit_name,
+        description=f"Auto-created artifact toolkit for test {request.node.name}",
+        bucket_name="attachments",
+    )
+    toolkit_id = toolkit["id"]
+    # Full re-GET, not the create response — mirrors mcp_pipeline_with_toolkits
+    # (ELITEA-1954): the pipeline create payload's tools[] entries need the
+    # full toolkit representation, not merely what the create POST echoes back.
+    toolkit_full = toolkit_api.get_toolkit(toolkit_id)
+    logger.info(
+        "Created artifact toolkit %s (%s) -> bucket 'attachments' for %s",
+        toolkit_id, toolkit_name, request.node.name,
+    )
+
+    pipeline_name = f"autotest_2059b_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=pipeline_name,
+        description=f"Auto-created artifact-toolkit LLM pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=[
+            {
+                "id": "LLM 1",
+                "type": "llm",
+                "input": [],
+                "input_mapping": {
+                    "chat_history": {"type": "fixed", "value": []},
+                    "system": {"type": "fixed", "value": ""},
+                    "task": {
+                        "type": "fstring",
+                        "value": (
+                            "User question: {input}\n"
+                            "Attached file paths (if any): {input_attachments}"
+                        ),
+                    },
+                },
+                "tool_names": {
+                    toolkit_name: ["read_file", "list_files", "get_file_metadata"],
+                },
+                "output": [],
+                "structured_output": False,
+                "transition": "END",
+            }
+        ],
+        tools=[toolkit_full],
+        state={"input_attachments": {"type": "list", "default": []}},
+    )
+    pid = pipeline["id"]
+    logger.info(
+        "Created artifact-toolkit LLM pipeline %s (%s) for %s", pid, pipeline_name, request.node.name
+    )
+
+    yield {"pipeline_id": pid, "toolkit_name": toolkit_name}
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted artifact-toolkit LLM pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete artifact-toolkit LLM pipeline %s: %s", pid, exc)
+
+    try:
+        toolkit_api.delete_toolkit(toolkit_id)
+        logger.info("Deleted artifact toolkit %s", toolkit_id)
+    except Exception as exc:
+        logger.warning("Failed to delete artifact toolkit %s: %s", toolkit_id, exc)
 
 
 def build_two_llm_nodes() -> list[dict]:
