@@ -216,6 +216,7 @@ class TestConversationUIElements:
             )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0500")
     @pytest.mark.p1
     def test_attach_files_button_sends_file_with_message(self, page, conversation_id, tmp_path):
         """TC-CHAT-011: Attach file and send message with attachment."""

@@ -87,6 +87,11 @@ on:
         required: false
         type: boolean
         default: false
+      default_model_name:
+        description: 'LLM model name (DEFAULT_MODEL_NAME). Empty = repo variable DEFAULT_MODEL_NAME, else automation/config.py default.'
+        required: false
+        type: string
+        default: ''
 
   workflow_call:
     inputs:
@@ -136,6 +141,11 @@ on:
         default: false
       password_suffix_override:
         description: 'Use this constant password suffix (TEMPLATE + suffix, e.g. "0") for every user (1-9, ADMIN, User B). Users/projects/tokens keep their own suffix. Empty = per-user suffix.'
+        required: false
+        type: string
+        default: ''
+      default_model_name:
+        description: 'LLM model name for tests that create agents/pipelines (DEFAULT_MODEL_NAME). Must be a model the target env actually serves — see GET /api/v2/configurations/models/{project_id}. Empty = the repo default in automation/config.py.'
         required: false
         type: string
         default: ''
@@ -433,6 +443,7 @@ jobs:
             # Called via workflow_call - secrets already resolved
             echo "mode=call" >> $GITHUB_OUTPUT
             echo "name=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+            ENV_NAME="${{ inputs.environment }}"
           else
             # Called via workflow_dispatch - resolve secrets by env name
             echo "mode=dispatch" >> $GITHUB_OUTPUT
@@ -446,8 +457,12 @@ jobs:
               ENV_NAME="${{ inputs.environment }}"
             fi
             echo "name=$ENV_NAME" >> $GITHUB_OUTPUT
-            echo "upper=$(echo "$ENV_NAME" | tr '[:lower:]' '[:upper:]')" >> $GITHUB_OUTPUT
           fi
+          # `upper` is set in BOTH modes so per-env variable lookups (e.g.
+          # DEFAULT_MODEL_NAME_DEV_VM) work for callers too, not just dispatch.
+          # Hyphens become underscores: "dev-vm" -> "DEV_VM", because GitHub
+          # variable names may not contain "-".
+          echo "upper=$(echo "$ENV_NAME" | tr '[:lower:]-' '[:upper:]_')" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v4
         with:
@@ -547,8 +562,28 @@ jobs:
           CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
           CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}
           APP_PREFIX: '/app'
+          # LLM model for tests that create agents/pipelines. Resolution order:
+          #   1. the `default_model_name` input (caller workflow / dispatch form)
+          #   2. repo/env variable `DEFAULT_MODEL_NAME_<ENV>` (e.g. DEFAULT_MODEL_NAME_DEV_VM)
+          #   3. repo/env variable `DEFAULT_MODEL_NAME` (global)
+          #   4. empty -> automation/config.py default
+          # Must name a model the target env actually serves: a model the env does not
+          # have makes every LLM run fail with "Temporary server error, please try again"
+          # (task_failed) instead of a clear error. Check with
+          # GET /api/v2/configurations/models/{project_id}?include_shared=true
+          DEFAULT_MODEL_NAME: ${{ inputs.default_model_name || vars[format('DEFAULT_MODEL_NAME_{0}', steps.env.outputs.upper)] || vars.DEFAULT_MODEL_NAME }}
           CF_EXT_RATE: ${{ secrets.CF_EXT_RATE }}  # Rate limit bypass - repo secret, not passed from callers
         run: |
+          # An EMPTY DEFAULT_MODEL_NAME must not reach pydantic-settings: an
+          # empty string is a "set" value there and would beat the config.py
+          # default. Unset it so envs that configure no model keep the default.
+          if [ -z "${DEFAULT_MODEL_NAME:-}" ]; then
+            unset DEFAULT_MODEL_NAME
+            echo "DEFAULT_MODEL_NAME not set -> using automation/config.py default"
+          else
+            echo "DEFAULT_MODEL_NAME=$DEFAULT_MODEL_NAME"
+          fi
+
           PYTEST_CMD="pytest"
 
           # Each matrix job may run one or more suites (comma-separated)

@@ -105,6 +105,8 @@ jobs:
       # Inert unless publish_to_tms is true — the correlation steps live inside the
       # callee's `publish-tms` job, which is itself gated on that input.
       update_correlation: true
+      # All users (1-9, ADMIN and User B) use password TEMPLATE + "0"
+      password_suffix_override: '0'
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
       ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_DEV }}

@@ -253,6 +253,7 @@ class TestPipelineCredentialIndicators:
     """
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/credential-actions-and-status-indicators/ELITEA-1182_agent-and-pipeline-toolkits-panel-shows-all-three-credential-indicator.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-1182")
     @pytest.mark.p2
     def test_pipeline_credential_indicators_e2e(
         self,
@@ -457,6 +458,7 @@ class TestAgentCredentialIndicators:
     """
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/credential-actions-and-status-indicators/ELITEA-1182_agent-and-pipeline-toolkits-panel-shows-all-three-credential-indicator.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-1182")
     @pytest.mark.p2
     def test_agent_credential_indicators_e2e(
         self,

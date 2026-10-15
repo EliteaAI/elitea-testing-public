@@ -578,6 +578,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1811"
       ]
     },
     {
@@ -587,6 +590,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1814"
       ]
     },
     {
@@ -596,6 +602,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1814"
       ]
     },
     {
@@ -605,6 +614,9 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1814"
       ]
     },
     {
@@ -862,6 +874,9 @@
         "p0",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0143"
       ]
     },
     {
@@ -876,6 +891,9 @@
       "markers": [
         "p1",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0500"
       ]
     },
     {
@@ -2725,6 +2743,9 @@
         "p2",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1182"
       ]
     },
     {
@@ -2733,6 +2754,9 @@
         "p2",
         "toolkits",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1182"
       ]
     },
     {
