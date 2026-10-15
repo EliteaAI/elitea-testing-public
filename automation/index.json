@@ -950,6 +950,10 @@
         "p0",
         "smoke",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1051",
+        "ELITEA-1142"
       ]
     },
     {
@@ -1001,6 +1005,9 @@
         "chat",
         "p1",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1340"
       ]
     },
     {
@@ -1009,6 +1016,9 @@
         "chat",
         "p2",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1340"
       ]
     },
     {
@@ -1727,6 +1737,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0864"
       ]
     },
     {
@@ -1737,6 +1750,9 @@
         "pipelines",
         "smoke",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0864"
       ]
     },
     {
@@ -1746,6 +1762,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0850"
       ]
     },
     {
@@ -1757,6 +1776,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0850",
         "ELITEA-2022"
       ]
     },
@@ -1767,6 +1787,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0850"
       ]
     },
     {
@@ -1776,6 +1799,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0850"
       ]
     },
     {
@@ -1785,6 +1811,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0851"
       ]
     },
     {
@@ -1794,6 +1823,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0851"
       ]
     },
     {
@@ -1803,6 +1835,10 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0855",
+        "ELITEA-0864"
       ]
     },
     {
@@ -1813,6 +1849,9 @@
         "pipelines",
         "smoke",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0855"
       ]
     },
     {
@@ -1824,6 +1863,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0855",
         "ELITEA-2024"
       ]
     },
@@ -1854,6 +1894,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0855"
       ]
     },
     {
@@ -1863,6 +1906,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0855"
       ]
     },
     {
@@ -1951,6 +1997,9 @@
         "p1",
         "pipelines",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-0853"
       ]
     },
     {
@@ -2611,6 +2660,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0577",
         "ELITEA-1802"
       ]
     },
@@ -2622,6 +2672,8 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0641",
+        "ELITEA-0643",
         "ELITEA-1800"
       ]
     },
@@ -2633,6 +2685,8 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0625",
+        "ELITEA-0626",
         "ELITEA-1796"
       ]
     },
@@ -2644,6 +2698,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0643",
         "ELITEA-1797"
       ]
     },
@@ -2655,6 +2710,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0647",
         "ELITEA-1798"
       ]
     },
@@ -2666,6 +2722,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0641",
         "ELITEA-1799"
       ]
     },
@@ -2677,6 +2734,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0624",
         "ELITEA-1801"
       ]
     },
@@ -3021,6 +3079,9 @@
         "p1",
         "ui",
         "voice"
+      ],
+      "tms_case_ids": [
+        "ELITEA-1341"
       ]
     },
     {
