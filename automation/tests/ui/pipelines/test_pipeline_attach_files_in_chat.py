@@ -5,23 +5,30 @@ TMS: ELITEA-2059
 Also covers TMS: ELITEA-2066
 (test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md)
 
-Enables the pipeline's "Attachments" MODULES toggle (live-formik-state gate,
-no Save required), attaches a `.txt` file via the bare icon-only
-`chat-attach-button` (a different call site than the general Chat page's
-plus-menu `chat-attach-menuitem-button`, ELITEA-2197/2200), sends a message
-referencing the file, and verifies the pipeline (a fresh LLM node with TASK
-mapped `type: variable, value: input` — the shape that actually forwards the
-message/attachment reference, `pipeline_with_variable_task_llm_id` fixture)
-executes without error and acknowledges the attachment. Per the AFS's
-live-confirmed non-determinism note (Automation Hints / step 7 discovery),
-the acknowledgment check accepts EITHER the filename substring OR a generic
-attachment-acknowledgment keyword — a bare LLM node's phrasing varies run to
-run and does not always cite the filename verbatim.
+ADJUSTED (issue #2408, human-reviewed triage overturning the parked Class-D
+question #2412 — see the AFS § Adjustment): the pre-adjustment version of
+this test built a BARE LLM node (`pipeline_with_variable_task_llm_id`) and
+accepted a generic "I can't access the contents"-style acknowledgment as a
+PASS. The triage found this was behavior drift, not a product fact: for a
+chat attachment's actual content to reach the LLM, the pipeline needs an
+Artifact toolkit attached in TOOLS *and* wired into the LLM node's Toolkits
+select + `tool_names`/`task`/`state` mapping
+(`pipeline_with_artifact_toolkit_llm_id` fixture, wired at creation via the
+API per the AFS's recommended shape) — a bare node never issues a
+`read_file` call at all. This test now proves the corrected flow and the
+STRENGTHENED Expected Result: the response must contain the correct fact
+extracted from the file's actual content (e.g. "cat"), not merely a
+filename-or-acknowledgment keyword.
 
-ELITEA-2066 extends this file with a second test that proves the SAME
-toggle's ON/OFF state (and its effect on the attach button) is genuinely
-persisted server-side across Save + a hard page reload — not merely a live,
-unsaved formik value — in both directions (enable-then-disable).
+Steps 1-2 (toolkit attach + Toolkits-select wiring verification) are
+NEW this round. Steps 3-9 are the pre-adjustment test's steps 1-7,
+renumbered, with step 9's assertion strengthened per the AFS.
+
+ELITEA-2066 extends this file with a second test that proves the "Attachments"
+MODULES toggle's ON/OFF state (and its effect on the attach button) is
+genuinely persisted server-side across Save + a hard page reload — not
+merely a live, unsaved formik value — in both directions
+(enable-then-disable). Unaffected by this adjustment.
 """
 
 import logging
@@ -40,8 +47,12 @@ UI_ELEMENT_TIMEOUT = 10_000
 AI_RESPONSE_TIMEOUT = 60_000
 SAVE_RESPONSE_TIMEOUT = 15_000
 
-_MESSAGE_TEXT = "Please summarize the content of the attached file."
-_ATTACHMENT_ACK_KEYWORD = "attach"  # matches "attachment"/"attached" in either observed AI phrasing
+# Content-resolution question + the literal, unambiguous file content it asks
+# about — matches the AFS § Test Data / § Adjustment live-confirmed shape
+# ("cat" / "What animal is in the attachment?"), not a generic summarize
+# request an honest acknowledgment-only reply could satisfy.
+_FILE_CONTENT = "cat"
+_MESSAGE_TEXT = "What animal is in the attachment?"
 
 
 @pytest.mark.tms("ELITEA-2059")
@@ -51,17 +62,19 @@ _ATTACHMENT_ACK_KEYWORD = "attach"  # matches "attachment"/"attached" in either 
     "ELITEA-2059_pipeline-attach-files-in-chat.md",
     "onetest-ai Test Case link",
 )
-def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path):
-    """Attach a file in the pipeline's embedded chat; pipeline processes it without error."""
-    pipeline_id = pipeline_with_variable_task_llm_id
+def test_attach_files_in_chat(page, pipeline_with_artifact_toolkit_llm_id, tmp_path):
+    """Attach a file in the pipeline's embedded chat; pipeline resolves its actual content."""
+    pipeline_id = pipeline_with_artifact_toolkit_llm_id["pipeline_id"]
+    toolkit_name = pipeline_with_artifact_toolkit_llm_id["toolkit_name"]
     pipeline_page = PipelineDetailPage(page)
 
     console_errors = []
     page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
 
     with allure.step(
-        "Step 1 — Navigate to the pipeline (fresh LLM node, TASK already mapped "
-        "type=variable/value=input via the fixture); verify canvas loads"
+        "Step 1 — [NEW] Navigate to the pipeline (Artifact toolkit already attached "
+        "+ wired into the LLM node via the fixture's API-driven setup); verify the "
+        "attached-toolkit card renders"
     ):
         pipeline_page.navigate(pipeline_id)
         pipeline_page.dismiss_banner_if_present()
@@ -69,9 +82,23 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
         assert pipeline_page.configuration_tab.is_visible(), (
             "Configuration panel (General section) should be visible after navigating"
         )
+        assert pipeline_page.is_toolkit_attached(toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
+            f"Artifact toolkit {toolkit_name!r} should render as an attached card in "
+            "the TOOLS section"
+        )
 
     with allure.step(
-        'Step 2 — Turn on the "Attachments" MODULES switch; attach button flips '
+        "Step 2 — [NEW] Verify the LLM node's Toolkits select shows the attached "
+        "toolkit as a selected chip (wired via tool_names at creation)"
+    ):
+        toolkits_value = pipeline_page.get_llm_node_toolkits_value()
+        assert toolkit_name in toolkits_value, (
+            f"LLM node's Toolkits select should show {toolkit_name!r} as a selected "
+            f"chip, got: {toolkits_value!r}"
+        )
+
+    with allure.step(
+        'Step 3 — Turn on the "Attachments" MODULES switch; attach button flips '
         "disabled -> enabled instantly, no Save required"
     ):
         assert pipeline_page.chat_attach_button.is_disabled(), (
@@ -87,7 +114,7 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
         )
 
     with allure.step(
-        'Step 3 — Locate the "Attach Files (10 left)" button; visible, enabled, '
+        'Step 4 — Locate the "Attach Files (10 left)" button; visible, enabled, '
         "correct tooltip text"
     ):
         assert pipeline_page.chat_attach_button.is_visible(), "Attach button should be visible"
@@ -99,17 +126,14 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
             f"attachment, got: {tooltip_text!r}"
         )
 
-    with allure.step("Step 4 — Click the attach button; native file chooser opens"):
+    with allure.step("Step 5 — Click the attach button; native file chooser opens"):
         test_file = tmp_path / "elitea2059_testfile.txt"
-        test_file.write_text(
-            "This file contains the unique token AUTOTEST_ATTACH_2059 and was "
-            "attached by automated testing."
-        )
+        test_file.write_text(_FILE_CONTENT)
         file_chooser = pipeline_page.open_embedded_chat_file_chooser(timeout=UI_ELEMENT_TIMEOUT)
         assert file_chooser is not None, "Clicking the attach button should open a native file chooser"
 
     with allure.step(
-        "Step 5 — Select the .txt file; it appears as an attachment chip with the "
+        "Step 6 — Select the .txt file; it appears as an attachment chip with the "
         "exact filename, and the tooltip decrements to '9 left'"
     ):
         file_chooser.set_files(str(test_file))
@@ -130,7 +154,8 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
         )
 
     with allure.step(
-        "Step 6 — Send a message referencing the file; message bubble shows text+chip, "
+        "Step 7 — Send a message that requires resolving the attachment's actual "
+        "content (NOT a generic summarize request); message bubble shows text+chip, "
         "composer's chip count resets to 0"
     ):
         initial_count = pipeline_page.get_embedded_chat_message_count()
@@ -158,8 +183,10 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
         )
 
     with allure.step(
-        "Step 7 — Verify the pipeline processes the attachment: no execution error, "
-        "response acknowledges the attached file"
+        "Step 8 — [STRENGTHENED] Verify the pipeline actually resolves the "
+        "attachment's content: no execution error, AND the response contains "
+        "the correct fact from the file's actual content (not merely the "
+        "filename or a generic acknowledgment)"
     ):
         pipeline_page.wait_for_embedded_chat_response(
             initial_count=initial_count + 1, timeout=AI_RESPONSE_TIMEOUT
@@ -169,14 +196,13 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
         assert "error: error code" not in response_lower, (
             f"Pipeline response should not show an execution error, got: {response_text!r}"
         )
-        assert (
-            test_file.name.lower() in response_lower or _ATTACHMENT_ACK_KEYWORD in response_lower
-        ), (
-            "Pipeline response should acknowledge the attachment — either by naming "
-            f"the filename {test_file.name!r} or with a generic attachment-related "
-            f"acknowledgment (e.g. 'attach'/'attached'/'attachment'), got: {response_text!r}"
+        assert _FILE_CONTENT in response_lower, (
+            "Pipeline response should contain the correct fact resolved from the "
+            f"attached file's actual content ({_FILE_CONTENT!r}) — not merely the "
+            f"filename or a generic acknowledgment, got: {response_text!r}"
         )
 
+    with allure.step("Step 9 — No console errors were introduced at any step"):
         assert not console_errors, f"No step should introduce console errors: {console_errors}"
 
 

@@ -828,6 +828,9 @@ class PipelineAPI:
         description: str,
         entry_point: str,
         nodes: list[dict],
+        *,
+        tools: Optional[list[dict]] = None,
+        state: Optional[dict] = None,
     ) -> dict:
         """Create a pipeline with custom nodes.
 
@@ -837,16 +840,33 @@ class PipelineAPI:
             entry_point: ID of the entry-point node (e.g. ``"LLM 1"``).
             nodes: List of node dicts with keys ``id``, ``type``,
                    ``input``, ``output``, ``transition``, etc.
+            tools: Optional full toolkit JSON objects (as returned by
+                ``ToolkitAPI.create_artifact_toolkit`` / ``get_toolkit``) to
+                attach in the pipeline's TOOLS section at creation time —
+                mirrors :meth:`create_pipeline_with_mcp_node`'s ``tools``
+                param. A node's ``tool_names`` mapping only binds a tool that
+                is also present here (confirmed live, ELITEA-2059 adjust
+                round). Defaults to ``[]`` (no toolkits attached) — additive,
+                existing callers are unaffected.
+            state: Optional custom YAML ``state:`` block (e.g.
+                ``{"input_attachments": {"type": "list", "default": []}}``)
+                merged into the generated ``instructions`` YAML. Omitted by
+                default — same no-``state:``-key shape every existing caller
+                already gets.
 
         Returns:
             Created pipeline JSON.
         """
         import yaml as _yaml
 
+        pipeline_dict: dict = {"entry_point": entry_point, "nodes": nodes}
+        if state:
+            pipeline_dict = {"state": state, **pipeline_dict}
         instructions_yaml = _yaml.dump(
-            {"entry_point": entry_point, "nodes": nodes},
+            pipeline_dict,
             default_flow_style=False,
             allow_unicode=True,
+            sort_keys=False,
         )
 
         url = self._applications_url()
@@ -860,7 +880,7 @@ class PipelineAPI:
                     "tags": [],
                     "instructions": instructions_yaml,
                     "variables": [],
-                    "tools": [],
+                    "tools": tools or [],
                     "llm_settings": _default_llm_settings(),
                     "conversation_starters": [],
                     "agent_type": "pipeline",
