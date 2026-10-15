@@ -47,4 +47,16 @@ Also hit the sibling `APP_PREFIX` env-var gap in the same session
 both are independent, both self-triage-able in under a minute, neither is a
 repo defect worth escalating.
 
+**Variant (issue #2443/ELITEA-1790, same day, different sandbox flavor):** no
+pre-populated cache existed anywhere this time, AND `/opt/ms-playwright`
+itself was root-owned/not-writable (`EACCES: permission denied, mkdir
+'/opt/ms-playwright/__dirlock'` on `playwright install`). Fix: just `unset
+PLAYWRIGHT_BROWSERS_PATH` before `python -m playwright install chromium` —
+it falls back to the default user-writable `~/.cache/ms-playwright` and
+installs cleanly (~5 min, ~310 MiB). Then `unset PLAYWRIGHT_BROWSERS_PATH`
+again before the actual `pytest` gate run (the env var is sticky across
+Bash calls in the same session unless re-exported/unset each time). Try the
+pre-populated-cache search first; this unset-and-reinstall is the fallback
+when nothing pre-populated exists.
+
 Related: [[sandbox_app_prefix_and_mcp_browser_can_both_be_broken_independently]]
