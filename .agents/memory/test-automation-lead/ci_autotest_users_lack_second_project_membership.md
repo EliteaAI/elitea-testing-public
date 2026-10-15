@@ -1,43 +1,43 @@
 ---
-name: CI autotest_user_<n> accounts lack a second project membership
-description: Any case needing a 2nd non-public project (fork/share/cross-project) is red in CI by data, not code — no implementer dispatch will fix it
+name: CI autotest_user_<n> accounts lack a second project membership — SUPERSEDED, verify via CI history before trusting an old failure
+description: ELITEA-2051's original "no 2nd project" precondition failure is fixed (ELITEA_TEAM_PROJECT_ID now works) — a card quoting that old error is stale, not current; walk recent job logs before diagnosing
 type: feedback
 ---
 
-## The gap
+## This entry's original diagnosis was WRONG and is kept only as a corrective
 
-Every CI `autotest_user_<n>` (DEV matrix, `test-ui-dev.yml`/`test-ui-custom.yml`)
-belongs to exactly **one** non-public project — their own `TEST_USER_PROJECT_<n>`
-— plus the public project (id 1). `USERS_TEAM_PROJECT_ID` (`automation/config.py:215`,
-default `"400"`, the one env var a resolver could prefer to find a *shared*
-second project) is **never set** in any `test-ui-*.yml` workflow — grepped,
-zero hits outside `config.py`'s own default and the ELITEA-2051 test file.
+First version (2026-10-07) claimed: every CI `autotest_user_<n>` belongs to
+only ONE non-public project, `USERS_TEAM_PROJECT_ID` is never wired, so no
+code fix is possible, only an admin/CI-secret change. **That admin/CI-secret
+change already happened** (a human + `ELITEA_TEAM_PROJECT_ID`, a DIFFERENT,
+already-wired key — see `test-ui-dev.yml:130`, `test-ui-custom.yml:532`,
+distinct from the never-wired `USERS_TEAM_PROJECT_ID` I was fixated on). Re-
+checking `gh run view --job <id> --log` across 9 CI runs (2026-10-07 →
+2026-10-13) showed a clean time-ordered transition:
 
-So any case whose precondition needs the acting CI user in a **second**
-project (fork-to-different-project, cross-project share, "add this user to
-another team") will fail in CI no matter how correct the test code is, unless
-it hardcodes/discovers a project the acting user isn't actually a member of
-(which is worse — see ELITEA-2051's PR #1931 history, a hardcoded-id bug) or
-happens to run against a dev/local identity that *does* have 2 projects
-(399→400 locally).
+1. **2026-10-07 → 2026-10-12 08:15** (7 runs): resolver finds a valid 2nd
+   project (470, via `ELITEA_TEAM_PROJECT_ID`) — PAST the old precondition —
+   but `403 Forbidden: required ['models.applications.applications.create']`
+   creating a pipeline there. A PERMISSION gap, not a membership gap.
+2. **2026-10-12 14:35 onward**: that 403 is ALSO gone. Full flow (steps 1-8)
+   passes. Test now fails on a totally different, later assertion (Step 9,
+   "Forked from" attribution link — see `#2410`'s thread for that angle).
 
-## What this means for triage
+**The lesson, not the stale fact:** when a card quotes an old CI failure
+message, don't trust it as current state. Pull 3-5 of the MOST RECENT job
+logs for that exact test (`gh run list --workflow test-ui-dev.yml` → filter
+by suite/title → `gh run view --job <id> --log`) before diagnosing — the
+underlying environment/CI config can and does change between when a card was
+filed and when you pick it up, and a resolved problem dressed in old wording
+wastes a full triage cycle re-deriving a diagnosis that's already obsolete.
+A subagent I dispatched made exactly this mistake once (inferred "this test
+has never passed since the fix landed" from a SINGLE job log plus
+over-literal reasoning about a frontend code path, without walking the
+timeline) — caught by independently re-checking every job log myself before
+trusting the inference, per the general "no defect masking / verify before
+reporting" discipline.
 
-If a card's failure message is "the acting user belongs to no project usable
-as a fork/share SOURCE" (or structurally identical — "no second project to
-X from"): **don't dispatch an analyst/implementer to re-derive this.** It's
-not a code bug — confirm with one `gh run view --job <id> --log | grep -i
-"precondition unmet\|member"` to see which `autotest_user_<n>` ran and that
-their membership list has exactly one non-public entry, then go straight to
-filing a `question` (no project-CREATE REST endpoint is documented anywhere
-in the `elitea-platform` skill, and the only membership-granting capability,
-`AdminUsersPage.invite_users`, is a UI invite flow — not a safe or durable
-thing to run every CI invocation, and I hold no `autotest_user_*`/admin
-credentials in any sandbox `.env.test` to do it myself anyway).
-
-**The fix, when a human picks it up:** one-time admin action — grant every
-`autotest_user_1..9` membership in one shared second project on DEV — then
-wire that project's id as a new `USERS_TEAM_PROJECT_ID` CI secret, mirroring
-the existing per-user `TEST_USER_PROJECT_<n>` secret pattern. Needs DEV admin
-access + GitHub Actions secrets write — neither available to any pipeline
-agent. First hit: #2410/#2414 (ELITEA-2051, 2026-10-07).
+**`USERS_TEAM_PROJECT_ID` (ELITEA-2292-scoped) and `ELITEA_TEAM_PROJECT_ID`
+(this case's actual answer) are two DIFFERENT, similarly-named settings** —
+don't conflate them when grepping for "is a shared project wired in CI."
+`config.py:46-48` and `:206-215` document each separately.

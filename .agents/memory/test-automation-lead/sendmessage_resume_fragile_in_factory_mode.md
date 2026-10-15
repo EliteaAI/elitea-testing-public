@@ -72,3 +72,23 @@ don't redo it." Zero turns lost this time (direct from ack to `TaskStop` to fres
 foreground dispatch), vs. the two interrupted rounds in the #88 occurrence — the
 partial work the resumed agent had made (one isolated code edit, no AFS/commit yet)
 was intact and reusable exactly as `interrupted_dispatch_recovery.md` predicts.
+
+## Seen 4× — #2410/ELITEA-2051 (2026-10-15): applies to VERIFICATION resumes too, not just fix rounds
+
+Every prior occurrence here was a fix-only implementer round. This one was a
+SendMessage-resume of an **analyst doing live-DEV verification** (not writing
+code) — same ack-only result shape, same no-synchronous-option problem, but
+this time nothing crashed; it just ran far longer than any verification task
+should (~10+ bounded poll cycles, no result) with no visible signal of
+progress vs. being stuck. Stopped it with `TaskStop` and re-dispatched a FRESH
+foreground `Agent()` with a narrower, already-diagnosed prompt — got a full,
+useful report on the first call. **Rule now covers any SendMessage-resume in
+factory mode, not just fix-only rounds**: the moment you're about to resume an
+existing agent rather than dispatching fresh, stop and ask whether the
+narrower-context cost saving is worth losing synchronous foreground semantics
+— in factory mode, it rarely is. Prefer fresh foreground dispatch as the
+default; reach for SendMessage-resume only when the existing agent's context
+(a long investigation, a large diff already loaded) is expensive enough to
+redo that even the resume risk is worth it, and even then, cap the wait and
+bail to fresh-foreground on the first sign of taking too long rather than
+after a crash.
