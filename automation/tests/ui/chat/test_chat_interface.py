@@ -66,6 +66,7 @@ class TestPageLoadAndRendering:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1142_chat-basic-functionality.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/smoke-suite/ELITEA-1051_chat-basic-functionality.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-1051", "ELITEA-1142")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_chat_page_loads_with_functional_input(self, page, conversation_id):

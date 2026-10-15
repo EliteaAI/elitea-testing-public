@@ -59,6 +59,7 @@ class TestPipelineDashboard:
     """PIPE-001: Pipeline dashboard loads and displays pipelines list."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0855")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_pipeline_dashboard_loads(self, page):
@@ -77,6 +78,7 @@ class TestPipelineDashboard:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0855", "ELITEA-0864")
     @pytest.mark.p1
     def test_pipeline_created_via_api_visible_in_dashboard(self, page, pipeline_id, pipeline_api):
         """Pipeline created via API fixture should appear in the dashboard."""
@@ -93,7 +95,7 @@ class TestPipelineDashboard:
                 f"Pipeline '{pipeline_name}' should appear in the dashboard"
             )
 
-    @pytest.mark.tms("ELITEA-2024")
+    @pytest.mark.tms("ELITEA-2024", "ELITEA-0855")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2024_pipeline-dashboard-view-toggle-card-vs-table.md", "onetest-ai Test Case link")
     @pytest.mark.p1
@@ -183,6 +185,7 @@ class TestCreatePipeline:
     """PIPE-002: Create new pipeline via UI."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0864")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_create_pipeline_via_ui(self, page, pipeline_api):
@@ -227,6 +230,7 @@ class TestCreatePipeline:
                 print(f"[WARN] Failed to delete pipeline {pipeline_id_str}: {cleanup_exc}")
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0864")
     @pytest.mark.p1
     def test_create_pipeline_required_fields_validation(self, page):
         """Save button should be disabled when required fields are empty."""
@@ -344,6 +348,7 @@ class TestEditPipeline:
     """PIPE-003: Edit pipeline name and description."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0850")
     @pytest.mark.p1
     def test_edit_pipeline_name(self, page, pipeline_id, pipeline_api):
         """Edit a pipeline's name and verify the change persists."""
@@ -367,6 +372,7 @@ class TestEditPipeline:
             )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0850")
     @pytest.mark.p1
     def test_edit_pipeline_description(self, page, pipeline_id, pipeline_api):
         """Edit a pipeline's description and verify the change persists."""
@@ -390,6 +396,7 @@ class TestEditPipeline:
             )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0851")
     @pytest.mark.p1
     def test_pipeline_detail_page_loads(self, page, pipeline_id, pipeline_api):
         """Navigate to a pipeline's detail page and verify form fields match."""
@@ -409,6 +416,7 @@ class TestEditPipeline:
             )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0851")
     @pytest.mark.p1
     def test_pipeline_has_configuration_and_history_tabs(self, page, pipeline_id):
         """Pipeline detail page shows configuration panel and history button."""
@@ -427,6 +435,7 @@ class TestDeletePipeline:
     """PIPE-004: Delete pipeline via API and verify in UI."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0850")
     @pytest.mark.p1
     def test_delete_pipeline_via_api(self, page, pipeline_api):
         """Create a pipeline, delete via API, and verify it's gone from the UI."""
@@ -462,7 +471,7 @@ class TestDeletePipeline:
             except Exception:
                 pass
 
-    @pytest.mark.tms("ELITEA-2022")
+    @pytest.mark.tms("ELITEA-2022", "ELITEA-0850")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2022_delete-pipeline.md", "onetest-ai Test Case link")
     @pytest.mark.p1
@@ -550,6 +559,7 @@ class TestSearchPipeline:
     """PIPE-005: Search and filter pipelines by name."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0855")
     @pytest.mark.p1
     def test_search_pipeline_by_name(self, page, pipeline_id, pipeline_api):
         """Search for a pipeline by name on the dashboard."""
@@ -570,6 +580,7 @@ class TestSearchPipeline:
             )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0855")
     @pytest.mark.p1
     def test_search_pipeline_no_results(self, page):
         """Searching for a non-existent pipeline should show no results."""

@@ -286,6 +286,7 @@ class TestExportImportRoundtrip:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0142_agent-export-and-import.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139", "ELITEA-0142")
     @pytest.mark.p0
     def test_export_import_roundtrip_basic(self, agent_api):
         """EXP-001: Basic export/import roundtrip preserves core fields."""
@@ -366,6 +367,7 @@ class TestExportImportRoundtrip:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0142_agent-export-and-import.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139", "ELITEA-0142")
     @pytest.mark.p1
     def test_export_import_preserves_all_fields(self, agent_api):
         """EXP-002: Roundtrip preserves all populated fields."""
@@ -432,6 +434,7 @@ class TestExportImportRoundtrip:
                     logger.warning("Cleanup failed: %s", _exc)
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139")
     @pytest.mark.p1
     def test_export_format_is_valid_yaml_frontmatter(self, agent_api):
         """EXP-003: Export produces valid YAML frontmatter + markdown."""
@@ -479,6 +482,7 @@ class TestExportImportConflicts:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0142_agent-export-and-import.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139", "ELITEA-0142")
     @pytest.mark.p1
     def test_import_with_conflicting_name_creates_new(self, agent_api):
         """EXP-004: Importing when agent with same name exists creates a second agent."""
@@ -540,6 +544,7 @@ class TestExportImportConflicts:
                     logger.warning("Cleanup failed: %s", _exc)
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139")
     @pytest.mark.p2
     def test_import_preserves_original_when_conflict(self, agent_api):
         """EXP-005: Original agent is unchanged after importing with same name."""
@@ -602,6 +607,7 @@ class TestExportImportEdgeCases:
     """Edge case tests for export/import."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139")
     @pytest.mark.p2
     def test_export_import_empty_optional_fields(self, agent_api):
         """EXP-006: Roundtrip works with empty optional fields."""
@@ -660,6 +666,7 @@ class TestExportImportEdgeCases:
                     logger.warning("Cleanup failed: %s", _exc)
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139")
     @pytest.mark.p2
     def test_export_import_special_characters_in_name(self, agent_api):
         """EXP-007: Names with special characters survive roundtrip."""
@@ -714,6 +721,7 @@ class TestExportImportEdgeCases:
                     logger.warning("Cleanup failed: %s", _exc)
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139")
     @pytest.mark.p2
     def test_export_import_large_instructions(self, agent_api):
         """EXP-008: Large instruction text (5000+ chars) survives roundtrip."""
@@ -786,6 +794,7 @@ class TestExportImportEdgeCases:
                     logger.warning("Cleanup failed: %s", _exc)
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0139_agent-export-and-import-yaml-format.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0139")
     @pytest.mark.p2
     def test_import_via_constructed_payload(self, agent_api):
         """EXP-009: Import works with a manually constructed payload (no export)."""
