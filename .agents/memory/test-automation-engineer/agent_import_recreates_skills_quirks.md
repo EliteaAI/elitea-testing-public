@@ -70,6 +70,15 @@ that triggers the navigation) — gives a non-UI-dependent assertion for
 "the imported Skill's ID is new/unique" that sidesteps the first-paint
 timing race below.
 
+> **AMENDED 2026-10-15 (ELITEA-1795/#2444 adjustment, EL-6930).** `max_skills`
+> moved from a frontend-hardcoded `5` to a live, non-configurable platform
+> field — currently `50` on DEV, same root cause as sibling #2443/ELITEA-1790
+> (`lp1_max-5-skills-per-agent_ELITEA-1790.md`). Never assert `max_skills`
+> against a literal; assert `isinstance(max_skills, int) and max_skills > 0`
+> only. This test never exercises the attach boundary (imports exactly one
+> Skill), so it only ever reads this field in passing — the fix was a
+> one-line comparison swap, no new API client method needed.
+
 **Known non-defect UI-timing quirk:** the imported Agent detail page's
 Skills counter can show "0/5 skills added." on first paint, before the
 secondary `application_skills` fetch resolves (lags main page paint by
