@@ -13,16 +13,16 @@
 
 ## Test Results Matrix
 
-| Test Case | #268 | Tracking Issue |
-|-----------|--------|----------------|
-| ELITEA-2045 | 🔴 | [#2435](https://github.com/EliteaAI/elitea-testing-public/issues/2435) |
-| tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_edit_pipeline_description | 🟣 | [#2436](https://github.com/EliteaAI/elitea-testing-public/issues/2436) |
-| **Total executed** | 53 | - |
+| Test Case | #268 | #273 | Tracking Issue |
+|-----------|--------|--------|----------------|
+| ELITEA-2045 | 🔴 | 🟢 | - |
+| tests.ui.pipelines_2.test_pipeline_management.TestEditPipeline.test_edit_pipeline_description | 🟣 | 🟢 | - |
+| **Total executed** | 53 | 53 | - |
 
 ## Summary
 
-- **Runs Shown:** 1 (max 10)
+- **Runs Shown:** 2 (max 10)
 - **Total Test Cases:** 2
-- **With Tracking Issues:** 2
+- **With Tracking Issues:** 0
 
 *Generated automatically from maintenance files*
