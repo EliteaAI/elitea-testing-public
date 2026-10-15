@@ -67,7 +67,12 @@ def _enabled_toolkit_ids() -> list[str]:
 
 
 def _all_toolkit_ids() -> list:
-    """Return all toolkit IDs for skip-aware parameterization.
+    """Return toolkit IDs for skip-aware parameterization.
+
+    Toolkits with a `skip_reason` (no active account — GitLab, Bitbucket) are
+    left out entirely rather than collected-and-skipped: a param that can never
+    run would only show up in the test index and the TMS dashboard as an
+    unlinked test.
 
     Each toolkit covers a different TMS case, so the `tms` marker cannot sit on
     the test function — it is attached per-param from the toolkit's own
@@ -76,6 +81,8 @@ def _all_toolkit_ids() -> list:
     """
     params = []
     for tk_id, cfg in TOOLKIT_CONFIGS.items():
+        if cfg.skip_reason:
+            continue
         marks = [pytest.mark.tms(cfg.tms_case_id)] if cfg.tms_case_id else []
         params.append(pytest.param(tk_id, marks=marks, id=tk_id))
     return params
@@ -97,8 +104,6 @@ def toolkit_config(request) -> ToolkitConfig:
             f"{cfg.credential.env_token_var} not set — "
             f"skipping {cfg.display_name} toolkit tests"
         )
-    if cfg.skip_reason:
-        pytest.skip(cfg.skip_reason)
 
     # Pre-validate credentials against the external service
     if cfg.credential_check:

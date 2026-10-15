@@ -74,7 +74,7 @@ class ToolkitConfig:
     test_tool_params: dict = field(default_factory=dict)  # schema property key -> value
     credential_check: dict = field(default_factory=dict)  # {url, auth_env_vars} for pre-validation
     extra_form_fields: dict = field(default_factory=dict)
-    skip_reason: str = ""              # if set, pytest.skip() with this reason
+    skip_reason: str = ""              # if set, the toolkit is not parameterized (not collected)
     # TMS case this toolkit's parameterized runs cover. The parameterized tests
     # cover a DIFFERENT case per toolkit, so the id cannot sit on the test
     # function — it is attached per-param from here (see
