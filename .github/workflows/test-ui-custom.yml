@@ -1393,16 +1393,19 @@ jobs:
                   print(f"| {suite} | {automated} | {total} |")
               print(f"| **All suites** | **{total_automated}** | **{total_cases}** |")
               print()
-              if total_cases:
+              print("```mermaid")
+              print("pie showData")
+              print(f'    title "Automated vs Manual ({total_cases} cases)"')
+              print(f'    "Automated" : {total_automated}')
+              print(f'    "Manual" : {total_cases - total_automated}')
+              print("```\n")
+              if total_automated:
                   print("```mermaid")
                   print("pie showData")
                   print(f'    title "Automated Cases by Suite ({total_automated} of {total_cases})"')
                   for suite, (automated, _) in sorted(suites.items(), key=lambda kv: -kv[1][0]):
                       if automated:
                           print(f'    "{suite}" : {automated}')
-                  # Every case not automated, across all suites, as one slice.
-                  if total_cases - total_automated:
-                      print(f'    "Manual" : {total_cases - total_automated}')
                   print("```\n")
 
           # Tests without TMS cases (full list)
