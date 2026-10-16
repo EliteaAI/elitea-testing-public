@@ -53,11 +53,12 @@ dispatch. The method below does not change; **your own slot contract does.** So:
 
 ## Step 1 — Ground truth BEFORE any diagnosis
 
-1. **Sync**, or you diagnose against stale code: `sync-base-branches` Part 1 (merges
-   `main` into `automation/factory`). Guard first — never sync over another agent's
+1. **Sync**, or you diagnose against stale code: `git fetch origin` in this repo and
+   diagnose against `origin/main` (the base branch — there is no long-lived automation
+   branch to merge into). Guard first — never move a checkout under another agent's
    in-flight work. Then `git fetch origin` in the read-only frontend-source reference
    clone, so what you read there is the product as DEV ships it (`origin/main`).
-2. **Diagnose on DEV — always.** Every test on `automation/factory` targets the DEV env as
+2. **Diagnose on DEV — always.** Every test on `main` targets the DEV env as
    deployed (`https://dev.elitea.ai`, `APP_PREFIX=/app`; Keycloak login,
    `TEST_USER_EMAIL`/`_PASSWORD` from `.env.test`, field `input[name="username"]`).
    Refresh the browser auth first: `cd automation && ../.venv/bin/python
@@ -68,7 +69,7 @@ dispatch. The method below does not change; **your own slot contract does.** So:
    ```
    **Green from this machine but red in CI ⇒ NOT drift** — env/infra/data (class **D**).
 4. **Handle pre-check — mandatory before calling a testid failure "drift."** A test on
-   `automation/factory` only ever uses handles DEV serves, so a `testid=` that resolves to
+   `main` only ever uses handles DEV serves, so a `testid=` that resolves to
    nothing is a fact about the deployment, not a bug in the test. Confirm which it is on
    DEV itself, in the DOM — take a Playwright MCP snapshot of the page the test was on and
    check whether the element is present **without** its testid:
@@ -151,7 +152,7 @@ why, the triage class, and any Expected-result changes.
 
 ## Step 7 — Update the code
 
-Branch `tests/adjust-ELITEA-<id>-<slug>` from fresh `origin/automation/factory`. **Plain
+Branch `tests/adjust-ELITEA-<id>-<slug>` from fresh `origin/main`. **Plain
 branching, one thing at a time — no git worktrees** (`.agents/workflow.md` § No git
 worktrees).
 
@@ -168,7 +169,7 @@ worktrees).
   (`.agents/role-overrides.md` § Reviewer slot) on your own diff and paste the output,
   plus the `locator_inventory.py scan` delta (unmanaged handles must not increase):
   ```bash
-  git diff origin/automation/factory...HEAD -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\(|\.nth\(|locator=|fallback=)'
+  git diff origin/main...HEAD -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\(|\.nth\(|locator=|fallback=)'
   cd automation && ../.venv/bin/python scripts/locator_inventory.py scan
   ```
 
@@ -186,7 +187,7 @@ soft-asserted) — name which members fired.
 
 **Then two PRs — this skill prepares, a human accepts:**
 
-1. **Test PR → `automation/factory`** · `test(adjust): ELITEA-<id> — <what changed>`. Body:
+1. **Test PR → `main`** · `test(adjust): ELITEA-<id> — <what changed>`. Body:
    the originating task link, **triage class + evidence**, what drifted (old→new),
    **Expected-result changes** (or "none"), gate evidence 3/3, handle provenance, and the
    self-check grep + scan output.

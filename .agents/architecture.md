@@ -11,7 +11,7 @@ service architecture.
 ```
 <workspace>/                             (= parent folder of this clone; plain dir, NOT a repo)
 ├── .env  .env.test                      master secrets (symlink targets)
-├── elitea-testing-public/               THIS repo — tests · branch automation/factory · admin
+├── elitea-testing-public/               THIS repo — tests · base branch main (PRs, human merge) · admin
 │   └── automation/.env.test → ../../.env.test
 ├── onetest-ai-tm-Elitea/                TMS repo ($OT_REPO_ROOT) · admin
 │   ├── .onetest/                        config the @onetest/tms MCP package reads via cwd

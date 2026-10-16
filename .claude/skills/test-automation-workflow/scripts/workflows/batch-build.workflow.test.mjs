@@ -392,6 +392,21 @@ test('case PRs target the trunk, and ONE PR takes the trunk to base', () => {
   assert.match(text, /Automation PR policy/);
 });
 
+// A human-merge base wants small, per-case PRs. 'per-case' keeps the trunk as
+// the gate's object but never lands it: each unit is carried onto its own
+// branch from base and re-gated alone (base + one case ≠ the trunk), and a
+// unit needing an earlier unit's unmerged change waits — never a stacked PR.
+test("prUnit 'per-case': the trunk is gate-only and each case lands as its own PR", () => {
+  assert.match(text, /const PR_UNIT = A\.prUnit \?\? 'trunk'/);
+  assert.match(text, /prUnit must be 'trunk' or 'per-case'/);
+  assert.match(text, /it is GATE-ONLY, never PR it/);
+  assert.match(text, /cut a branch from a fresh \$\{BASE\}/);
+  assert.match(text, /gate it alone/);
+  assert.match(text, /parked waiting on that PR, never stacked/);
+  // The default path is unchanged.
+  assert.match(text, /PR_UNIT === 'per-case'[^]*?one PR from \$\{gateBranch\} to \$\{BASE\}/);
+});
+
 // Clustering buys a shared LIVE SESSION, not a merged spec. Merging output is a
 // second judgement the analyst makes at the end of the session, and the
 // implementer must be TOLD which shape to produce — otherwise it infers the

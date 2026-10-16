@@ -307,7 +307,7 @@ and skills it mentions. Each shows one pattern:
 | `reproduce` | dequeue by LABEL, not by card move: the agent stamps a verdict + terminal label, the loop's `QUERY` excludes it |
 | `control` | verdict-only audit of `Ready` deliveries: `STATUS_ACTIVE=""`, own `SID_SCOPE` so it never resumes the deliverer's conversation |
 | `track-app-issues` | poll an upstream bug tracker and un-park `Blocked` cards when the fix ships (draft) |
-| `syncbranch` | cardless + `EXCLUSIVE`: sync long-lived branches while nothing else is mid-session |
+| `postmerge` | cardless + `EXCLUSIVE`: after a HUMAN merges a batch PR into `main` — TMS back-write, ledger PR, merge record; the card stays `Ready` |
 | `docs-compaction` | cardless + `EXCLUSIVE`, weekly: propose a dedup PR, never merge it |
 | `memory-guard` | cardless + `EXCLUSIVE`, nightly: archive per-role memory over the hook's context budget |
 

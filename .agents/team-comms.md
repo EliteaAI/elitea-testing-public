@@ -20,11 +20,11 @@
 
 | Role | `subagent_type` | Hand off… |
 |------|-----------------|-----------|
-| Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, merge gate to `automation/factory`, TMS intake/back-write, board #9 discipline, batch ops (on request) |
+| Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, pre-PR gate + hand-off of PRs into `main` (a human merges), TMS intake/back-write after the human merge, board #9 discipline, batch ops (on request) |
 | QA Engineer — Sage (analyst + reviewer) | `qa-engineer` | Analyst: execute case vs DEV (`https://dev.elitea.ai/app`), emit AFS with ladder handles. Reviewer: FRESH session, adversarial review of automation PRs |
 | Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test on DEV through page objects, ladder locators with `suggested_testid=` |
 | Testid Migrator — Tess (on request) | `testid-migrator` | Locator-debt burndown: turns `suggested_testid=` hints into real testids and swaps the declarations once they are deployed. **Out of band** — its own session, its own procedure (`.claude/skills/migrate-locators-to-testids`), started by request (a person or another party); **never dispatched from a batch, and nothing in the pipeline waits on it** |
-| Factory Ops — Rook (navigator) | `factory-ops` | "Where does this live / which branch do I touch / how does the factory pick this up" — the repository map, the operating branches, the container-vs-local topology, board #9's state machine, loop anatomy; plus the sanctioned git ops (branch/commit/push, merge `main → automation/factory`, PR into `automation/factory`). Verifies and pastes commands. **No tracker or board writes; never the merge gate** |
+| Factory Ops — Rook (navigator) | `factory-ops` | "Where does this live / which branch do I touch / how does the factory pick this up" — the repository map, the operating branches, the container-vs-local topology, board #9's state machine, loop anatomy; plus the sanctioned git ops (branch/commit/push, merge `origin/main` into an open PR branch, open a PR into `main`). Verifies and pastes commands. **No tracker or board writes; never merges into `main`; never the gate** |
 | Scout — Kit | `scout` | Onboarding/seed refresh, retrospectives, optimization passes |
 
 Use the `subagent_type` value exactly — it must match a directory name in

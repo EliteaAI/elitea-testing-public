@@ -60,10 +60,15 @@ Deltas:
    `expect.soft()` with the ticket linked — never a hidden green). These two
    labels, `question` and `bug`, are load-bearing: they are what stops the
    factory from ever treating your reports as work items.
-3. **Sync first, once per session**: merge `main` into `automation/factory`
-   (test repo only — `sync-base-branches` Part 1) BEFORE dispatching the first
-   case (`.agents/role-overrides.md` § Orchestrator) — this repo is the only one
-   you sync. The pipeline targets DEV as deployed (`https://dev.elitea.ai`).
+3. **Fresh `origin/main` first, once per session**: `git fetch origin` and
+   fast-forward local `main` (`sync-base-branches` § Test repo — no merge, no
+   push) BEFORE dispatching the first case; the batch trunk is cut from it
+   (`.agents/role-overrides.md` § Orchestrator). **Every case your card names is
+   ONE batch, in THIS session, landing as ONE PR** — run them all through one
+   batch workflow (`base: "main"`, `prUnit: "trunk"`); never split a card into
+   several PRs or several sessions. `automation/factory` is FROZEN —
+   never branch from, PR into, or sync it. **You never merge into `main`** — a
+   human does. The pipeline targets DEV as deployed (`https://dev.elitea.ai`).
    Every dispatch prompt carries the target + locator-policy line verbatim
    (§ Orchestrator slot — the dispatch prompt is the gate).
 4. **Run your pipeline by dispatch, as always**: analyst (qa-engineer) writes
@@ -114,15 +119,22 @@ Deltas:
 7. **Only the issue named in this dispatch.** Discoveries become new issues
    (they land in `Todo`) — never start them.
    **`Ready` requires ALL of** (`.agents/workflow.md` + `.agents/testing.md`):
-   test green · your own 3× pre-merge gate (§ Merge gate — three SEPARATE
-   invocations, against DEV) · test PR merged to `automation/factory` — one PR in
-   this repo is the whole delivery · TMS back-written (Form C dotted `automation_test_id`
-   — no `automation.` prefix, per `.agents/test-automation.yaml`; `automation_pr`)
-   · **closure record posted** in the factory-case form (`.agents/workflow.md`
-   § Closure record — factory cases): its Locators row is the
-   `automation/scripts/locator_inventory.py scan` delta that YOU re-ran on
-   `automation/factory` after the merge and pasted (never copied from the Run
-   Report), plus the new non-testid declarations registered as `raw` ledger rows
-   by `sync-ledger`. Then card → **`Ready`**, issue
-   stays OPEN; that is your terminal state. `Done` and issue-close
-   are the HUMAN's move. Nothing less counts as delivered.
+   test green · reviewer APPROVED (fresh session) · your own 3× gate (§ Merge
+   gate — three SEPARATE invocations, against DEV, of the batch's specs on the
+   trunk as it will merge) · **one PR into `main` for the whole card** — the gated
+   `tests/batch-<slug>` trunk, every case in it (body: one row per case, `Refs
+   #<card>` for every card it covers, never `Closes`, "Squash and merge"), marked
+   ready for review, and a HUMAN squash-merges it; never `gh pr merge` · **hand-off
+   record posted**
+   (`.agents/workflow.md` § Closure record — two parts): its Locators row is the
+   `automation/scripts/locator_inventory.py scan` delta that YOU re-ran on the
+   PR branch vs `origin/main` and pasted (never copied from the Run Report).
+   Then card → **`Ready`**, issue stays OPEN; that is your terminal state.
+   The TMS back-write, `sync-ledger` and the **merge record** happen only after
+   the human merge — the `postmerge` loop does them (`.agents/workflow.md`
+   § After a human merges); never back-write for an unmerged PR. A case that
+   needs another case's still-open PR parks `Blocked` — `Waiting on #<PR>` —
+   never stacked on it. A case of the card that can't be made green is reverted
+   off the trunk and reported on the card — the rest still land in the one PR.
+   `Done` and issue-close are the HUMAN's move. Nothing
+   less counts as delivered.

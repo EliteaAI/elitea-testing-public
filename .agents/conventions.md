@@ -42,10 +42,11 @@ This file only records what those don't.
 
 ## Git
 
-- Work branches from `automation/factory`: `tests/<case-id>-<slug>` (canonical; older
+- Work branches from a fresh `origin/main`: `tests/<case-id>-<slug>` (canonical; older
   `automation/<case-id>-<slug>` branches exist historically — don't create new ones)
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
-- PRs: small, one per test/feature area, target `automation/factory`, squash merge
+- PRs: small, one per test/feature area, target `main`; opened by agents, merged by a human
+  (squash recommended)
 - Every artifact a case produces lands in **this** repo — one branch, one PR, one repo
 
 ## Hard don'ts

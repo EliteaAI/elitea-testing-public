@@ -81,7 +81,7 @@ type: project
   `elitea-toolkit` / `elitea-testing` cover pipelines, toolkits, predict/debug.
 - **Defects:** GitHub issue labelled `bug` in `EliteaAI/elitea-testing-public`,
   strict-per-bug, body names the case ID + originating task.
-- **Reviewer slot:** triangulate case file ↔ AFS ↔ PR diff; PRs target `automation/factory`;
+- **Reviewer slot:** triangulate case file ↔ AFS ↔ PR diff; PRs target `main` (a human merges);
   check: ladder discipline (declared rung + `suggested_testid=`), no `fallback`/`locator=`, locators as page-class
   fields only (none built inside methods/specs — **including a raw selector
   chained off an existing field inside a method, e.g.

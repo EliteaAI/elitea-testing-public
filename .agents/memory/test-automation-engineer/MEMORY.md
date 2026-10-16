@@ -15,7 +15,7 @@
 - [AFS: work order, not gospel](afs_is_a_work_order_not_gospel.md) — verify every claim live; amend the AFS + _surface.md, never re-scope (12×)
 - [AFS Priority vs pytest.mark](afs_priority_vs_pytest_mark_preflight_check.md) — grep Priority vs @pytest.mark.pN before handoff, incl. module-inherited (8×)
 - [Verify your own delivery](verify_your_own_delivery_before_handoff.md) — exit code/stdout lie; run all three greps against the batch trunk (12×)
-- [Mechanical greps diff the batch trunk](mechanical_greps_diff_against_batch_trunk_not_origin_base.md) — origin/automation/base lags it; diffing base fakes both results
+- [Mechanical greps diff the batch trunk](mechanical_greps_diff_against_batch_trunk_not_origin_base.md) — origin/main lags it; diffing the base fakes both results
 - [Triple-dot diff hides uncommitted work](triple_dot_diff_hides_uncommitted_changes_when_head_equals_base.md) — `ref...` is empty if HEAD==ref; use `git diff ref` (two-dot) for the self-check grep
 - [Console side-channel checks](console_side_channel_checks.md) — dual listener, registered pre-step-1, filter proven to fire (5×)
 - [Waits & races](never_assume_a_transition_settled.md) — networkidle/capture-list/Enter-send/cold-nav all lie; name the signal (8×)
@@ -63,7 +63,6 @@
 - [Running a spec against DEV](dev_env_run_harness_and_goto_flake.md) — ELITEA_URL export does nothing; use the -p plugin harness; expect ~40% raw goto timeouts
 - [JS evaluate-click no-ops when disabled](js_click_silently_noops_on_disabled_controls.md) — use expect(enabled)+real click on gated controls (#1897)
 - [Autouse banner-dismiss races the SPA redirect](autouse_banner_dismiss_races_spa_redirect.md) — unguarded evaluate after a domcontentloaded goto: green local, 10/10 red on DEV
-- [main is NOT a superset of automation/base](main_and_automation_base_have_diverged_badly.md) — planted assert False + tests/unit won't collect; control-run anything red
 - [Same-run correlation = class D shortcut](same_run_correlation_is_a_class_d_triage_shortcut.md) — check sibling [FIX] cards from the same CI run before diffing code
 - [Dead literal in a [FIX] card](dead_literal_repair_delete_dont_substitute.md) — read the case first: if it says "the default", DELETE the step, do not substitute
 - [Missing .env.test → APP_PREFIX=""](sandbox_missing_env_test_app_prefix_404.md) — client-side 404 (HTTP 200!) looks like a backend timeout; `export APP_PREFIX=/app`

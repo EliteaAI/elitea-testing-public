@@ -99,7 +99,7 @@ on base · scaffold minimal.
 5. Implement automation         (implementer six-phase loop — the `test-automation-implementation` skill)
 6. Run & stabilize              (implementer — green or real defect; Run Report)
 7. Review                       (reviewer slot + code-review skill)
-8. Deliver & sync TMS           (completing-a-task; orchestrator back-writes post-merge)
+8. Deliver & sync TMS           (completing-a-task; orchestrator back-writes after the PR merges — per the seeded merge policy, possibly a human)
 ```
 
 Steps 1–4 belong to the analyst slot (driven by [`test-case-analysis`](../test-case-analysis/SKILL.md)). Steps 5–6 belong to the implementer slot (driven by the [`test-automation-implementation`](../test-automation-implementation/SKILL.md) skill). Step 7 is the reviewer slot (driven by [`code-review`](../code-review/SKILL.md)). Step 8 is the handoff.
@@ -197,7 +197,7 @@ Full checklist in [references/reviewer-contract.md](references/reviewer-contract
 2. **Per unit, in order** — analyse live (the analyst owns the tree and commits its own AFS to the trunk) → implement on a branch cut from the trunk → static review → fix rounds to APPROVED → merge back, tree returns to the trunk. **Nothing overlaps:** one tree has one state at a time, and ordering is the only thing that reconciles slots needing different ones.
 3. **Build loop** — per unit: implement, then static-review, then fix rounds **until the reviewer approves** — a round more whenever a blocker went unaddressed; stop only when every survivor is `persists`/`external` (reviewer-contract § On a RE-REVIEW; runaway backstop 8). **Sequential** — implementers write code in the one working tree.
 4. **Gate** — once every unit has merged, the trunk carries the batch: N consecutive deterministic green runs over its specs together (default 3), **plus one run of the specs the batch could have broken** — the blast radius, scoped by what the batch *modified*, not what it touched: specs reaching a changed symbol are in; purely additive changes to shared files pull in nothing (playbook § The loop → Run). The gate is **its own agent** — never the implementer certifying its own work.
-5. **Report** — one write: per-case outcome + findings + gate verdict. Then the lead merges, routes findings, and replans whatever isn't `automated`.
+5. **Report** — one write: per-case outcome + findings + gate verdict. Then the lead lands it per the seeded PR policy (one trunk PR, or one PR per case under `prUnit: per-case`; who merges is the policy's call), routes findings, and replans whatever isn't `automated`.
 
 Phases 2–5 are ONE `Workflow` call on Claude Code and the same sequence of dispatches everywhere else. There are no intermediate status writes: the run reports once, and an interrupted one is recovered from git + the run journal, never rebuilt by hand.
 

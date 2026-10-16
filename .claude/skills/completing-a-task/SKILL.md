@@ -92,7 +92,9 @@ EOF
 Title prefixes follow conventional commits (`feat`, `fix`, `refactor`, `test`,
 `docs`, `chore`). Link the ticket so it auto-closes on merge — `Closes #N`
 on GitHub/GitLab, a work-item link on Azure (follow your host's convention
-in `workflow.md`).
+in `workflow.md`). If the project says tickets close by hand — e.g. a human
+owns `Done`, or post-merge work runs before the close — use a non-closing
+link (`Refs #N`) instead; `workflow.md` wins.
 
 ---
 

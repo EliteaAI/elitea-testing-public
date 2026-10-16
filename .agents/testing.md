@@ -30,7 +30,7 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 - **Headed vs headless:** headed is the **default** (`config.py: headless=False`);
   `HEADLESS=true` for quiet runs. CI-on-deployed-envs uses the GHA workflows
   (`.github/workflows/test-ui-*.yml`) — not the local loop's concern.
-- **Local verification gate:** there is no CI on `automation/factory`; a test must run
+- **Local verification gate:** there is no CI on PRs into `main`; a test must run
   green from this machine against the **DEV env** (`ELITEA_URL=https://dev.elitea.ai`,
   `APP_PREFIX=/app` in `automation/.env.test`) before its PR — that is the
   *implementer's* gate. The *merge* gate is separate and stricter — see § Merge gate.
@@ -46,10 +46,14 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 - **N = 3, and it means three SEPARATE consecutive pytest invocations of the SAME
   spec** — not one invocation in which 3 different tests pass (the 30e159d9
   anti-pattern). Three processes, same test node id(s), zero failures between them.
-- **Run by the LEAD, independently, strictly BEFORE `gh pr merge`.** Reviewer
-  `APPROVED` is necessary but not sufficient; the implementer's green run is not
-  the gate; running the gate after the merge is a violation even if it passes
-  (the baf8f3cf anti-pattern — self-caught, now codified).
+- **Run by the LEAD, independently, on the batch trunk, strictly BEFORE the batch PR
+  is handed to a human**
+  (marked ready for review + hand-off record). Reviewer `APPROVED` is necessary but
+  not sufficient; the implementer's green run is not the gate; handing off before the
+  gate is a violation even if it later passes (the baf8f3cf anti-pattern, re-anchored
+  2026-10-16: the lead no longer merges — a human does, on the gate evidence). If
+  `main` is merged into the PR branch afterwards (§ Keeping an open PR current in
+  `workflow.md`), the gate re-runs.
 - **Sanctioned-RED exception (isolated known defect):** a spec whose failure is
   (a) deterministic — identical failure 3/3, (b) single-cause, tied to an OPEN
   defect issue linked in the test (soft-assert or `# Known defect: #N` comment
@@ -165,8 +169,8 @@ states the policy and who owns what. See also `.agents/role-overrides.md`._
 **Everything in this project's test loop targets the DEV env as deployed**
 (`https://dev.elitea.ai`, `APP_PREFIX=/app`). The DEV DOM is the only ground truth
 for a locator: if DEV serves a `data-testid`, use it; otherwise take the next
-ladder rung that is unique and record a `suggested_testid=` hint. One PR per case,
-into `automation/factory`, in this repo.
+ladder rung that is unique and record a `suggested_testid=` hint. One PR per batch,
+into `main` (squash-merged by a human), in this repo.
 
 A missing testid is **not** work — it is a hint on a lower rung. Nothing in the
 loop waits on a frontend change, and no test ever depends on a testid DEV does not
@@ -291,7 +295,7 @@ case-derived test missing its TMS case id (§ TMS case id in the test above).
 - `.github/workflows/`: `test-ui-dev.yml`, `test-ui-next.yml`, `test-ui-stage2.yml`,
   `test-ui-custom.yml`, `test-api.yml`, `docs-build.yml`, `delete-stale-branches.yml`.
 - These target **deployed** envs and are run by humans / the batch process — the local
-  pipeline never gates on them. `automation/factory` has no CI by design.
+  pipeline never gates on them. PRs into `main` have no CI by design.
 
 ## Known issues
 

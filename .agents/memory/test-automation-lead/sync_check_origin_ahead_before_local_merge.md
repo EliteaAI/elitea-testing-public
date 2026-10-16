@@ -4,6 +4,11 @@ description: Another concurrent session (e.g. factory-ops) can already have merg
 type: feedback
 ---
 
+> **SUPERSEDED 2026-10-16 — history only.** There is no per-session sync any more:
+> `automation/factory` is frozen, case branches are cut from a fresh `origin/main`,
+> and agents never merge into `main`. Kept for the mechanism (redundant divergent
+> merge commits); dropped from `MEMORY.md`. See [[main_base_human_merge_cutover]].
+
 ## The trap
 
 The per-session mandatory sync (`.agents/role-overrides.md` § Orchestrator: "Sync

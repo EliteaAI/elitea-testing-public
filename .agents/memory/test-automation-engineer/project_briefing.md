@@ -38,7 +38,7 @@ type: project
   Headed is default; `HEADLESS=true` for quiet runs. `pip install -e ".[reporting]"`
   or pytest won't start (allure in addopts).
 - **Target DEV — `https://dev.elitea.ai/app`, as deployed** (`ELITEA_URL`/`APP_PREFIX`
-  in `.env.test`). Green there is the implementer's gate — no CI on `automation/factory`.
+  in `.env.test`). Green there is the implementer's gate — no CI on PRs into `main`.
   Refresh `scripts/dev_storage_state.py` before browser exploration.
 - **Locators follow the ladder — HARD OVERRIDE (`.agents/role-overrides.md`,
   `.claude/rules/page-objects.md`).** Use the AFS rung (climb higher if DEV allows):
@@ -52,7 +52,7 @@ type: project
 - **Your PR in this repo is the only artifact.** Nothing outside it is changed to make
   a locator work: if DEV does not serve a testid, drop a rung and write the hint.
 - **The per-test loop:** explore DEV → `page-object-generator` (ladder declarations) →
-  write test → green on DEV → `locator_inventory.py scan` delta → PR to `automation/factory`.
+  write test → green on DEV → `locator_inventory.py scan` delta → PR to `main` (a human merges).
 - **Wrap every test step in `with allure.step("Step N — …"):`** — one per AFS step,
   assertions inside their step's block (pattern: `test_artifacts_multi_file.py`).
   Auto-applied rules: `.claude/rules/{page-objects,ui-tests,mui-patterns,api-*}.md`.
