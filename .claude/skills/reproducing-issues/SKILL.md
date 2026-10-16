@@ -42,7 +42,12 @@ repeatable — document the environment.
 
 - **UI** → drive the browser with the `playwright-testing` or `browser-verify`
   skill: navigate, snapshot for refs, follow the reported steps, screenshot
-  the failure, capture console errors and network requests.
+  the failure, capture console errors and network requests. When a 4xx/5xx
+  surfaces, cross-check the endpoint against the backend contract at
+  `/shared/openapi/?all=true` (raw JSON) or `/swagger/?all=true` (UI) —
+  quote the parameter list in the verdict so RCA knows whether the response
+  is expected-per-contract (UI bug: wrong endpoint / missing param) or
+  unexpected (backend bug).
 - **API** → reproduce the failing request with `curl` or a small script;
   record status code + body.
 - **Logic** → a minimal script calling the function with the edge-case input;
