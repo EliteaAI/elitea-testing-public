@@ -3784,8 +3784,8 @@ zero console errors).
   a sibling fullscreen-chat AFS first (none existed as of this session)
   before re-deriving handles.
 - Filed: [`elitea-testing-public#1363`](https://github.com/EliteaAI/elitea-testing-public/issues/1363).
-  Full flow: `test-specs/pipelines/l2_pipeline-fullscreen-chat-mode_ELITEA-2071.md`
-  (status `defect-found`).
+  The `defect-found` AFS for ELITEA-2071 was removed 2026-10-16 (orphan — no test
+  built on it); the full flow lives in #1363.
 
 ## Attachments MODULES toggle IS server-persisted across Save + reload; attach-button `disabled` attribute lags ~2s behind on the FIRST post-reload render — use auto-retrying assertions (confirmed live, 2026-08-09, ELITEA-2066)
 
