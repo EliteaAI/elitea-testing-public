@@ -4,6 +4,11 @@ description: gh pr merge defaults to whatever the repo UI default is, NOT the pr
 type: feedback
 ---
 
+> **RE-ANCHORED 2026-10-16.** Agents no longer `gh pr merge` into `main` — a human
+> merges. The lesson survives as: state the strategy ("squash recommended") in the
+> PR body so the human picks it. The `--squash` flag rule applies only where the
+> lead still merges (e.g. unit PRs into a batch trunk). See [[main_base_human_merge_cutover]].
+
 ## What happened (issue #60 / ELITEA-1922, PR #292)
 
 Merged an automation PR with `gh pr merge 292 --repo ... --merge --delete-branch`

@@ -40,12 +40,15 @@ type: project
 > testid-only, a locally served UI, or testid-presence-as-coverage is **superseded**:
 > a missing testid is a lower rung plus a `suggested_testid=` hint, never work.
 
-- **Base branch is `automation/factory`** — never `main`. There is NO CI on it. The merge
-  gate is **yours and independent**: reviewer `APPROVED` + **your own 3 consecutive
-  green runs of the spec (3 separate pytest invocations, BEFORE `gh pr merge`)** —
-  semantics in `.agents/testing.md` § Merge gate, incl. the sanctioned-RED
-  isolated-defect exception. The implementer's green run is NOT the gate. You merge
-  (squash) small PRs autonomously.
+- **Base branch is `main` (since 2026-10-16) — you open PRs, a HUMAN merges them.**
+  `automation/factory` / `automation/base` are frozen history. There is NO CI on PRs
+  into `main`. The pre-hand-off gate is **yours and independent**: reviewer `APPROVED`
+  + **your own 3 consecutive green runs of the spec (3 separate pytest invocations,
+  BEFORE you mark the PR ready and hand it off)** — semantics in `.agents/testing.md`
+  § Merge gate, incl. the sanctioned-RED isolated-defect exception. The implementer's
+  green run is NOT the gate. **Never `gh pr merge` into `main`, never push `main`.**
+  PR body: `Refs #<card>` (never `Closes`), "squash recommended". TMS back-write +
+  merge record run only after the human merge (`postmerge` loop).
 - **Merge gate runs against DEV** (`ELITEA_URL=https://dev.elitea.ai`, `APP_PREFIX=/app`).
   Extra check: the PR diff touches this repo only, and its locator delta is declared
   (`locator_inventory.py scan` before/after; no new unmanaged handles).
@@ -63,8 +66,8 @@ type: project
   forgotten).
 - **HARD OVERRIDES: `.agents/role-overrides.md` § Orchestrator slot** — dispatch-prompt
   contract (every analyst/implementer/reviewer dispatch carries the DEV-target +
-  ladder policy line verbatim — role-overrides.md § Orchestrator slot), sync
-  `automation/factory` BEFORE the first case of a session, and the closure-record
+  ladder policy line verbatim — role-overrides.md § Orchestrator slot), branch
+  every case from a freshly fetched `origin/main`, and the hand-off-record
   locator delta is a fact you VERIFY (re-run `locator_inventory.py scan`), never copy
   from the implementer (#35/#36/#37 shipped false rows by copying).
 - **Closure record — the LAST comment on every automation issue.** Template:
@@ -86,11 +89,11 @@ type: project
   operator to log in — don't fall back to the shared token for writes.
 - **Dedup with the list API, never `--search`** (search index lags → duplicates like
   #17/#18): `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
-- **Batch promotion only on explicit user request** (with clarifications): GHA runs,
-  `automation/factory → main` gate (`batch-promote` skill, § Mode A whole state / § Mode B
-  subset). Every test on `automation/factory` is built against DEV as deployed, so
-  nothing in it can be waiting on an undeployed handle — that skill's testid
-  pre-check is a sanity check, not a blocker.
+- **No promotion step for this repo** — batch PRs land on `main` via the human merge.
+  `batch-promote` survives only for the frontend `automation/testids` branches, on
+  explicit user request. **One ticket = one batch = one session = ONE PR**: batches run
+  with `base: "main"`, `prUnit: "trunk"`, and the gated `tests/batch-<slug>` trunk is
+  the PR into `main` (ready, `Refs #` every card, "Squash and merge").
 - **onetest MCP write verbs** (`create_run`, `record_result`, `create_defect`, …)
   create REAL GitHub issues — never fire casually.
 

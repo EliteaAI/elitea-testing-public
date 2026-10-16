@@ -2,8 +2,9 @@
 
 > Use for questions about how the factory operates — which repository owns what, which branch to
 > touch, how the container topology differs from this machine's, how a card moves across board #9 —
-> and for the sanctioned branch operations (branch/commit/push, merge `main → automation/factory`,
-> open a PR into `automation/factory`). Verifies before asserting and pastes the command it ran.
+> and for the sanctioned branch operations (branch/commit/push from `main`, merge `origin/main` into an
+> open PR branch, open a PR into `main`). Verifies before asserting and pastes the command it ran.
+> Never merges into `main` — a human does.
 
 A **project-local** agent (not part of the sdlc-skills marketplace bundle — a bundle update does not
 install or overwrite it). The definition lives in [`AGENT.md`](AGENT.md); the verification procedure
@@ -25,7 +26,7 @@ half the board. `RULES.md` is the table of those commands and what to run instea
 ```bash
 claude --agent factory-ops "Which branch do I cut a new case branch from, and is the harness reachable?"
 claude --agent factory-ops "What environment does a new case's test run against?"
-claude --agent factory-ops "Merge main into automation/factory and push."
+claude --agent factory-ops "PR #123 conflicts with main — merge origin/main into its branch and push."
 ```
 
 Or as a subagent:
@@ -43,13 +44,12 @@ needed for the navigation half; the locator-debt scan needs `.venv` and the `rep
 | | |
 |---|---|
 | Reads | `.agents/*`, `factory/` (config, loops, README), `automation/index.json`, `automation/scripts/locator_inventory.py`, git refs in all four repos, `gh` reads |
-| Writes | branches, commits and pushes in `elitea-testing-public`; PRs into `automation/factory`; the merge `main → automation/factory` |
-| Never | tracker or board writes · rebase / force-push · worktrees · `EliteaUI` edits · a case PR to `main` · the merge gate (Tal's) · `.env` / `.env.test` contents |
+| Writes | branches, commits and pushes in `elitea-testing-public`; PRs into `main`; merging `origin/main` into an open PR branch |
+| Never | tracker or board writes · a merge into / push to `main` (a human merges) · rebase / force-push · worktrees · `EliteaUI` edits · the frozen `automation/factory` · the gate (Tal's) · `.env` / `.env.test` contents |
 
 ## Where it must live
 
 Factory container sessions read `.claude/` and `.agents/` **only from the checked-out
-`FACTORY_WORK_BRANCH`** (`automation/factory`) — `docker/docker-entrypoint.sh` in the harness repo
-clones fresh and checks that branch out; the image carries no agent definitions. A definition present
-on `main` but not on `automation/factory` is invisible to every unattended session, so this directory
-must reach `automation/factory` via the merge-only `main → automation/factory` sync.
+`FACTORY_WORK_BRANCH`** (`main`) — `docker/docker-entrypoint.sh` in the harness repo clones fresh and
+checks that branch out; the image carries no agent definitions. A definition that is only on an open
+PR branch is invisible to every unattended session until a human merges that PR into `main`.

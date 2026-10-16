@@ -1,10 +1,11 @@
 # How This Team Works
 
 _Seeded 2026-07-10 from operator way-of-work brief + PR sampling (merged PRs #10–15
-on `main`). **Revised 2026-10 (current): one target, one repo.** Tests are built,
+on `main`). **Revised 2026-10: one target, one repo.** Tests are built,
 run and gated against the **DEV env as deployed**, with ladder locators
 (`.agents/testing.md` § Locator policy), and every artifact a case produces lands in
-**this** repo. Refresh when the process shifts._
+**this** repo. **Revised 2026-10-16 (current): base is `main`, agents open PRs, humans
+merge** — `automation/factory` is frozen history. Refresh when the process shifts._
 
 ## Git host
 
@@ -19,7 +20,7 @@ run and gated against the **DEV env as deployed**, with ladder locators
 | Input | TMS cases |
 | Target | DEV — `https://dev.elitea.ai`, `APP_PREFIX=/app` |
 | Locators | the ladder — existing testid → role+name → label → css → xpath, each non-testid declaration carrying `suggested_testid=` |
-| Output | **one** PR per case → `automation/factory`, in this repo |
+| Output | **one** PR per batch → `main`, in this repo (a batch of one = one case) — opened by the factory, **squash-merged by a human** |
 
 **Why it looks like this.** An earlier loop coupled every case to the frontend repo: a
 test needed a testid, the testid needed a frontend change, that change needed days of
@@ -34,12 +35,18 @@ a case and needs no space in your context.
 
 | Repo | Long-lived branch | Rule |
 |---|---|---|
-| elitea-testing-public | `automation/factory` (`main` merged in periodically) | small PRs into it, one per test/feature area; **never PR `main` directly** |
+| elitea-testing-public | `main` | one PR per batch into it (the gated `tests/batch-<slug>` trunk; a batch of one is one case branch); **agents open them, a human squash-merges them** — agents never `gh pr merge` into `main`, never push to it |
 
-- There is **no CI on `automation/factory`** — the green run from this machine against
-  DEV before the PR is the only verification. You are the CI.
+- There is **no CI on PRs into `main`** — the green run from this machine against
+  DEV (implementer) and the lead's 3× gate before hand-off are the verification. You
+  are the CI; the human merge is the acceptance step.
+- `automation/factory` and `automation/base` are **frozen history** (cut-over
+  2026-10-16, both identical to `main` at that point). Never branch from, PR into or
+  sync them.
 - There is **no `pending_testid` marker**. Do not invent one.
-- Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/factory`**.
+- Branches: a batch trunk `tests/batch-<slug>` (or, for a batch of one,
+  `tests/<case-id>-<slug>`) cut from a freshly fetched **`origin/main`**; a batch's
+  unit branches `tests/<case-id>-<slug>` are cut from the trunk and merge back into it.
 - Commit style (sampled from history): conventional-ish — `test: (5199) Add guardrails
   live-reload UI tests`, `refactor: use default gpt-5.2 model`, `docs(afs): amend selectors…`.
 
@@ -74,10 +81,15 @@ If a checkout genuinely must move while another agent depends on the current one
 is a **coordination** problem: finish or park the in-flight work first, don't fork the
 tree.
 
-### Sync: `automation/factory` ← `main`
+### Keeping an open PR current
 
-Periodically (and before the first case of a session): merge `main` into
-`automation/factory` — `sync-base-branches` Part 1. Never rebase a shared branch.
+There is no base-branch sync any more — branches are cut from `origin/main` directly.
+What drifts now is an **open PR waiting for a human**: when `main` moves under it in a
+way that touches its files, or GitHub reports it conflicting, merge `origin/main` into
+the PR branch (never rebase, never force-push), re-run the gate, and post the fresh
+result on the PR. Cases that depend on each other belong in the same batch (one PR);
+a case that needs another batch's still-open PR is parked `Blocked` — "Waiting on
+#N" — never stacked on the unmerged branch.
 
 **Never shallow clones.** Check `test -f .git/shallow`; fix with `git fetch --unshallow origin`.
 
@@ -90,28 +102,52 @@ Periodically (and before the first case of a session): merge `main` into
    first, then role+name, label, stable css, declared xpath.
 3. **`page-object-generator` skill** — emit class-level declarations on that rung,
    every non-testid one with `suggested_testid=` (`.claude/rules/page-objects.md`).
-4. **Write the test**, run it green against DEV, PR into `automation/factory`.
-5. **After merge**, `locator_inventory.py sync-ledger` registers the new non-testid
-   declarations as `raw` rows — the locator-debt ledger.
+4. **Write the test**, run it green against DEV, PR into `main` (a human merges it).
+5. **After a human merges**, `locator_inventory.py sync-ledger` registers the new
+   non-testid declarations as `raw` rows — the locator-debt ledger (part of
+   § After a human merges).
 
-The loop is self-contained: one repo, one env, nothing to wait for.
+The loop is self-contained: one repo, one env — the only wait is the human merge.
 
-## Promotion — HUMAN-TRIGGERED ONLY
+## Promotion — none for this repo
 
-What the lead performs — **only on explicit request**, never autonomously — is the
-batch promotion (`batch-promote` skill): run the suite from GHA against the deployed
-env, then open the `automation/factory → main` gate PR (gate = green deployed run) and
-merge.
+Every batch PR targets `main` and a human merges it, so there is nothing to promote in
+`elitea-testing-public`. `batch-promote` survives only for the testid integration
+branches (`automation/testids` in `EliteaUI` / `elitea_assistant`) — human-triggered
+only, as before.
 
-Because every test on `automation/factory` was built and gated against DEV as
-deployed, the branch never depends on something that isn't live yet — the promotion
-gate is the green deployed run, full stop.
+## After a human merges
+
+Nothing in the pipeline runs the moment a human clicks merge, so the post-merge work is
+picked up afterwards — by the `postmerge` loop (`factory/loops/EXAMPLE-postmerge.md`),
+or by the lead at the start of a session: list `Ready` cards whose linked PR is
+`MERGED` into `main` (one batch PR covers several cards — every one of them), and for
+each card:
+
+1. TMS back-write (`.agents/test-automation.yaml` § `backwrite_on_done`) + rebuild
+   `index.json`.
+2. Once per tick, after all back-writes: `locator_inventory.py scan` on a fresh
+   `origin/main` + `sync-ledger`. The ledger
+   change reaches `main` like everything else — one `chore/ledger-sync-<date>` PR
+   (refreshed, never duplicated) that a human merges.
+3. Post the **merge record** (below) on the issue. The card stays `Ready` until the
+   human closes it (`Done` stays human-only).
+
+A `Ready` card whose PR was **closed unmerged** is not done — comment, move it to
+`Blocked`, and let a human decide.
 
 ## Review gates (pipeline-internal)
 
-- Every automation PR into `automation/factory`: adversarial review by `qa-engineer`
+- Every unit of an automation batch: adversarial review by `qa-engineer`
   (fresh session, `code-review` + triangulation vs TMS case and AFS) →
-  `APPROVED` | `CHANGES_REQUESTED`; the lead merges.
+  `APPROVED` | `CHANGES_REQUESTED`, before it merges into the batch trunk; then the
+  lead's 3× DEV gate on the trunk; then the lead opens the ONE batch PR into `main`,
+  ready for review, and **hands it to a human, who squash-merges it**.
+- **PR bodies link the card with `Refs #<card>` — never `Closes` / `Fixes` /
+  `Resolves`.** A closing keyword would auto-close the card the moment the human
+  merges, skipping the post-merge back-write and the merge record; the card stays
+  `Ready` until a human closes it. This overrides any skill example that says
+  `Closes #N` (e.g. `completing-a-task`).
 - **Dispatch-prompt contract (lead):** every analyst, implementer and reviewer dispatch
   prompt carries the target + locator-policy line verbatim — see
   `.agents/role-overrides.md` § Orchestrator slot. The dispatch prompt is the gate.
@@ -121,7 +157,7 @@ gate is the green deployed run, full stop.
   `fallback=`, and positional picks are `CHANGES_REQUESTED`. Existing raw handles are
   tracked tech debt (#25/#42), not precedent.
 - Commit authority: the implementer commits on the work branch the lead names
-  (or creates one from `automation/factory` when dispatched standalone).
+  (or creates one from `origin/main` when dispatched standalone).
 
 ## Work tracking
 
@@ -151,35 +187,45 @@ same way as any blocker — with two cross-repo specifics:
   the card back to `Todo`, and comments "ready to resume" — a human re-approves.
   `Approved`/`Done` stay human-only.
 
-### Closure record
+### Closure record — two parts
 
-The lead posts this as the final comment on the automation issue. A case is promotable
-as soon as it is merged — it was built and gated on the env it targets:
+**Hand-off record** — the lead posts it on **every card the batch PR covers** when the
+PR is gated and handed to a human; each issue moves to **`Ready`**:
 
 ```markdown
-🔗 **Closure record — <CASE-ID>**
+🔗 **Hand-off record — <CASE-ID>**
 
 | Artifact | Where | State |
 |---|---|---|
-| Test | #<N> — `tests/<case>-<slug>` → `automation/factory` | ✅ merged (`<sha>`) |
-| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/factory` |
-| Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> | ledger: <L> new `raw` rows |
+| Test | #<N> — `tests/batch-<slug>` → `main` (batch of <K>: <IDs>) · this case: `<node-id>` | 🟡 open, ready for human squash-merge (head `<sha>`) |
+| Gate | 3 separate DEV runs of the batch's specs on the trunk | ✅ 3/3 green — or sanctioned RED (`#<defect>`) |
+| Review | qa-engineer fresh session | ✅ APPROVED |
+| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on the PR branch |
+| Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> | vs `origin/main` |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
-**Status:** merged to `automation/factory` · green on DEV · promotable.
+**Status:** gated on DEV · awaiting human merge.
 **Still open:** <follow-ups, or "none">
 ```
 
-The Locators row is the `locator_inventory.py scan` delta, **re-run by the lead on
-`automation/factory` after the merge and pasted** — never copied from the Run Report.
-The issue moves to **`Ready`**; `Done` stays human-only.
+**Merge record** — posted after a human merges (§ After a human merges):
+
+```markdown
+✅ **Merge record — <CASE-ID>**: batch PR #<N> squash-merged to `main` (`<sha>`) by @<human>.
+TMS back-write: <case file> → `automation_test_id: <Form C ref>` (<TMS commit/PR>).
+Locators on `main`: <scan delta pasted> · ledger: <L> new `raw` rows.
+```
+
+Every number in either record is **re-run by the lead and pasted** — never copied from
+the Run Report. The issue stays `Ready` until a human closes it; `Done` stays
+human-only.
 
 The work-log comments posted during a run (started → AFS ready → PR opened → review →
-merged) are a **narrative**. The closure record is the **artifact index**. Nobody
-re-reads the narrative six months later; they read this one comment to find out where
-the work lives and whether it's actually finished — so **a bare "✅ merged" is not a
-closure record**, and every row states a fact the lead verified itself, never one
-copied from the AFS or the Run Report.
+handed off → merged) are a **narrative**. The two records are the **artifact index**.
+Nobody re-reads the narrative six months later; they read these two comments to find
+out where the work lives and whether it's actually finished — so a bare "✅ PR opened"
+is not a hand-off record, and every row states a fact the lead verified itself, never
+one copied from the AFS or the Run Report.
 
 ## Traps (cost someone an hour already)
 
@@ -195,5 +241,6 @@ copied from the AFS or the Run Report.
 
 ## Unconfirmed
 
-- `automation/factory` PR review-approval count (branch is new — no PR history yet;
-  pipeline-internal review applies regardless).
+- Human merge cadence for factory batch PRs into `main` (flow is new as of 2026-10-16
+  — how long `Ready` cards wait, and how large a batch PR a human can comfortably
+  review, is unmeasured).

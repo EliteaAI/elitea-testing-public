@@ -199,32 +199,31 @@ fi
 **This determines which branch the investigation agent should work on:**
 
 ```bash
-# Check if test exists on main (promoted) or only on automation/factory
+# Check if the test is merged on main, or still only on an open PR branch
+# (since 2026-10-16 every test PR targets main; there is no integration branch)
 
 # 1. Fetch latest
-git fetch origin main automation/factory --no-tags
+git fetch origin --no-tags --prune
 
 # 2. Check where test file exists
 TEST_ON_MAIN=$(git ls-tree -r origin/main --name-only | grep -F "$TEST_FILE" || echo "")
-TEST_ON_BASE=$(git ls-tree -r origin/automation/factory --name-only | grep -F "$TEST_FILE" || echo "")
+OPEN_PR=$(env -u GITHUB_TOKEN gh pr list --repo EliteaAI/elitea-testing-public --base main --state open \
+  --json number,headRefName,files --jq ".[] | select(any(.files[]; .path | endswith(\"$TEST_FILE\"))) | \"#\(.number) \(.headRefName)\"" | head -1)
 
 if [ -n "$TEST_ON_MAIN" ]; then
-  # Test is promoted to main
   TEST_LOCATION="main"
-  FIX_BRANCH_STRATEGY="Cut fix branch from main, PR to main"
-  echo "✓ Test found on main (promoted)"
+  FIX_BRANCH_STRATEGY="Cut fix branch from origin/main, PR to main (a human merges)"
+  echo "✓ Test found on main (merged)"
+elif [ -n "$OPEN_PR" ]; then
+  # Not merged yet — the fix belongs on the open PR's own branch
+  TEST_LOCATION="open PR $OPEN_PR"
+  FIX_BRANCH_STRATEGY="Commit the fix on the open PR's branch ($OPEN_PR), re-gate, no new PR"
+  echo "✓ Test only on open PR $OPEN_PR (not merged)"
 else
-  if [ -n "$TEST_ON_BASE" ]; then
-    # Test only on automation/factory (not promoted yet)
-    TEST_LOCATION="automation/factory"
-    FIX_BRANCH_STRATEGY="Cut fix branch from automation/factory, PR to automation/factory"
-    echo "✓ Test found on automation/factory (not promoted)"
-  else
-    # Test not found on either (may be in work branch or deleted)
-    TEST_LOCATION="unknown"
-    FIX_BRANCH_STRATEGY="Investigate test location first"
-    echo "⚠ Test not found on main or automation/factory"
-  fi
+  # Not found (may be in a local work branch or deleted)
+  TEST_LOCATION="unknown"
+  FIX_BRANCH_STRATEGY="Investigate test location first"
+  echo "⚠ Test not found on main or any open PR into main"
 fi
 
 echo "Test location: $TEST_LOCATION"
@@ -241,14 +240,17 @@ and fix anything DEV-specific ... cut a fix branch from main per normal PR flow,
 still targeting main since that's where this test now lives
 ```
 
-From issue #1800 (incorrect — fixed on automation/base when should be main):
+From issue #1800 (incorrect — fixed on automation/base when should be main; the long-lived
+automation branches are frozen history since 2026-10-16, so this mistake now means "PR to
+anything but main"):
 - Test was on main (promoted)
 - Fix PR opened to automation/base (wrong target)
 - Should have been: fix branch from main → PR to main
 
 **Rule:**
 - **Test on main** → Fix on main (tests already delivered to users)
-- **Test on automation/factory** → Fix on automation/factory (tests not promoted yet)
+- **Test only on an open PR into main** → Fix on that PR's own branch (not merged yet)
+- **Never** target `automation/factory` / `automation/base` — both are frozen
 
 ### Upload Local Artifacts (Local Runs Only)
 
@@ -375,20 +377,19 @@ Examples:
 
 ### Fix Branch Strategy
 
-**Test is on:** <main | automation/factory | unknown>
+**Test is on:** <main | open PR #N | unknown>
 
 **Fix instructions:**
 
 <If test is on MAIN:>
 - **Branch from:** `main`
 - **PR target:** `main`
-- **Why:** Test already promoted to main (delivered). Fixes to already-promoted tests MUST go to main, not automation/factory.
+- **Why:** Test already merged to main (delivered). Every fix PR targets main; a human merges it.
 - **Example:** See issue #1776 (correct pattern)
 
-<If test is on automation/factory:>
-- **Branch from:** `automation/factory`
-- **PR target:** `automation/factory`
-- **Why:** Test not promoted yet. Fixes go to automation/factory until batch promotion.
+<If test is only on an open PR into main:>
+- **Branch:** that PR's own head branch — commit the fix there, re-gate, no new PR
+- **Why:** Test not merged yet. A second PR would race the first.
 
 <If test location unknown:>
 - **First step:** Investigate where test actually lives before starting fix
@@ -398,7 +399,7 @@ Examples:
 
 Choose ONE based on root cause:
 
-1. **Test code fix → PR opened** to correct branch (main or automation/factory)
+1. **Test code fix → PR opened** into main (or a commit on the open PR's branch)
    - Includes: fix commit, 3/3 green verification, PR description
    
 2. **Product bug → Bug filed + test marked**
@@ -605,25 +606,24 @@ echo "AFS: $AFS_FILE"
 
 # Determine test location (critical for fix branch strategy)
 echo "Checking test location..."
-git fetch origin main automation/factory --no-tags
+git fetch origin --no-tags --prune
 
 TEST_ON_MAIN=$(git ls-tree -r origin/main --name-only | grep -F "$TEST_FILE" || echo "")
-TEST_ON_BASE=$(git ls-tree -r origin/automation/factory --name-only | grep -F "$TEST_FILE" || echo "")
+OPEN_PR=$(env -u GITHUB_TOKEN gh pr list --repo EliteaAI/elitea-testing-public --base main --state open \
+  --json number,headRefName,files --jq ".[] | select(any(.files[]; .path | endswith(\"$TEST_FILE\"))) | \"#\(.number) \(.headRefName)\"" | head -1)
 
 if [ -n "$TEST_ON_MAIN" ]; then
   TEST_LOCATION="main"
-  FIX_INSTRUCTIONS="Branch from: main → PR target: main (test already promoted)"
-  echo "✓ Test found on main (promoted)"
+  FIX_INSTRUCTIONS="Branch from: origin/main → PR target: main (test merged; a human merges the fix)"
+  echo "✓ Test found on main (merged)"
+elif [ -n "$OPEN_PR" ]; then
+  TEST_LOCATION="open PR $OPEN_PR"
+  FIX_INSTRUCTIONS="Commit on the open PR's branch ($OPEN_PR), re-gate — no new PR (not merged yet)"
+  echo "✓ Test only on open PR $OPEN_PR"
 else
-  if [ -n "$TEST_ON_BASE" ]; then
-    TEST_LOCATION="automation/factory"
-    FIX_INSTRUCTIONS="Branch from: automation/factory → PR target: automation/factory (not promoted)"
-    echo "✓ Test found on automation/factory"
-  else
-    TEST_LOCATION="unknown"
-    FIX_INSTRUCTIONS="Investigate test location first (not found on main or automation/factory)"
-    echo "⚠ Test not found on main or automation/factory"
-  fi
+  TEST_LOCATION="unknown"
+  FIX_INSTRUCTIONS="Investigate test location first (not found on main or any open PR into main)"
+  echo "⚠ Test not found on main or any open PR into main"
 fi
 
 # ============================================================================
@@ -684,7 +684,7 @@ $ARTIFACTS_URL
 
 **Fix instructions:** $FIX_INSTRUCTIONS
 
-**Why this matters:** Tests already on \`main\` are delivered/promoted. Fixes to promoted tests MUST target \`main\`, not \`automation/factory\`. See issue #1776 (correct) vs #1800 (incorrect - fixed on automation/factory when should be main).
+**Why this matters:** Every fix PR targets \`main\` (a human merges it); the long-lived automation branches are frozen. See issue #1776 (correct) vs #1800 (incorrect - fixed on automation/base when should be main).
 EOF
 
 # File issue
@@ -738,15 +738,15 @@ echo "✅ Intake complete: issue #${ISSUE_NUM} filed and approved"
 - Be honest about confidence level
 - Create complete briefing for investigation agent
 - Set issue to Approved status
-- **✅ CRITICAL: Always check if test is on main vs automation/factory** — this determines fix branch strategy
+- **✅ CRITICAL: Always check if test is merged on main or only on an open PR** — this determines fix branch strategy
 
 ---
 
 ## Common Mistake: Wrong PR Target (Issue #1800)
 
-**Problem:** Test was on `main` (promoted), but fix PR opened to `automation/factory`
+**Problem:** Test was on `main` (promoted), but fix PR opened to `automation/base`
 
-**Why it's wrong:** Tests on `main` are delivered. Fixes MUST go to `main`, not `automation/factory`.
+**Why it's wrong:** Tests on `main` are delivered. Fixes MUST go to `main` — and since 2026-10-16 every PR does; `automation/factory` / `automation/base` are frozen.
 
 **How this skill prevents it:** 
 1. Checks `git ls-tree origin/main` for test file

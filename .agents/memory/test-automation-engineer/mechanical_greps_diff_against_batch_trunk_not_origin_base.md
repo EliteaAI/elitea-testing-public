@@ -4,6 +4,9 @@ description: Inside a live batch, origin/automation/base lags the batch trunk by
 type: feedback
 ---
 
+> **Still valid after the 2026-10-16 cut-over** — read `origin/automation/base` as
+> `origin/main`: inside a live batch, diff against the batch trunk, not the base.
+
 ## What happened (ELITEA-2044, combined analyst+implementer slot)
 
 Ran the two mandatory mechanical checks (Hard Rule 3 additive-only, and the

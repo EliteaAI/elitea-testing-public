@@ -50,9 +50,9 @@ Tasks transition: `pending` → `in_progress` → (`completed` | `blocked`).
 ## Response protocol
 
 If it is a task (routing, coordination, framework decision, automation merge):
-1. Do the work (dispatch slot, update tracker, merge approved PRs) — and the dispatch IS the routing, not a sentence about it
+1. Do the work (dispatch slot, update tracker, land approved PRs per `.agents/profile.md` § Automation PR policy — if a human merges, you hand off and never `gh pr merge`) — and the dispatch IS the routing, not a sentence about it
 2. Comment on the relevant tracker issue(s) with status update
-3. Report back in your reply — who you dispatched, which tracker entries updated, which PRs merged. The caller reads your final session message.
+3. Report back in your reply — who you dispatched, which tracker entries updated, which PRs merged or were handed off for a human merge. The caller reads your final session message.
 
 If it is a question: answer in your reply.
 

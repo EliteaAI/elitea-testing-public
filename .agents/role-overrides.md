@@ -40,16 +40,28 @@ that says "testid-only", "testid needed ⇒ add it", "run against a local UI" or
 
 The per-slot consequences are below (§ Analyst / § Implementer / § Reviewer slot).
 
-## Every role — the working branch is `automation/factory` (2026-10-05)
+## Every role — the working branch is `main`; agents open PRs, humans merge (2026-10-16)
 
-The factory's long-lived working/base branch in this repo is **`automation/factory`**
-(cut from `automation/base` with the DEV-target split; the factory server checks it out
-via `FACTORY_WORK_BRANCH`). Every bundle skill, example, template, memory note or
-historical record that says `automation/base` **means `automation/factory`** for new
-work: test branches are cut from it, unit/batch PRs target it, `sync-base-branches`
-merges `main` into it, `batch-promote` gates `automation/factory → main`, the batch
-workflow's `base` argument is `automation/factory`. `automation/base` is frozen
-history — never branch from it, PR into it, or sync it.
+The factory's working/base branch in this repo is **`main`** (the factory server checks
+it out via `FACTORY_WORK_BRANCH=main`). Every bundle skill, example, template, memory
+note or historical record that says `automation/factory` or `automation/base`
+**means `main`** for new work: test branches are cut from `origin/main`, unit PRs
+target `main`, the batch workflow's `base` argument is `main`. There is no
+`main → automation/factory` sync and no `automation/factory → main` promotion for this
+repo any more. `automation/factory` and `automation/base` are frozen history — never
+branch from them, PR into them, or sync them.
+
+**Agents never merge into `main`.** No `gh pr merge` targeting `main`, no
+`git push origin main`, no direct commit on `main` — not the lead, not factory-ops,
+not a loop. The agent-terminal state is an OPEN, gated, review-approved PR handed to a
+human (§ Orchestrator slot). A human merges; work that used to follow the lead's own
+merge (TMS back-write, post-merge locator scan, merge record) runs only after the
+merge is observed (`.agents/workflow.md` § After a human merges).
+
+**An open PR is kept current by merging `main` into its branch** (never rebase, never
+force-push). When `main` moved under a handed-off PR in a way that touches its files,
+or GitHub reports it conflicting, merge `origin/main` into the PR branch, re-run the
+gate, and post the fresh gate result on the PR.
 
 ## Every role — fresh ground truth (hard rule)
 
@@ -286,15 +298,53 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   `suggested_testid=`, class-level only, no positional handles
   (`.agents/testing.md` § Locator policy). Work in this repo only."*
   The dispatch prompt is the gate — put the policy where it cannot lose.
-- **Closure records state verified facts.** The closure record cites the merged PR
-  and the **locator delta** (`locator_inventory.py scan` before/after, pasted).
-  Never copy the implementer's numbers — re-run the scan on `automation/factory`
-  after the merge.
-- Sync `automation/factory` with `main` before dispatching the first case of a
-  session.
+- **Hand-off records state verified facts.** The hand-off record cites the open PR
+  into `main`, the gate result, and the **locator delta** (`locator_inventory.py scan`
+  on `origin/main` vs the PR branch, pasted). Never copy the implementer's numbers —
+  re-run the scan yourself. The merge record (after a human merges) re-runs it on
+  `origin/main`.
+- **You own the pre-PR gate, not the merge.** Reviewer `APPROVED` + your 3× DEV gate ⇒
+  the PR is marked ready for review and handed to a human. Never `gh pr merge` into
+  `main`.
+- Cut every batch trunk (and a batch-of-one case branch) from a freshly fetched
+  `origin/main` — there is no base branch to sync. Units inside a batch branch from
+  the trunk.
+- **Batch landing = ONE PR per batch into `main`, squash-merged by a human.** One
+  ticket = one batch = one session = one PR. Invoke the batch workflows with
+  `base: "main"` and `prUnit: "trunk"` (the engine default; campaigns:
+  `plan.policy.prUnit: "trunk"`). The trunk `tests/batch-<slug>` carries the run —
+  units branch from it, merge back into it, the batch gate proves it — and the
+  trunk **is** what lands, so the gated tree and the shipped tree are the same
+  object. At close:
+  1. `git fetch origin` and confirm `origin/tests/batch-<slug>` is pushed and holds
+     every `automated` unit (lead memory `batch_workflow_never_opens_trunk_to_base_pr.md`
+     — the trunk can exist only locally). Units that are not `automated` (blocked,
+     parked, terminal AFS statuses) may still have their AFS on the trunk; that is
+     fine — their AFS records the verdict. Their **code** must not be on the trunk:
+     a unit that never merged back left none.
+  2. `env -u GITHUB_TOKEN gh pr create --base main --head tests/batch-<slug>`
+     (ready, not draft — every unit in it is reviewed and the trunk is gated).
+     Title `test: batch <slug> — <N> cases (<ID>, <ID>, …)`. Body: a table, one row per
+     case — case id, outcome, AFS path, spec node-id, review verdict, `Refs #<card>`
+     for every card in the batch (never `Closes`) — then the gate result, the
+     locator delta, defects filed, and **"Squash and merge"** so the human merging it
+     picks the right strategy. The batch's shared memory / `_surface.md` changes ride
+     in the same PR; there is no separate knowledge PR.
+  3. Post the hand-off record on **every** card the batch covers (same PR, same gate,
+     the card's own case row) and move each to `Ready`.
+  **A batch of one degenerates cleanly** — no trunk, the case branch targets `main`,
+  one PR either way. **A campaign splits a ticket into waves only on an explicit
+  human ask** (a ticket too large to review as one PR); by default the whole ticket
+  is one batch. **Gate red on the trunk ⇒ nothing lands**: classify and stabilize
+  on the trunk (`batch-stabilize`), re-gate, then open the one PR. A case that can't
+  be made green is reverted off the trunk (`git revert -m 1 <its merge commit>`,
+  never a rebase) and parked `Blocked` on its own card, then the trunk is re-gated
+  and lands without it. `main` moving under the open batch PR ⇒ merge `origin/main`
+  into `tests/batch-<slug>`, re-gate, post the fresh result. The trunk branch is
+  left for `delete-stale-branches` after the human merge.
 - **Never dispatch `ui-test-orchestrator` or `failure-investigator`.** They are
   installed for the HUMAN team's direct use only — their flows bypass the pipeline's
-  gates (AFS, fresh-session review, merge gate, closure record). Every stage they
+  gates (AFS, fresh-session review, pre-PR gate, hand-off record). Every stage they
   cover has a canonical owner in your pipeline.
 
 ## Locator-debt burndown (`testid-migrator`) — out of band

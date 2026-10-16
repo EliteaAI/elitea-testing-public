@@ -11,7 +11,7 @@ buttons went from "present and disabled" to "structurally absent" because the
 product changed. `adjust-automated-test` Step 3's preserve-the-nature rail is
 explicit: an assertion may change only because the case's expected result
 genuinely changed, **and then the TMS case changes in the same PR pair**
-(Step 8: a test PR → `automation/factory` AND a TMS PR → the cases repo).
+(Step 8: a test PR → `main` (since 2026-10-16) AND a TMS PR → the cases repo).
 
 The implementer correctly fixed the code and opened PR #2398 but never opened
 the TMS PR — its remit is this repo only (`.agents/role-overrides.md` §

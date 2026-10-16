@@ -1,6 +1,6 @@
 ---
 name: sync-base-branches
-description: Brings the long-lived automation branches up to date with their mains — automation/factory (elitea-testing-public), plus the automation/testids integration branches on EliteaAI/EliteaUI and EliteaAI/elitea_assistant (Support Assistant, connected repo). All by merge; none ever rebased or force-pushed. Use before starting a new test, after a promotion, or when a test fails against unexpectedly-changed UI.
+description: Brings the long-lived automation/testids integration branches up to date with their mains on EliteaAI/EliteaUI and EliteaAI/elitea_assistant (Support Assistant, connected repo). All by merge; none ever rebased or force-pushed. Use before starting a new test, after a promotion, or when a test fails against unexpectedly-changed UI.
 allowed-tools:
   - Bash
   - Read
@@ -13,11 +13,16 @@ new test**, **after a batch promotion**, or when a test fails against UI that lo
 
 | Branch | Repo | Base it tracks | Strategy |
 |---|---|---|---|
-| `automation/factory` | `EliteaAI/elitea-testing-public` | `origin/main` | **merge** |
 | `automation/testids` | `EliteaAI/EliteaUI` (no fork) | `origin/main` | **merge** |
 | `automation/testids` | `EliteaAI/elitea_assistant` (Support Assistant, connected repo) | `origin/main` | **merge** |
 
 **All are merged. None is ever rebased or force-pushed.**
+
+> Changed 2026-10-16: the test repo has **no long-lived automation branch** any more. Test work is cut
+> from a freshly fetched `origin/main` and lands by PR into `main` (a human merges); `automation/factory`
+> is frozen history. There is nothing to sync in `elitea-testing-public` — an *open* PR branch that
+> fell behind is kept current by merging `origin/main` into it (`.agents/workflow.md` § Keeping an
+> open PR current). Part 1 below is now only the post-fetch framework check.
 
 Both are shared, published branches that other people and other agents build on. Rebasing either would
 rewrite published history and break open PRs and teammates' clones. `automation/testids` additionally
@@ -85,32 +90,30 @@ catches it) — a scanner that silently passes everything is worse than no scann
 
 Then commit, and only then proceed to Part 1.
 
-## Part 1 — Test repo: merge `origin/main` into `automation/factory`
+## Part 1 — Test repo: fetch `origin/main` and check what it changed
+
+No merge and no push — `main` is the base, and it only moves when a human merges a PR.
 
 ```bash
 # WORKSPACE = parent folder holding the three sibling clones (no env var needed)
 WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
 cd "$WORKSPACE/elitea-testing-public"
 git fetch origin
-git checkout automation/factory
-git merge origin/main
+OLD=$(git rev-parse main); git checkout main && git merge --ff-only origin/main
 ```
 
-On conflict: resolve, `git add`, `git merge --continue`. Conflicts here are usually two tests touching
-the same page object — keep both locators.
+`--ff-only` fails only if someone committed to local `main` — never resolve that by merging; move the
+stray commits to a `tests/…` branch and reset local `main` to `origin/main`.
 
-**Then check what you just pulled in.** `main` carries framework changes, not just tests — a merge can
-alter `config.py`, `conftest.py`, `api/client.py`, or fixtures, and a new *required* config field will
+**Then check what you just pulled in.** `main` carries framework changes, not just tests — a human merge
+can alter `config.py`, `conftest.py`, `api/client.py`, or fixtures, and a new *required* config field will
 break every test at import time before a single one runs.
 
 ```bash
-# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
-WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
-cd "$WORKSPACE/elitea-testing-public"
-git diff ORIG_HEAD..HEAD --stat -- automation/config.py automation/conftest.py automation/fixtures automation/api
+git diff "$OLD"..HEAD --stat -- automation/config.py automation/conftest.py automation/fixtures automation/api
 
 # Did config.py gain a setting? If it has no default, .env.test needs a new key.
-git diff ORIG_HEAD..HEAD -- automation/config.py | grep -E '^\+\s+\w+:' || echo "  no new settings"
+git diff "$OLD"..HEAD -- automation/config.py | grep -E '^\+\s+\w+:' || echo "  no new settings"
 
 # The suite must still import and collect. This is the real check.
 cd automation
@@ -121,10 +124,6 @@ cd automation
 If a new setting has a default (e.g. `cf_ext_rate: str = ""`), it is optional — nothing to do. If it has
 no default, add the key to `.env.test` **and tell the human**, because every teammate's `.env.test`
 needs it too.
-
-```bash
-git push origin automation/factory      # plain push. If this needs --force, STOP: something is wrong.
-```
 
 ## Part 2 — UI: merge `origin/main` into `automation/testids`
 
@@ -342,7 +341,7 @@ pulled in real framework changes and real UI changes; run the smoke suite agains
 WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
 
 # 1. Each branch level with its base (left = behind, must be 0; right = our commits, fine)
-git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...automation/factory
+git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...main   # test repo: must be 0 0
 git -C "$WORKSPACE/EliteaUI"              rev-list --left-right --count origin/main...automation/testids
 git -C "$WORKSPACE/elitea_assistant"      rev-list --left-right --count origin/main...automation/testids 2>/dev/null || echo "  (elitea_assistant not set up — skipped)"
 
@@ -391,7 +390,9 @@ a green sync with a broken UI is the failure mode this catches.
 
 ## Do not
 
-- Rebase or force-push `automation/factory` or `automation/testids` (on EliteaUI **or**
+- Merge into, push to, rebase or force-push `main` of `elitea-testing-public` — it moves only by a
+  human merging a PR. Never revive the frozen `automation/factory`.
+- Rebase or force-push `automation/testids` (on EliteaUI **or**
   elitea_assistant). Ever. All are shared branches; `--force` has no legitimate use on any.
   (Force-pushing a short-lived `testids/<case>` branch to resolve a PR conflict is fine — that is a
   different branch.)
