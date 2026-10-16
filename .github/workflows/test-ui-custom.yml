@@ -1371,6 +1371,37 @@ jobs:
           print(f'    "No TMS case" : {len(in_automation_not_tms)}')
           print("```\n")
 
+          # Automation coverage per suite (first subfolder under the cases dir).
+          # A case counts as automated when it lists at least one non-blank
+          # automation_test_id — the same rule that builds index_automated_short.json.
+          suites = {}  # suite -> [automated, total]
+          for case in tms_data.get("cases", []):
+              parts = case.get("path", "").split("/")
+              suite = parts[2] if len(parts) > 3 else "(root)"
+              refs = [t for t in case.get("automation_test_id", []) if isinstance(t, str) and t.strip()]
+              counts = suites.setdefault(suite, [0, 0])
+              counts[0] += 1 if refs else 0
+              counts[1] += 1
+          if suites:
+              total_automated = sum(a for a, _ in suites.values())
+              total_cases = sum(t for _, t in suites.values())
+              print("### Automation Coverage by Suite\n")
+              print("| Suite | Automated | Total |")
+              print("|-------|-----------|-------|")
+              for suite in sorted(suites):
+                  automated, total = suites[suite]
+                  print(f"| {suite} | {automated} | {total} |")
+              print(f"| **All suites** | **{total_automated}** | **{total_cases}** |")
+              print()
+              if total_automated:
+                  print("```mermaid")
+                  print("pie showData")
+                  print(f'    title "Automated Cases by Suite ({total_automated} of {total_cases})"')
+                  for suite, (automated, _) in sorted(suites.items(), key=lambda kv: -kv[1][0]):
+                      if automated:
+                          print(f'    "{suite}" : {automated}')
+                  print("```\n")
+
           # Tests without TMS cases (full list)
           if in_automation_not_tms:
               print("### Tests Without TMS Case\n")
