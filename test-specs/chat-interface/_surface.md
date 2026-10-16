@@ -971,3 +971,16 @@ plus-menu's full top-level item list was also live-confirmed this session (non-T
 project): exactly 6 items in DOM order — Attach Files, Modules, Agents, Pipelines,
 Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
 `invite_users_menuitem` docstring).
+
+**ELITEA-3254 (2026-10-16) — `project_context_builder` module, confirmed
+live.** Enabling this toggle (already in `MODULE_TOGGLE_ORDER`) and sending a
+chat message that both describes the project AND asks to generate+save a
+context makes the AI invoke a tool whose live chip reads `"Elitea Project
+Context: put_project_context_project-context"` — it both generates AND
+persists in one call (confirmed via a follow-up API GET,
+`/elitea_core/project_context/prompt_lib/{project_id}/project-context`,
+content length ≤2500). A message with no project description in it (just
+"generate a project context for this project") makes the AI ask a
+clarifying follow-up instead of invoking any tool. Full detail + the family
+AFS: `test-specs/settings-project-params/_surface.md` and
+`l1_project-context-char-limit-enforced-across-surfaces_ELITEA-3252.md`.
