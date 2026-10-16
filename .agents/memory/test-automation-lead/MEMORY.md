@@ -47,6 +47,7 @@
 - [New FIX card can dup a sibling's root cause](fix_card_shared_page_object_method_dedup.md) — check open PRs/issues for the shared method/symptom before triaging fresh
 - [Check origin-ahead before the mandatory sync merge](sync_check_origin_ahead_before_local_merge.md) — factory-ops may have already synced; don't double-merge
 - [Scan tracker text for secrets too](scan_tracker_text_for_secrets_too.md) — a subagent's auth-failure report can quote live creds; scrub before posting, not just before commit
+- [VoiceButton focus-steal on instructions clear](voicebutton_focus_steal_on_instructions_clear.md) — any clear-Instructions step mounts a fresh chat panel that steals focus; Class B, don't adjust the test (#2451)
 - [Sibling clone may lack git identity](sibling_clone_git_identity_can_be_unset_silent_noop_commit.md) — unset user.name/email fails commit; push then silently no-ops
 - [Old CI failure msg ≠ current state](ci_autotest_users_lack_second_project_membership.md) — walk recent job logs before trusting a card's quoted error as still true
 - [Recurring failure after the fix shipped = new cause](recurring_test_failure_after_fix_shipped_is_a_new_cause.md) — check `git merge-base --is-ancestor` before saying "rides the old PR"
