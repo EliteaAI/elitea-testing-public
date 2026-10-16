@@ -19,7 +19,17 @@ import logging
 import pytest
 from playwright.sync_api import Browser
 
-from api import APIClient, AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
+from api import (
+    APIClient,
+    AgentAPI,
+    ArtifactAPI,
+    ConversationAPI,
+    CredentialAPI,
+    PipelineAPI,
+    ProjectContextAPI,
+    SkillAPI,
+    ToolkitAPI,
+)
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.api")
@@ -243,6 +253,25 @@ def artifact_api(_browser_cookies):
     yield api
     api.close()
     logger.debug("Closed ArtifactAPI client")
+
+
+@pytest.fixture(scope="session")
+def project_context_api(_browser_cookies):
+    """Session-scoped ProjectContextAPI client for Settings -> Project Context.
+
+    Uses cookie-based authentication — confirmed live 2026-10-16 that the
+    bearer-token fallback 302-redirects on this endpoint even with a
+    well-formed ``ELITEA_API_TOKEN``, so cookie auth is the only reliable
+    path (see :class:`api.client.ProjectContextAPI`'s own docstring).
+
+    Yields:
+        ProjectContextAPI: Authenticated Project Context API client
+    """
+    api = ProjectContextAPI(browser_cookies=_browser_cookies)
+    logger.info("Created session-scoped ProjectContextAPI client")
+    yield api
+    api.close()
+    logger.debug("Closed ProjectContextAPI client")
 
 
 @pytest.fixture(scope="session")

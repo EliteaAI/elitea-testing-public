@@ -3603,6 +3603,30 @@ class ChatPage(BasePage):
         expect(self.toast_message).to_be_visible(timeout=timeout)
         logger.info("Toggled module %r; confirmation toast visible", tool_key)
 
+    @action("Ensure a Modules panel switch is checked")
+    def ensure_module_toggle_checked(self, tool_key: str, timeout: int = 10000):
+        """Click a Modules-panel toggle switch ON if not already checked,
+        WITHOUT waiting for a confirmation toast (ELITEA-3254 family AFS —
+        confirmed live: the ``project_context_builder`` toggle shows no
+        "Modules configuration updated" toast unlike other toggles, so
+        :meth:`click_module_toggle`'s toast-wait hangs on it). Polls the
+        switch's own checked state instead — the condition this toggle
+        actually guarantees.
+
+        Does NOT close the Modules panel — use :meth:`close_modules_panel`
+        for that.
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+            timeout: Maximum wait time in milliseconds.
+        """
+        switch = self.get_module_toggle_switch(tool_key)
+        expect(switch).to_be_enabled(timeout=timeout)
+        if not switch.is_checked():
+            switch.click(force=True)
+            expect(switch).to_be_checked(timeout=timeout)
+        logger.info("Module %r is checked", tool_key)
+
     def is_module_toggle_checked(self, tool_key: str) -> bool:
         """Return whether a Modules-panel toggle switch is currently checked.
 
@@ -3661,10 +3685,19 @@ class ChatPage(BasePage):
         both the plus-menu list and the switches panel is required for a
         genuine "outside" click.
 
+        On a brand-new conversation with zero messages, the scrollable
+        messages region (``chat-messages-scroll-container``) has not
+        rendered yet (confirmed live, ELITEA-3254 family AFS) — falls back
+        to the page's own top-left corner in that case, which is equally
+        "outside" the popper.
+
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+        if self.chat_messages_scroll_container.count() > 0:
+            self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+        else:
+            self.page.mouse.click(10, 10)
         expect(self.get_module_toggle_switches()).to_have_count(0, timeout=timeout)
         logger.info("Modules panel closed via outside click")
 

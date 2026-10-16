@@ -40,6 +40,7 @@ from fixtures.api_fixtures import (
     skill_api,
     toolkit_api,
     pipeline_api,
+    project_context_api,
 )
 from fixtures.data_fixtures import (
     conversation_id,
@@ -69,6 +70,7 @@ from fixtures.data_fixtures import (
     pipeline_llm_code_end,
     pipeline_llm_printer_disconnected,
     pipeline_llm_printer_connected,
+    clean_project_context,
 )
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
