@@ -7,8 +7,8 @@ never creates, modifies, or deletes anything — it only checks page structure
 and default-loading state, not specific KPI values (which may legitimately be
 0/$0.00 for a project with no usage yet).
 
-Test case: ELITEA-2310
-AFS: test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-2310.md
+Test case: ELITEA-3755
+AFS: test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-3755.md
 
 Case-text drift (see AFS § Known Defects): the case text claims six tabs, a
 "Last 24d" default label, and a "Last 7d" default range — all three are stale
@@ -51,13 +51,13 @@ def _parse_picker_datetime(value: str) -> datetime:
 
 
 class TestAnalyticsDefaultLoad:
-    """ELITEA-2310 — Analytics page loads with default date range and all
+    """ELITEA-3755 — Analytics page loads with default date range and all
     seven tabs visible."""
 
-    @pytest.mark.tms("ELITEA-2310")
+    @pytest.mark.tms("ELITEA-3755")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-analytics/ELITEA-2310_analytics-page-default-load.md",
+        "settings/analytics/ELITEA-3755_analytics-page-loads-with-default-date-range-and-all-six-tab.md",
         "onetest-ai Test Case link",
     )
     def test_analytics_page_default_load(self, page):

@@ -4,13 +4,13 @@ URL: /settings/analytics
 
 Covers the page shell: header (title + project badge), the date-range filter
 bar (four presets + From/To pickers), the seven-tab bar, the Overview-data
-loading state (ELITEA-2310), and the Users tab's panel content — "User
+loading state (ELITEA-3755), and the Users tab's panel content — "User
 Activity" header/count, search-by-email input, the 9-column table (header +
 repeated data rows), and pagination controls (ELITEA-2312). Other per-tab
 content (Costs/Agents & Pipelines/Tools/Health/Guide bodies) remains out of
 scope.
 
-Locator provenance (ELITEA-2310, zero pre-existing testids on this surface
+Locator provenance (ELITEA-3755, zero pre-existing testids on this surface
 except the unused-by-this-case ``analytics-export-button``):
 ``analytics-page-title`` / ``analytics-project-badge`` are static
 ``data-testid``s on ``AnalyticsContainer.jsx``'s header ``Typography``/``Box``.

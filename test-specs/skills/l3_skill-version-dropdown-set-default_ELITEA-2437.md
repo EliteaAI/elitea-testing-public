@@ -76,7 +76,7 @@
 2. Open the VERSION dropdown
    (`page.get_by_test_id("skill-version-select")` /
    `SkillDetailPage.version_selector` — **confirmed live, existing testid**,
-   already wired via the ELITEA-1738 rework; the concrete clickable
+   already wired via the ELITEA-3750 rework; the concrete clickable
    `role=combobox` node inside it resolves as
    `[data-testid="skill-version-select-combobox"]` — confirmed live this
    run by direct click).

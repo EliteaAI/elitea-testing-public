@@ -20,7 +20,7 @@ build). Update this file, don't replace it, as later cases confirm/drift.
     positioned via inline styles from the target element's bounding rect.
   - `lib/constants/<name>Tour.constants.js` — one file per tour, `steps[]` array
     of `{id, target, title, content, skip?}`. `sidebarTour.constants.js` has 17
-    steps (enumerated in the AFS `l2_sidebar-interactive-tour-completes_ELITEA-2227.md`).
+    steps (enumerated in the AFS `l2_sidebar-interactive-tour-completes_ELITEA-3754.md`).
   - `lib/constants/sidebarTourTargets.constants.js` — maps step ids to
     `[data-tour="…"]` selectors via `buildTourSelector()`. **`data-tour` is a
     pre-existing, non-testid attribute already on every sidebar element** — do
@@ -35,7 +35,7 @@ build). Update this file, don't replace it, as later cases confirm/drift.
 `src/[fsd]/features/interactive-tours/`** (confirmed via
 `find … -iname "*.jsx" | xargs grep -l "data-testid"` → no hits). This whole
 feature area is testid-free; every tour-dialog / tour-complete-modal case will
-need the generic testids listed in the ELITEA-2227 AFS's Concrete Handles table
+need the generic testids listed in the ELITEA-3754 AFS's Concrete Handles table
 (`interactive-tour-*` / `interactive-tour-complete-*` — NOT tour-specific, they
 back every tour config).
 
@@ -60,12 +60,12 @@ content area, **but the tour dialog itself still mounts and runs correctly**
 artifact. Direct navigation to `<page>?tour=<id>` (respecting `APP_PREFIX`) is
 the workaround if a future case needs the resulting page's *identity* verified
 (e.g. "returns to project default page view" asserted by literal page content,
-not just "overlay closed"). Full reasoning: ELITEA-2227 AFS § Automation Hints.
+not just "overlay closed"). Full reasoning: ELITEA-3754 AFS § Automation Hints.
 
 ## Reusable pattern for the NEXT tour case (e.g. "Chat Interactive Tour")
 - Same `InteractiveTourCard` / `TourCompleteCard` / `InteractiveTourSpotlight`
   testids apply verbatim (generic, not sidebar-specific) — once added by
-  ELITEA-2227's implementer, no new testid work needed for other tours' dialog
+  ELITEA-3754's implementer, no new testid work needed for other tours' dialog
   chrome.
 - Only the tour-specific pieces need new testids: the resource-link that
   launches it (dynamic `help-center-tour-link-{slug}` — already covers ALL

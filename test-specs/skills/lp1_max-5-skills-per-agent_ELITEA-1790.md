@@ -175,7 +175,7 @@ pre-existing skill was reused read-only).
 - No console errors or unexpected failed network requests occur during the
   flow (the one expected 404 seen was a stale skill-detail refetch immediately
   after that skill's own deletion during cleanup — documented artifact, not a
-  defect, same as ELITEA-1737/1735/1789).
+  defect, same as ELITEA-3749/1735/1789).
 
 ## Coverage Map
 
@@ -223,7 +223,7 @@ final skills-list screenshot confirms only `automated-test-explainer` remains.
    `/skills/all` after each; the well-known immediate follow-up
    `GET .../skill/prompt_lib/399/{id}` → `404` (stale refetch artifact of the
    redirect) appeared once, as expected, and is not a defect (same as
-   ELITEA-1737/1735/1789).
+   ELITEA-3749/1735/1789).
    **For automated cleanup, use the existing `skill_api` fixture**
    (`SkillAPI.delete_skill(skill_id)` in `automation/api/client.py:1227`), once
    per created skill id.

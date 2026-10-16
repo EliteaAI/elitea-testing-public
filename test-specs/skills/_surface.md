@@ -174,7 +174,7 @@ pin-toggle flow — no new "open menu" method needed. Test:
 
 ## Import — invalid-file validation error (ELITEA-2438) — `useSkillImport.hooks.js`
 
-Distinct from the valid-import round trip (ELITEA-1737/1738, above the
+Distinct from the valid-import round trip (ELITEA-3749/1738, above the
 `Concrete Handles` sections of those AFS — not duplicated here).
 
 - Uploading a `.md` file whose frontmatter block IS present but is
@@ -529,7 +529,7 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
 - **Skill card + list-level tag rendering**: `SkillsListPage.get_card_tags()`
   / `CARD_TAG_CHIP` (`entity-card-tag-chip`) already covers "tag appears on
   the card" / "tag no longer appears on the card" assertions — no new
-  page-object work needed there, reused as-is from ELITEA-1740.
+  page-object work needed there, reused as-is from ELITEA-3752.
 - Test files: `automation/tests/ui/skills/test_skill_tag_add_remove.py`
   (ELITEA-2433), `automation/tests/ui/skills/test_skill_tag_multiple.py`
   (ELITEA-2434) — pending implementation.
@@ -886,7 +886,7 @@ extension of `AgentDetailPage`'s):
   img`, `skill-save-as-version-button`, `skill-create-version-dialog`/
   `-name-input-field`/`-save-button`, `skill-version-select`(-combobox),
   `version-option-{name}`, `toast-message`) is pre-existing, reused from
-  ELITEA-1738/ELITEA-2437/ELITEA-2604 rework.
+  ELITEA-3750/ELITEA-2437/ELITEA-2604 rework.
 - **`SkillAPI.get_skill(skill_id)` cannot target a specific version's icon**
   — it always hits the bare `/skill/prompt_lib/{project}/{skillId}`
   endpoint (no `versionId` segment). An API-level per-version assertion

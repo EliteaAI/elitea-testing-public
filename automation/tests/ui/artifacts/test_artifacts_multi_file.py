@@ -1,4 +1,4 @@
-"""UI Test for ELITEA-1327 — Agent Multi-File Artifact Downloads.
+"""UI Test for ELITEA-3743 — Agent Multi-File Artifact Downloads.
 
 Regression test: verifies that *all* files created by an agent in a single
 run are visible in the artifact bucket and individually downloadable via the UI.
@@ -87,7 +87,7 @@ _ALL_EXPECTED_CARD_NAMES = _ROOT_FILES + [f.split("/")[-1] for f in _SUB_PATH_FI
 @allure.epic("Artifacts")
 @allure.feature("Multi-file Download")
 class TestArtifactMultiFileDownload:
-    """ELITEA-1327 — All agent-created files are visible and accessible.
+    """ELITEA-3743 — All agent-created files are visible and accessible.
 
     A single agent run creates files at the bucket root AND under a sub-path.
     The test verifies that all files (root and sub-path) are visible in the
@@ -95,11 +95,11 @@ class TestArtifactMultiFileDownload:
     file survived when an agent called the toolkit multiple times in one turn.
     """
 
-    @pytest.mark.tms("ELITEA-1327")
+    @pytest.mark.tms("ELITEA-3743")
     @pytest.mark.p0
     @allure.title("Agent creates files at root and in subfolder — all visible and accessible")
     @allure.severity(allure.severity_level.CRITICAL)
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/artifacts/ELITEA-1327_verify-all-files-downloadable-when-agent-creates-multiple-files.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/artifacts/ELITEA-3743_verify-all-files-downloadable-when-agent-creates-multiple-files.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/elitea_issues/issues/5313", "Github issue link")
     def test_agent_creates_files_at_root_and_in_subfolder(
         self,
@@ -109,7 +109,7 @@ class TestArtifactMultiFileDownload:
     ):
         """Agent creates files at root and under a sub-path — all visible and accessible.
 
-        ELITEA-1327 regression: when an agent creates N files in a single tool call,
+        ELITEA-3743 regression: when an agent creates N files in a single tool call,
         all N files must be downloadable via the UI.  Before the fix, only the last
         file written would be persisted; all earlier files were silently lost.
         """
@@ -173,7 +173,7 @@ class TestArtifactMultiFileDownload:
             assert not missing_cards, (
                 f"Artifact file cards missing from chat response: {missing_cards}. "
                 f"Cards found: {card_names}. "
-                f"ELITEA-1327: all {len(_ALL_EXPECTED_CARD_NAMES)} files must appear as "
+                f"ELITEA-3743: all {len(_ALL_EXPECTED_CARD_NAMES)} files must appear as "
                 f"cards in the agent response immediately after creation."
             )
             logger.info("All %d artifact file cards visible in chat response: %s",
@@ -192,7 +192,7 @@ class TestArtifactMultiFileDownload:
             ]
             assert not missing_root, (
                 f"Root-level files NOT visible in bucket '{bucket_name}': {missing_root}. "
-                f"ELITEA-1327: files may be lost when an agent creates multiple files "
+                f"ELITEA-3743: files may be lost when an agent creates multiple files "
                 f"in a single tool call."
             )
             logger.info("Root files visible in bucket UI: %s", _ROOT_FILES)
@@ -210,7 +210,7 @@ class TestArtifactMultiFileDownload:
             ]
             assert not missing_sub, (
                 f"Sub-path files NOT visible in bucket '{bucket_name}/{_SUB_FOLDER}/': {missing_sub}. "
-                f"ELITEA-1327: files may be lost when an agent creates multiple files "
+                f"ELITEA-3743: files may be lost when an agent creates multiple files "
                 f"in a single tool call."
             )
             logger.info("Sub-path files visible in bucket UI: %s", sub_names)

@@ -22,9 +22,9 @@
 the three existing artifact upload/multi-file specs
 (`test_artifacts_create_bucket_upload_file.py`/ELITEA-1808,
 `test_artifacts_upload_duplicate_cancel.py`/ELITEA-1832,
-`test_artifacts_multi_file.py`/ELITEA-1327) were read in full.
+`test_artifacts_multi_file.py`/ELITEA-3743) were read in full.
 
-- **ELITEA-1327** (`test_artifacts_multi_file.py`) — an **agent** creates multiple files
+- **ELITEA-3743** (`test_artifacts_multi_file.py`) — an **agent** creates multiple files
   server-side via the Artifact toolkit in one tool call; the test only verifies the
   agent-created files are visible/downloadable. It never drives the manual upload UI at
   all (no `upload_files_button`/native-file-chooser interaction anywhere in that file).

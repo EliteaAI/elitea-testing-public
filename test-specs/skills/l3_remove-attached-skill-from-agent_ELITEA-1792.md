@@ -177,7 +177,7 @@ skills + 1 agent, all created and torn down within the run).
   page and the Skills list both still resolve it after removal from the agent.
 - No console errors or failed network requests occur during the functional flow
   (the one 404 seen during Skill-B's own final teardown-delete is an expected
-  stale-refetch artifact, not a defect — same pattern as ELITEA-1737/1735/1789).
+  stale-refetch artifact, not a defect — same pattern as ELITEA-3749/1735/1789).
 
 ## Coverage Map
 
@@ -230,7 +230,7 @@ three were deleted live in this run.
    Verified for both: `DELETE /api/v2/elitea_core/skill/prompt_lib/{project}/{skill_id}`
    → `204 No Content`. The immediate follow-up `GET .../skill/prompt_lib/{project}/{skill_id}`
    → `404` seen in the console afterward is an expected stale-refetch artifact of
-   the redirect, not a defect (same as ELITEA-1737/1735/1789).
+   the redirect, not a defect (same as ELITEA-3749/1735/1789).
    **For automated cleanup, use the existing `skill_api` fixture**
    (`SkillAPI.delete_skill(skill_id)` in `automation/api/client.py:1227`).
 4. **Recommended teardown fixture shape**: function-scoped fixture creating two

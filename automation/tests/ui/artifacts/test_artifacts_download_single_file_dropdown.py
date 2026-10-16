@@ -24,12 +24,12 @@ Test flow:
    ``size > 0`` check).
 9. Verify no new console errors across the flow.
 
-Overlap check (see AFS): zero behavioral overlap with ELITEA-1327's
+Overlap check (see AFS): zero behavioral overlap with ELITEA-3743's
 ``test_artifacts_multi_file.py`` — that test spot-checks the download
 mechanism (``size > 0``) as one step nested in a much larger agent-chat
 data-loss regression; this case asserts the dropdown-download UX contract
 itself (menu content, immediacy, no ZIP, filename fidelity, content
-integrity), which ELITEA-1327 never touches.
+integrity), which ELITEA-3743 never touches.
 
 AFS: test-specs/artifacts/l2_download-flow-single-file-actions-dropdown_ELITEA-1839.md
 

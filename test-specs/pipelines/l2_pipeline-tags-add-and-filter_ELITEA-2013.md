@@ -137,7 +137,7 @@ detail page's three-dot menu → Delete pipeline confirmation dialog.)
 - **URL-param proof of filter state** (`?tags[]=<name>`) — *added: a
   stronger, non-flaky proof of the active filter than the visual grid alone,
   same pattern as ELITEA-2024's view-toggle URL-param assertion and
-  ELITEA-1740's skill tag filter (`filter_by_tag()`'s own docstring already
+  ELITEA-3752's skill tag filter (`filter_by_tag()`'s own docstring already
   documents this for Skills — Pipelines confirmed to share the exact same
   `useTags` hook / URL-param shape, `src/hooks/useTags.jsx`).*
 - **Card-level tag chips reuse the shared `CardTagSectionItem.jsx`
@@ -232,7 +232,7 @@ entity-agnostic testids.
    space, comma and underscore allowed"); this is a test-data-shape fix, not
    a live-product/case-text drift.
 2. **Known, not-filed cosmetic React dev-mode console warning** — same as
-   already documented for Skills (ELITEA-1740 AFS Known Defects #2): a
+   already documented for Skills (ELITEA-3752 AFS Known Defects #2): a
    single `Warning: Invalid value for prop 'sx' on <svg> tag` fires from
    `TagEditor.jsx`'s shared `SvgCheckedIcon`/`ListItemIcon` when selecting/
    re-typing an existing tag name from the Autocomplete dropdown (Pipeline

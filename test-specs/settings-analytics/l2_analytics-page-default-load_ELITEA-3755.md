@@ -1,7 +1,7 @@
 # Test Case: Analytics page loads with default date range and all tabs visible
 
 ## Metadata
-- **TMS ID**: ELITEA-2310
+- **TMS ID**: ELITEA-3755
 - **Linked Story**: none
 - **Priority**: l2
 - **Environment Explored**: local (`http://localhost:5173`, `EliteaAI/EliteaUI` `automation/testids` — confirmed identical blob to `main` for
@@ -49,7 +49,7 @@
 | 7 Overview tab active/underlined by default | Condition holds | step 7 | `step 7`: `aria-selected` on Overview tab | asserted |
 | 8 Page does not remain in permanent loading state | Condition holds | step 8 | `step 8`: spinner absent + KPI content rendered after wait | asserted |
 
-Case-text drift filed as clarification issue **elitea-testing-public#1185** ("[Clarification][ELITEA-2310] Case text says six tabs/Last 24d/Last 7d default; live product has seven tabs, Last 24h default (1-day range)") — bundles rows 4, 5, 6 above (all three drifts trace to the same root cause: the case was authored against a stale spec). Live product is the correct source per the reverse-masking guard (`test-case-analysis` SKILL.md § Classify findings); this AFS asserts the **live** contract in steps 3–6, not the case's stale numbers.
+Case-text drift filed as clarification issue **elitea-testing-public#1185** ("[Clarification][ELITEA-3755] Case text says six tabs/Last 24d/Last 7d default; live product has seven tabs, Last 24h default (1-day range)") — bundles rows 4, 5, 6 above (all three drifts trace to the same root cause: the case was authored against a stale spec). Live product is the correct source per the reverse-masking guard (`test-case-analysis` SKILL.md § Classify findings); this AFS asserts the **live** contract in steps 3–6, not the case's stale numbers.
 
 **Axis 2 — Analyst additions.**
 - `step 1` asserts no error on load (beyond the case's bare "loads successfully") — *added: cheap smoke check, catches a routing regression.*

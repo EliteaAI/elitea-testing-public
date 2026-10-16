@@ -7,9 +7,9 @@ Tests the enhancement from issue #5199:
 - Artifacts tool behavior not affected
 
 Test Cases (1 manual = 1 auto):
-- ELITEA-1694: Blocked Toolkit Live-Reload and Case-Insensitive Matching
-- ELITEA-1695: Blocked Tool Live-Reload and Case-Insensitive Matching
-- ELITEA-1696: Sensitive Tool Live-Reload and Case-Insensitive Matching
+- ELITEA-3746: Blocked Toolkit Live-Reload and Case-Insensitive Matching
+- ELITEA-3747: Blocked Tool Live-Reload and Case-Insensitive Matching
+- ELITEA-3748: Sensitive Tool Live-Reload and Case-Insensitive Matching
 
 Architecture:
 - Admin page: ELITEA_URL/admin - configure guardrails
@@ -480,21 +480,21 @@ def admin_page(browser: Browser, auth_state) -> Page:
 
 
 # ===========================================================================
-# ELITEA-1694: Blocked Toolkit Live-Reload and Case-Insensitive Matching
+# ELITEA-3746: Blocked Toolkit Live-Reload and Case-Insensitive Matching
 # ===========================================================================
 
 class TestBlockedToolkitLiveReload:
     """Test blocked toolkits apply immediately without pylon reload.
 
-    Manual test: ELITEA-1694
+    Manual test: ELITEA-3746
     """
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-1694_blocked-toolkit-live-reload-case-insensitive.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-3746_blocked-toolkit-live-reload-case-insensitive.md",
         "onetest-ai Test Case link"
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
-    @pytest.mark.tms("ELITEA-1694")
+    @pytest.mark.tms("ELITEA-3746")
     @pytest.mark.p0
     def test_blocked_toolkit_live_reload_case_insensitive(
         self,
@@ -586,21 +586,21 @@ class TestBlockedToolkitLiveReload:
 
 
 # ===========================================================================
-# ELITEA-1695: Blocked Tool Live-Reload and Case-Insensitive Matching
+# ELITEA-3747: Blocked Tool Live-Reload and Case-Insensitive Matching
 # ===========================================================================
 
 class TestBlockedToolLiveReload:
     """Test blocked tools apply immediately without pylon reload.
 
-    Manual test: ELITEA-1695
+    Manual test: ELITEA-3747
     """
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-1695_blocked-tool-live-reload-case-insensitive.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-3747_blocked-tool-live-reload-case-insensitive.md",
         "onetest-ai Test Case link"
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
-    @pytest.mark.tms("ELITEA-1695")
+    @pytest.mark.tms("ELITEA-3747")
     @pytest.mark.p0
     def test_blocked_tool_live_reload_case_insensitive(
         self,
@@ -722,21 +722,21 @@ class TestBlockedToolLiveReload:
 
 
 # ===========================================================================
-# ELITEA-1696: Sensitive Tool Live-Reload and Case-Insensitive Matching
+# ELITEA-3748: Sensitive Tool Live-Reload and Case-Insensitive Matching
 # ===========================================================================
 
 class TestSensitiveToolLiveReload:
     """Test sensitive tools apply immediately without pylon reload.
 
-    Manual test: ELITEA-1696
+    Manual test: ELITEA-3748
     """
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-1696_sensitive-tool-live-reload-case-insensitive.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-3748_sensitive-tool-live-reload-case-insensitive.md",
         "onetest-ai Test Case link"
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
-    @pytest.mark.tms("ELITEA-1696")
+    @pytest.mark.tms("ELITEA-3748")
     @pytest.mark.p0
     def test_sensitive_tool_live_reload_case_insensitive(
         self,

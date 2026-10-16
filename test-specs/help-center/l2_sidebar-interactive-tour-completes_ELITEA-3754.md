@@ -1,7 +1,7 @@
 # Test Case: Help Center — Sidebar Interactive Tour completes successfully by clicking Next through all steps
 
 ## Metadata
-- **TMS ID**: ELITEA-2227
+- **TMS ID**: ELITEA-3754
 - **Linked Story**: EliteaAI/elitea-testing-public#734
 - **Priority**: l2 (case priority: high)
 - **Environment Explored**: local (`http://localhost:5173`, `automation/testids` build)

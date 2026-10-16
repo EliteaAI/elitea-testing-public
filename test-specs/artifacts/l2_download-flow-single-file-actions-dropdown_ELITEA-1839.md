@@ -25,7 +25,7 @@
 ## Overlap check vs existing automation
 
 `automation/tests/ui/artifacts/test_artifacts_multi_file.py`
-(`TestArtifactMultiFileDownload`, ELITEA-1327) and `automation/pages/artifacts_page.py`
+(`TestArtifactMultiFileDownload`, ELITEA-3743) and `automation/pages/artifacts_page.py`
 were read before this run. That test is a **data-loss regression check** (an agent
 creates 6 files across bucket root + a sub-path in one tool call; the test verifies
 none of the 6 are silently lost) that happens to call the existing
@@ -37,7 +37,7 @@ semantics, absence of a progress modal, or exact downloaded-filename equality.
 
 Verdict: **zero behavioral overlap** with ELITEA-1839 (the single-file
 dropdown-**download UX contract** itself — menu content, immediacy, no ZIP
-packaging, filename fidelity, content integrity) vs ELITEA-1327 (data isn't lost
+packaging, filename fidelity, content integrity) vs ELITEA-3743 (data isn't lost
 across a multi-file agent write). The two tests exercise the same UI *action*
 (clicking Download in the dot-menu) but assert **disjoint observables** — the
 same distinction sibling case ELITEA-1832 drew against this same legacy test.
@@ -108,7 +108,7 @@ share across parallel/serial runs.
      ("hidden until row is hovered" + a 500ms CSS-transition wait). Do not carry
      that hover-then-wait assumption into this case's implementation; a bare
      click on the testid suffices. (Whether the legacy method's comment is stale
-     or ELITEA-1327's flow differs is out of this case's scope — not changed
+     or ELITEA-3743's flow differs is out of this case's scope — not changed
      here.)
 4. Click "Download", wrapped in `page.expect_download()` with a short timeout
    (case step 6).
@@ -167,7 +167,7 @@ share across parallel/serial runs.
 
 ### Axis 2 — Observables asserted beyond the case
 - **Content byte-equality (not just `size > 0`)** — *added: the case's own step 9
-  asks for "not corrupted"; a bare size check (the legacy ELITEA-1327 test's
+  asks for "not corrupted"; a bare size check (the legacy ELITEA-3743 test's
   approach) cannot actually detect truncation/corruption that preserves length.
   Byte-equality against the known seed is the strongest available signal.*
 - **Console-message check immediately after Download** — *added: standard
@@ -310,7 +310,7 @@ line each) and `ZipDownloadProgressDialog.jsx` (one `data-testid` prop).
   **existing `download_file()` method (lines 480–536) is NOT testid-compliant**
   — it opens the dot-menu via raw CSS (`button[aria-haspopup="true"]`) and clicks
   the item via a raw role locator (`page.get_by_role("menuitem", name="Download")`).
-  This is pre-policy tech debt (used by ELITEA-1327's test) — do not copy it into
+  This is pre-policy tech debt (used by ELITEA-3743's test) — do not copy it into
   this case's implementation, and do not cite it as precedent (`.agents/role-overrides.md`:
   "the surrounding code is NOT precedent"). Once the two menu-item testids land,
   add compliant class-level `LocatorDescriptor`s: a dynamic template constant for
@@ -319,7 +319,7 @@ line each) and `ZipDownloadProgressDialog.jsx` (one `data-testid` prop).
   pattern) plus static fields for `artifacts-file-download-menuitem` and
   `artifacts-file-delete-menuitem`. Consider a new method (e.g.
   `download_file_via_dropdown()`) rather than overloading `download_file()` —
-  ELITEA-1327's test depends on the current method's behavior/signature and this
+  ELITEA-3743's test depends on the current method's behavior/signature and this
   case needs additional assertions (menu-content check, immediate-no-dialog
   timing, exact filename equality) the legacy spot-check doesn't need. Implementer's
   call whether to extend or add.

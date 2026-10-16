@@ -24,11 +24,11 @@
 
 ## Overlap check vs existing automation
 
-`automation/tests/ui/artifacts/test_artifacts_multi_file.py` (`TestArtifactMultiFileDownload`, ELITEA-1327) and
+`automation/tests/ui/artifacts/test_artifacts_multi_file.py` (`TestArtifactMultiFileDownload`, ELITEA-3743) and
 `automation/tests/ui/artifacts/test_artifacts_download_single_file_dropdown.py` (ELITEA-1839) were both read
 before this run, along with `automation/pages/artifacts_page.py` in full.
 
-- **ELITEA-1327** only calls the legacy, non-testid-compliant `ArtifactsPage.download_file()` (per-file dropdown
+- **ELITEA-3743** only calls the legacy, non-testid-compliant `ArtifactsPage.download_file()` (per-file dropdown
   spot-check, `size > 0` only). It never touches a checkbox, never touches the toolbar
   `artifacts-download-files-button`, and never triggers the ZIP flow at all (its selections are always exactly
   one file). Zero behavioral overlap.

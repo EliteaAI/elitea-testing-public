@@ -45,10 +45,10 @@
 ### generate-per-test (in test setup, cleaned up in its own teardown)
 - Skill name: kebab-case, e.g. `elitea-1789-versel-skill` — **must be lowercase
   letters/digits/hyphens only** (same client-side Skill-name validation documented
-  for ELITEA-1737/1735 — see
+  for ELITEA-3749/1735 — see
   `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`). The case's
   literal test-data example (`"Formatter"`) is case-text drift, not a literal value
-  to type — same reverse-masking pattern already confirmed for ELITEA-1739/1735.
+  to type — same reverse-masking pattern already confirmed for ELITEA-3751/1735.
 - Skill description: any non-empty string, e.g. `"Test skill for ELITEA-1789 version
   selector verification."`
 - Skill instructions: any non-empty string under the 2500-char limit, e.g. `"You are
@@ -200,7 +200,7 @@ $ gh pr diff 540 --repo EliteaAI/EliteaUI | grep -n "agent-add-skill-button\|ski
 | Skill-attach popper item | `role="menuitem"`, accessible name = skill name | not testid'd on either ref | **out of this rework's scope** — not one of the raw handles PR #47 introduced for the version-selector flow (case step 3, pre-existing from ELITEA-1735); flag as a residual testid gap for a future pass, not blocking this AFS |
 | **Version-selector trigger** (`.version-text` span + chevron, wrapped in a `Box`, `SkillVersionSelector.jsx:70-73`) | **`testid needed: skill-version-selector-trigger-{skill_id}`** (dynamic, param = skill_id — the `Box` at line 70 currently carries no testid at all) | **needs-adding** (absent from both refs — confirmed via the `git show \| grep data-testid` above, zero hits) | **Replaces PR #47's `.version-text` CSS-class handle.** Must be scoped by `skill_id` (not by DOM ancestry) because a real click on `.version-text` opens a `<Menu>` that React-portals to `document.body`, outside `skill-card-{id}` — confirmed live via `browser_evaluate`: `isMenuInsideCard: false`. The trigger itself remains `tabIndex=-1`, `role=null`, `aria-label=null` — a testid closes the *automation-handle* gap only; keyboard-accessibility is the surviving half of issue #46 (see Known Defects) |
 | **"Versions" menu container/header** (`Box` at `SkillVersionSelector.jsx:98-105`, text `"Versions"`) | **`testid needed: skill-version-selector-menu-{skill_id}`** (dynamic, param = skill_id) | **needs-adding** | Replaces PR #47's raw `get_by_text("Versions", exact=True)` + `xpath=ancestor::div[2]`. Scope by `skill_id` for the same portal-to-body reason as the trigger — only one `SkillVersionSelector`'s menu is ever open at a time, but the testid must still carry identity since the menu isn't a DOM descendant of the card |
-| **Version menu item** (per-version `MenuItem`, `SkillVersionSelector.jsx:116-128`, e.g. `"base"`) | **`testid needed: skill-version-option-{version_name}`** (dynamic, param = version name) | **needs-adding** | Replaces PR #47's raw `get_by_role("menuitem")`. Deliberately a **fresh, distinctly-named** key — NOT a reuse of the `version-option-{name}` pattern from the ELITEA-1738 rework (`skill_detail_page.py`, EliteaUI commit `eb5361f`), because that pattern is set by a different component's own `buildVersionOption()` helper (the skill-detail-page's own VERSION combobox), which `SkillVersionSelector.jsx` does not use — it maps its own `versions` array directly. Reusing the other component's exact key would create a false-equivalence between two unrelated selectors |
+| **Version menu item** (per-version `MenuItem`, `SkillVersionSelector.jsx:116-128`, e.g. `"base"`) | **`testid needed: skill-version-option-{version_name}`** (dynamic, param = version name) | **needs-adding** | Replaces PR #47's raw `get_by_role("menuitem")`. Deliberately a **fresh, distinctly-named** key — NOT a reuse of the `version-option-{name}` pattern from the ELITEA-3750 rework (`skill_detail_page.py`, EliteaUI commit `eb5361f`), because that pattern is set by a different component's own `buildVersionOption()` helper (the skill-detail-page's own VERSION combobox), which `SkillVersionSelector.jsx` does not use — it maps its own `versions` array directly. Reusing the other component's exact key would create a false-equivalence between two unrelated selectors |
 | Skill card "open in new tab" / "remove skill" buttons | accessible names `"open in new tab"` / `"remove skill"` | not testid'd on either ref | icon-only buttons, no testid — **out of this rework's scope** (not touched by this case's steps; case step 4/5/6 only exercise the version selector, not these buttons) |
 | Agent actions (overflow) menu | `agent-actions-menu-button` | on-main ✓ | opens VERSION/AGENT grouped menu |
 | Delete-agent menu item | `delete-agent-menuitem` | on-main ✓ | in the AGENT group |
@@ -316,7 +316,7 @@ deleted live in this run.
    /api/v2/elitea_core/skill/prompt_lib/{project}/{skill_id}` → `204 No Content`.
    The immediate follow-up `GET .../skill/prompt_lib/{project}/{skill_id}` → `404`
    seen in the network/console log afterward is an expected stale-refetch artifact
-   of the redirect, not a defect (same as ELITEA-1737/1735).
+   of the redirect, not a defect (same as ELITEA-3749/1735).
    **For automated cleanup, use the existing `skill_api` fixture**
    (`SkillAPI.delete_skill(skill_id)` in `automation/api/client.py:1227`).
 4. **Recommended teardown fixture shape**: function-scoped fixture creating the

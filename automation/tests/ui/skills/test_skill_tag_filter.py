@@ -1,11 +1,11 @@
 """Skills tag-filter UI test.
 
-ELITEA-1740 — Search Skills by Tag: create 3 skills with shared and unique
+ELITEA-3752 — Search Skills by Tag: create 3 skills with shared and unique
 tags, verify the page-header "Tags" filter panel narrows the grid correctly
 for a shared tag (2 skills) and unique tags (1 skill each), and that
 "Clear all" restores the unfiltered grid.
 
-See test-specs/skills/l3_search-skills-by-tag_ELITEA-1740.md
+See test-specs/skills/l3_search-skills-by-tag_ELITEA-3752.md
 """
 
 import logging
@@ -49,10 +49,10 @@ def cleanup_skill_ids(skill_api):
 
 
 class TestSkillTagFilter:
-    """Filter the Skills grid by tag — shared tags, unique tags, and clear (ELITEA-1740)."""
+    """Filter the Skills grid by tag — shared tags, unique tags, and clear (ELITEA-3752)."""
 
-    @pytest.mark.tms("ELITEA-1740")
-    @allure.issue("ELITEA-1740", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-3752")
+    @allure.issue("ELITEA-3752", "onetest-ai Test Case link")
     @pytest.mark.p3
     @pytest.mark.regression
     def test_filter_skills_by_tag(self, page, skill_api, cleanup_skill_ids):
@@ -115,10 +115,10 @@ class TestSkillTagFilter:
             form_page.fill_form(
                 name=skill_a_name,
                 instructions=(
-                    "You are Skill A, a test skill for ELITEA-1740 tag filter "
+                    "You are Skill A, a test skill for ELITEA-3752 tag filter "
                     "verification."
                 ),
-                description="Test skill A for ELITEA-1740 tag filter verification.",
+                description="Test skill A for ELITEA-3752 tag filter verification.",
             )
             form_page.add_tag("formatting")
             form_page.add_tag("output")
@@ -140,10 +140,10 @@ class TestSkillTagFilter:
             form_page.fill_form(
                 name=skill_b_name,
                 instructions=(
-                    "You are Skill B, a test skill for ELITEA-1740 tag filter "
+                    "You are Skill B, a test skill for ELITEA-3752 tag filter "
                     "verification."
                 ),
-                description="Test skill B for ELITEA-1740 tag filter verification.",
+                description="Test skill B for ELITEA-3752 tag filter verification.",
             )
             form_page.select_existing_tag("formatting")
             form_page.add_tag("english")
@@ -164,10 +164,10 @@ class TestSkillTagFilter:
             form_page.fill_form(
                 name=skill_c_name,
                 instructions=(
-                    "You are Skill C, a test skill for ELITEA-1740 tag filter "
+                    "You are Skill C, a test skill for ELITEA-3752 tag filter "
                     "verification."
                 ),
-                description="Test skill C for ELITEA-1740 tag filter verification.",
+                description="Test skill C for ELITEA-3752 tag filter verification.",
             )
             form_page.add_tag("translation")
             form_page.wait_for_form_validation()

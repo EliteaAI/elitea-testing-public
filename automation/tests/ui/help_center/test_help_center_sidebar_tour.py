@@ -1,4 +1,4 @@
-"""UI test for Help Center — Sidebar Interactive Tour (ELITEA-2227).
+"""UI test for Help Center — Sidebar Interactive Tour (ELITEA-3754).
 
 Verifies the Sidebar Interactive Tour completes successfully by clicking
 "Next" through all 17 steps: step counter + title + description advance
@@ -7,7 +7,7 @@ previous step, "Finish" on the last step opens the "Tour Complete!" modal,
 and "Done!" closes it and returns the underlying page to an interactive
 state.
 
-AFS: test-specs/help-center/l2_sidebar-interactive-tour-completes_ELITEA-2227.md
+AFS: test-specs/help-center/l2_sidebar-interactive-tour-completes_ELITEA-3754.md
 
 Known localhost-only quirk (not a product defect, see the AFS § Automation
 Hints): the "Sidebar Interactive Tour" link is backend-CMS-served and
@@ -63,9 +63,9 @@ TOUR_TOTAL_STEPS = len(TOUR_STEP_TITLES)
 
 
 class TestHelpCenterSidebarTour:
-    """ELITEA-2227: Sidebar Interactive Tour completes via Next through all steps."""
+    """ELITEA-3754: Sidebar Interactive Tour completes via Next through all steps."""
 
-    @pytest.mark.tms("ELITEA-2227")
+    @pytest.mark.tms("ELITEA-3754")
     def test_sidebar_interactive_tour_completes_via_next(self, page):
         with allure.step('Step 1 — Navigate to Help Center and click "Sidebar Interactive Tour"'):
             help_center = HelpCenterPage(page)

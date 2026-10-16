@@ -1,4 +1,4 @@
-"""Skill search UI tests (ELITEA-1739).
+"""Skill search UI tests (ELITEA-3751).
 
 Covers searching the Skills-list page-header search box by name:
 - Partial name match narrows the grid to the matching subset.
@@ -8,9 +8,9 @@ Covers searching the Skills-list page-header search box by name:
 
 Both intended activation modes are exercised (SearchBar.jsx's onChange
 never fetches by itself): pressing Enter, and clicking the send-icon
-button — see AFS test-specs/skills/l3_search-skills-by-name_ELITEA-1739.md.
+button — see AFS test-specs/skills/l3_search-skills-by-name_ELITEA-3751.md.
 
-See test-specs/skills/l3_search-skills-by-name_ELITEA-1739.md for full AFS.
+See test-specs/skills/l3_search-skills-by-name_ELITEA-3751.md for full AFS.
 """
 
 import logging
@@ -32,9 +32,9 @@ FORM_SAVE_TIMEOUT = 15_000
 SEARCH_TIMEOUT = 10_000
 
 SKILL_NAMES = ["formatter", "content-reviewer", "content-writer"]
-SKILL_DESCRIPTION = "Test skill for ELITEA-1739 search-by-name verification."
+SKILL_DESCRIPTION = "Test skill for ELITEA-3751 search-by-name verification."
 SKILL_INSTRUCTIONS = (
-    "You are a test skill created for ELITEA-1739 search-by-name "
+    "You are a test skill created for ELITEA-3751 search-by-name "
     "verification. Respond with FORMATTER."
 )
 
@@ -91,8 +91,8 @@ def three_search_skills(page, skill_api):
 class TestSkillSearch:
     """Search Skills by Name (P2/L3): partial, exact, no-match, clear."""
 
-    @pytest.mark.tms("ELITEA-1739")
-    @allure.issue("ELITEA-1739", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-3751")
+    @allure.issue("ELITEA-3751", "onetest-ai Test Case link")
     @pytest.mark.p2
     @pytest.mark.regression
     def test_search_skills_by_name(self, page, three_search_skills):

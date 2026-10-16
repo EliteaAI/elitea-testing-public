@@ -17,9 +17,9 @@ The prefix goes on the **effective** title — whatever Allure would display for
 the test anyway. A test with no ``@allure.title`` shows its prefixed function
 name; a test that sets one shows that title, prefixed::
 
-    @pytest.mark.tms("ELITEA-2493")
+    @pytest.mark.tms("ELITEA-3756")
     @allure.title("No Access: All API operations return 403 Forbidden")
-    → [ELITEA-2493] No Access: All API operations return 403 Forbidden
+    → [ELITEA-3756] No Access: All API operations return 403 Forbidden
 
 so the case id is in the suite tree either way, which is the point of the
 marker. Placeholder titles (``"… rejected: {invalid_name!r}"``) are substituted

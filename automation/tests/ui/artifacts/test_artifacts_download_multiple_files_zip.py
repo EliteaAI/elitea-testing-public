@@ -39,7 +39,7 @@ Test flow:
     single-file artifact endpoint (no dedicated server-side ZIP endpoint),
     and no console errors occurred across the flow.
 
-Overlap check (see AFS): zero behavioral overlap with ELITEA-1327's
+Overlap check (see AFS): zero behavioral overlap with ELITEA-3743's
 ``test_artifacts_multi_file.py`` (never touches a checkbox or the toolbar
 download button — always downloads exactly one file via the legacy
 per-file dropdown) or ELITEA-1839's

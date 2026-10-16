@@ -1,7 +1,7 @@
 # Test Case: Search Skills by Tag
 
 ## Metadata
-- **TMS ID**: ELITEA-1740
+- **TMS ID**: ELITEA-3752
 - **Linked Story**: none
 - **Priority**: l3 (medium, per case)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids` branch → DEV backend, project `Private` / `${ELITEA_PROJECT_ID}`=399)
@@ -25,7 +25,7 @@
 - Skill A name: `skill-a` — **not** `"Skill A"` as literally written in the
   case's Test Data table. The live Skill `Name *` field enforces
   lowercase-kebab-case-only client-side validation (same behavior already
-  tracked for ELITEA-1737/1738/1739, see
+  tracked for ELITEA-3749/1738/1739, see
   `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`); a
   capitalized two-word name like `"Skill A"` is rejected. This is case-text
   drift, not a product defect — see Known Defects/Clarification #1.
@@ -34,11 +34,11 @@
 - Skill B tags: `["formatting", "english"]` (as specified).
 - Skill C name: `skill-c` (kebab-case equivalent of "Skill C").
 - Skill C tags: `["translation"]` (as specified).
-- Skill description (all 3): `"Test skill {A|B|C} for ELITEA-1740 tag filter
+- Skill description (all 3): `"Test skill {A|B|C} for ELITEA-3752 tag filter
   verification."` (any non-empty string satisfies the required field;
   content not asserted by this case).
 - Skill instructions (all 3): `"You are Skill {A|B|C}, a test skill for
-  ELITEA-1740 tag filter verification."` (any non-empty string under the
+  ELITEA-3752 tag filter verification."` (any non-empty string under the
   2500-char limit; content not asserted by this case).
 - Filter tags used: `formatting`, `translation`, `output` (as specified).
 - Pre-existing skill in the same project at exploration time:
@@ -96,7 +96,7 @@ the same run.
 Per the case: filtering by `formatting` returns Skills A and B only; by
 `translation` returns Skill C only; by `output` returns Skill A only;
 clearing restores the full list. **All of these hold in the live product** —
-unlike the sibling case ELITEA-1739 (search-by-name, see
+unlike the sibling case ELITEA-3751 (search-by-name, see
 `.agents/memory/qa-engineer/skills_list_search_quirks.md` / issue #44), the
 tag-filter mechanism is a genuinely separate, working feature: clicking a tag
 chip in the page-header "Tags" panel re-fires the grid-fetching endpoint with
@@ -109,7 +109,7 @@ observed at any step; no defect found.
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| Test Data: Skill A/B/C named "Skill A"/"Skill B"/"Skill C" | names as literally specified | step 1 | step 1 (kebab-case substitutes used: `skill-a`/`skill-b`/`skill-c`) | clarification *(case-text drift — see Known Defects #1; product's kebab-case-only name validation is intentional, already tracked since ELITEA-1737, not a new bug)* |
+| Test Data: Skill A/B/C named "Skill A"/"Skill B"/"Skill C" | names as literally specified | step 1 | step 1 (kebab-case substitutes used: `skill-a`/`skill-b`/`skill-c`) | clarification *(case-text drift — see Known Defects #1; product's kebab-case-only name validation is intentional, already tracked since ELITEA-3749, not a new bug)* |
 | 1 Create 3 Skills with specified tags, all visible with their tags | 3 skills created, visible with correct tags | step 1 | step 1: 4 cards visible (3 new + 1 pre-existing), each new card shows its own tag chips | asserted |
 | 2 Filter by `formatting` → only Skill A and B, Skill C excluded | list narrows to 2 matching cards | step 2 | step 2: grid shows exactly `skill-a` + `skill-b` | asserted |
 | 3 Filter by `translation` → only Skill C, A and B excluded | list narrows to 1 card | step 3 | step 3: grid shows exactly `skill-c` | asserted |
@@ -117,7 +117,7 @@ observed at any step; no defect found.
 | Expected Final State: tag filter handles shared tags (multiple skills) and unique tags (single skill) correctly | both shared-tag and unique-tag cases work | steps 2–4 | steps 2 (`formatting`, shared by A+B) and 3/4 (`translation`/`output`, unique to C/A respectively) | asserted |
 
 *(The case's step list does not include an explicit "clear filter" step —
-unlike ELITEA-1739's case text — but "Clear all" is the mechanism used
+unlike ELITEA-3751's case text — but "Clear all" is the mechanism used
 between filter assertions in steps 3–5 above; see Axis 2.)*
 
 ### Axis 2 — Analyst additions
@@ -131,11 +131,11 @@ between filter assertions in steps 3–5 above; see Axis 2.)*
 - step 2 documents the underlying network contract in full (`tags=<numeric
   id>` query param on the skills grid endpoint, URL `tags[]=<name>` param on
   the page) — *added: root-cause-level evidence distinguishing this
-  (working) mechanism from ELITEA-1739's (broken) name-search mechanism,
+  (working) mechanism from ELITEA-3751's (broken) name-search mechanism,
   useful for whoever maintains both.*
 - step 5 explicitly asserts "Clear all" restores the grid — *added: the case
   doesn't spell out a clear-filter step, but it's the natural mechanism
-  between filter assertions and is worth guarding since ELITEA-1739 showed a
+  between filter assertions and is worth guarding since ELITEA-3751 showed a
   neighboring "clear" affordance can silently do nothing.*
 - All steps assert no console errors during tag creation/filtering — *added:
   standard side-channel check per skill methodology; none found. One
@@ -150,7 +150,7 @@ between filter assertions in steps 3–5 above; see Axis 2.)*
 ## Cleanup
 1. Delete each of the 3 test skills via the overflow menu → "Delete skill" →
    type the skill name to confirm → click Delete (same flow as
-   ELITEA-1737/1738/1739). Verified in this run: all 3 (`skill-a` id `129`,
+   ELITEA-3749/1738/1739). Verified in this run: all 3 (`skill-a` id `129`,
    `skill-b` id `130`, `skill-c` id `131`) deleted cleanly; grid returned to
    just the pre-existing `automated-test-explainer`, and the "Tags" panel
    returned to "No tags to display." — confirming no orphaned tags were left
@@ -187,7 +187,7 @@ between filter assertions in steps 3–5 above; see Axis 2.)*
 | Skills-list page-header "Tags" filter panel — clickable tag chip | `SkillsListPage.filter_by_tag(tag_name)` — `self.page.locator(self.TAGS_PANEL_CHIP.format(tag_name))` where `TAGS_PANEL_CHIP = '[data-testid="tags-panel-chip-{}"]'` (dynamic testid on `Categories.jsx`'s `StyledChip`). ~~Was: `page.get_by_role("button", name=tag_name, exact=True)`~~ | on-automation/testids only (draft [#544](https://github.com/EliteaAI/EliteaUI/pull/544)) |
 | Skills-list "Clear all" (tag filter) button | `SkillsListPage.tags_panel_clear_all` — `LocatorDescriptor(testid="tags-panel-clear-all")` on the `IconButton` in `Categories.jsx`. ~~Was: `page.get_by_role("button", name="Clear all")`~~ | on-automation/testids only (draft [#544](https://github.com/EliteaAI/EliteaUI/pull/544)) |
 | Skill create form: Tags autocomplete option (existing tag suggestion) | `SkillFormPage.select_existing_tag(tag_name)` — `self.page.locator(self.SKILL_TAG_OPTION.format(tag_name))` where `SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'` (pre-existing dynamic testid; the rework converted the call site from an inline f-string `get_by_test_id(...)` to the class-constant template shape) | on-main ✓ (pre-existing testid; only the Python-side construction changed) |
-| Skill create form: Tags combobox / added tag chip (inside the Tags field) | Existing `SkillFormPage.tags_input` / `tags_input_field` / `tag_chip` / `add_tag()` — unchanged by this rework (not in the ELITEA-1740 test's raw-handle list) | on-main ✓ (pre-existing testids) |
+| Skill create form: Tags combobox / added tag chip (inside the Tags field) | Existing `SkillFormPage.tags_input` / `tags_input_field` / `tag_chip` / `add_tag()` — unchanged by this rework (not in the ELITEA-3752 test's raw-handle list) | on-main ✓ (pre-existing testids) |
 
 **Automation hint (superseded)**: the original hint below ("none of the
 Tags-panel elements carry a `data-testid` today... does not block on
@@ -221,7 +221,7 @@ testids. Kept for historical traceability only:
    table specifies literal names `"Skill A"` / `"Skill B"` / `"Skill C"`;
    the live product enforces lowercase-kebab-case-only Skill names
    (`skill-a`/`skill-b`/`skill-c` used instead). This is the same,
-   already-tracked product behavior confirmed in ELITEA-1737/1738/1739 (see
+   already-tracked product behavior confirmed in ELITEA-3749/1738/1739 (see
    `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`) — not
    re-filed as a new issue.
 2. **Not filed (cosmetic, no functional impact)** — a single React dev-mode
@@ -238,8 +238,8 @@ testids. Kept for historical traceability only:
 **No defect blocks this case.** Tag-based Skills filtering works correctly
 for shared tags (`formatting` → 2 skills) and unique tags (`translation`,
 `output` → 1 skill each), and "Clear all" genuinely restores the unfiltered
-list — this is the key finding distinguishing ELITEA-1740 from its sibling
-ELITEA-1739 (name-search, which IS broken — issue #44).
+list — this is the key finding distinguishing ELITEA-3752 from its sibling
+ELITEA-3751 (name-search, which IS broken — issue #44).
 
 ## Blocked Steps
 None.

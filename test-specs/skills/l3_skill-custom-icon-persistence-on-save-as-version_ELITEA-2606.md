@@ -328,7 +328,7 @@ work required for this case.
 
 **No `add-data-testid` work needed for this case** — every element on its
 executed code path already carries a `data-testid`, reused from
-ELITEA-1738/ELITEA-2437/ELITEA-2604/ELITEA-2605's prior rework.
+ELITEA-3750/ELITEA-2437/ELITEA-2604/ELITEA-2605's prior rework.
 
 ## Network Behavior
 - `POST /api/v2/elitea_core/upload_skill_icon/prompt_lib/{project_id}` —

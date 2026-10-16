@@ -155,7 +155,7 @@ No `reuse-existing` or shared fixture applies — this is a fresh-state flow (1 
 |---|---|---|---|
 | Skill Name field | `skill-name-input` (wrapper) → descendant `input` or `getByRole('textbox', { name: 'Name *' })` | on-main ✓ | kebab-case validation |
 | Skill Description field | `skill-description-input` (wrapper) → descendant `textarea` or `getByRole('textbox', { name: 'Description *' })` | on-main ✓ | same wrapper-div caveat |
-| Skill Instructions editor | `skill-instructions-editor-content` | on-automation/testids only (draft EliteaUI#526) | CodeMirror; `.fill()` worked directly in this run; not yet on `main` — pre-existing dependency this case has always had (same gap tracked for ELITEA-1737) |
+| Skill Instructions editor | `skill-instructions-editor-content` | on-automation/testids only (draft EliteaUI#526) | CodeMirror; `.fill()` worked directly in this run; not yet on `main` — pre-existing dependency this case has always had (same gap tracked for ELITEA-3749) |
 | Skill Save button | `skill-save-button` | on-main ✓ | |
 | Nav-blocker confirm | `alert-dialog-confirm-button` | on-main ✓ | fires on Skill-create Save |
 | Agent Name field | `agent-name-input` | on-main ✓ | same wrapper-div fill caveat as Skill Name |
@@ -244,7 +244,7 @@ deleted live in this run.
    /api/v2/elitea_core/skill/prompt_lib/{project}/{skill_id}` → `204 No Content`.
    The immediate follow-up `GET .../skill/prompt_lib/{project}/{skill_id}` →
    `404` seen in the console afterward is an expected stale-refetch artifact of
-   the redirect, not a defect (same pattern as ELITEA-1737/1735/1789/1792).
+   the redirect, not a defect (same pattern as ELITEA-3749/1735/1789/1792).
    **For automated cleanup, use the existing `skill_api` fixture**
    (`SkillAPI.delete_skill(skill_id)` in `automation/api/client.py:1227`).
 4. **Downloaded export file**: the `.playwright-mcp/` download artifact

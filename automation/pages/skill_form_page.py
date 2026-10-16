@@ -328,7 +328,7 @@ class SkillFormPage(BasePage):
 
         Unlike :meth:`add_tag` (type + Enter, which commits a brand-new tag),
         this selects an existing project-scoped tag suggestion — confirmed
-        live (ELITEA-1740 AFS exploration): once a tag exists in the project,
+        live (ELITEA-3752 AFS exploration): once a tag exists in the project,
         later skills' Tags combobox surfaces it as a clickable option in the
         MUI Autocomplete listbox. Each option carries its own
         ``skill-tag-option-{tag_name}`` testid (set directly on the
@@ -830,7 +830,7 @@ class SkillFormPage(BasePage):
         of the ``.cm-content`` element instead, addressed via its own
         ``skill-instructions-editor-content`` testid (set directly on the
         CodeMirror content node via EditorView.contentAttributes in
-        EliteaUI, ELITEA-1737) rather than a raw CSS selector chained off
+        EliteaUI, ELITEA-3749) rather than a raw CSS selector chained off
         the wrapper testid.
         """
         return (self.instructions_editor_content.text_content() or "").strip()

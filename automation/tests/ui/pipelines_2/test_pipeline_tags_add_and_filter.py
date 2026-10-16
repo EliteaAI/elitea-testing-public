@@ -72,7 +72,7 @@ def test_pipeline_tags_add_and_filter(page, pipeline_api):
     # warning ("Invalid value for prop `sx` on <svg>", fired from the shared
     # TagEditor's SvgCheckedIcon when selecting an existing tag from the
     # autocomplete dropdown — same component/warning already documented for
-    # Skills, ELITEA-1740 AFS Known Defects #2) so a real regression isn't
+    # Skills, ELITEA-3752 AFS Known Defects #2) so a real regression isn't
     # masked by an expected, harmless warning.
     console_errors = []
 

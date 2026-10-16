@@ -4,7 +4,7 @@
 - **TMS ID**: ELITEA-2313
 - **Linked Story**: none
 - **Priority**: l2 (case priority "medium"; l2 matches the established naming for this
-  feature's sibling cases ELITEA-2310/2312 — same "medium" TMS priority)
+  feature's sibling cases ELITEA-3755/2312 — same "medium" TMS priority)
 - **Environment Explored**: local (`http://localhost:5173`, `EliteaAI/EliteaUI`
   `automation/testids` — confirmed identical blob to `main` for
   `AnalyticsUserDetailed.jsx`/`AnalyticsUsers.jsx`/`KpiCard.jsx`/`ChartTooltip.jsx`, all
@@ -53,7 +53,7 @@
    cards (`LLM Calls, Tool Calls, Chat Msg, Agent Runs, Active Days, Errors`) and omits
    `TOTAL TOKENS, INPUT TOKENS, OUTPUT TOKENS, TOTAL COST` entirely. Live product (and
    source, `AnalyticsUserDetailed.jsx:64-114`) confirms ten cards. Same stale-count
-   family as ELITEA-2310 (tabs) / ELITEA-2311 (Overview KPIs) / ELITEA-2312 (table
+   family as ELITEA-3755 (tabs) / ELITEA-2311 (Overview KPIs) / ELITEA-2312 (table
    columns) — reverse-masking guard applies; this AFS asserts the live ten-card
    contract, not the case's six.
 4. Verify the Errors KPI card's value renders in the red/rejected color when
@@ -71,7 +71,7 @@
    "Agents & Pipelines Used".
    — **Case-text drift** (see § Known Defects): the case's step 7 says "Agents Used";
    live/source (`AnalyticsUserDetailed.jsx:243-283`) is "Agents & Pipelines Used" — same
-   naming pattern as the Analytics tab itself ("Agents & Pipelines", ELITEA-2310). Minor
+   naming pattern as the Analytics tab itself ("Agents & Pipelines", ELITEA-3755). Minor
    drift, same family; this AFS asserts the live label.
 7. Verify each panel shows a count label (`"{N} models"` / `"{N} tools"` /
    `"{N} agents & pipelines"`) and, when N > 0, a list of items each showing a name and
@@ -121,7 +121,7 @@
 | 1 Navigate to Settings → Analytics → Users tab | Target page/section loads successfully | step 1 | reused from ELITEA-2312's `open_users_tab()` | asserted (transit, not this case's own observable) |
 | 2 Click on any user row in the User Activity table | Control responds; expected next state is shown | step 1 | `step 1`: table panel replaced by detail view, network+spinner waits | asserted |
 | 3 View transitions to user detail page showing email as title with back arrow | Condition holds | step 2 | `step 2`: title text = user's email, back-arrow IconButton present | asserted |
-| 4 Six KPI cards shown: LLM Calls, Tool Calls, Chat Msg, Agent Runs, Active Days, Errors | Condition holds | step 3 | `step 3`: live 10-card set + order asserted instead | clarification *(case's 6-card list is stale — omits Total/Input/Output Tokens and Total Cost; live view has 10 cards. Same stale-count family as ELITEA-2310/2311/2312. Filed elitea-testing-public#1191)* |
+| 4 Six KPI cards shown: LLM Calls, Tool Calls, Chat Msg, Agent Runs, Active Days, Errors | Condition holds | step 3 | `step 3`: live 10-card set + order asserted instead | clarification *(case's 6-card list is stale — omits Total/Input/Output Tokens and Total Cost; live view has 10 cards. Same stale-count family as ELITEA-3755/2311/2312. Filed elitea-testing-public#1191)* |
 | 5 Errors card value shown in red when greater than 0 | Condition holds | step 4 | `step 4`: both branches asserted live — Errors card red (`rgb(215, 22, 22)`) for `errors=75`, all other 9 cards default color (`rgb(255, 255, 255)`) | asserted *(no case-text drift here — case's ">0" wording matches source and live exactly)* |
 | 6 "Daily Activity" multi-series area chart shown with "Events by type per day" subtitle | Condition holds | step 5 | `step 5`: title + subtitle text, chart conditional on `daily_activity.length > 0` | asserted |
 | 7 Three summary panels shown: Models Used, Tools Used, Agents Used | Condition holds | step 6 | `step 6`: live labels asserted ("Agents & Pipelines Used", not "Agents Used") | clarification *(case's "Agents Used" is stale — live label matches the tab's own "Agents & Pipelines" naming; minor drift, same family as row 4)* |
@@ -131,7 +131,7 @@
 
 **Axis 2 — Analyst additions.**
 - `step 3` asserts KPI card **order**, not just presence/count — *added: cheap once the
-  per-card handle exists, mirrors ELITEA-2310's tab/preset order assertions and
+  per-card handle exists, mirrors ELITEA-3755's tab/preset order assertions and
   ELITEA-2312's column-order assertion; catches a silent reorder regression.*
 - `step 4` asserts the **negative** branch (9 non-Errors cards stay default-colored) in
   addition to the case's positive branch — *added: a card whose color logic
@@ -205,7 +205,7 @@ implementer must re-grep `origin/main` fresh before committing).
 
 ## Known Defects Found During Exploration
 - **[CLARIFICATION]** Case-text drift (not a product defect — reverse-masking guard
-  applies), same stale-count family as ELITEA-2310/2311/2312 (elitea-testing-public#1188
+  applies), same stale-count family as ELITEA-3755/2311/2312 (elitea-testing-public#1188
   is the ELITEA-2312 sibling; filed as its own sibling **elitea-testing-public#1191**
   for this case, per the dedup rule — different object, the detail view's KPI cards,
   not the table's columns): case step 4 lists 6 KPI cards, omitting Total/Input/Output
@@ -246,7 +246,7 @@ for why that row was chosen over the first alphabetical/positional one).
 
 ## Automation Hints
 - Framework: Playwright + pytest (per `.agents/testing.md`).
-- Extend `pages/analytics_page.py` (created by ELITEA-2310, extended by ELITEA-2312)
+- Extend `pages/analytics_page.py` (created by ELITEA-3755, extended by ELITEA-2312)
   with this case's `LocatorDescriptor` fields, rather than creating a second page
   object — same page, same URL, same class.
 - **Suggested new test file**: `automation/tests/ui/admin/test_analytics_user_detail_view.py`

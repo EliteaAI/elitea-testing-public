@@ -1,7 +1,7 @@
 # Test Case: Search Skills by Name
 
 ## Metadata
-- **TMS ID**: ELITEA-1739
+- **TMS ID**: ELITEA-3751
 - **Linked Story**: none
 - **Priority**: l3 (medium, per case)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids` branch → DEV backend, project `Private` / `${ELITEA_PROJECT_ID}`=399)
@@ -20,7 +20,7 @@
 - Skill 1 name: `formatter` — **not** `"Formatter"` as literally written in the
   case's Test Data table. See Known Defects/Clarification #1 — the live Skill
   `Name *` field enforces lowercase-kebab-case-only client-side validation
-  (same behavior already tracked for ELITEA-1737/1738, see
+  (same behavior already tracked for ELITEA-3749/1738, see
   `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`); a
   capitalized single word like `"Formatter"` is rejected with "Name must be
   lowercase letters, digits and hyphens only (no spaces), and cannot start or
@@ -42,7 +42,7 @@
   rejected.
 - Skill 3 name: `content-writer` (kebab-case equivalent of case's "Content
   Writer") — **unchanged**.
-- Skill description (all 3): `"Test skill for ELITEA-1739 search-by-name
+- Skill description (all 3): `"Test skill for ELITEA-3751 search-by-name
   verification."` (any non-empty string satisfies the required field; content
   not asserted by this case). **Important, discovered this amendment:** the
   Skills grid search endpoint matches this description text too, not just
@@ -51,7 +51,7 @@
   contaminate either search term used in this AFS; keep it that way if the
   description is ever changed.
 - Skill instructions (all 3): any non-empty string under the 2500-char limit,
-  e.g. `"You are a test skill created for ELITEA-1739 search-by-name
+  e.g. `"You are a test skill created for ELITEA-3751 search-by-name
   verification. Respond with FORMATTER."` (content not asserted by this case).
 - Partial search term: `content` (7 characters — well above the 3-character
   minimum). **Corrected this amendment (analyst rerun following the
@@ -89,7 +89,7 @@ run.
 1. Navigate to `${BASE_URL}/skills/create`, create 3 skills named `formatter`,
    `content-reviewer`, `content-writer` (fill Name/Description/Instructions,
    Save, confirm the "unsaved changes" nav-blocker dialog for each — same
-   flow as ELITEA-1737/1738). Navigate to `${BASE_URL}/skills/all`.
+   flow as ELITEA-3749/1738). Navigate to `${BASE_URL}/skills/all`.
    - **Verify**: all 3 new skill cards plus the pre-existing
      `automated-test-explainer` (4 total) render in the grid. Confirmed live
      this amendment (skill ids `438` `formatter`, `439` `content-reviewer`,
@@ -232,7 +232,7 @@ edge-case substitute.
 ## Cleanup
 1. Delete each of the 3 test skills via the overflow menu → "Delete skill" →
    type the skill name to confirm → click Delete (same flow as
-   ELITEA-1737/1738). Verified in the original exploration: all 3
+   ELITEA-3749/1738). Verified in the original exploration: all 3
    (`formatter` id `126`, `code-reviewer` id `127`, `content-writer` id
    `128`) deleted cleanly; grid returned to just the pre-existing
    `automated-test-explainer`. **Re-verified this amendment** with the
@@ -257,7 +257,7 @@ edge-case substitute.
 | Enter-key activation (no separate element — same input, `onKeyDown` handler at `SearchBar.jsx:153-159`) | Use the existing `agent-search-input` testid + `page.keyboard.press("Enter")` (Playwright) after filling — no additional handle needed. | n/a |
 | Skills grid cards | Existing `SkillsListPage.skill_exists_in_list(name)` (`automation/pages/skills_list_page.py`) — uses `page.get_by_test_id("entity-card-name")` | n/a — reuse existing page object method |
 | Skill create form fields | Existing `SkillFormPage` (`automation/pages/skill_form_page.py`) — `name_input`, `description_input`, `instructions_editor_content`, `save_button` | n/a — reuse existing page object |
-| Delete-skill flow | Existing `SkillDetailPage` methods / testids `skill-controls-menu-button`, `skill-delete-menu-item`, `delete-confirm-name-input` (per ELITEA-1737/1738 AFS) | n/a — reuse existing page object |
+| Delete-skill flow | Existing `SkillDetailPage` methods / testids `skill-controls-menu-button`, `skill-delete-menu-item`, `delete-confirm-name-input` (per ELITEA-3749/1738 AFS) | n/a — reuse existing page object |
 
 **Clearing-the-search-field caveat (important for the implementer):** Playwright's
 `.fill("")` and even `Control+a` + `Delete` were **unreliable** on this
@@ -325,7 +325,7 @@ alternative if `fill("")` proves flaky in CI.
    names ("Formatter", "Code Reviewer", "Content Writer", capitalized with
    spaces) cannot be created live: the Skill `Name *` field's kebab-case-only
    client-side validation (confirmed live in this run, and already tracked
-   for ELITEA-1737/1738 — see
+   for ELITEA-3749/1738 — see
    `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`)
    rejects them. This AFS substitutes kebab-case equivalents
    (`formatter`, `content-writer`, and originally `code-reviewer` — see
@@ -364,7 +364,7 @@ alternative if `fill("")` proves flaky in CI.
    asserted here.
 
 4. **Case-text drift (CLARIFICATION, not a new bug) — discovered during
-   implementer Phase 2 exploration (ELITEA-1739 automation pass), corrects
+   implementer Phase 2 exploration (ELITEA-3751 automation pass), corrects
    Clarification #2's own Step 2 claim.** `EliteaUI/src/common/constants.js`
    sets `MIN_SEARCH_KEYWORD_LENGTH = 3`; `SearchBar.jsx`'s `onSearch()`
    (shared by both the Enter and send-icon activation paths) will not

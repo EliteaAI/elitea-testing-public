@@ -789,7 +789,7 @@ a product defect (never observed via the real test suite's own fixtures).
   cluster whose precondition is "toolkit configured with HITL authorization"
   (ELITEA-2211/2212/2213/2214) needs the SAME `pytest.mark.guardrails`
   marker + CI-against-deployed-env execution path the existing
-  `TestSensitiveToolLiveReload` (ELITEA-1696) already uses — not a new gap.
+  `TestSensitiveToolLiveReload` (ELITEA-3748) already uses — not a new gap.
 - **Sensitivity is toolkit-TYPE scoped, not per-toolkit-instance.**
   `GuardrailsAdminPage.add_sensitive_tool(toolkit_type, tool_name)` marks
   the tool sensitive for EVERY toolkit of that type project-wide. Any new

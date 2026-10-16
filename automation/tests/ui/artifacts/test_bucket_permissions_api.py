@@ -1,10 +1,10 @@
-"""UI + API Tests for ELITEA-2493 and ELITEA-2494 — Bucket Permission API Enforcement.
+"""UI + API Tests for ELITEA-3756 and ELITEA-3757 — Bucket Permission API Enforcement.
 
 Security tests: verify that bucket permissions set via UI are enforced at the API level.
 
 Test cases:
-- ELITEA-2493: No Access permission — all API operations (GET/POST/DELETE) return 403
-- ELITEA-2494: Read-only permission — GET returns 200, POST/DELETE return 403
+- ELITEA-3756: No Access permission — all API operations (GET/POST/DELETE) return 403
+- ELITEA-3757: Read-only permission — GET returns 200, POST/DELETE return 403
 
 Test flow:
 1. [UI Setup] Login as User A (Admin), set User B's permission via Manage Permissions modal
@@ -148,17 +148,17 @@ def user_b_page(browser, auth_state_user_b):
 @allure.epic("Artifacts")
 @allure.feature("Bucket Permissions")
 class TestBucketPermissionsAPI:
-    """ELITEA-2493, ELITEA-2494 — API permission enforcement for bucket access.
+    """ELITEA-3756, ELITEA-3757 — API permission enforcement for bucket access.
 
     Security tests verifying that permissions configured via UI are enforced
     at the API level. Tests the "No access" and "Read-only" permission types.
     """
 
-    @pytest.mark.tms("ELITEA-2493")
+    @pytest.mark.tms("ELITEA-3756")
     @pytest.mark.p0
     @allure.title("No Access: All API operations return 403 Forbidden")
     @allure.severity(allure.severity_level.CRITICAL)
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/artifacts/bucket-permissions/ELITEA-2493_api-no-access-permission-enforcement.md", "Test Case")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/artifacts/bucket-permissions/ELITEA-3756_api-no-access-permission-enforcement.md", "Test Case")
     @allure.issue("https://github.com/EliteaAI/elitea_issues/issues/5832", "Requirement")
     def test_no_access_permission_blocks_all_api_operations(
         self,
@@ -168,7 +168,7 @@ class TestBucketPermissionsAPI:
     ):
         """Verify that 'No access' permission blocks GET, POST, and DELETE API calls.
 
-        ELITEA-2493: User B with 'No access' exception cannot access the bucket
+        ELITEA-3756: User B with 'No access' exception cannot access the bucket
         via direct API calls — all operations must return 403 Forbidden.
 
         Steps:
@@ -264,11 +264,11 @@ class TestBucketPermissionsAPI:
                 admin_artifacts.close_manage_permissions_modal()
                 logger.info("Cleanup: Removed User B's exception (default permissions restored)")
 
-    @pytest.mark.tms("ELITEA-2494")
+    @pytest.mark.tms("ELITEA-3757")
     @pytest.mark.p0
     @allure.title("Read-only: GET allowed, POST/DELETE return 403 Forbidden")
     @allure.severity(allure.severity_level.CRITICAL)
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/artifacts/bucket-permissions/ELITEA-2494_api-read-only-permission-enforcement.md", "Test Case")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/artifacts/bucket-permissions/ELITEA-3757_api-read-only-permission-enforcement.md", "Test Case")
     @allure.issue("https://github.com/EliteaAI/elitea_issues/issues/5832", "Requirement")
     def test_read_only_permission_allows_get_blocks_write_operations(
         self,
@@ -278,7 +278,7 @@ class TestBucketPermissionsAPI:
     ):
         """Verify that 'Read-only' permission allows GET but blocks POST and DELETE.
 
-        ELITEA-2494: User B with 'Read-only' exception can read files (GET returns 200)
+        ELITEA-3757: User B with 'Read-only' exception can read files (GET returns 200)
         but cannot write or delete (POST/DELETE return 403 Forbidden).
 
         Steps:

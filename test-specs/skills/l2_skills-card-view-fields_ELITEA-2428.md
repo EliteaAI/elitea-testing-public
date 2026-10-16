@@ -49,7 +49,7 @@ cleaned up in its own teardown)
   parameter either. The live UI form nonetheless persists the tag
   correctly end-to-end (confirmed live this run: `form_page.add_tag()`
   before `Save` → the tag appears on the card immediately after) — same
-  pattern already used by `test_skill_tag_filter.py` (ELITEA-1740) to seed
+  pattern already used by `test_skill_tag_filter.py` (ELITEA-3752) to seed
   tagged skills. Use `SkillFormPage.fill_form(name=..., description=...,
   instructions=...)` + `SkillFormPage.add_tag(tag)` +
   `wait_for_form_validation()` + `save_and_wait_for_navigation()`, then
@@ -143,7 +143,7 @@ attributes populated. No functional defect found.
 
 | Element | Recommended Locator | Provenance |
 |---|---|---|
-| Skill create form — Name / Description / Tags / Instructions / Save | `skill-name-input-field`, `skill-description-input-field`, `skill-tags-input-field`, `skill-instructions-editor-content`, `skill-save-button` — all **pre-existing**, already wired in `SkillFormPage` | on-main ✓ (established, reused by ELITEA-1740/1990/2001 etc.) |
+| Skill create form — Name / Description / Tags / Instructions / Save | `skill-name-input-field`, `skill-description-input-field`, `skill-tags-input-field`, `skill-instructions-editor-content`, `skill-save-button` — all **pre-existing**, already wired in `SkillFormPage` | on-main ✓ (established, reused by ELITEA-3752/1990/2001 etc.) |
 | Skills list → Card view toggle button (`ViewToggle.jsx`, shared across Skills/Agents/Applications/Pipelines/Credentials/Toolkits pages) | `page.get_by_test_id("agent-card-view-button")` — **existing testid**, confirmed live `[pressed]` on fresh `/skills/all` load with no click. **Naming quirk, not a defect** (same shape as `SkillsListPage.search_input`'s documented `agent-search-input` reuse): `ViewToggle.jsx`'s default prop values are `cardViewTestId = 'agent-card-view-button'` / `tableViewTestId = 'agent-table-view-button'`, and `Skills.jsx:70` renders `<ViewToggle />` with no prop override, so the Skills page's toggle literally carries `agent-*` testids. Confirmed via source (`ViewToggle.jsx` lines 14–15, `Skills.jsx:70`) — functionally correct on the Skills page, just the shared-component-hardcodes-a-feature-scoped-name pattern documented in `.agents/testing.md` § Locator policy. No `add-data-testid` fix needed to satisfy THIS case (the handle resolves correctly); flagging only so a future testid-hygiene pass knows the root cause. | on-main ✓ (`agent-card-view-button`/`agent-table-view-button` both present on `main`) |
 | Skills list → Table view toggle button (companion, for negative/contrast checks only — not this case's target) | `page.get_by_test_id("agent-table-view-button")` | on-main ✓ |
 | Skill card outer container (list view) | `page.get_by_test_id("entity-card")` — **existing testid**, already `SkillsListPage.skill_card` | on-main ✓ |

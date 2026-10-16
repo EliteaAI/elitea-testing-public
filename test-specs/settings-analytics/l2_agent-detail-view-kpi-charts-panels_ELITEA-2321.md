@@ -4,7 +4,7 @@
 - **TMS ID**: ELITEA-2321
 - **Linked Story**: none
 - **Priority**: l2 (case priority "medium"; l2 matches the established naming for this
-  feature's sibling cases ELITEA-2310/2312/2313/2320 — same "medium" TMS priority)
+  feature's sibling cases ELITEA-3755/2312/2313/2320 — same "medium" TMS priority)
 - **Environment Explored**: local (`http://localhost:5173`, `EliteaAI/EliteaUI`
   `automation/testids` — dev server serves this branch; source read directly from
   `../EliteaUI/src/[fsd]/features/settings/ui/analytics/AnalyticsAgentDetailed.jsx`,
@@ -46,7 +46,7 @@
 1. Navigate to Settings → Analytics, switch to the "Private" project, and click the
    "Agents & Pipelines" tab (reuse `AnalyticsPage.navigate()` + `switch_project("399")`
    + `open_agents_pipelines_tab()`, all already on `main`/`automation/base` from
-   ELITEA-2310/2320). Click the `guardrails_test_agent` row (reuse
+   ELITEA-3755/2320). Click the `guardrails_test_agent` row (reuse
    `AnalyticsPage.open_agent_detail_by_row(index)` from ELITEA-2320 — merged, but its
    own case explicitly scoped OUT asserting the sub-view's own content beyond
    "navigation succeeds, no console error"; this case is the first to assert that
@@ -71,7 +71,7 @@
    actually named `TOTAL RUNS`, and `TOTAL COST, TOTAL TOKENS, INPUT TOKENS, OUTPUT
    TOKENS` are omitted entirely. Live product (and source,
    `AnalyticsAgentDetailed.jsx:67-110`) confirms eight cards. Same stale-count family
-   as ELITEA-2310/2312/2313/2320; this AFS asserts the live eight-card contract, not
+   as ELITEA-3755/2312/2313/2320; this AFS asserts the live eight-card contract, not
    the case's five.
 4. Verify the Errors KPI card's value renders in the red/rejected color when
    `errors > 0`, and in the default text color otherwise (source:
@@ -136,10 +136,10 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Settings → Analytics → Agents tab | Target page/section loads successfully | step 1 | reused from ELITEA-2310/2320's `navigate()` + `open_agents_pipelines_tab()` | asserted (transit, not this case's own observable — tab-name drift already filed under #1195, not re-filed here) |
+| 1 Navigate to Settings → Analytics → Agents tab | Target page/section loads successfully | step 1 | reused from ELITEA-3755/2320's `navigate()` + `open_agents_pipelines_tab()` | asserted (transit, not this case's own observable — tab-name drift already filed under #1195, not re-filed here) |
 | 2 Click on any agent name in the Agent Activity table | Control responds; expected next state is shown | step 1 | `step 1`: table panel replaced by detail view, network+spinner waits (reuses `open_agent_detail_by_row` from ELITEA-2320, which asserted only navigation success — this case asserts the resulting content) | asserted |
 | 3 View transitions to agent detail page showing agent name as title with back arrow | Condition holds | step 2 | `step 2`: title text = entity name, back-arrow IconButton present | asserted |
-| 4 Five KPI cards shown: Total Events, Unique Users, Avg Latency, Errors, Error Rate | Condition holds | step 3 | `step 3`: live 8-card set + order asserted instead | clarification *(case's 5-card list is stale — no "Error Rate" KPI exists, "Total Events" is really "Total Runs", and Total Cost/Total Tokens/Input Tokens/Output Tokens are omitted. Same stale-count family as ELITEA-2310/2312/2313/2320. Filed elitea-testing-public#1199)* |
+| 4 Five KPI cards shown: Total Events, Unique Users, Avg Latency, Errors, Error Rate | Condition holds | step 3 | `step 3`: live 8-card set + order asserted instead | clarification *(case's 5-card list is stale — no "Error Rate" KPI exists, "Total Events" is really "Total Runs", and Total Cost/Total Tokens/Input Tokens/Output Tokens are omitted. Same stale-count family as ELITEA-3755/2312/2313/2320. Filed elitea-testing-public#1199)* |
 | — Errors card red when > 0 (not in case's numbered steps, but implied by the Errors KPI existing) | Condition holds | step 4 | `step 4`: negative branch (errors=0 → default color) live-verified; positive branch source-confirmed only | asserted (negative branch only — see § Blocked Steps for the positive-branch gap) |
 | 5 "Daily Usage" chart shown | Condition holds | step 5 | `step 5`: live title "Runs by Day" + conditional-render asserted instead | clarification *(case's "Daily Usage" is stale — live title is "Runs by Day". Filed #1199)* |
 | 6 "Users" panel shown listing users with USER, EVENTS, AVG LATENCY, ERRORS columns | Condition holds | step 6 | `step 6`: live columns `User, Runs, Avg Latency, Errors` asserted instead | clarification *(case's "EVENTS" column is stale — live column is "Runs", same drift family as the Activity table's own Events→Runs drift, #1195. Filed #1199)* |
@@ -150,7 +150,7 @@
 **Axis 2 — Analyst additions.**
 - `step 3` asserts KPI card **order**, not just presence/count — *added: cheap once
   the per-card handle exists, mirrors ELITEA-2313's user-detail KPI-order assertion
-  and ELITEA-2310/2312's tab/column-order assertions; catches a silent reorder
+  and ELITEA-3755/2312's tab/column-order assertions; catches a silent reorder
   regression.*
 - `step 4` asserts the **negative** branch (non-Errors cards + errors=0 stay
   default-colored) explicitly, not just presence of the Errors card — *added: mirrors
@@ -234,7 +234,7 @@ re-grep `origin/main` fresh before committing).
 
 ## Known Defects Found During Exploration
 - **[CLARIFICATION]** Case-text drift (not a product defect — reverse-masking guard
-  applies), same stale-count family as ELITEA-2310/2312/2313/2320
+  applies), same stale-count family as ELITEA-3755/2312/2313/2320
   (elitea-testing-public#1185/#1188/#1191/#1195 are the sibling issues; filed as its
   own sibling **elitea-testing-public#1199** for this case, per the dedup rule —
   different object, the agent/pipeline detail view's KPI cards/chart title/Users
@@ -272,7 +272,7 @@ re-grep `origin/main` fresh before committing).
 
 ## Automation Hints
 - Framework: Playwright + pytest (per `.agents/testing.md`).
-- Extend `pages/analytics_page.py` (created by ELITEA-2310, extended by
+- Extend `pages/analytics_page.py` (created by ELITEA-3755, extended by
   ELITEA-2312/2313/2320) with this case's `LocatorDescriptor` fields, rather than
   creating a second page object — same page, same URL, same class. Mirror the existing
   `# --- User detail view (ELITEA-2313) ---` section-comment convention with a new

@@ -1,7 +1,7 @@
 # Test Case: Import Skill (Base Version)
 
 ## Metadata
-- **TMS ID**: ELITEA-1737
+- **TMS ID**: ELITEA-3749
 - **Linked Story**: none
 - **Priority**: l3 (medium, per case)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids` branch → DEV backend, project `Private` / `${ELITEA_PROJECT_ID}`=399)
@@ -22,11 +22,11 @@
   client-side validation; the case's own example `"Test Export Skill"` fails
   this rule — see Known Defects / clarification #20).
 - Source skill description: any non-empty string, e.g. `"Automation test
-  skill for base version export/import round trip (ELITEA-1737)"`.
+  skill for base version export/import round trip (ELITEA-3749)"`.
 - Source skill tag: any string committed via Enter in the Tags combobox,
   e.g. `"regression"`.
 - Source skill instructions: any non-empty string under the 2500-char limit,
-  e.g. `"You are a test skill created for ELITEA-1737 export/import base
+  e.g. `"You are a test skill created for ELITEA-3749 export/import base
   version verification. Always respond with the single word CONFIRMED."`
 - Downloaded export file: `${skill-name}.md`, written to the Playwright
   download directory — read back and re-uploaded in the same test.

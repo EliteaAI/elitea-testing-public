@@ -38,7 +38,7 @@ existing artifacts test files
 `test_artifacts_download_multiple_files_zip.py`/ELITEA-1840,
 `test_artifacts_download_single_file_dropdown.py`/ELITEA-1839,
 `test_artifacts_duplicate_bucket_name.py`/ELITEA-1809,
-`test_artifacts_multi_file.py`/ELITEA-1327,
+`test_artifacts_multi_file.py`/ELITEA-3743,
 `test_artifacts_upload_duplicate_cancel.py`/ELITEA-1832,
 `test_artifacts_upload_multiple_files.py`/ELITEA-1826,
 `test_artifacts_upload_three_options_verify_selection.py`/ELITEA-1824) and their matching AFS files

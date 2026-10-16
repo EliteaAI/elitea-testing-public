@@ -2509,7 +2509,7 @@ class ArtifactsPage(BasePage):
 
         Testid-compliant replacement for the legacy :meth:`download_file`'s
         own hover-reveal + raw-CSS trigger lookup — retained as-is there for
-        ELITEA-1327's own signature/behavior, not copied here. Confirmed live
+        ELITEA-3743's own signature/behavior, not copied here. Confirmed live
         (ELITEA-1839, 2/2 runs): the trigger button is visible WITHOUT
         hovering the row first in the current app — no hover-then-500ms-wait
         sequence is needed.

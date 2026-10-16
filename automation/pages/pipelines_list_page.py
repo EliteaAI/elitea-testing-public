@@ -98,7 +98,7 @@ class PipelinesListPage(BasePage):
     # "Clear all" button in the page-header Tags filter panel
     # (Categories.jsx) — only rendered while a tag filter is active. Same
     # shared component/testid as SkillsListPage.tags_panel_clear_all
-    # (ELITEA-1740), confirmed live for the Pipelines dashboard (ELITEA-2013
+    # (ELITEA-3752), confirmed live for the Pipelines dashboard (ELITEA-2013
     # AFS Concrete Handles).
     tags_panel_clear_all = LocatorDescriptor(
         testid="tags-panel-clear-all",
@@ -428,7 +428,7 @@ class PipelinesListPage(BasePage):
         ``Card.jsx``'s outer wrapper, filtered to the card whose
         ``entity-card-name`` matches ``pipeline_name`` — so two cards
         can't cross-contaminate each other's tags. Mirrors
-        ``SkillsListPage.get_card_tags()`` (ELITEA-1740) — same shared
+        ``SkillsListPage.get_card_tags()`` (ELITEA-3752) — same shared
         component tree, confirmed live for the Pipelines dashboard
         (ELITEA-2013 AFS Concrete Handles).
 
@@ -460,7 +460,7 @@ class PipelinesListPage(BasePage):
         ``EliteaUI/src/components/Categories.jsx``) carries a dynamic
         ``tags-panel-chip-{name}`` testid via the :attr:`TAGS_PANEL_CHIP`
         template constant. Mirrors ``SkillsListPage.filter_by_tag()``
-        (ELITEA-1740) — same shared component, different grid-refetch URL
+        (ELITEA-3752) — same shared component, different grid-refetch URL
         substring (``applications`` vs ``skills``, confirmed live via
         ELITEA-2025's Network Behavior — ELITEA-2013 AFS).
 
@@ -494,7 +494,7 @@ class PipelinesListPage(BasePage):
         LOCATOR: "Clear all" (``Tooltip`` wrapping an ``IconButton`` in
         ``Categories.jsx``) carries a static ``tags-panel-clear-all``
         testid — only rendered while a tag filter is active. Mirrors
-        ``SkillsListPage.clear_tag_filter()`` (ELITEA-1740).
+        ``SkillsListPage.clear_tag_filter()`` (ELITEA-3752).
 
         Waits for the grid-fetching endpoint to re-fire with the ``tags``
         param cleared before returning.

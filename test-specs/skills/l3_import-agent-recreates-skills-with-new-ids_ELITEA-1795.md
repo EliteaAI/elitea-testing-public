@@ -182,7 +182,7 @@ total, all created and torn down within the run.
 | Element | testid | Provenance | Notes |
 |---|---|---|---|
 | Skill Name / Description fields | same as ELITEA-1794 (`Name *` / `Description *` textboxes) | on-main ✓ | |
-| Skill Instructions editor | `skill-instructions-editor-content` | on-automation/testids only (draft EliteaUI#526) | CodeMirror; not yet on `main` — pre-existing dependency this case has always had (same gap tracked for ELITEA-1737/1794); this means the case remains localhost-green-only, not yet promotable, independent of this rework |
+| Skill Instructions editor | `skill-instructions-editor-content` | on-automation/testids only (draft EliteaUI#526) | CodeMirror; not yet on `main` — pre-existing dependency this case has always had (same gap tracked for ELITEA-3749/1794); this means the case remains localhost-green-only, not yet promotable, independent of this rework |
 | Agent Name / Description / Instructions fields | `agent-name-input` / `agent-description-input` / `agent-instructions-input` | on-main ✓ | same as ELITEA-1794 |
 | Agent add-skill button | no testid; `getByRole('button', { name: 'Skill', exact: true })` | needs-adding | matches ELITEA-1794/1789/1792's amended handle; out of this case's scope |
 | Agent actions (overflow) menu | `agent-actions-menu-button` | on-main ✓ | opens VERSION/AGENT grouped menu |
@@ -296,7 +296,7 @@ imported Agent. All four were deleted live in this run.
    download artifact (`el-1795-agent-a1b2c3d4-agent.md` in this run) is local
    test-runner output, not a product-side entity — no server-side cleanup
    needed, but an automated test should clean up its own download path in
-   teardown (mirrors ELITEA-1794/ELITEA-1737's `download_path.unlink(missing_ok=True)`
+   teardown (mirrors ELITEA-1794/ELITEA-3749's `download_path.unlink(missing_ok=True)`
    pattern).
 5. **Recommended teardown fixture shape**: function-scoped, tracking IDs as they
    become known (source skill id, source agent id, imported agent id, imported

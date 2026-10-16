@@ -103,7 +103,7 @@ no direct edit either beyond its `return self._instructions_mention_container(..
 call, which either keeps working (if the container helper is kept, now
 backed by the testid) or is replaced with `return self.skill_mention_list` if
 the helper method is removed — implementer's call, per existing project
-precedent (ELITEA-1789/#31, ELITEA-1740/#30 reworks) of inlining once a
+precedent (ELITEA-1789/#31, ELITEA-3752/#30 reworks) of inlining once a
 single-field testid replaces a multi-line workaround.
 
 ### Downstream verify
@@ -294,7 +294,7 @@ Three entities existed transiently in this run: 2 freshly-created Skills (`elite
    after each; the well-known immediate follow-up `GET
    .../skill/prompt_lib/399/{id}` → `404` (stale refetch artifact of the
    redirect) appeared once for the last-deleted skill, as expected — not a
-   defect (same as ELITEA-1737/1735/1789/1790).
+   defect (same as ELITEA-3749/1735/1789/1790).
    **For automated cleanup, use the existing `skill_api` fixture**
    (`SkillAPI.delete_skill(skill_id)` in `automation/api/client.py`), once per
    created skill id.

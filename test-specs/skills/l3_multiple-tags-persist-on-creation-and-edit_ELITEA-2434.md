@@ -125,7 +125,7 @@ No testid gaps for this case — every element is already wired.
 | Committed tag chip | `LocatorDescriptor(testid="skill-tag-chip")` (existing, `get_tags()`) | none needed |
 | Save button (create flow) | `LocatorDescriptor(testid="skill-save-button")`; `SkillFormPage.save_and_wait_for_navigation()` (existing — handles the nav-blocker dialog) | none needed |
 | Save button (edit flow) | Same testid; `SkillDetailPage.save_edits()` (existing — PUT-wait + toast-assert + no-navigation-assert) | none needed |
-| Skill card's tag chips (list view) | `SkillsListPage.get_card_tags(skill_name)` / `CARD_TAG_CHIP` (existing, ELITEA-1740 rework) | none needed |
+| Skill card's tag chips (list view) | `SkillsListPage.get_card_tags(skill_name)` / `CARD_TAG_CHIP` (existing, ELITEA-3752 rework) | none needed |
 
 ## Network Behavior
 - `POST /api/v2/elitea_core/skills/prompt_lib/{project_id}` — create-flow

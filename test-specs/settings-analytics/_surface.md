@@ -49,8 +49,8 @@
 `analytics-export-button` (Export to Excel icon button, already on `main`).
 Header title, project badge, date presets, From/To pickers, and all 7 tabs
 have NO testid — every case touching them needs `add-data-testid` work. Full
-naming set + PROVENANCE for ELITEA-2310's touched elements:
-`test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-2310.md`
+naming set + PROVENANCE for ELITEA-3755's touched elements:
+`test-specs/settings-analytics/l2_analytics-page-default-load_ELITEA-3755.md`
 § Concrete Handles. Reuse those exact names for sibling cases that touch the
 same elements (tabs, presets, title, badge) — don't re-derive/rename.
 
@@ -67,7 +67,7 @@ Shared-component wiring notes for the implementer:
 
 ## No page object yet
 
-`pages/analytics_page.py` does not exist — ELITEA-2310 is the first case in
+`pages/analytics_page.py` does not exist — ELITEA-3755 is the first case in
 this feature area. First implementer creates it.
 
 ## Users tab (`AnalyticsUsers.jsx`) — confirmed live 2026-08-05, ELITEA-2312

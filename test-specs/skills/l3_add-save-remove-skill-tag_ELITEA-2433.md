@@ -18,7 +18,7 @@
 ### generate-per-test (in test setup via `skill_api` fixture, cleaned up in its own teardown)
 - Skill name: `autotest-tag-add-remove-{timestamp}` (kebab-case, ≤32 chars —
   the live Skill `Name *` field enforces lowercase-kebab-case-only, same
-  constraint tracked for ELITEA-1737/1739/1740).
+  constraint tracked for ELITEA-3749/1739/1740).
 - Skill description: `"Autotest skill for ELITEA-2433 tag add/remove flow."`
 - Skill instructions: `"You are a test skill used for tag add/remove automation. Reply 'ok'."`
 - Created via `SkillAPI.create_skill()` with no `tags` field in the payload
@@ -112,7 +112,7 @@
 | Committed tag chip | `LocatorDescriptor(testid="skill-tag-chip")` (existing, `SkillFormPage.tag_chip`, shared/collection locator; `get_tags()` reads text) | none needed |
 | Tag chip's delete icon | **testid needed**: `skill-tag-chip-delete-{tag_name}` (dynamic, name-keyed — `chipDeleteTestId` prop on `AutoCompleteDropDown`/`TagEditor`, wired at `CreateSkillForm.jsx`'s `<TagEditor>` call site, mirrors the existing `getOptionTestId` pattern). **Interim (pre-fix) locator**: `page.get_by_test_id("skill-tag-chip").filter(has_text=tag_name).locator("img, svg")` — scoped to the specific chip by its text, then its only child node (the delete icon); clicking the chip's label/body does NOT trigger removal (confirmed live). |
 | Save button (edit flow) | `LocatorDescriptor(testid="skill-save-button")` (existing, `SkillFormPage.save_button`; `SkillDetailPage.save_edits()` already wraps click + PUT-wait + toast-assert + no-navigation-assert) | none needed |
-| Skill card's tag chip (list view) | `LocatorDescriptor` via `SkillsListPage.CARD_TAG_CHIP` template + `get_card_tags(skill_name)` (existing, ELITEA-1740 rework) | none needed |
+| Skill card's tag chip (list view) | `LocatorDescriptor` via `SkillsListPage.CARD_TAG_CHIP` template + `get_card_tags(skill_name)` (existing, ELITEA-3752 rework) | none needed |
 | Skill detail page load anchor | `LocatorDescriptor(testid="skill-information-section")` (existing, `wait_for_page_load()`) | none needed |
 
 ## Network Behavior

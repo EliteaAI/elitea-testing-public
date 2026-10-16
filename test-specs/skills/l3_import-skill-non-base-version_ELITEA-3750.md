@@ -1,7 +1,7 @@
 # Test Case: Import Skill Non-Base Version
 
 ## Metadata
-- **TMS ID**: ELITEA-1738
+- **TMS ID**: ELITEA-3750
 - **Linked Story**: none
 - **Priority**: l3 (medium, per case)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids` branch → DEV backend, project `Private` / `${ELITEA_PROJECT_ID}`=399)
@@ -19,15 +19,15 @@
 ### generate-per-test (in test setup, cleaned up in its own teardown)
 - Source skill name: kebab-case, e.g. `elitea-1738-export-skill` — **must be
   lowercase letters/digits/hyphens only, no leading/trailing hyphen** (same
-  live client-side validation already documented for ELITEA-1737 — see that
+  live client-side validation already documented for ELITEA-3749 — see that
   AFS's Known Defects / clarification #20; not re-filed here since it's the
   same product behavior, already tracked).
 - Source skill description: any non-empty string, e.g. `"Automation test
-  skill for non-base version export/import verification (ELITEA-1738)."`.
+  skill for non-base version export/import verification (ELITEA-3750)."`.
 - Source skill tag: any string committed via Enter in the Tags combobox,
   e.g. `"regression"`.
 - Source skill (base version) instructions: any non-empty string under the
-  2500-char limit, e.g. `"You are a test skill created for ELITEA-1738
+  2500-char limit, e.g. `"You are a test skill created for ELITEA-3750
   base-version export/import verification. Always respond with the single
   word BASE."`.
 - Additional version name: `ver_1` (per case Test Data — must not be
@@ -73,7 +73,7 @@ is generated per test and torn down in the same test's teardown.
      the exported version name** — observed as
      `elitea-1738-export-skill.ver_1.md` (pattern:
      `${skill-name}.${version-name}.md`), NOT a bare `${skill-name}.md` as
-     seen for base-version exports in ELITEA-1737. Implementer should
+     seen for base-version exports in ELITEA-3749. Implementer should
      assert the download's `suggested_filename()` contains both the skill
      name and `ver_1`, not do an exact-match on `${skill-name}.md`.
 4. Read the downloaded `.md` file.
@@ -81,12 +81,12 @@ is generated per test and torn down in the same test's teardown.
      `elitea_version: ver_1`, `tags` (list); the markdown body (after the
      closing `---`) is the ver_1 instructions text (base text + the
      appended distinguishing sentence). **Note**: unlike the base-version
-     export explored in ELITEA-1737 (whose frontmatter has no `version`-ish
+     export explored in ELITEA-3749 (whose frontmatter has no `version`-ish
      key at all), a **non-base** version export DOES carry an explicit
      `elitea_version: <version-name>` frontmatter key — confirmed live in
      this run. This is an additional discovered fact, not a case
      requirement to assert against (the case's own Test Data table doesn't
-     list a frontmatter field for ELITEA-1738), but it's a useful assertion
+     list a frontmatter field for ELITEA-3750), but it's a useful assertion
      opportunity for the implementer (Axis 2 addition, see Coverage Map).
 5. Navigate to `${BASE_URL}/skills/all`. Click the **"Import"** button
    (top-right toolbar). Upload the ver_1-exported `.md` file.
@@ -162,13 +162,13 @@ is generated per test and torn down in the same test's teardown.
   `elitea_version: ver_1` key — *added: not required by the case's own Test
   Data table, but a directly observable, stable fact discovered live in
   this run and a strong assertion opportunity (distinguishes this AFS's
-  non-base export from ELITEA-1737's base export, which has no such key at
+  non-base export from ELITEA-3749's base export, which has no such key at
   all — see that AFS's clarification #21). Not filed as a defect/clarification:
   both behaviors (present for non-base, absent for base) are internally
   consistent product behavior, not case-text drift.*
 - step 3 documents that the downloaded filename pattern is
   `${skill-name}.${version-name}.md` for non-base exports (vs. bare
-  `${skill-name}.md` for base, per ELITEA-1737) — *added: a required
+  `${skill-name}.md` for base, per ELITEA-3749) — *added: a required
   implementer handle not explicit in the case text; asserting an exact
   filename match without this would be a hard-coded assumption bug in the
   automated test.*
@@ -187,7 +187,7 @@ is generated per test and torn down in the same test's teardown.
   for the implementer to understand why the assertion holds regardless of
   which version was exported, rather than treating it as coincidental.*
 - step 8 asserts zero new console errors during the final Save — *added:
-  standard side-channel check per skill discipline, mirrors ELITEA-1737.*
+  standard side-channel check per skill discipline, mirrors ELITEA-3749.*
 - step 2 documents that `"base"` (case-insensitive, `LATEST_VERSION_NAME`)
   is a **reserved name** rejected by the "Create version" dialog with a
   toast error (`"base" is reserved. Please pick a different version
@@ -197,7 +197,7 @@ is generated per test and torn down in the same test's teardown.
   of this case's own steps.*
 - step 3 documents the overflow menu's VERSION group gained a **"Set as a
   default"** item (disabled while viewing a version that already IS the
-  default) not present in the ELITEA-1737 AFS's menu inventory — *added:
+  default) not present in the ELITEA-3749 AFS's menu inventory — *added:
   menu composition differs slightly by context (viewing `base` vs.
   viewing `ver_1`); when viewing `ver_1`, "Set as a default" is enabled
   and "Delete" (version) is enabled — confirmed live; when viewing `base`,
@@ -218,12 +218,12 @@ is generated per test and torn down in the same test's teardown.
    in test teardown for both the source and imported skill IDs — mirrors
    the `clean_skill` fixture pattern already used in
    `test_skill_management.py` and the pattern recommended in the
-   ELITEA-1737 AFS. Track both IDs (source from step 1, imported from
+   ELITEA-3749 AFS. Track both IDs (source from step 1, imported from
    step 6/7) and delete both, tolerating "already gone" errors.
 
 ## Concrete Handles (discovered during exploration)
 
-Reused as-is from the ELITEA-1737 AFS (`test-specs/skills/l3_import_skill_base_version_ELITEA-1737.md`)
+Reused as-is from the ELITEA-3749 AFS (`test-specs/skills/l3_import_skill_base_version_ELITEA-3749.md`)
 where unchanged — not re-verified in isolation in this run except where noted:
 
 | Element | Recommended Locator | Fallback |
@@ -231,18 +231,18 @@ where unchanged — not re-verified in isolation in this run except where noted:
 | Skill create form / detail form fields | Existing `SkillFormPage` (`automation/pages/skill_form_page.py`) — `name_input`, `description_input`, `instructions_editor` / `instructions_editor_content`, `save_button` | n/a — reuse existing page object |
 | Skill detail page (ID, controls menu, export) | Existing `SkillDetailPage` (`automation/pages/skill_detail_page.py`) — `controls_menu_button`, `get_skill_id()`, `export_base_version_via_menu()` | n/a — reuse existing page object; **new** method needed for exporting a *non-default* version, see Automation Hints |
 | Overflow-menu **Export** item (version-scoped) | `page.get_by_test_id("export-version-menuitem")` — confirmed present and correctly exports the *currently selected* version (not always base) in this run | `page.get_by_role("menuitem", name="Export")` scoped to VERSION group |
-| **VERSION selector** (base ⇄ ver_1 switcher on the edit/detail page — distinct from `SkillDetailPage`'s read-only "Version" display) | `page.get_by_test_id("skill-version-select")` (`SkillDetailPage.version_selector`) — **testid added in the ELITEA-1738 testid rework** (`SkillTabBar.jsx` now passes `data-testid="skill-version-select"` through `SingleSelect.jsx`'s new `data-testid` prop) | n/a — testid-only, no fallback |
+| **VERSION selector** (base ⇄ ver_1 switcher on the edit/detail page — distinct from `SkillDetailPage`'s read-only "Version" display) | `page.get_by_test_id("skill-version-select")` (`SkillDetailPage.version_selector`) — **testid added in the ELITEA-3750 testid rework** (`SkillTabBar.jsx` now passes `data-testid="skill-version-select"` through `SingleSelect.jsx`'s new `data-testid` prop) | n/a — testid-only, no fallback |
 | VERSION selector — dropdown option (per version) | `page.locator('[data-testid="version-option-{name}"]')` (`SkillDetailPage.VERSION_OPTION` template constant) — **testid added in the rework**, keyed by version *name* via a new `testId` field returned from `buildVersionOption()` (`version.helpers.jsx`); shared by every version-selector consumer (skill/agent/pipeline), not just this page — additive: falls back to the pre-existing `select-option-{value}` (id-keyed) testid when `option.testId` is absent | n/a — testid-only, no fallback |
 | **"Save As Version" button** (creates a new named version from current edits) | `page.get_by_test_id("skill-save-as-version-button")` (`SkillDetailPage.save_as_version_button`) — **testid added in the rework** (`SaveSkillVersionButton.jsx`) | n/a — testid-only, no fallback |
 | **"Create version" dialog** — Name textbox | Two testids added in the rework, mirroring the CreateSkillForm split: `skill-create-version-name-input` lands on the MuiFormControl-root wrapper (`SkillDetailPage.create_version_name_input`); `skill-create-version-name-input-field` lands on the real `<input>` (`SkillDetailPage.create_version_name_input_field`, used for `.click()`/`.type()`) | n/a — testid-only, no fallback |
 | **"Create version" dialog** — Save (confirm) button | `page.get_by_test_id("skill-create-version-save-button")` (`SkillDetailPage.create_version_save_button`) — **testid added in the rework** via `BaseModal`'s existing `confirmButtonDataTestId` prop (previously unused by this call site) | n/a — testid-only, no fallback |
 | **"Create version" dialog** container | `page.get_by_test_id("skill-create-version-dialog")` (`SkillDetailPage.create_version_dialog`) — **testid added in the rework** via `BaseModal`'s existing `data-testid` prop (previously unused by this call site) | n/a — testid-only, no fallback |
-| `Version "{name}" created` toast | `page.get_by_test_id("toast-message")` (`SkillDetailPage.version_toast_message`) — **reused** the same app-wide Toast `toast-message` testid already exposed as `SkillsListPage.import_success_toast_message` (ELITEA-1737), asserted by `.text_content()` equality inside `save_as_version()` rather than located by the expected text | n/a — testid-only, no fallback |
-| Skills list **Import** button | `page.get_by_test_id("skills-import-button")` — **now has a testid** (confirmed live this run); ELITEA-1737's AFS flagged this as missing at the time — **resolved since**, no action needed | `page.get_by_role("button", name="Import")` |
+| `Version "{name}" created` toast | `page.get_by_test_id("toast-message")` (`SkillDetailPage.version_toast_message`) — **reused** the same app-wide Toast `toast-message` testid already exposed as `SkillsListPage.import_success_toast_message` (ELITEA-3749), asserted by `.text_content()` equality inside `save_as_version()` rather than located by the expected text | n/a — testid-only, no fallback |
+| Skills list **Import** button | `page.get_by_test_id("skills-import-button")` — **now has a testid** (confirmed live this run); ELITEA-3749's AFS flagged this as missing at the time — **resolved since**, no action needed | `page.get_by_role("button", name="Import")` |
 | Import-parameters dialog **Import** (confirm) button | `page.get_by_role("dialog").get_by_role("button", name="Import")` — scoping to the dialog required, toolbar button shares the same accessible name | none needed if scoped correctly |
 | Import-parameters dialog **Show details** toggle | `page.get_by_role("button", name="Show details")` — confirmed live | none needed |
 | Delete-skill menu item | `page.get_by_test_id("skill-delete-menu-item")` | `page.get_by_role("menuitem", name="Delete skill")` |
-| Delete-confirmation name field | `page.get_by_test_id("delete-confirm-name-input")` — **now has a testid** (confirmed live this run; internally has an `#name` child input — `page.get_by_test_id("delete-confirm-name-input").locator("#name")`); ELITEA-1737's AFS flagged this as missing at the time — **resolved since** | `page.get_by_role("dialog").get_by_role("textbox")` |
+| Delete-confirmation name field | `page.get_by_test_id("delete-confirm-name-input")` — **now has a testid** (confirmed live this run; internally has an `#name` child input — `page.get_by_test_id("delete-confirm-name-input").locator("#name")`); ELITEA-3749's AFS flagged this as missing at the time — **resolved since** | `page.get_by_role("dialog").get_by_role("textbox")` |
 | Delete-confirmation confirm button | `page.get_by_role("dialog").get_by_role("button", name="Delete")` | none needed |
 | Skill Information section — Skill ID / Version ID | Existing `SkillDetailPage.get_skill_id()`; Version ID currently only readable via the "Copy version ID" button's text or the URL's second path segment (`/skills/all/{skillId}/{versionId}`) — **no dedicated method yet**, see Automation Hints | n/a |
 
@@ -267,7 +267,7 @@ where unchanged — not re-verified in isolation in this run except where noted:
   UI-level toast + URL-change + VERSION-selector assertions are sufficient
   and were what this run actually verified).
 - The **Export** request itself was not captured in this run's network log,
-  same caveat as ELITEA-1737 — it triggers a file **download**, not a
+  same caveat as ELITEA-3749 — it triggers a file **download**, not a
   plain XHR; assert on the Playwright `download` event (filename pattern
   `${skill-name}.${version-name}.md`) rather than hunting for the
   underlying request.
@@ -280,7 +280,7 @@ regardless of exported version) which was independently confirmed both at
 the UI level and by reading `SkillImportModal.jsx`'s hardcoded
 `Version: ${LATEST_VERSION_NAME}` label.
 
-Reused from ELITEA-1737 (not re-filed, same underlying product behavior,
+Reused from ELITEA-3749 (not re-filed, same underlying product behavior,
 already tracked there):
 - [#20](https://github.com/EliteaAI/elitea-testing-public/issues/20) —
   skill names must be kebab-case; applies identically to this case's
@@ -298,11 +298,11 @@ case's own steps.
 ## Automation Hints
 - Framework: Playwright + pytest, per `.agents/testing.md`. New file:
   `automation/tests/ui/skills/test_skill_export_import.py` — the same file
-  ELITEA-1737's automation would add (if that PR is already merged, extend
+  ELITEA-3749's automation would add (if that PR is already merged, extend
   it with a new `test_import_skill_non_base_version` test rather than
   duplicating the file; if not yet merged, coordinate file ownership with
   that implementation).
-- `SkillDetailPage` needs **new methods** beyond what ELITEA-1737 needed:
+- `SkillDetailPage` needs **new methods** beyond what ELITEA-3749 needed:
   - `save_as_version(version_name: str)` — clicks "Save As Version",
     fills the "Create version" dialog's Name field, clicks Save, waits for
     the `Version "{version_name}" created` toast and for the URL to
@@ -320,9 +320,9 @@ case's own steps.
     currently selected (same `export-version-menuitem` testid, the method
     just shouldn't assume "base" in its name/docstring since it now
     exports ver_1 too); rename or add a thin wrapper, implementer's call.
-- Two testids flagged as missing in ELITEA-1737's AFS are now confirmed
+- Two testids flagged as missing in ELITEA-3749's AFS are now confirmed
   present (`skills-import-button`, `delete-confirm-name-input`) — no
-  `add-data-testid` work needed for those. **Update (ELITEA-1738 testid
+  `add-data-testid` work needed for those. **Update (ELITEA-3750 testid
   rework, follow-up to the merged automation, locator-policy audit
   finding):** the VERSION selector, its per-option dropdown items, the
   "Save As Version" button, and the "Create version" dialog (container +
@@ -331,15 +331,15 @@ case's own steps.
   `SkillDetailPage.save_as_version()` / `get_version_selector_value()` /
   `switch_version()`.
 - Read the downloaded file's frontmatter with `yaml.safe_load`, same
-  approach as ELITEA-1737: assert `name`, `description`, `tags`, and (new
+  approach as ELITEA-3749: assert `name`, `description`, `tags`, and (new
   for this case) `elitea_version == "ver_1"`; the body (after the closing
   `---`) is the ver_1 instructions text.
 - Use the `skill_api` fixture (session-scoped `SkillAPI`) for teardown of
   both skill IDs — do not delete via UI in automated teardown (slower,
   more brittle); UI-delete was only used here for interactive
-  verification, mirrors ELITEA-1737's guidance exactly.
+  verification, mirrors ELITEA-3749's guidance exactly.
 - Wait strategy: after clicking "Save As Version" dialog's Save, wait for
   the toast text `Version "ver_1" created` (or the URL to contain the new
   version id) rather than a fixed sleep. After the final Save in step 8,
   wait for the Save button to return to `disabled` state, mirroring
-  ELITEA-1737's `wait_for_form_validation()` guidance.
+  ELITEA-3749's `wait_for_form_validation()` guidance.

@@ -1372,7 +1372,7 @@ def github_toolkit_with_selected_tools(github_credential: dict, toolkit_api: Too
 
 
 # ---------------------------------------------------------------------------
-# Artifact bucket + toolkit fixtures for ELITEA-1327
+# Artifact bucket + toolkit fixtures for ELITEA-3743
 # ---------------------------------------------------------------------------
 
 

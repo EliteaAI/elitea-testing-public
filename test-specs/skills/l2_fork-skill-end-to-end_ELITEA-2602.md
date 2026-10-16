@@ -25,7 +25,7 @@
 ### generate-per-test (in test setup, cleaned up in its own teardown)
 - Source skill name: kebab-case, e.g. `el-2602-forkable-skill-${suffix}` —
   lowercase letters/digits/hyphens only (live client-side validation, same
-  rule as ELITEA-1737).
+  rule as ELITEA-3749).
 - Source skill description: 100+ characters, e.g. "Detailed description for
   fork testing purposes covering more than one hundred characters so that it
   satisfies the case's length requirement fully."

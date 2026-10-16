@@ -50,7 +50,7 @@ a `create_bucket_button` `LocatorDescriptor` (testid `artifacts-create-bucket-bu
 **zero methods that click it or drive the "New Bucket" form** — no automated test anywhere
 in `automation/tests/ui/artifacts/` exercises bucket *creation* via the UI. The three
 existing artifact test files
-(`test_artifacts_multi_file.py`/ELITEA-1327, `test_artifacts_upload_duplicate_cancel.py`/ELITEA-1832,
+(`test_artifacts_multi_file.py`/ELITEA-3743, `test_artifacts_upload_duplicate_cancel.py`/ELITEA-1832,
 `test_artifacts_download_single_file_dropdown.py`/ELITEA-1839) all **create their bucket via
 `ArtifactAPI.create_bucket()`** (the `artifact_bucket` fixture, API-only, no UI) and never
 touch the "+ Artifact Bucket" button or the "New Bucket" form fields.

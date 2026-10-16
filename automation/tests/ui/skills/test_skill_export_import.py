@@ -1,16 +1,16 @@
 """Skill export/import UI tests.
 
 Covers two export/import round trips:
-- ELITEA-1737: create a skill, export its base version as a ``.md`` file,
+- ELITEA-3749: create a skill, export its base version as a ``.md`` file,
   import that file as a new skill, verify the imported skill's fields
   match the source exactly.
-- ELITEA-1738: create a skill, save a new named version (``ver_1``),
+- ELITEA-3750: create a skill, save a new named version (``ver_1``),
   export *that* version, import it, and verify the imported skill lands
   on a `base` version (not `ver_1`) whose fields match the exported
   version's content.
 
-ELITEA-1737 — see test-specs/skills/l3_import_skill_base_version_ELITEA-1737.md
-ELITEA-1738 — see test-specs/skills/l3_import-skill-non-base-version_ELITEA-1738.md
+ELITEA-3749 — see test-specs/skills/l3_import_skill_base_version_ELITEA-3749.md
+ELITEA-3750 — see test-specs/skills/l3_import-skill-non-base-version_ELITEA-3750.md
 """
 
 import logging
@@ -60,10 +60,10 @@ def cleanup_skill_ids(skill_api):
 
 
 class TestSkillExportImport:
-    """Export a skill's base version and import it as a new skill (ELITEA-1737)."""
+    """Export a skill's base version and import it as a new skill (ELITEA-3749)."""
 
-    @pytest.mark.tms("ELITEA-1737")
-    @allure.issue("ELITEA-1737", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-3749")
+    @allure.issue("ELITEA-3749", "onetest-ai Test Case link")
     @pytest.mark.p2
     @pytest.mark.regression
     def test_export_and_import_skill_base_version(self, page, skill_api, cleanup_skill_ids):
@@ -85,11 +85,11 @@ class TestSkillExportImport:
         unique_suffix = uuid.uuid4().hex[:8]
         skill_name = f"el-1737-skill-{unique_suffix}"
         skill_description = (
-            "Automation test skill for base version export/import round trip (ELITEA-1737)."
+            "Automation test skill for base version export/import round trip (ELITEA-3749)."
         )
         skill_tag = "regression"
         skill_instructions = (
-            "You are a test skill created for ELITEA-1737 export/import base version "
+            "You are a test skill created for ELITEA-3749 export/import base version "
             "verification. Always respond with the single word CONFIRMED."
         )
 
@@ -192,7 +192,7 @@ class TestSkillExportImport:
         with allure.step("Step 7 — Upload exported file; verify Import parameters dialog"):
             list_page.import_skill(str(download_path), timeout=IMPORT_TIMEOUT)
             # Preview fields are addressed by their own testids (set on the
-            # dialog's underlying content nodes in EliteaUI, ELITEA-1737
+            # dialog's underlying content nodes in EliteaUI, ELITEA-3749
             # rework, exposed as SkillsListPage LocatorDescriptor fields) and
             # asserted by text content, rather than located BY the expected
             # text — the name/description/instructions values are
@@ -228,7 +228,7 @@ class TestSkillExportImport:
         with allure.step("Step 8 — Confirm import; verify success toast and new unique ID"):
             list_page.confirm_import(timeout=NAVIGATION_TIMEOUT)
             # ``toast-message`` is a generic testid on the app-wide Toast
-            # component's message container (EliteaUI ELITEA-1737 rework,
+            # component's message container (EliteaUI ELITEA-3749 rework,
             # exposed as SkillsListPage.import_success_toast_message) —
             # asserted by text content rather than located BY the text.
             success_toast = list_page.import_success_toast_message
@@ -293,7 +293,7 @@ class TestSkillExportImport:
 
 
 class TestSkillExportImportNonBaseVersion:
-    """Export a skill's non-base version and import it (ELITEA-1738).
+    """Export a skill's non-base version and import it (ELITEA-3750).
 
     Verifies that importing a `.md` file exported from a non-base version
     (`ver_1`) creates a new skill whose version is `base` (not `ver_1`),
@@ -301,8 +301,8 @@ class TestSkillExportImportNonBaseVersion:
     the source skill's original base-version content.
     """
 
-    @pytest.mark.tms("ELITEA-1738")
-    @allure.issue("ELITEA-1738", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-3750")
+    @allure.issue("ELITEA-3750", "onetest-ai Test Case link")
     @pytest.mark.p3
     @pytest.mark.regression
     def test_import_skill_non_base_version(self, page, skill_api, cleanup_skill_ids):
@@ -326,11 +326,11 @@ class TestSkillExportImportNonBaseVersion:
         skill_name = f"el-1738-skill-{unique_suffix}"
         skill_description = (
             "Automation test skill for non-base version export/import "
-            "verification (ELITEA-1738)."
+            "verification (ELITEA-3750)."
         )
         skill_tag = "regression"
         base_instructions = (
-            "You are a test skill created for ELITEA-1738 base-version "
+            "You are a test skill created for ELITEA-3750 base-version "
             "export/import verification. Always respond with the single "
             "word BASE."
         )
@@ -449,7 +449,7 @@ class TestSkillExportImportNonBaseVersion:
             list_page.navigate()
             list_page.import_skill(str(download_path), timeout=IMPORT_TIMEOUT)
             # Preview fields are addressed by their own testids (set on the
-            # dialog's underlying content nodes in EliteaUI, ELITEA-1737
+            # dialog's underlying content nodes in EliteaUI, ELITEA-3749
             # rework, exposed as SkillsListPage LocatorDescriptor fields) and
             # asserted by text content, rather than located BY the expected
             # text.
@@ -489,7 +489,7 @@ class TestSkillExportImportNonBaseVersion:
         with allure.step("Step 6 — Confirm import; verify success toast and new unique ID"):
             list_page.confirm_import(timeout=NAVIGATION_TIMEOUT)
             # ``toast-message`` is a generic testid on the app-wide Toast
-            # component's message container (EliteaUI ELITEA-1737 rework,
+            # component's message container (EliteaUI ELITEA-3749 rework,
             # exposed as SkillsListPage.import_success_toast_message) —
             # asserted by text content rather than located BY the text.
             success_toast = list_page.import_success_toast_message

@@ -973,7 +973,7 @@ The Pipelines dashboard's right-side "Tags" panel (`PrivatePipelinesList.jsx` �
 `RightInfoPanel.jsx` → `Categories.jsx`, same component tree for the
 `cardContentType !== ApplicationAdmin` case that every non-admin private
 pipeline view uses) is the identical shared component
-`SkillsListPage`'s tag filter already drives (ELITEA-1740). Confirmed by
+`SkillsListPage`'s tag filter already drives (ELITEA-3752). Confirmed by
 source read AND live DOM: `Categories.jsx` hardcodes
 `data-testid={\`tags-panel-chip-${name}\`}` (line 336) and
 `data-testid="tags-panel-clear-all"` (line 299) directly — entity-agnostic,

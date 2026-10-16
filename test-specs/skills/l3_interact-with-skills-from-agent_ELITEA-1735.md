@@ -31,7 +31,7 @@
 ### generate-per-test (in test setup, cleaned up in its own teardown)
 - Skill 1 name: kebab-case, e.g. `elitea-1735-skill-uppercase` — **must be
   lowercase letters/digits/hyphens only** (same client-side Skill-name validation
-  documented for ELITEA-1737 — see `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`).
+  documented for ELITEA-3749 — see `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`).
 - Skill 1 description: any non-empty string.
 - Skill 1 instructions: `"Always respond with the exact text the user asked for,
   but convert the ENTIRE output to UPPER CASE letters. Do not use any lowercase
@@ -61,7 +61,7 @@ skills + 1 agent, all created and torn down within the test).
    (`skill-save-button`).
    - **Verify**: a "There are unsaved changes. Are you sure you want to leave?"
      nav-blocker dialog appears immediately after Save (same quirk as
-     ELITEA-1737) — confirm it via `alert-dialog-confirm-button` testid. URL
+     ELITEA-3749) — confirm it via `alert-dialog-confirm-button` testid. URL
      settles on `/skills/all/{id}`; note Skill 1's ID (e.g. `66`).
 2. Repeat step 1 for Skill 2 with the underscore-instruction data. Note Skill
    2's ID (e.g. `67`).

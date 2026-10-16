@@ -213,10 +213,10 @@ specific to this case:
   field-preservation/independence) but share the underlying Fork
   interaction methods.
 - `save_as_version(name)` on `SkillDetailPage` (once added, mirroring the
-  ELITEA-1738/2440 precedent already in the page object per
+  ELITEA-3750/2440 precedent already in the page object per
   `.agents/memory/qa-engineer/skill_save_as_version_captures_current_editor_content.md`)
   snapshots CURRENT editor content — the test must edit instructions/tags
   BEFORE calling it, never after.
 - Reuse `SkillDetailPage.VERSION_OPTION`/`VERSION_OPTION_ANY` (pre-existing,
-  from the ELITEA-1738 rework) for the version-dropdown assertions in step
+  from the ELITEA-3750 rework) for the version-dropdown assertions in step
   4 — do not add new testids for this, they already exist.

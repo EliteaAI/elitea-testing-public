@@ -16,7 +16,7 @@
 ## Overlap check vs existing automation
 
 `automation/tests/ui/artifacts/test_artifacts_multi_file.py`
-(`TestArtifactMultiFileDownload`, ELITEA-1327) and `automation/pages/artifacts_page.py`
+(`TestArtifactMultiFileDownload`, ELITEA-3743) and `automation/pages/artifacts_page.py`
 were read before this run. That test exercises: an **agent** creating multiple
 files via the Artifact toolkit in one tool call, then verifying all files are
 visible/downloadable at bucket root and in a sub-folder. It never drives the

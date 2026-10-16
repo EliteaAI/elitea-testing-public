@@ -26,7 +26,7 @@
 
 ## Test Steps
 1. Navigate to Settings → Analytics, then click the "Users" tab (reuse
-   `AnalyticsPage.tab_users`, `analytics-tab-users`, already on `main` from ELITEA-2310).
+   `AnalyticsPage.tab_users`, `analytics-tab-users`, already on `main` from ELITEA-3755).
    - **Verify**: the Users tab becomes selected (`aria-selected="true"`) and its panel renders
      without error.
 2. Verify the section header shows "User Activity" and a user-count line reading `"{N} users"`
@@ -80,13 +80,13 @@
 
 **Axis 2 — Analyst additions.**
 - `step 1` asserts `aria-selected="true"` on the Users tab (beyond the case's bare "loads
-  successfully") — *added: cheap, catches a tab-switch regression using the same handle ELITEA-2310
+  successfully") — *added: cheap, catches a tab-switch regression using the same handle ELITEA-3755
   already established (`is_tab_selected`).*
 - `step 2` asserts the count is a genuine integer that matches the visible row total, not just
   that *some* text matching "N users" is present — *added: catches a stale/hardcoded count
   regression (e.g. count frozen at page-load value while rows update after a search filter).*
 - `step 4` asserts exact column **order**, not just presence — *added: order is part of the
-  visible UI contract and free to assert once the header handle is captured (mirrors ELITEA-2310's
+  visible UI contract and free to assert once the header handle is captured (mirrors ELITEA-3755's
   tab/preset order assertions).*
 - `step 6` asserts the *default* rows-per-page value (20), read directly off
   `analytics-users-pagination-rows-select`'s rendered text — *added: the case only asks for "a
@@ -140,7 +140,7 @@ it uses. All 10 handles below need adding via `add-data-testid`; uniqueness veri
 | Previous-page button | `LocatorDescriptor(testid="analytics-users-pagination-prev")` | needs-adding | Same `<TablePagination>` — wire via `slotProps={{ actions: { previousButton: { 'data-testid': 'analytics-users-pagination-prev' } } }}` (non-deprecated form; `backIconButtonProps` is deprecated in favor of this per the same file's propTypes comments). Assert `disabled` when on the only/first page. |
 | Next-page button | `LocatorDescriptor(testid="analytics-users-pagination-next")` | needs-adding | Same `<TablePagination>` — wire via `slotProps={{ actions: { nextButton: { 'data-testid': 'analytics-users-pagination-next' } } }}`. Assert `disabled` when `count <= rowsPerPage` (single page, live-observed state with 3 users / 20 rows-per-page). |
 
-**Reused from ELITEA-2310** (already on `main`, no new work): `AnalyticsPage.tab_users`
+**Reused from ELITEA-3755** (already on `main`, no new work): `AnalyticsPage.tab_users`
 (`analytics-tab-users`) to navigate to the tab, and `is_tab_selected()` to confirm selection.
 
 Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
@@ -187,12 +187,12 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
 
 ## Automation Hints
 - Framework: Playwright + pytest (per `.agents/testing.md`).
-- Extend `pages/analytics_page.py` (created by ELITEA-2310) with the Users-tab-specific
+- Extend `pages/analytics_page.py` (created by ELITEA-3755) with the Users-tab-specific
   `LocatorDescriptor` fields above, rather than creating a second page object — same page,
-  same URL, same class; ELITEA-2310 already covers the page shell (header/tabs/dates), this case
+  same URL, same class; ELITEA-3755 already covers the page shell (header/tabs/dates), this case
   covers the Users-tab panel content.
 - Reuse `AnalyticsPage.navigate()` + `AnalyticsPage.tab_users` + `AnalyticsPage.is_tab_selected()`
-  from ELITEA-2310 to reach and confirm the Users tab — do not re-derive tab navigation.
+  from ELITEA-3755 to reach and confirm the Users tab — do not re-derive tab navigation.
 - Wait strategy: wait for the `analytics_users/prompt_lib/...` GET response (`page.expect_response`
   matching the URL substring `/elitea_core/analytics_users/prompt_lib/`) before asserting table
   content, mirroring `AnalyticsPage.navigate()`'s existing `ANALYTICS_QUERY_URL_SUBSTRING` wait

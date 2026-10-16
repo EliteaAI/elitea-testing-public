@@ -32,7 +32,7 @@
 ## Test Steps
 1. Navigate to Settings → Analytics, then click the "Agents & Pipelines" tab (reuse
    `AnalyticsPage.tab_agents_pipelines`, `analytics-tab-agents-pipelines`, already on `main` from
-   ELITEA-2310).
+   ELITEA-3755).
    - **Verify**: the tab becomes selected (`aria-selected="true"`) and its panel renders without
      console error.
    - **Case-text drift** (see § Known Defects, filed elitea-testing-public#1195): the case's step 1
@@ -107,7 +107,7 @@
 
 **Axis 2 — Analyst additions.**
 - `step 1` asserts `aria-selected="true"` on the tab (beyond the case's bare "loads successfully")
-  — *added: cheap, catches a tab-switch regression using the same handle ELITEA-2310 already
+  — *added: cheap, catches a tab-switch regression using the same handle ELITEA-3755 already
   established (`is_tab_selected`).*
 - `step 2`/`step 3` assert the charts are conditionally rendered (`agentChartData.length > 0` /
   `chat_daily.length > 0`) — *added: the case's steps assume the charts are unconditionally present;
@@ -117,7 +117,7 @@
   the case's own numbered steps assume active data.*
 - `step 5` asserts the exact column **order**, not just presence — *added: order is part of the
   visible UI contract and free to assert once the header handle is captured (mirrors
-  ELITEA-2310/2312's tab/column order assertions).*
+  ELITEA-3755/2312's tab/column order assertions).*
 - `step 5` also asserts the Users-column conditional visibility across BOTH project types (personal
   vs non-personal) — *added: this is a genuine structural branch in the source
   (`!isPersonalProject &&`) that the case's flat 5-column list doesn't anticipate at all; cheap to
@@ -166,7 +166,7 @@ new component prop.
 | Previous-page button | `LocatorDescriptor(testid="analytics-agents-pagination-prev")` | needs-adding | Same `<TablePagination>` — `slotProps={{ actions: { previousButton: {...} } }}` |
 | Next-page button | `LocatorDescriptor(testid="analytics-agents-pagination-next")` | needs-adding | Same `<TablePagination>` — `slotProps={{ actions: { nextButton: {...} } }}` |
 
-**Reused from ELITEA-2310** (already on `main`, no new work): `AnalyticsPage.tab_agents_pipelines`
+**Reused from ELITEA-3755** (already on `main`, no new work): `AnalyticsPage.tab_agents_pipelines`
 (`analytics-tab-agents-pipelines`) to navigate to the tab, `is_tab_selected()` to confirm selection.
 
 Uniqueness verified (2026-08-05, live `git grep` against `origin/main` — see below): all 15 new
@@ -222,10 +222,10 @@ done
 
 ## Automation Hints
 - Framework: Playwright + pytest (per `.agents/testing.md`).
-- Extend `pages/analytics_page.py` (created by ELITEA-2310, extended by ELITEA-2312/2313) with the
+- Extend `pages/analytics_page.py` (created by ELITEA-3755, extended by ELITEA-2312/2313) with the
   Agents-tab-specific `LocatorDescriptor` fields above — same page, same URL, same class.
 - Reuse `AnalyticsPage.navigate()` + `AnalyticsPage.tab_agents_pipelines` + `is_tab_selected()` from
-  ELITEA-2310 to reach and confirm the tab.
+  ELITEA-3755 to reach and confirm the tab.
 - Wait strategy: wait for the `analytics_agents/prompt_lib/...` GET response
   (`page.expect_response` matching URL substring `/elitea_core/analytics_agents/prompt_lib/`)
   before asserting chart/table content — add a new URL-substring constant

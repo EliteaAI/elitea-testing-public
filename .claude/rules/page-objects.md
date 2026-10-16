@@ -370,7 +370,7 @@ def click_save(self):
 ❌ **Don't chain a raw selector off an existing field inside a method** — it
 looks compliant (it starts from a real class field) but bakes an untracked
 selector into method code. Real case (`automation/pages/skill_form_page.py`,
-ELITEA-1737):
+ELITEA-3749):
 ```python
 instructions_editor = LocatorDescriptor(testid="skill-instructions-editor")
 

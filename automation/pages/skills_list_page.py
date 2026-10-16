@@ -96,7 +96,7 @@ class SkillsListPage(BasePage):
             "(EliteaUI/src/components/SearchBar.jsx, rendered from "
             "RightPanel.jsx) — the testid literally says 'agent' even "
             "though this same instance renders on the Skills page "
-            "(ELITEA-1739 AFS Concrete Handles); not a functional defect."
+            "(ELITEA-3751 AFS Concrete Handles); not a functional defect."
         )
     )
 
@@ -343,7 +343,7 @@ class SkillsListPage(BasePage):
         (``EliteaUI/src/components/CardTagSectionItem.jsx``, rendered via
         ``CardTagSection.jsx``) — distinct from the "+N" overflow badge,
         which now carries ``entity-card-tag-overflow`` instead (a boolean
-        ``isOverflow`` prop drives which testid renders; ELITEA-1740
+        ``isOverflow`` prop drives which testid renders; ELITEA-3752
         rework). Scoped to the specific card via the ``entity-card``
         container testid on ``Card.jsx``'s outer wrapper, filtered to the
         card whose ``entity-card-name`` matches ``skill_name`` — so two
@@ -529,7 +529,7 @@ class SkillsListPage(BasePage):
         )
 
     # ------------------------------------------------------------------
-    # Search (ELITEA-1739)
+    # Search (ELITEA-3751)
     # ------------------------------------------------------------------
     #
     # SearchBar.jsx's onChange handler deliberately only updates local
@@ -538,7 +538,7 @@ class SkillsListPage(BasePage):
     # only re-fires on one of two intended activation events: pressing
     # Enter in the input, or clicking the send-icon button. A fill-and-wait
     # alone does NOT activate the filter — this is confirmed, intended
-    # product behavior (see AFS ELITEA-1739), not a workaround for a bug.
+    # product behavior (see AFS ELITEA-3751), not a workaround for a bug.
 
     SKILLS_GRID_ENDPOINT = "/elitea_core/skills/prompt_lib/"
 
@@ -621,7 +621,7 @@ class SkillsListPage(BasePage):
 
         Bare ``.fill("")`` was unreliable during analyst exploration on
         this input (one attempt left stale characters concatenated with
-        new input) — see AFS ELITEA-1739 Concrete Handles. Clears via the
+        new input) — see AFS ELITEA-3751 Concrete Handles. Clears via the
         native ``HTMLInputElement`` value-setter + a bubbling ``input``
         event instead (mirrors a real backspace-to-empty).
 
@@ -675,7 +675,7 @@ class SkillsListPage(BasePage):
         that length it shows a "must be at least 3 letters" toast instead
         of dispatching a query, for BOTH activation modes (Enter and the
         send-icon share the same ``onSearch`` callback). Confirmed live
-        during ELITEA-1739 Phase 2 exploration — a 2-character query
+        during ELITEA-3751 Phase 2 exploration — a 2-character query
         (e.g. the case's literal "Co") cannot activate the grid filter;
         see AFS Known Defects — Clarification #4 (case-text drift, not a
         product bug).
@@ -717,7 +717,7 @@ class SkillsListPage(BasePage):
 
         LOCATOR: the Tags-panel chip (``StyledChip`` in
         ``EliteaUI/src/components/Categories.jsx``) carries a dynamic
-        ``tags-panel-chip-{name}`` testid (ELITEA-1740 rework) via the
+        ``tags-panel-chip-{name}`` testid (ELITEA-3752 rework) via the
         :attr:`TAGS_PANEL_CHIP` template constant.
 
         Waits for the grid-fetching endpoint
@@ -751,7 +751,7 @@ class SkillsListPage(BasePage):
 
         LOCATOR: "Clear all" (``Tooltip`` wrapping an ``IconButton`` in
         ``Categories.jsx``) carries a static ``tags-panel-clear-all`` testid
-        (ELITEA-1740 rework) — it is only rendered while a tag filter is
+        (ELITEA-3752 rework) — it is only rendered while a tag filter is
         active.
 
         Waits for the grid-fetching endpoint to re-fire with the ``tags``

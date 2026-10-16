@@ -274,7 +274,7 @@ class SkillDetailPage(SkillFormPage):
 
     # ------------------------------------------------------------------
     # Version management (Save As Version / VERSION selector) — testids
-    # added in the ELITEA-1738 rework (see EliteaUI `automation/testids`:
+    # added in the ELITEA-3750 rework (see EliteaUI `automation/testids`:
     # SaveSkillVersionButton.jsx, SingleSelect.jsx, SingleSelectMenuItem.jsx,
     # version.helpers.jsx, SkillTabBar.jsx).
     # ------------------------------------------------------------------
@@ -335,7 +335,7 @@ class SkillDetailPage(SkillFormPage):
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
     # Scoped sub-selector for the pin icon rendered INSIDE a version option
-    # (ELITEA-1738 rework, pre-existing testid). Only rendered on the option
+    # (ELITEA-3750 rework, pre-existing testid). Only rendered on the option
     # whose id equals the skill's default version — chain off the
     # already-testid'd VERSION_OPTION.format(name) parent, never a
     # page-level handle. Same shape as AgentDetailPage.VERSION_OPTION_PIN_ICON.
@@ -440,7 +440,7 @@ class SkillDetailPage(SkillFormPage):
         *first* digit segment, so this scans forward and returns on the
         first match (fixed from a reversed/last-match scan that returned
         the Version ID instead of the Skill ID once a second digit segment
-        was present — ELITEA-1738; identical result for existing
+        was present — ELITEA-3750; identical result for existing
         single-segment callers).
 
         Returns:
@@ -814,7 +814,7 @@ class SkillDetailPage(SkillFormPage):
         method already exports whatever version is currently active (the
         ``export-version-menuitem`` testid is version-scoped, not
         base-specific); this alias just avoids the misleading "base" in the
-        call site's name when exporting a non-base version (ELITEA-1738).
+        call site's name when exporting a non-base version (ELITEA-3750).
 
         Args:
             timeout: Maximum wait time in milliseconds for the download event.
@@ -1021,7 +1021,7 @@ class SkillDetailPage(SkillFormPage):
         ``Version "{version_name}" created`` toast and for the URL to gain a
         new version-id path segment.
 
-        LOCATOR: testid-based throughout (ELITEA-1738 testid rework) — the
+        LOCATOR: testid-based throughout (ELITEA-3750 testid rework) — the
         "Save As Version" button, the "Create version" dialog, its Name
         field, and the confirm button all carry ``data-testid`` now (see the
         class-level ``LocatorDescriptor`` fields above).
@@ -1115,7 +1115,7 @@ class SkillDetailPage(SkillFormPage):
     def get_version_selector_value(self) -> str:
         """Return the currently displayed value of the VERSION selector.
 
-        LOCATOR: ``skill-version-select`` testid (ELITEA-1738 testid rework —
+        LOCATOR: ``skill-version-select`` testid (ELITEA-3750 testid rework —
         ``SkillTabBar.jsx`` now passes ``data-testid`` through to
         ``SingleSelect``).
 
@@ -1130,7 +1130,7 @@ class SkillDetailPage(SkillFormPage):
 
         LOCATOR: ``skill-version-select`` testid for the combobox trigger;
         each dropdown option carries a name-keyed ``version-option-{name}``
-        testid (ELITEA-1738 testid rework — set in ``buildVersionOption()``,
+        testid (ELITEA-3750 testid rework — set in ``buildVersionOption()``,
         shared by every version-selector consumer, not just this page).
 
         Confirms the switch by polling the selector's own displayed text
