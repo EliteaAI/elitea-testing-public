@@ -34,7 +34,7 @@
         },
         {
           "kind": "defect",
-          "note": "Broken TMS traceability link. The `@allure.issue(...)` decorator points at `https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2009_pipeline-code-node-configuration.md` — verified 404 via `gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/...` (Not Found). The real case file is `ELITEA-2009_configure-code-node.md` (verified present, 227… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Broken TMS traceability link. The `@allure.issue(...)` decorator points at `https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2009_configure-code-node.md` — verified 404 via `gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/...` (Not Found). The real case file is `ELITEA-2009_configure-code-node.md` (verified present, 227… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/tests/ui/pipelines/test_pipeline_code_node_configuration.py:41"
         },
         {

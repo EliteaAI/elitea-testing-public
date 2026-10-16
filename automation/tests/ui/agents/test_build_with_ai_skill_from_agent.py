@@ -80,7 +80,7 @@ class TestBuildWithAISkillFromAgent:
     @pytest.mark.tms("ELITEA-1999")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "agents/ELITEA-1999_build-with-ai-skill-from-agent-auto-attaches-and-redirects.md",
+        "skills/build_with_ai/ELITEA-1999_build-with-ai-from-agent-skill-auto-attached-and-redirect-back.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1

@@ -64,8 +64,8 @@ def capture_conversation_id(page) -> str | None:
 class TestVoiceConfiguration:
     """Voice Configuration Settings tests matching manual test cases."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/voice/voice-configuration-settings/ELITEA-1315_apply-saves-and-cancel-discards-voice-settings-changes.md", "onetest-ai Test Case link")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/voice/voice-configuration-settings/ELITEA-1312_voice-settings-dialog-opens-and-displays-all-controls-including-voice.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1315_apply-saves-and-cancel-discards-voice-settings-changes.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1312_voice-settings-dialog-opens-and-displays-all-controls-including-voice.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_voice_selection_from_chat(self, page, conversation_api):
         """TC1: Voice Selection via TTS Controls in Chat.
@@ -179,7 +179,7 @@ class TestVoiceConfiguration:
                 except Exception as e:
                     logger.warning("Failed to delete conversation %s: %s", conv_id, e)
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/voice/voice-configuration-settings/ELITEA-1313_voice-settings-dialog-speed-and-volume-sliders-adjust-playback.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1313_voice-settings-dialog-speed-and-volume-sliders-adjust-playback.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_speed_and_volume_controls(self, page, conversation_api):
         """TC2: Speed and Volume Slider Adjustments.
@@ -296,7 +296,7 @@ class TestVoiceConfiguration:
                 except Exception as e:
                     logger.warning("Failed to delete conversation %s: %s", conv_id, e)
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/voice/voice-configuration-settings/ELITEA-1314_voice-settings-sync-between-chat-dialog-and-personalization-page.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1314_voice-settings-sync-between-chat-dialog-and-personalization-page.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_voice_settings_sync(self, page, conversation_api):
         """TC3: Settings Synchronization from Personalization to Chat.
@@ -391,7 +391,7 @@ class TestVoiceConfiguration:
                 except Exception as e:
                     logger.warning("Failed to delete conversation %s: %s", conv_id, e)
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/voice/voice-configuration-settings/ELITEA-1316_voice-personalization-page-all-controls-present-including-functional-p.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1316_voice-personalization-page-all-controls-present-including-functional-p.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_voice_preview_personalization(self, page):
         """TC4: Voice Personalization Controls in Settings Page.

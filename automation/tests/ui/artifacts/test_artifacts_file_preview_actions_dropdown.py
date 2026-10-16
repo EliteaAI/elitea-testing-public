@@ -89,8 +89,7 @@ class TestArtifactFilePreviewActionsDropdown:
     @allure.severity(allure.severity_level.NORMAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-        "automated-full-regression-ui/artifacts/"
-        "ELITEA-1856_file-preview-actions-dropdown.md",
+        "automated-full-regression-ui/artifacts/ELITEA-1856_file-preview-edit-actions-dropdown-copy-download-delete.md",
         "onetest-ai Test Case link",
     )
     def test_actions_dropdown_copy_download_delete(

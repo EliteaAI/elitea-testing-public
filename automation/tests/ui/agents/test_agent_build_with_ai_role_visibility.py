@@ -50,7 +50,7 @@ class TestAgentBuildWithAIButtonRoleVisibility:
     @pytest.mark.tms("ELITEA-1903")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "agents/build_with_ai/ELITEA-1903_build-with-ai-button-visible-for-admin-and-editor-roles.md",
+        "agents/build_with_ai/ELITEA-1903_build-with-ai-button-visible-for-admin-and-editor-roles-in-new-agent.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2

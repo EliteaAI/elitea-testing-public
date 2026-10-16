@@ -88,8 +88,7 @@ class TestArtifactFilePreviewImageRestrictedControls:
     @allure.severity(allure.severity_level.NORMAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-        "automated-full-regression-ui/artifacts/"
-        "ELITEA-1862_file-preview-image-restricted-controls.md",
+        "automated-full-regression-ui/artifacts/ELITEA-1862_file-preview-image-opens-as-image-preview.md",
         "onetest-ai Test Case link",
     )
     def test_image_file_opens_directly_with_restricted_controls(

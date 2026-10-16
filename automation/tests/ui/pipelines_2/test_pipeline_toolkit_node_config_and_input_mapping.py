@@ -49,8 +49,7 @@ _SEARCH_QUERY_VALUE = "{input} error"
 @pytest.mark.tms("ELITEA-2010")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2010_toolkit-node-config-and-input-mapping.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2010_pipeline-with-toolkit-node.md",
     "onetest-ai Test Case link",
 )
 def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit_with_selected_tools):

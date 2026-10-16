@@ -58,7 +58,7 @@ class TestAIProvidersPageSections:
     @pytest.mark.tms("ELITEA-2392")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-ai-providers/ELITEA-2392_ai-providers-page-sections-load-without-error.md",
+        "settings/ai-configuration/ELITEA-2392_ai-configuration-page-loads-all-integration-sections-without.md",
         "onetest-ai Test Case link",
     )
     def test_ai_providers_page_sections_load_without_error(self, page):

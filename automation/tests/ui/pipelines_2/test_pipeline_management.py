@@ -58,7 +58,7 @@ DASHBOARD_REFRESH_TIMEOUT = 15000
 class TestPipelineDashboard:
     """PIPE-001: Pipeline dashboard loads and displays pipelines list."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0855")
     @pytest.mark.p0
     @pytest.mark.smoke
@@ -76,8 +76,8 @@ class TestPipelineDashboard:
         with allure.step("Step 3 — Verify search input is visible"):
             assert list_page.search_input.is_visible(), "Search input should be visible"
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0855", "ELITEA-0864")
     @pytest.mark.p1
     def test_pipeline_created_via_api_visible_in_dashboard(self, page, pipeline_id, pipeline_api):
@@ -96,7 +96,7 @@ class TestPipelineDashboard:
             )
 
     @pytest.mark.tms("ELITEA-2024", "ELITEA-0855")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2024_pipeline-dashboard-view-toggle-card-vs-table.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_view_toggle_table_and_card(self, page, pipeline_id, pipeline_api):
@@ -184,7 +184,7 @@ class TestPipelineDashboard:
 class TestCreatePipeline:
     """PIPE-002: Create new pipeline via UI."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0864")
     @pytest.mark.p0
     @pytest.mark.smoke
@@ -229,7 +229,7 @@ class TestCreatePipeline:
             except Exception as cleanup_exc:
                 print(f"[WARN] Failed to delete pipeline {pipeline_id_str}: {cleanup_exc}")
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0864_pipeline-creation-ui-and-api.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0864")
     @pytest.mark.p1
     def test_create_pipeline_required_fields_validation(self, page):
@@ -347,7 +347,7 @@ class TestCreatePipeline:
 class TestEditPipeline:
     """PIPE-003: Edit pipeline name and description."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0850")
     @pytest.mark.p1
     def test_edit_pipeline_name(self, page, pipeline_id, pipeline_api):
@@ -371,7 +371,7 @@ class TestEditPipeline:
                 f"Pipeline name should be '{new_name}' after save"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0850")
     @pytest.mark.p1
     def test_edit_pipeline_description(self, page, pipeline_id, pipeline_api):
@@ -395,7 +395,7 @@ class TestEditPipeline:
                 f"Description should be '{new_desc}' after save and reload"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0851")
     @pytest.mark.p1
     def test_pipeline_detail_page_loads(self, page, pipeline_id, pipeline_api):
@@ -415,7 +415,7 @@ class TestEditPipeline:
                 "Description should match API data"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0851")
     @pytest.mark.p1
     def test_pipeline_has_configuration_and_history_tabs(self, page, pipeline_id):
@@ -434,7 +434,7 @@ class TestEditPipeline:
 class TestDeletePipeline:
     """PIPE-004: Delete pipeline via API and verify in UI."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0850")
     @pytest.mark.p1
     def test_delete_pipeline_via_api(self, page, pipeline_api):
@@ -472,7 +472,7 @@ class TestDeletePipeline:
                 pass
 
     @pytest.mark.tms("ELITEA-2022", "ELITEA-0850")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2022_delete-pipeline.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_delete_pipeline_via_ui_menu(self, page, pipeline_api):
@@ -558,7 +558,7 @@ class TestDeletePipeline:
 class TestSearchPipeline:
     """PIPE-005: Search and filter pipelines by name."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0855")
     @pytest.mark.p1
     def test_search_pipeline_by_name(self, page, pipeline_id, pipeline_api):
@@ -579,7 +579,7 @@ class TestSearchPipeline:
                 f"Pipeline '{pipeline_name}' should appear in search results"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0855")
     @pytest.mark.p1
     def test_search_pipeline_no_results(self, page):

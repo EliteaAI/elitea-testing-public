@@ -32,7 +32,7 @@ class TestSkillVersionSetDefault:
     @pytest.mark.tms("ELITEA-2437")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "skills/ELITEA-2437_skill-version-dropdown-set-default.md",
+        "skills/ELITEA-2437_version-dropdown-shows-pinset-as-default-button-and-confirma.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2

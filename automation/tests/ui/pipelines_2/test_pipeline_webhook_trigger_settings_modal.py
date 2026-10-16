@@ -32,8 +32,7 @@ MODAL_TIMEOUT = 10_000
 @pytest.mark.tms("ELITEA-2006")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2006_entry-point-webhook-trigger-settings-modal.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2006_entry-point-node-webhook-trigger-settings-modal.md",
     "onetest-ai Test Case link",
 )
 def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):

@@ -73,8 +73,7 @@ def _is_known_1267_stepper_prop_leak(msg) -> bool:
 @pytest.mark.tms("ELITEA-2443")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2443_pipeline-subgraph-state-sharing-common-vars.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2443_subgraph-state-sharing-common-state-variables.md",
     "onetest-ai Test Case link",
 )
 def test_subgraph_state_sharing_common_vars(page, pipeline_parent_child_state_sharing):

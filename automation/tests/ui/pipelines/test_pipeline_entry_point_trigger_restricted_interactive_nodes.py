@@ -65,8 +65,7 @@ CHAT_MESSAGE_ONLY_ENABLED = {"chat_message": True, "schedule": False, "webhook":
 @pytest.mark.tms("ELITEA-2008")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2008_entry-point-trigger-restricted-interactive-nodes.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2008_entry-point-node-trigger-restricted-hitl-printer.md",
     "onetest-ai Test Case link",
 )
 def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_llm_id):

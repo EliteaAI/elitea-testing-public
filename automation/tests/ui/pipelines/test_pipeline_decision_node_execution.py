@@ -78,8 +78,7 @@ _END_INTERNAL_ID = "EliteAPipelineEnd"  # ReactFlow's internal id for the synthe
 @pytest.mark.tms("ELITEA-2016")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2016_pipeline-decision-node-multi-branch-execution.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2016_pipeline-with-multiple-branches-decision-node.md",
     "onetest-ai Test Case link",
 )
 def test_decision_node_routes_execution_to_correct_branch(page, pipeline_id):

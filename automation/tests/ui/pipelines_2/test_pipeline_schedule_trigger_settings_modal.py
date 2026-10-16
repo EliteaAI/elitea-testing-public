@@ -47,8 +47,7 @@ def _is_known_1021_warning(msg) -> bool:
 @pytest.mark.tms("ELITEA-2007")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2007_entry-point-schedule-trigger-settings-modal.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2007_entry-point-node-schedule-trigger-settings-modal.md",
     "onetest-ai Test Case link",
 )
 def test_schedule_trigger_settings_modal(page, pipeline_with_llm_id):

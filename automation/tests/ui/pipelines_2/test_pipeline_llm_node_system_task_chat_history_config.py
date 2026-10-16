@@ -34,8 +34,7 @@ _CHAT_HISTORY_VALUE = "[]"
 @pytest.mark.tms("ELITEA-2004")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2004_llm-node-system-task-chat-history-config.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2004_configure-llm-node-system-task-chat-history.md",
     "onetest-ai Test Case link",
 )
 def test_llm_node_system_task_chat_history_config(page, pipeline_id):

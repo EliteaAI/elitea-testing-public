@@ -100,7 +100,7 @@ class TestSkillCopyLink:
     @pytest.mark.tms("ELITEA-2439")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "skills/ELITEA-2439_copy-link-copies-a-valid-url-pointing-to-the-correct-skill-and-version.md",
+        "skills/ELITEA-2439_copy-link-copies-a-valid-url-pointing-to-the-correct-skill-a.md",
         "onetest-ai Test Case link",
     )
     @allure.issue(

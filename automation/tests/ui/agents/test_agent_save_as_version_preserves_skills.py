@@ -93,7 +93,7 @@ class TestAgentSaveAsVersionPreservesSkills:
 
     @pytest.mark.tms("ELITEA-1889")
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1889_agent-save-as-version-preserves-skills.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1889_agent-save-as-version-preserves-all-attached-skills.md",
         "onetest-ai Test Case link",
     )
     @allure.issue(

@@ -111,8 +111,7 @@ class TestArtifactFilePreviewEditSave:
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-        "automated-full-regression-ui/artifacts/"
-        "ELITEA-1852_file-preview-edit-save.md",
+        "automated-full-regression-ui/artifacts/ELITEA-1852_file-preview-edit-edit-content-and-save.md",
         "onetest-ai Test Case link",
     )
     def test_edit_file_content_and_save_changes(

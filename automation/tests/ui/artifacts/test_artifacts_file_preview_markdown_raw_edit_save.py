@@ -94,8 +94,7 @@ class TestArtifactFilePreviewMarkdownRawEditSave:
     @allure.severity(allure.severity_level.NORMAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-        "automated-full-regression-ui/artifacts/"
-        "ELITEA-1858_file-preview-markdown-raw-tab-edit-save.md",
+        "automated-full-regression-ui/artifacts/ELITEA-1858_file-preview-markdown-raw-tab-enables-editing.md",
         "onetest-ai Test Case link",
     )
     def test_raw_tab_enables_editing_and_save_persists(

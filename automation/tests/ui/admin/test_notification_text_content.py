@@ -48,7 +48,7 @@ class TestNotificationTextContent:
     @pytest.mark.tms("ELITEA-2257")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-notifications/ELITEA-2257_notification-text-content-renders-correctly.md",
+        "settings/notifications/ELITEA-2257_notification-text-content-renders-correctly-for-known-notifi.md",
         "onetest-ai Test Case link",
     )
     def test_notification_text_content_renders_correctly(self, page):

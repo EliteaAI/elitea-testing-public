@@ -44,7 +44,7 @@ class TestAgentHubSearchBarFiltersInRealTime:
     @pytest.mark.tms("ELITEA-2363")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "agent-hub/ELITEA-2363_agent-hub-search-bar-filters-agents-in-real-time.md",
+        "agent_hub/ELITEA-2363_agent-hub-search-bar-filters-agents-in-real-time.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2

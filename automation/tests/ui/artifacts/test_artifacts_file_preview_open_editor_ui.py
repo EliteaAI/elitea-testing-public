@@ -87,8 +87,7 @@ class TestArtifactFilePreviewOpenEditorUI:
     @allure.severity(allure.severity_level.NORMAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-        "automated-full-regression-ui/artifacts/"
-        "ELITEA-1851_file-preview-open-editor-ui.md",
+        "automated-full-regression-ui/artifacts/ELITEA-1851_file-preview-edit-open-text-file-verify-editor-ui.md",
         "onetest-ai Test Case link",
     )
     def test_open_supported_text_file_shows_editor_ui(

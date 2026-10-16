@@ -64,7 +64,7 @@ class TestAgentHubPageLoadsPrivateProject:
     @pytest.mark.tms("ELITEA-2350")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "agent-hub/ELITEA-2350_agent-hub-page-loads-successfully-for-private-project.md",
+        "agent_hub/ELITEA-2350_agent-hub-page-loads-successfully-for-private-project.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1

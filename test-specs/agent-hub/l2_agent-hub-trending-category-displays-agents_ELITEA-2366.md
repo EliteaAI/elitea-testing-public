@@ -4,7 +4,7 @@ priority: medium
 family_afs: false
 afs_version: 1.0
 tms_id: ELITEA-2366
-tms_link: "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agent-hub/ELITEA-2366.md"
+tms_link: "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agent_hub/ELITEA-2366_agent-hub-trending-category-displays-agents.md"
 ---
 
 # ELITEA-2366: Agent Hub — Trending category displays agents

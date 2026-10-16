@@ -64,8 +64,8 @@ NAVIGATION_TIMEOUT = 3000     # SPA route changes
 class TestPageLoadAndRendering:
     """TC-CHAT-001 to TC-CHAT-003: Page load and rendering tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1142_chat-basic-functionality.md", "onetest-ai Test Case link")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/smoke-suite/ELITEA-1051_chat-basic-functionality.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1142_chat-basic-functionality.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1051_chat-basic-functionality.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-1051", "ELITEA-1142")
     @pytest.mark.p0
     @pytest.mark.smoke
@@ -95,7 +95,7 @@ class TestPageLoadAndRendering:
 class TestSendingMessages:
     """TC-CHAT-004 to TC-CHAT-007: Message sending tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_send_text_message(self, page, conversation_id):
         """TC-CHAT-003, TC-CHAT-004: Send message and verify history."""
@@ -117,7 +117,7 @@ class TestSendingMessages:
             new_count = chat.get_message_count()
             assert new_count > initial_count, f"Message count should increase: {initial_count} -> {new_count}"
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
     def test_cannot_send_empty_message(self, page, conversation_id):
@@ -141,7 +141,7 @@ class TestSendingMessages:
 class TestMessageActions:
     """TC-CHAT-008 to TC-CHAT-009: Message action tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0502_chat-message-actions.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0502_chat-message-actions.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_copy_message_to_clipboard(self, page, conversation_id):
         """TC-CHAT-008: Copy message to clipboard."""
@@ -181,7 +181,7 @@ class TestConversationUIElements:
     """TC-CHAT-010 to TC-CHAT-013: Conversation UI element tests."""
 
     @pytest.mark.tms("ELITEA-0501")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
     def test_model_selector_opens_menu(self, page, conversation_id):
@@ -216,7 +216,7 @@ class TestConversationUIElements:
                 f"Got: menu visible={menu_visible}, URL={page.url}"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0500")
     @pytest.mark.p1
     def test_attach_files_button_sends_file_with_message(self, page, conversation_id, tmp_path):
@@ -306,7 +306,7 @@ class TestConversationUIElements:
             )
 
     @pytest.mark.tms("ELITEA-0501")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_internal_tools_panel_shows_all_tools(self, page, conversation_id):
         """TC-CHAT-012: Internal tools panel displays all available tools."""
@@ -348,8 +348,8 @@ class TestHashSearch:
     """TC-CHAT-017 to TC-CHAT-018: # search functionality tests."""
 
     @pytest.mark.tms("ELITEA-0501")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_hash_search_participants(self, page, conversation_id):
         """TC-CHAT-017: Use # to search participants."""
@@ -371,8 +371,8 @@ class TestHashSearch:
                 )
 
     @pytest.mark.tms("ELITEA-0501")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_add_participant_via_hash_search(self, page, conversation_id):
         """TC-CHAT-018: Add participant via # search and select option.
@@ -421,7 +421,7 @@ class TestHashSearch:
 class TestContextAndSettings:
     """TC-CHAT-019 to TC-CHAT-020: Context and settings tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_edit_context_settings(self, page, conversation_id):
         """TC-CHAT-019: Edit context settings."""
@@ -461,7 +461,7 @@ class TestContextAndSettings:
 class TestSidebarNavigation:
     """TC-CHAT-021 to TC-CHAT-022: Sidebar navigation tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_open_close_sidebar(self, page, conversation_id):
         """TC-CHAT-021: Open/close sidebar drawer."""
@@ -485,7 +485,7 @@ class TestSidebarNavigation:
                 chat.close_sidebar()
                 chat.wait_for_sidebar_collapsed(timeout=UI_ELEMENT_TIMEOUT)
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_navigate_to_agents_from_sidebar(self, page, conversation_id):
         """TC-CHAT-022: Navigate to Agents from sidebar."""
@@ -512,7 +512,7 @@ class TestSidebarNavigation:
 class TestSearchAndErrorHandling:
     """TC-CHAT-023 to TC-CHAT-024: Search and error handling tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_search_conversations_dialog(self, page, conversation_id):
         """TC-CHAT-023: Search conversations."""
@@ -533,7 +533,7 @@ class TestSearchAndErrorHandling:
                     "search feature may not be available in this environment"
                 )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_handle_message_send_failure(self, page, conversation_id):
         """TC-CHAT-024: Handle message send failure gracefully."""

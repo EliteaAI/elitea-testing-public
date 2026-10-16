@@ -49,7 +49,7 @@ CONVERSATION_STARTER_MAX_CHARS = 768
 class TestWelcomeMessageCharacterCounter:
     """Welcome Message character counter tests (collapsed and fullscreen modes)."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_welcome_message_counter_visible_and_updates_realtime(self, page, agent_id):
         """Character counter appears when typing and updates in real-time.
@@ -110,7 +110,7 @@ class TestWelcomeMessageCharacterCounter:
             detail_page.click_save()
             detail_page.wait_for_network(timeout=10000)
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0061_counter-turns-red-at-zero-in-collapsed-inline-mode.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0061_counter-turns-red-at-zero-in-collapsed-inline-mode.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_welcome_message_counter_turns_red_at_limit(self, page, agent_id):
         """Counter turns red with warning message when character limit is reached.
@@ -148,8 +148,8 @@ class TestWelcomeMessageCharacterCounter:
                 f"Counter should have red/error styling at character limit. Counter text: {counter_text}"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0059_counter-turns-red-when-character-count-reaches-zero-in-full-screen-mod.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0059_counter-turns-red-when-character-count-reaches-zero-in-full-screen-mod.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_welcome_message_fullscreen_counter_and_warning(self, page, agent_id):
         """Fullscreen dialog shows counter that updates and warning at limit.
@@ -226,7 +226,7 @@ class TestWelcomeMessageCharacterCounter:
 
             detail_page.close_welcome_message_fullscreen()
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0062_pasting-over-limit-text-text-truncated-to-768-chars-with-visible-feedb.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0062_pasting-over-limit-text-text-truncated-to-768-chars-with-visible-feedb.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_welcome_message_text_truncated_with_warning(self, page, agent_id):
         """Verify text over limit is truncated to 768 chars with warning message.
@@ -316,7 +316,7 @@ class TestWelcomeMessageCharacterCounter:
 class TestConversationStarterCharacterCounter:
     """Conversation Starter character counter tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_conversation_starter_counter_visible_and_updates(self, page, agent_id):
         """Character counter appears when typing and updates in real-time.
@@ -373,7 +373,7 @@ class TestConversationStarterCharacterCounter:
             else:
                 pytest.skip(f"Could not parse updated counter: {updated_counter_text}")
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0061_counter-turns-red-at-zero-in-collapsed-inline-mode.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0061_counter-turns-red-at-zero-in-collapsed-inline-mode.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_conversation_starter_counter_turns_red_at_limit(self, page, agent_id):
         """Counter turns red with warning message when character limit is reached.
@@ -408,8 +408,8 @@ class TestConversationStarterCharacterCounter:
             is_warning = detail_page.is_conversation_starter_counter_warning(index=0)
             assert is_warning, f"Counter should have red styling at limit. Counter: {counter_text}"
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0059_counter-turns-red-when-character-count-reaches-zero-in-full-screen-mod.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0064_character-counter-is-present-and-updates-in-real-time.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0059_counter-turns-red-when-character-count-reaches-zero-in-full-screen-mod.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_conversation_starter_fullscreen_counter_and_warning(self, page, agent_id):
         """Fullscreen dialog shows counter that updates and warning at limit.
@@ -476,7 +476,7 @@ class TestConversationStarterCharacterCounter:
 
             detail_page.close_conversation_starter_fullscreen()
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0063_multiple-conversation-starters-have-independent-character-counters.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0063_multiple-conversation-starters-have-independent-character-counters.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_multiple_conversation_starters_have_counters(self, page, agent_id):
         """Each conversation starter field has its own counter.

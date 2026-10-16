@@ -61,8 +61,7 @@ def _is_known_1021_warning(msg) -> bool:
 @pytest.mark.tms("ELITEA-2005")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2005_entry-point-trigger-types-persist.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2005_entry-point-node-trigger-types.md",
     "onetest-ai Test Case link",
 )
 def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
@@ -222,8 +221,7 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
 @pytest.mark.tms("ELITEA-2041")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2041_pipeline-entry-point-trigger-shown-only-on-entry-node.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2041_pipeline-trigger-shown-on-entry-point-node-only.md",
     "onetest-ai Test Case link",
 )
 def test_entry_point_trigger_shown_only_on_entry_point_node(page, pipeline_with_llm_id):

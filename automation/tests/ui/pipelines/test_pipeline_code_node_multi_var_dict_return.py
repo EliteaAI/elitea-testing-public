@@ -69,8 +69,7 @@ def _is_known_1267_stepper_prop_leak(msg) -> bool:
 @pytest.mark.tms("ELITEA-2447")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/pipelines/"
-    "ELITEA-2447_code-node-return-dict-multiple-state-vars.md",
+    "automated-full-regression-ui/pipelines/ELITEA-2447_code-node-return-dict-to-modify-multiple-state-variables.md",
     "onetest-ai Test Case link",
 )
 def test_code_node_return_dict_multiple_state_vars(

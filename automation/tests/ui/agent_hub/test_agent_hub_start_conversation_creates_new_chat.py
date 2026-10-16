@@ -59,7 +59,7 @@ class TestAgentHubStartConversationCreatesNewChat:
     @pytest.mark.tms("ELITEA-2360")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "agent_hub/ELITEA-2360.md",
+        "agent_hub/ELITEA-2360_agent-hub-start-conversation-creates-new-chat-and-redirects.md",
         "onetest-ai Test Case link",
     )
     def test_agent_hub_start_conversation_creates_new_chat(self, page: Page, _browser_cookies):

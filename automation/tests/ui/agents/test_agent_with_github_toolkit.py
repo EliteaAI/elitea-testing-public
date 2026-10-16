@@ -70,7 +70,7 @@ def _attach_toolkit_to_agent(
 class TestAddToolkitToAgent:
     """Add a GitHub toolkit to an agent and verify it's attached."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_add_toolkit_to_agent(
         self,
@@ -131,7 +131,7 @@ class TestAddToolkitToAgent:
 class TestRemoveToolkitFromAgent:
     """Remove a toolkit from an agent and verify it's gone."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_remove_toolkit_from_agent(
         self,
@@ -171,7 +171,7 @@ class TestRemoveToolkitFromAgent:
 class TestChatWithAgentToolkit:
     """Chat with an agent that has a GitHub toolkit and verify tool execution."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_agent_chat_with_github_toolkit(
         self,

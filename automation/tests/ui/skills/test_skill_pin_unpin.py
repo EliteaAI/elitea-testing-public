@@ -28,7 +28,7 @@ class TestSkillPinUnpin:
     @pytest.mark.tms("ELITEA-2435")
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "skills/ELITEA-2435_skill-pin-unpin-flow.md",
+        "skills/ELITEA-2435_skill-pin-and-unpin-flow.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
