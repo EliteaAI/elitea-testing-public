@@ -95,10 +95,11 @@ class TestArtifactMultiFileDownload:
     file survived when an agent called the toolkit multiple times in one turn.
     """
 
+    @pytest.mark.tms("ELITEA-1327")
     @pytest.mark.p0
     @allure.title("Agent creates files at root and in subfolder — all visible and accessible")
     @allure.severity(allure.severity_level.CRITICAL)
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/artifacts/artifacts-toolkit-multi-file/ELITEA-1327_verify-all-files-downloadable-when-agent-creates-multiple-files.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/artifacts/ELITEA-1327_verify-all-files-downloadable-when-agent-creates-multiple-files.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/elitea_issues/issues/5313", "Github issue link")
     def test_agent_creates_files_at_root_and_in_subfolder(
         self,

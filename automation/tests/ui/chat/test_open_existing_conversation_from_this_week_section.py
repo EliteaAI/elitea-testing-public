@@ -40,6 +40,7 @@ class TestOpenExistingConversationFromThisWeekSection:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2096_open-existing-conversation-from-this-week-section.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.tms("ELITEA-2096")
     def test_open_existing_conversation_from_this_week_section(
         self, page, conversation_api
     ):

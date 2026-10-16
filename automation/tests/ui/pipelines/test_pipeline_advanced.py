@@ -66,7 +66,7 @@ FORM_SAVE_TIMEOUT = 15_000
 class TestYamlEditor:
     """PIPE-019 to PIPE-021: YAML editor view tests."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_yaml_view_toggle(self, page, pipeline_id):
         """PIPE-019: Switch to YAML view and verify the editor is visible."""
@@ -90,7 +90,7 @@ class TestYamlEditor:
                 "Flow canvas should be visible after switching back to Flow view"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_yaml_content_reflects_pipeline(self, page, pipeline_with_llm_id):
         """PIPE-020: YAML content should reflect the pipeline structure."""
@@ -117,7 +117,7 @@ class TestYamlEditor:
                 f"confirm pipeline structure, got: {yaml_content[:200]}"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_flow_yaml_round_trip(self, page, pipeline_id):
         """PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."""
@@ -152,8 +152,8 @@ class TestYamlEditor:
 class TestDiscardChanges:
     """PIPE-022: Discard changes reverts unsaved edits."""
 
-    @pytest.mark.tms("ELITEA-2048")
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-0860")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_discard_reverts_name_change(self, page, pipeline_id, pipeline_api):
         """PIPE-022: Edit name, click Discard, and verify original name restored."""
@@ -186,6 +186,7 @@ class TestDiscardChanges:
         "automated-full-regression-ui/pipelines/ELITEA-2048_pipeline-unsaved-changes-and-discard.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.tms("ELITEA-2048")
     @pytest.mark.p1
     def test_save_discard_button_states_toggle_on_edit_and_discard(self, page, pipeline_id):
         """ELITEA-2048: Save/Discard are disabled on a clean pipeline, become
@@ -254,7 +255,7 @@ class TestDiscardChanges:
 class TestMakeEntrypoint:
     """PIPE-024: Make node entrypoint via node menu."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_make_node_entrypoint(self, page, pipeline_id):
         """PIPE-024: Set a node as entrypoint via the three-dot menu."""
@@ -314,7 +315,7 @@ class TestMakeEntrypoint:
 class TestActionsMenu:
     """PIPE-028 to PIPE-029: Three-dot menu items and actions."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0859_pipeline-three-dot-menu-and-actions.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0859_pipeline-three-dot-menu-and-actions.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_three_dot_menu_lists_items(self, page, pipeline_id):
         """PIPE-028: The three-dot menu should contain expected items."""
@@ -329,7 +330,7 @@ class TestActionsMenu:
             assert any("Delete" in item or "delete" in item for item in items), f"Expected 'Delete' in menu items: {items}"
             assert any("Export" in item or "export" in item for item in items), f"Expected 'Export' in menu items: {items}"
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0859_pipeline-three-dot-menu-and-actions.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0859_pipeline-three-dot-menu-and-actions.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_export_pipeline_if_available(self, page, pipeline_id):
         """PIPE-029: Export pipeline via menu (skips if not available)."""
@@ -354,7 +355,7 @@ class TestActionsMenu:
 class TestMultiNodeTopology:
     """PIPE-030: Multi-node pipeline topology."""
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_three_node_chain(self, page, pipeline_id):
         """PIPE-030: Build a three-node chain: LLM → Code → END."""
@@ -390,7 +391,7 @@ class TestMultiNodeTopology:
                 f"Should have at least 2 edges, got {pipelines.get_edge_count()}"
             )
 
-    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_save_multi_node_pipeline(self, page, pipeline_id):
         """PIPE-030b: Build a multi-node pipeline, save, and verify persistence."""

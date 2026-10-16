@@ -490,10 +490,11 @@ class TestBlockedToolkitLiveReload:
     """
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/admin-portal/guardrails-live-reload/ELITEA-1694_blocked-toolkit-live-reload-case-insensitive.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-1694_blocked-toolkit-live-reload-case-insensitive.md",
         "onetest-ai Test Case link"
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
+    @pytest.mark.tms("ELITEA-1694")
     @pytest.mark.p0
     def test_blocked_toolkit_live_reload_case_insensitive(
         self,
@@ -595,10 +596,11 @@ class TestBlockedToolLiveReload:
     """
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/admin-portal/guardrails-live-reload/ELITEA-1695_blocked-tool-live-reload-case-insensitive.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-1695_blocked-tool-live-reload-case-insensitive.md",
         "onetest-ai Test Case link"
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
+    @pytest.mark.tms("ELITEA-1695")
     @pytest.mark.p0
     def test_blocked_tool_live_reload_case_insensitive(
         self,
@@ -730,10 +732,11 @@ class TestSensitiveToolLiveReload:
     """
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/admin-portal/guardrails-live-reload/ELITEA-1696_sensitive-tool-live-reload-case-insensitive.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/admin/ELITEA-1696_sensitive-tool-live-reload-case-insensitive.md",
         "onetest-ai Test Case link"
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
+    @pytest.mark.tms("ELITEA-1696")
     @pytest.mark.p0
     def test_sensitive_tool_live_reload_case_insensitive(
         self,
