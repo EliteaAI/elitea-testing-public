@@ -160,3 +160,34 @@ the exact `suggested_testid=` hints.
   `SkillFormPage.fill_instructions()`) but is much slower for 2500+ chars —
   prefer paste for large fills, typing for small/short-input tests where
   keystroke-level events matter.
+
+**Resolved/added during ELITEA-3252/3253/3254/3255 implementation (2026-10-16):**
+
+- **The empty-state "Create" button navigates to `/settings/project-context/edit`,
+  NOT `?view=create` as this digest's own "Three views" table above states.**
+  Confirmed live via `page.url` immediately after the click (no query-param
+  route observed at all) — this digest's `?view=create`/`?view=edit` framing
+  predates the current build. `ProjectContextPage.click_create()`'s own
+  `wait_for_url()` assertion was fixed to match (it was asserting the stale
+  route and would have failed on this build).
+- **A populated "saved view" renders NEITHER `project-context-create-button`
+  NOR `project-context-editor-content`** — only `ai-edit-project-context-open-button`
+  (and `project-context-actions-menu-button`). `ProjectContextPage.wait_for_page_load()`
+  previously only distinguished empty-vs-editor and hung 15s on this third
+  state; fixed to try all three testids in sequence.
+- **CodeMirror's rendered `.text_content()` strips the "\n" between line-divs**
+  that the Build-with-AI/Edit-with-AI dialogs' plain `<textarea>` review step
+  keeps in its `.input_value()`. A raw length/equality comparison between the
+  two will be off by exactly the newline count — normalize both sides with
+  `.replace("\n", "")` before comparing (confirmed live, content itself is
+  byte-identical otherwise).
+- **The Edit-with-AI flow's "Apply & Save" lands back on the saved view**
+  (same testid-set gap as above) — a caller that needs the post-edit content
+  length must read it via the API (`ProjectContextAPI.get_project_context()`),
+  not `ProjectContextPage.get_editor_content_length()`.
+- **`ELITEA_API_TOKEN` bearer auth 302-redirects to `/access_denied` on the
+  Project Context endpoints** even with a well-formed, non-expired token —
+  confirmed live 2026-10-16 (every other entity client in `api/client.py`
+  silently falls back to this same bearer token when no browser cookies are
+  passed; Project Context is the first one observed NOT to accept it). The
+  new `ProjectContextAPI`/`project_context_api` fixture use cookie auth only.
