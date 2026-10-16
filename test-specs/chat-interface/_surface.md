@@ -984,3 +984,15 @@ content length ≤2500). A message with no project description in it (just
 clarifying follow-up instead of invoking any tool. Full detail + the family
 AFS: `test-specs/settings-project-params/_surface.md` and
 `l1_project-context-char-limit-enforced-across-surfaces_ELITEA-3252.md`.
+
+**Resolved/added during ELITEA-3254 implementation (2026-10-16):**
+`ChatPage.close_modules_panel()` clicks the top-left corner of
+`chat_messages_scroll_container`, which does not exist yet on a brand-new
+conversation with zero messages (confirmed live: `.count() == 0`) — the
+method would hang on its own `expect(...)` otherwise. Fixed to fall back to
+`self.page.mouse.click(10, 10)` (equally "outside" the Modules popper) when
+the scroll container isn't rendered yet; unchanged when it is. Also added
+`ChatPage.ensure_module_toggle_checked()`: `click_module_toggle()` waits for
+a confirmation toast that `project_context_builder` never shows (confirmed
+live, 10s timeout), so the new method polls the switch's own checked state
+instead and is click-idempotent (no-ops if already checked).
