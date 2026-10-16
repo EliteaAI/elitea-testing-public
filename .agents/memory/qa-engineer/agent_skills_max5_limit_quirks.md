@@ -39,3 +39,26 @@ Agent, localhost:5173):
   disabled state" bar (proactive disable beats reactive rejection for both UX
   and automatability).
 - Full AFS: `test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md`.
+
+## SUPERSEDED 2026-10-15 — the 5-skill cap is gone, limit is now 50 (EL-6930)
+
+Everything above describes the product as it was through 2026-10-12. On
+2026-10-13, `EliteaUI` commit `8a1ae6b9` ("feat: [EL-6930] Skill limit from the
+API and attached skill search") changed the agent-skills limit from a
+frontend-hardcoded `5` to **`application_skills` API's `max_skills` field**
+(`ApplicationSkills.jsx`: `maxSkills = applicationSkills?.max_skills ?? 50`).
+DEV's `GET .../application_skills/prompt_lib/{project}/{app_version_id}`
+currently returns `max_skills: 50` (verified live, 2026-10-15) and the backend
+genuinely accepts a 6th (and later) attach PATCH with `201` — this is not a
+UI-only relaxation, the server enforces 50 too. The disabled-button mechanism
+(`agent-add-skill-button` wrapped in `agent-add-skill-button-tooltip`,
+tooltip text still exactly "Maximum number of skills reached") is unchanged —
+only the threshold moved, from `isAtLimit = skills.length >= 5` to
+`isAtLimit = skills.length >= maxSkills` (now 50). CI runs on `main`
+([ELITEA-1790]/#2443, [ELITEA-1795]/#2444) correctly caught both the UI test
+(`test_max_five_skills_attach_limit`, now red because 5/5 no longer disables)
+and the API test (`test_import_agent_recreates_skills_with_new_ids`, which
+hardcoded `max_skills == 5`) — same root cause, confirmed, not coincidental.
+**Any test/AFS that hardcodes "5" as the agent-skills cap needs updating to
+read `max_skills` dynamically or assert `50`** — triaged as class **A** (UI
+drift / intentional product change), not a product bug.

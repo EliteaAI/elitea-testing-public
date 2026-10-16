@@ -824,6 +824,280 @@ names) also makes the local gate a genuine regression test for the run-unique-na
 requirement — if the implementer skips work-order item 1, the local gate is where
 it can bite.
 
-### Status
+### Status (SUPERSEDED by § Adjustment — 2026-10-15 below)
 
 `ready-for-automation` — implementable as specified, no human decision pending.
+
+## Adjustment — 2026-10-15 (repair pass, tracking issue #2443)
+
+**Trigger:** CI run #278 ("UI Tests DEV [main] [skills]", commit `8f324f5`)
+failed `test_max_five_skills_attach_limit` at Step 9: "the test expects the
+add-skill button to be disabled once 5/5 skills are attached, but it is not."
+**Analyst:** qa-engineer (Sage), analyst/triage slot · **Skill:**
+`adjust-automated-test` Steps 1/2 (triage, this round) + Steps 4–6 (AFS/TMS
+edit, this round) · Step 7 (code) is a separate implementer dispatch.
+
+### Triage verdict — class **A** (UI drift from an intentional product change)
+
+Reproduced live on DEV, clean process: `assert
+detail_page.is_add_skill_button_disabled(...)` → `False` at 5/5 attached.
+Screenshot evidence: the counter reads **"5/50 skills added."**, not "5/5" —
+`automation/screenshots/test_max_five_skills_attach_limit_FAIL_20261015_204150.png`.
+
+**Root cause**: `EliteaUI` `origin/main` commit `8a1ae6b9` ("feat: [EL-6930]
+Skill limit from the API and attached skill search", 2026-10-13 — two days
+before this CI run) replaced the frontend-hardcoded cap with the API's own
+field:
+
+```js
+// src/[fsd]/features/skill/ui/ApplicationSkills.jsx:46-49
+const maxSkills = applicationSkills?.max_skills ?? MAX_ATTACHED_SKILLS;  // fallback 50
+const isAtLimit = skills.length >= maxSkills;
+```
+
+Pre-change, `src/common/constants.js` declared `MAX_SKILLS_PER_AGENT = 5` and
+`ApplicationSkills.jsx` compared against that literal. The disable mechanism
+itself (`SkillMenu.jsx`: button `agent-add-skill-button`, tooltip wrapper
+`agent-add-skill-button-tooltip`, text **exactly** `"Maximum number of skills
+reached"`) is unchanged — only the threshold's source moved.
+
+**Live-verified, three ways** (all throwaway data deleted after, 204 on every
+DELETE):
+1. Rerun of the merged test fails exactly as CI reported.
+2. A scratch Playwright script created 6 fresh skills + 1 fresh agent and
+   attached all 6: the 6th attach PATCH (`PATCH .../skill/prompt_lib/575/12`)
+   returned **201** (not rejected), and `GET
+   .../application_skills/prompt_lib/575/{app_version_id}` returned
+   `"max_skills": 50` both before and after.
+3. OpenAPI spec (`GET /shared/openapi/?all=true`) documents the
+   `application_skills` GET and the skill-attach PATCH's path/body
+   parameters, but **`max_skills` itself never appears anywhere in the spec**
+   (confirmed: `"max_skills" in json.dumps(full_spec)` → `False`) — it is
+   server-side configuration, not a declared/settable API field. The live
+   attach is the authority here, not a static contract row.
+
+**Same root cause as sibling issue #2444 (ELITEA-1795)** — its test hardcodes
+`application_skills.max_skills == 5`; both tests fail because EL-6930 moved
+the real value to 50, not coincidentally.
+
+### Is `max_skills` configurable? — NO, confirmed by three independent checks
+
+The coordinator asked this before committing to a design, because attaching
+~50 Skills one at a time through the UI would be an impractical, slow test
+regardless of which number is correct. Checked live, 2026-10-15:
+
+1. **Project settings UI** (`ProjectGeneral.jsx` and its sub-pages, read via
+   `git grep` on `origin/main` under `src/[fsd]/pages/settings/` and
+   `src/[fsd]/features/settings/`): no `max_skills` / skill-limit control
+   anywhere in the Project General settings surface.
+2. **OpenAPI spec**: the only writable project resource is `PUT
+   /api/v2/projects/project/{mode}/{project_id}`, backed by schema
+   `ProjectCreatePD` — its full field list is `name`,
+   `project_admin_email`, `plugins`, `data_retention_limit`,
+   `test_duration_limit`, `cpu_limit`, `memory_limit`, `vcu_hard_limit`,
+   `vcu_soft_limit`, `vcu_limit_total_block`, `storage_hard_limit`,
+   `storage_soft_limit`, `storage_limit_total_block`,
+   `invitation_integration`. No `max_skills` field exists on this or any
+   other schema in the spec.
+3. **Frontend source**: `git grep -n max_skills origin/main -- src/` returns
+   exactly 3 hits, all **read-only** consumption
+   (`skill.constants.js`'s fallback comment, `ApplicationSkills.jsx`'s
+   `maxSkills = applicationSkills?.max_skills ?? 50`, and the component's own
+   test fixtures). Nothing in `src/` ever sends `max_skills` in a request
+   body — there is no admin control, no per-project override, nothing a test
+   (or a human) can set.
+
+**Conclusion: `max_skills` is a global, server-side fallback with no exposed
+write path.** It cannot be set low for a test project. Design Option 2 from
+the coordinator's brief (set it to a small number before attaching) is **not
+available** — moving to Option 3.
+
+### Chosen design — Option 3: bulk setup via `skill_api`/`agent_api`, one real boundary-crossing UI attach, limit read dynamically
+
+**Why not attach `max_skills` (50) Skills one at a time through the UI:**
+unavailable per above AND it would be bad test design regardless — ~50 UI
+round-trips (click add-skill, wait for popper, click menuitem, poll counter)
+turns a ~2-minute test into a double-digit-minute one for no additional
+proof: the mechanism under test is "does the control disable once the count
+reaches the server's reported limit," which is exercised identically whether
+the preceding count got there via 49 UI attaches or 49 API attaches.
+
+**The design, step by step:**
+
+1. Create `N` Skills (`N` = whatever `max_skills` currently reports, read
+   live — see Automation Hints below for the exact call) via the UI, **as
+   today** — this count stays small and representative-of-the-case
+   regardless of `max_skills`'s value, because Skill *creation* is not what
+   this case is about; keep it at a small fixed count (reuse the existing
+   `_create_skill()` UI helper for the first 2, enough to prove the create
+   flow still works, matching the case's own "create 6 distinct Skills"
+   framing) plus one extra skill created via `skill_api.create_skill()` for
+   every one beyond what's attached through the UI.
+2. **Bulk-attach the first `N-1` Skills via the API** (`skill_api`/`agent_api`
+   fixtures — a NEW `SkillAPI` method is needed; see Automation Hints), not
+   the UI. This is **setup for a precondition**, not the observable: the
+   case's observable (does the control disable at the limit) is produced
+   entirely by the product's own count once the boundary attach happens.
+3. **The boundary-crossing (`N`th) attach happens through the real UI**,
+   exactly as the existing test already does for its 5th attach — this is
+   the one attach whose result the case actually cares about, and it stays
+   full-fidelity: real click, real popper, real PATCH, real counter read.
+4. **Immediately after**, assert the add-skill button disables with the
+   same tooltip, exactly as the current Step 9 does.
+5. **The "attempt a 6th/boundary+1 attach" step is unchanged in spirit**:
+   create one more Skill, confirm it is never attached, confirm no PATCH
+   targets it, confirm the counter is unchanged — same assertions as
+   today's Step 9 (continued), just renumbered.
+6. **Read `max_skills` dynamically from the API at test start** (`GET
+   .../application_skills/prompt_lib/{project}/{app_version_id}` once the
+   agent exists, or expose it via a new `SkillAPI.get_max_skills()` /
+   `get_application_skills()` call) — **never hardcode `50` anywhere in the
+   test.** If the platform's limit changes again (as it just did, from 5 to
+   50), the test keeps working without another adjustment round. This is
+   the single most important property of the fix: it is what makes this an
+   adjustment to the *mechanism*, not a second hardcoded literal.
+7. Persistence-after-reload (today's Step 10) stays as-is, asserting
+   `f"{max_skills}/{max_skills}"` instead of the literal `"5/5"`.
+
+### § Fidelity Declaration (this adjustment)
+
+Per the project's substitution/transit-vs-terminal convention already used
+above in this same AFS (§ Fidelity Declaration, 2026-08-27 pass) — note the
+canonical policy section this AFS originally cited
+(`.agents/testing.md` § Fidelity policy) was removed from `testing.md` during
+the 2026-10 DEV-cutover rewrite (commit `84567ec7`) and never reinstated;
+this declaration follows the same shape documented inline in this file
+rather than a currently-live canon section, and that gap is worth the lead's
+attention separately (not blocking this adjustment).
+
+| Substitution | Transit or terminal | Authority |
+|---|---|---|
+| Bulk-attaching the first `N-1` Skills via `skill_api`/`agent_api` instead of the UI's "+ Skill" popper | **Transit** | The case's observable — the control disabling once the real attached-count reaches the real `max_skills` — is produced entirely by the product's own count and the product's own disable logic, read at the boundary attach (step 3) and the over-limit attempt (step 5), both of which stay real-UI. The bulk attaches are reaching the precondition ("N-1 skills already attached"), not the thing under test. |
+
+Reasoning:
+- This is the **same shape** the 2026-08-27 pass already declared for Skill
+  *creation* (API considered, UI chosen because the marginal cost was low) —
+  the difference here is that at `max_skills=50` the marginal cost of doing
+  all N-1 attaches through the UI is no longer low (it would turn a ~2 min
+  test into a double-digit-minute one for zero additional proof), so the
+  same policy's **transit** branch is taken instead of the UI branch, and
+  **declared**, exactly as the policy requires.
+- The case text does not ask for a UI-only attach mechanism — it asks for
+  "attach Skill N to the Agent" and an expected result about what's
+  *listed as attached*, which the API-attach genuinely produces (same
+  `PATCH .../skill/prompt_lib/{project}/{id}` call the UI popper makes
+  under the hood — `SkillMenu.jsx`'s selection handler calls the identical
+  mutation). Nothing about the attach's own correctness is being inferred
+  or assumed; it is confirmed via the real response status, same as the
+  boundary attach.
+- The **boundary attach and the over-limit attempt — the two steps whose
+  result this case actually verifies — are not substituted.** Both go
+  through the real UI, so the disable mechanism itself is still proven
+  live, not assumed.
+- If `max_skills` is ever single-digit again, revisit whether the bulk
+  attaches should move back to the UI — the fidelity trade only favors API
+  setup because the count is large; this declaration is not a license to
+  default to API attach once a future value happens to be small again.
+
+### Updated Test Data / Steps / Expected Results language (dynamic limit)
+
+Everywhere this AFS (and the TMS case) said a literal **"5"** as the
+per-agent Skill cap, replace with **"the platform's current limit, read live
+from the `application_skills` API's `max_skills` field"**:
+
+- **Test Data**: `Maximum allowed Skills per Agent` → `whatever
+  GET .../application_skills/.../{app_version_id} reports as max_skills
+  at run time (50 on DEV as of 2026-10-15; was 5 before EL-6930,
+  2026-10-13)`.
+- **Steps**: "Attach Skill 5 to the Agent" (the boundary step) →
+  "Attach the Nth Skill to the Agent, where N = the live `max_skills`
+  value" — same for the "attempt Nth+1" step.
+- **Expected Results**: "the counter increments 0/5 → 5/5" → "the counter
+  increments `0/{max_skills}` → `{max_skills}/{max_skills}`"; "disabled once
+  5/5 is reached" → "disabled once `{max_skills}/{max_skills}` is reached."
+
+**This is a genuine Expected-result change** (the literal number this case
+enforces is no longer fixed at 5) — not a locator/mechanism-only tweak. The
+TMS case file is updated in the same pair as this AFS edit (below), per the
+preserve-the-nature rail.
+
+### MUST NOT change (still binding, extends the 2026-08-27 list)
+
+- No `expect.soft`, `pytest.skip`, `test.fail`, weakened comparison, or
+  conditional assertion is introduced.
+- The boundary-attach and over-limit-attempt steps keep every assertion
+  strength the current Steps 8–9 have (exact tooltip-text equality, real
+  network-request-count assertions, zero-console-errors checks) — only the
+  literal `5` in each becomes the live `max_skills` value.
+- The disable mechanism's assertions (`is_add_skill_button_disabled()`,
+  tooltip text) are unchanged in kind.
+- Cleanup still deletes every created Skill + the Agent and verifies they
+  are gone (extends trivially to however many Skills exist at the new `N`).
+
+### Automation Hints for the implementer (Step 7, separate dispatch)
+
+- **New `SkillAPI` method needed** (`automation/api/client.py`, alongside
+  `create_skill`/`get_skill`/`delete_skill`): something like
+  `attach_skill_to_agent(agent_version_id: int, skill_id: int,
+  skill_version_id: int) -> dict` — `PATCH
+  /elitea_core/skill/prompt_lib/{project_id}/{skill_id}` with body
+  `{"has_relation": true, "entity_version_id": agent_version_id,
+  "skill_version_id": skill_version_id, "entity_type": "agent"}` (schema:
+  `SkillUpdateRelationModel`). Mirrors the existing PATCH the UI's
+  `attach_skill()` page-object method triggers — same endpoint, same body
+  shape, confirmed live during this triage (6th-skill attach, `201`).
+- **New read method needed**: `get_application_skills(app_version_id: int)
+  -> dict` — `GET
+  /elitea_core/application_skills/prompt_lib/{project_id}/{app_version_id}`,
+  returns `{"skills": [...], "max_skills": <int>}`. The test reads
+  `max_skills` from this once, right after the agent is created (before any
+  attach), and uses that value for every subsequent assertion — never a
+  hardcoded `50`.
+- `AgentDetailPage.get_version_id()` already exists
+  (`automation/pages/agent_detail_page.py:792`) and returns the string the
+  `app_version_id` path segment needs — `int()` it the same way
+  `get_agent_id()` is already `int()`'d in the current test.
+- Keep the existing `attach_skill()` UI page-object method exactly as-is —
+  it is still the correct call for the one boundary-crossing attach and the
+  (unchanged) over-limit attempt.
+- The existing `capture_requests_matching("skill/prompt_lib", method="PATCH")`
+  network capture still works unmodified — it captures both the API-side
+  bulk-attach PATCHes (new) and the UI-side boundary attach (unchanged), so
+  the "exactly N PATCHes fired, latest status == 201" style of assertion
+  generalizes directly; just assert against the live `max_skills` count
+  instead of the literal `5`.
+- Run-unique skill names (2026-08-27 pass) stay mandatory — `max_skills`
+  skills now get created per run instead of 6, so the orphan-collision risk
+  the run-unique-name fix addressed is, if anything, more important at a
+  higher count.
+
+### Gate (unchanged mechanism, new node id expectations)
+
+Per `.agents/testing.md` § Merge gate — 3 separate consecutive invocations,
+clean process each, run by the lead before merge:
+
+```bash
+cd automation && HEADLESS=true ../.venv/bin/pytest \
+  tests/ui/skills/test_agent_max_five_skills_limit.py::TestAgentMaxFiveSkillsLimit::test_max_five_skills_attach_limit \
+  -v -p no:cacheprovider     # ×3
+```
+
+Expect clean green 3/3 reading the live `max_skills` value (50 on DEV as of
+this writing) — no sanctioned-RED signature, no linked open defect. Any red
+is re-triaged, never adjusted away. **If `max_skills` changes again between
+the implementer's local gate and the lead's pre-merge gate, that is not
+flake** — it would mean the test is genuinely reading a live, moving value,
+which is the entire point of this adjustment; re-run the gate rather than
+treating a changed value as a failure.
+
+### Status
+
+`ready-for-automation` — the design is settled (API bulk-setup transit
+substitution, declared; one real boundary-crossing UI attach; `max_skills`
+read dynamically, never hardcoded). No human decision pending for Step 7.
+The file/test rename question (should `test_agent_max_five_skills_limit.py` /
+`TestAgentMaxFiveSkillsLimit` be renamed now that the limit isn't literally
+five?) is left to the implementer's judgment — renaming is optional polish,
+not required by this adjustment, and the lead may prefer to keep the
+existing name stable for `automation_test_id` continuity (unchanged by this
+adjustment either way).

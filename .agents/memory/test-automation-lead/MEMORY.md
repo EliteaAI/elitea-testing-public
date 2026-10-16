@@ -24,7 +24,7 @@
 - [Review-round rulings](review_round_rulings.md) — full re-check each round; verdict recorded; R2 cap by signature
 - [Testid-usage extraction scope](testid_usage_scope.md) — grep all of automation/; trace the test's own call chain
 - [AFS gate rulings](afs_gate_rulings.md) — the AFS itself can be wrong: locators, provenance, status header
-- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 5× violated; conflicts are dispatched, always
+- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 6× violated (now beyond sync-conflicts too); dispatch, always
 - [Workflow outcomes aren't ground truth](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — gh pr view + git log every unit (8×)
 - [Gate stalls: 4 shapes, 4 recoveries](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — hard-fail resumes; not-run you run (7×)
 - [Landing is manual](batch_workflow_never_opens_trunk_to_base_pr.md) — push local refs, open trunk→base PR, verify report.json landed (12×)
@@ -46,5 +46,10 @@
 - [adjust-skill Step 6 (AFS) falls through split dispatches](adjust_skill_step6_afs_update_falls_through_split_dispatches.md) — assign it explicitly or resume the analyst after merge
 - [New FIX card can dup a sibling's root cause](fix_card_shared_page_object_method_dedup.md) — check open PRs/issues for the shared method/symptom before triaging fresh
 - [Check origin-ahead before the mandatory sync merge](sync_check_origin_ahead_before_local_merge.md) — factory-ops may have already synced; don't double-merge
-- [CI autotest_users lack a 2nd project](ci_autotest_users_lack_second_project_membership.md) — "no project to fork/share from" in CI is a data gap, not a code bug — go straight to `question`
+- [Scan tracker text for secrets too](scan_tracker_text_for_secrets_too.md) — a subagent's auth-failure report can quote live creds; scrub before posting, not just before commit
+- [VoiceButton focus-steal on instructions clear](voicebutton_focus_steal_on_instructions_clear.md) — any clear-Instructions step mounts a fresh chat panel that steals focus; Class B, don't adjust the test (#2451)
+- [Sibling clone may lack git identity](sibling_clone_git_identity_can_be_unset_silent_noop_commit.md) — unset user.name/email fails commit; push then silently no-ops
+- [Old CI failure msg ≠ current state](ci_autotest_users_lack_second_project_membership.md) — walk recent job logs before trusting a card's quoted error as still true
 - [Recurring failure after the fix shipped = new cause](recurring_test_failure_after_fix_shipped_is_a_new_cause.md) — check `git merge-base --is-ancestor` before saying "rides the old PR"
+- [Sandbox APP_PREFIX/MCP-browser gaps are independent](sandbox_app_prefix_and_mcp_browser_can_both_be_broken_independently.md) — missing `/app` looks like a timeout; MCP-broken ≠ triage-blocked, script it directly
+- [Retiring a case ≠ adjusting it](retiring_a_case_is_delete_plus_tms_deprecated_pr.md) — delete test+AFS; TMS `status: deprecated` via lead-opened, never-merged PR

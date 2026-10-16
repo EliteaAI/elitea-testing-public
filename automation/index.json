@@ -2605,19 +2605,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.skills.test_skill_test_panel_no_new_conversation.TestSkillTestPanelNoNewConversation.test_test_panel_does_not_create_new_chat_conversation",
-      "markers": [
-        "new_verified",
-        "p3",
-        "regression",
-        "skills",
-        "ui"
-      ],
-      "tms_case_ids": [
-        "ELITEA-2441"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.skills.test_skill_test_panel_response_actions.TestSkillTestPanelResponseActions.test_test_panel_response_actions_enabled",
       "markers": [
         "new_verified",

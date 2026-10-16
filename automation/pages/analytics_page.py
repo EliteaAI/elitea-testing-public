@@ -99,6 +99,20 @@ container are conditionally rendered (``daily_usage.length > 0``) — testids
 only exist in the DOM when the chart is shown. Users/Tools panels use the
 same ``get_panel_summary`` aggregate-text technique as ELITEA-2313's Models/
 Tools/Agents panels.
+
+**ELITEA-3755 adjustment (2026-10-15, `adjust-automated-test`, triage Class
+A — UI drift, product commits EL-6791/EL-6211/EL-5110/EL-6929, all already
+shipped to DEV)** — the Overview/date-filter/tab-bar surface this file's
+first ELITEA-3755 block describes has moved twice since original automation:
+the first preset's label+testid flipped from "Last 24h"/
+``analytics-date-preset-1`` to "Today"/``analytics-date-preset-0`` and its
+default date math flipped from a rolling-24h window to a calendar-day window
+(``preset_today``, was ``preset_last_24h``); and the tab bar grew from seven
+to ten tabs with ``tab_tokens``/``tab_skills``/``tab_activity`` inserted at
+their live DOM positions (``tab_skills`` is permission-gated on
+``canViewSkills``). All other locators on this page (page title/badge,
+From/To inputs, loading indicator, KPI row, and every ELITEA-2312/2313/2320/
+2321 locator below) are unaffected — confirmed live on DEV, 2026-10-15.
 """
 
 import logging
@@ -150,8 +164,13 @@ class AnalyticsPage(BasePage):
         description='Project-name badge — "Project: {name}", renders only when a project is selected',
     )
 
-    preset_last_24h = LocatorDescriptor(
-        testid="analytics-date-preset-1", description='Date filter preset toggle — "Last 24h"'
+    preset_today = LocatorDescriptor(
+        testid="analytics-date-preset-0",
+        description='Date filter preset toggle — "Today" (ELITEA-3755 adjustment, '
+        "2026-10-15: EL-6791 renamed this from 'Last 24h' / testid "
+        "analytics-date-preset-1 to 'Today' / analytics-date-preset-0, and "
+        "changed the default date math from a rolling 24h window to a "
+        "calendar-day window)",
     )
     preset_last_7d = LocatorDescriptor(
         testid="analytics-date-preset-7", description='Date filter preset toggle — "Last 7d"'
@@ -170,11 +189,27 @@ class AnalyticsPage(BasePage):
 
     tab_overview = LocatorDescriptor(testid="analytics-tab-overview", description='"Overview" tab')
     tab_costs = LocatorDescriptor(testid="analytics-tab-costs", description='"Costs" tab')
+    tab_tokens = LocatorDescriptor(
+        testid="analytics-tab-tokens",
+        description='"Tokens" tab (ELITEA-3755 adjustment, 2026-10-15: new since the '
+        "original automation — EL-6211)",
+    )
     tab_agents_pipelines = LocatorDescriptor(
         testid="analytics-tab-agents-pipelines", description='"Agents & Pipelines" tab'
     )
+    tab_skills = LocatorDescriptor(
+        testid="analytics-tab-skills",
+        description='"Skills" tab (ELITEA-3755 adjustment, 2026-10-15: new since the '
+        "original automation — EL-6929; permission-gated on canViewSkills, visible "
+        "for ${TEST_USER})",
+    )
     tab_tools = LocatorDescriptor(testid="analytics-tab-tools", description='"Tools" tab')
     tab_users = LocatorDescriptor(testid="analytics-tab-users", description='"Users" tab')
+    tab_activity = LocatorDescriptor(
+        testid="analytics-tab-activity",
+        description='"Activity" tab (ELITEA-3755 adjustment, 2026-10-15: new since the '
+        "original automation — EL-5110)",
+    )
     tab_health = LocatorDescriptor(testid="analytics-tab-health", description='"Health" tab')
     tab_guide = LocatorDescriptor(testid="analytics-tab-guide", description='"Guide" tab')
 
@@ -430,18 +465,33 @@ class AnalyticsPage(BasePage):
 
     def get_preset_buttons_in_order(self):
         """Return the four preset-toggle Locators (class-level
-        ``LocatorDescriptor`` fields) in their rendered order."""
-        return [self.preset_last_24h, self.preset_last_7d, self.preset_last_30d, self.preset_last_90d]
+        ``LocatorDescriptor`` fields) in their rendered order.
+
+        ELITEA-3755 adjustment (2026-10-15): the first preset is now
+        ``preset_today`` ("Today", EL-6791) — was ``preset_last_24h``
+        ("Last 24h"). Count and the remaining three presets are unchanged.
+        """
+        return [self.preset_today, self.preset_last_7d, self.preset_last_30d, self.preset_last_90d]
 
     def get_tabs_in_order(self):
-        """Return the seven tab Locators (class-level ``LocatorDescriptor``
-        fields) in their rendered order."""
+        """Return the ten tab Locators (class-level ``LocatorDescriptor``
+        fields) in their rendered order.
+
+        ELITEA-3755 adjustment (2026-10-15): grew from seven to ten tabs —
+        added ``tab_tokens`` (after Costs, EL-6211), ``tab_skills`` (after
+        Agents & Pipelines, EL-6929, permission-gated on ``canViewSkills``),
+        and ``tab_activity`` (after Users, EL-5110). All other tabs/order
+        unchanged.
+        """
         return [
             self.tab_overview,
             self.tab_costs,
+            self.tab_tokens,
             self.tab_agents_pipelines,
+            self.tab_skills,
             self.tab_tools,
             self.tab_users,
+            self.tab_activity,
             self.tab_health,
             self.tab_guide,
         ]

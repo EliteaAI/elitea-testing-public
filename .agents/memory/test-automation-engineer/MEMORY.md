@@ -68,3 +68,5 @@
 - [Dead literal in a [FIX] card](dead_literal_repair_delete_dont_substitute.md) — read the case first: if it says "the default", DELETE the step, do not substitute
 - [Missing .env.test → APP_PREFIX=""](sandbox_missing_env_test_app_prefix_404.md) — client-side 404 (HTTP 200!) looks like a backend timeout; `export APP_PREFIX=/app`
 - [Custom pipeline node deprecated](pipeline_custom_node_type_deprecated_hidden_from_picker.md) — EL-6616 hid it from Add Node menu forever; never "fix" the locator
+- [Sandbox browser rev mismatch](sandbox_playwright_browser_revision_mismatch_readonly_cache.md) — read-only `/opt/ms-playwright`; symlink expected rev → installed rev via `PLAYWRIGHT_BROWSERS_PATH`
+- [get_row_by_name is pagination-blind](personal_tokens_search_filter_bypasses_pagination.md) — 0-count on a growing GridTable list ⇒ suspect paging before data loss; search() first
