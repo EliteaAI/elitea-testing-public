@@ -13,6 +13,7 @@ from api.client import (
     CredentialAPI,
     PipelineAPI,
     ProjectAPI,
+    ProjectContextAPI,
     SkillAPI,
     ToolkitAPI,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "CredentialAPI",
     "PipelineAPI",
     "ProjectAPI",
+    "ProjectContextAPI",
     "SkillAPI",
     "ToolkitAPI",
 ]

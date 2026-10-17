@@ -9,7 +9,7 @@ import re
 import time
 from playwright.sync_api import Page, expect
 from .base_page import BasePage
-from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor, ScopedLocator
 from components.mui import Dialog, Popper
 from utils.actions import action
 from config import settings
@@ -663,6 +663,65 @@ class ChatPage(BasePage):
     # site of the same shared component is intentionally left unwired (out of
     # this case's executed code path, canon ruling #511).
     CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
+
+    # ------------------------------------------------------------------
+    # "Entity created via chat" chip (GeneratedEntityChip.jsx, ELITEA-3368) —
+    # ONE shared component across every in-chat "Build with AI"/create-via-
+    # chat flow (Agent/Pipeline/Toolkit/Skill/Project Context). Confirmed
+    # live: the chip's own container has NO onClick — only its two
+    # hover-revealed child buttons do (see open_generated_entity_chip()).
+    # ------------------------------------------------------------------
+
+    generated_entity_chip = LocatorDescriptor(
+        testid="generated-entity-chip",
+        description=(
+            "'Entity created' chip rendered below an assistant answer that "
+            "created an Agent/Pipeline/Toolkit/Skill/Project Context via "
+            "chat. Label text = the created entity's name. Only renders "
+            "once !isStreaming && !isLoading — wait for it, don't assume "
+            "it's present the instant the response text appears. Its own "
+            "container has NO onClick (confirmed live via source read) — "
+            "a bare .click() is a silent no-op; hover it first and use "
+            "GENERATED_ENTITY_CHIP_OPEN_BUTTON / "
+            "GENERATED_ENTITY_CHIP_DELETE_BUTTON."
+        ),
+    )
+
+    GENERATED_ENTITY_CHIP_OPEN_BUTTON = ScopedLocator(
+        role="button",
+        name="Open entity",
+        suggested_testid="generated-entity-chip-open-button",
+    )
+
+    GENERATED_ENTITY_CHIP_DELETE_BUTTON = ScopedLocator(
+        role="button",
+        name="Delete entity",
+        suggested_testid="generated-entity-chip-delete-button",
+    )
+
+    @action("Open a generated-entity chip's entity (hover then click Open entity)")
+    def open_generated_entity_chip(self, entity_label: str | None = None, timeout: int = 10000):
+        """Hover the 'entity created' chip and click its 'Open entity' button.
+
+        A bare click on the chip's own container does nothing (confirmed
+        live — the chip Box has no onClick, only its hover-revealed child
+        buttons do, ELITEA-3368). This method performs the required
+        hover-then-click sequence.
+
+        Args:
+            entity_label: When more than one chip could render in the same
+                answer, filter by the chip's visible label text (e.g.
+                "Project Context"). Not needed when exactly one chip is
+                expected (the common case).
+            timeout: Maximum wait time in milliseconds.
+        """
+        chip = self.generated_entity_chip
+        if entity_label:
+            chip = chip.filter(has_text=entity_label)
+        chip.first.wait_for(state="visible", timeout=timeout)
+        chip.first.hover()
+        self.GENERATED_ENTITY_CHIP_OPEN_BUTTON.within(chip.first).click(timeout=timeout)
+        logger.info("Opened generated-entity chip (label filter=%r)", entity_label)
 
     # ------------------------------------------------------------------
     # HITL sensitive-action authorization card — direct toolkit call, no
@@ -3603,6 +3662,30 @@ class ChatPage(BasePage):
         expect(self.toast_message).to_be_visible(timeout=timeout)
         logger.info("Toggled module %r; confirmation toast visible", tool_key)
 
+    @action("Ensure a Modules panel switch is checked")
+    def ensure_module_toggle_checked(self, tool_key: str, timeout: int = 10000):
+        """Click a Modules-panel toggle switch ON if not already checked,
+        WITHOUT waiting for a confirmation toast (ELITEA-3368 — confirmed
+        live: the ``project_context_builder`` toggle shows no "Modules
+        configuration updated" toast unlike other toggles, so
+        :meth:`click_module_toggle`'s toast-wait would hang on it). Polls
+        the switch's own checked state instead — the condition this
+        toggle actually guarantees.
+
+        Does NOT close the Modules panel — use :meth:`close_modules_panel`
+        for that.
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+            timeout: Maximum wait time in milliseconds.
+        """
+        switch = self.get_module_toggle_switch(tool_key)
+        expect(switch).to_be_enabled(timeout=timeout)
+        if not switch.is_checked():
+            switch.click(force=True)
+            expect(switch).to_be_checked(timeout=timeout)
+        logger.info("Module %r is checked", tool_key)
+
     def is_module_toggle_checked(self, tool_key: str) -> bool:
         """Return whether a Modules-panel toggle switch is currently checked.
 
@@ -3661,10 +3744,19 @@ class ChatPage(BasePage):
         both the plus-menu list and the switches panel is required for a
         genuine "outside" click.
 
+        On a brand-new conversation with zero messages, the scrollable
+        messages region (``chat-messages-scroll-container``) has not
+        rendered yet (confirmed live, ELITEA-3368) — falls back to the
+        page's own top-left corner in that case, which is equally
+        "outside" the popper.
+
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+        if self.chat_messages_scroll_container.count() > 0:
+            self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+        else:
+            self.page.mouse.click(10, 10)
         expect(self.get_module_toggle_switches()).to_have_count(0, timeout=timeout)
         logger.info("Modules panel closed via outside click")
 
@@ -3961,6 +4053,15 @@ class ChatPage(BasePage):
         row = self.page.locator(self.PARTICIPANT_ROW_PREFIX).filter(has_text=name)
         row.first.wait_for(state="visible", timeout=timeout)
         return row.first
+
+    def get_participant_row_count(self) -> int:
+        """Return the number of participant rows currently rendered in the
+        EXPANDED Participants panel (``PARTICIPANT_ROW_PREFIX``, ELITEA-3368).
+
+        Call after :meth:`expand_participants_panel_via_toggle`. Zero means
+        no entity (of any type) is currently a chat participant.
+        """
+        return self.page.locator(self.PARTICIPANT_ROW_PREFIX).count()
 
     def get_participant_avatar(self, participant_row, timeout: int = 10000):
         """Return the avatar ``<img>`` Locator scoped inside *participant_row*

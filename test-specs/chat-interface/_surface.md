@@ -89,6 +89,25 @@ confirmer: ELITEA-2458, 2026-08-07).
   faithful. Never assert exact generated text; assert non-empty + topical
   keyword presence, and use the API-level `id` for the no-duplicate check.
 
+**Resolved/confirmed during ELITEA-3368 implementation (2026-10-17, extends
+the section above, does not supersede any of it):** every handle/quirk
+documented above held exactly as analyzed, across 2 independent live runs
+(project 575) — the create-message tool-chip's text contains BOTH
+`"Elitea Project Context"` and the substring `"generate_project_context_draft"`
+(asserted as a substring match, not the full literal string, so this does
+not independently re-confirm whether the live text has a `post_elitea_core_`
+prefix or any other wrapping — only that the documented substring is present).
+`ChatPage.generated_entity_chip`/`open_generated_entity_chip()`
+and `ProjectContextChatCanvasPage` (new page object, mirrors `McpCanvasPage`'s
+shape) now exist in `pages/chat_page.py` / `pages/project_context_chat_canvas_page.py`
+— reuse them rather than re-deriving the hover-then-click sequence or the
+canvas-chrome locators on any future case touching this same chip/canvas.
+`ChatPage.ensure_module_toggle_checked()` (toast-less toggle) and
+`close_modules_panel()`'s zero-message fallback also now exist — reuse
+directly. `api.client.ProjectContextAPI` + `project_context_api`/
+`clean_project_context` fixtures now exist in this branch's `api/client.py`/
+`fixtures/`.
+
 ## Folder rename editor — checkmark enable/disable logic + a11y-snapshot gotcha (ELITEA-2458)
 - **Full validation logic, read from `FolderItem.jsx` source** (grounds every
   assertion, don't re-derive): `isFolderNameValid = ConversationNameRegExp.test(folderName)`
