@@ -440,6 +440,48 @@ exploration.
 - No sanctioned-RED / known-defect handling needed — this case's happy path
   is fully clean across every run this session.
 
+**Resolved/added during ELITEA-3368 implementation (2026-10-17):** built
+exactly per the plan above, no scope drift —
+- `ChatPage.generated_entity_chip` (`testid="generated-entity-chip"`) +
+  `GENERATED_ENTITY_CHIP_OPEN_BUTTON`/`GENERATED_ENTITY_CHIP_DELETE_BUTTON`
+  (`ScopedLocator(role="button", name=...)`) +
+  `open_generated_entity_chip(entity_label=None)` added to `chat_page.py`,
+  exactly the shape this section specced.
+- **Declared improvisation resolved**: added a NEW page object,
+  `pages/project_context_chat_canvas_page.py` (`ProjectContextChatCanvasPage`),
+  rather than a bare field on `ProjectContextPage` — mirrors `McpCanvasPage`'s
+  shape (`title` + `close_button` + `wait_for_open()`/`close()`) since the
+  in-chat canvas chrome is a distinct component (`EditorHeader.jsx`) from
+  `ProjectContextPage`'s own Settings-page chrome; composed with
+  `ProjectContextPage(page)` on the same `page` for the editor
+  content/Save/char-counter per this section's own plan. Both `title` and
+  `close_button` landed as declared `xpath=` rungs (rung 5) scoped off
+  `project-context-editor-content`'s `<form>` ancestor and the title's own
+  exact-text Typography — confirmed via full source read
+  (`EditorHeader.jsx`/`BaseEditor.jsx`) that neither carries a testid or an
+  aria-label on this build, matching this section's prediction; `suggested_testid=`
+  `project-context-canvas-title` / `project-context-canvas-close-button`.
+- Two NEW `ChatPage` methods needed beyond this section's own list, both
+  ports of the sibling (unmerged) ELITEA-3254 family's own additions since
+  this case independently needs the identical mechanisms:
+  `ensure_module_toggle_checked(tool_key)` (the `project_context_builder`
+  toggle shows no confirmation toast, so `click_module_toggle()`'s
+  toast-wait would hang — confirmed live) and a `close_modules_panel()`
+  fallback for a brand-new conversation with zero messages (its
+  scroll-container anchor doesn't exist yet).
+- New `api.client.ProjectContextAPI` + `project_context_api`/
+  `clean_project_context` fixtures (cookie-auth only — the bearer-token
+  fallback 302s to `/access_denied` on this endpoint, confirmed live) — this
+  case's own `test-data` section already named these endpoints; the client
+  class didn't exist yet on this branch (it lives only on the unmerged
+  `tests/batch-project-context-char-limit` sibling), so it was added here
+  independently rather than depending on an unmerged branch.
+- Locator-debt delta (`locator_inventory.py scan`, `automation/` CWD):
+  declared 1234 → 1239 (+5: 1 testid + 2 role `ScopedLocator` + 2 xpath, all
+  5 new declarations hinted), non-testid-hinted 13 → 17, no-hint unchanged at
+  21, unmanaged handles unchanged at 351.
+- Green on DEV (project 575), 0 reruns, ~35-38s, 2 independent local runs.
+
 ## Evidence
 Scratch-session screenshots (not committed — ephemeral exploration artifacts
 per this skill's Evidence paths convention; cite paths, not pixels):
