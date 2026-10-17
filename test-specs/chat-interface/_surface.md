@@ -87,15 +87,31 @@ previous confirmer: ELITEA-2458, 2026-08-07).
   `onInjectionReport`/the `isStreaming` effect's "safety net" rescue in
   `ChatBox.jsx`), while the REMAINING queued items stay visible in
   `interjection-queue-area` with a decremented `interjection-queue-label` count.
-  Clicking Stop again continues draining one at a time — the whole queue is
-  preserved and NOTHING is silently dropped, but it drains automatically rather
-  than freezing; a case asserting "both queued messages visible in the timeline
-  immediately after ONE Stop click" needs amending — **CLARIFICATION filed**
-  (see case's own Known Defects/Clarifications section) since the live
-  mechanism (auto-resume-drain, not a frozen queue) is the correct, by-design
-  behavior (confirmed by the explicit `ChatBox.jsx` code comments narrating this
-  exact rescue path), not a defect. After the full queue drains, a brand-new
-  message sends and gets a response normally — chat is not left broken.
+  The whole queue is preserved and NOTHING is silently dropped, but it drains
+  automatically rather than freezing; a case asserting "both queued messages
+  visible in the timeline immediately after ONE Stop click" needs amending —
+  **CLARIFICATION filed** (see case's own Known Defects/Clarifications
+  section) since the live mechanism (auto-resume-drain, not a frozen queue) is
+  the correct, by-design behavior (confirmed by the explicit `ChatBox.jsx`
+  code comments narrating this exact rescue path), not a defect. After the
+  full queue drains, a brand-new message sends and gets a response normally —
+  chat is not left broken.
+  **Resolved/corrected during ELITEA-2878 implementation (2026-10-17):** the
+  line above ("Clicking Stop again continues draining one at a time") in this
+  digest's own earlier analyst pass was itself imprecise and is corrected
+  here — a SINGLE Stop click rescues the ENTIRE pending-injection map (not
+  just the head item) into `stopQueueRef` in one batch (the `isStreaming`
+  effect's rescue reads `[...pendingInjectionsRef.current.entries()]`, not
+  just one entry), and `drainQueue()` then dequeues that whole batch
+  automatically, one item at a time, re-triggered by each turn's own
+  `isStreaming` transition — no second click is read anywhere in that path,
+  and a second click during the auto-drain is a no-op (nothing left in
+  `pendingInjections` to rescue). Decisive re-check: 2 independent headless
+  trials, exactly one Stop click each, full drain reached by polling alone,
+  cross-verified against the conversation's own API `message_groups` (4
+  persisted groups matching the DOM exactly — not a UI-only illusion). The
+  implementer-side AFS (`l1_interjection-stop-preserves-queued-messages_ELITEA-2878.md`)
+  carries the full correction and the test asserts single-click drain.
 - **`conversation_id` API-created conversations reach the interjectable state
   reliably** — confirmed across 10+ independent live conversations this pass,
   zero reproductions of the #1085-class loading-spinner hang (that gotcha is
