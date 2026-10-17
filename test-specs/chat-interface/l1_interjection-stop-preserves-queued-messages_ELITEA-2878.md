@@ -53,14 +53,27 @@
      normal timeline entry (`ul.MuiList-root > li.MuiListItem-root`) with its
      own agent response starting; `interjection-queue-area` still shows
      Interjection 2 with count 1.
-6. Click Stop a second time to continue draining (same mechanism) and let the
-   second rescued item (Interjection 2) also convert to a normal timeline
-   message with its own response.
-   - **Verify**: after the second Stop + full settle (poll
-     `interjection-composer` count == 0), the timeline contains BOTH
-     Interjection 1 and Interjection 2 as normal user messages, each with its
-     own agent response, and `interjection-queue-area` is gone (count 0) —
-     i.e. nothing was lost, both messages are now ordinary timeline entries.
+6. **AMENDED by implementer (ELITEA-2878, 2026-10-17) — do NOT click Stop a
+   second time; wait for the automatic redrain instead.** The analyst's
+   original step 6 ("click Stop a second time") is incorrect per a decisive
+   live re-check (2 independent trials, headless Playwright against DEV,
+   zero additional clicks, cross-checked against the API's own
+   `message_groups` for the persisted conversation, not just the DOM): ONE
+   Stop click rescues the ENTIRE queue (not just the head item) into
+   `stopQueueRef`, and `ChatBox.jsx`'s `isStreaming` effect + `drainQueue()`
+   dequeue it one item at a time AUTOMATICALLY as each turn's stream ends —
+   no further user action is involved. A second Stop click during this
+   auto-drain has no items left to rescue (the queue is already draining
+   under `stopQueueRef`, not `pendingInjections`) and is a no-op; the test
+   must NOT click Stop again. Instead: after the single Stop click in step 4,
+   poll for the full-drain signal (`interjection-composer` count == 0 AND
+   `interjection-queue-area` count == 0), never a second click and never a
+   fixed sleep.
+   - **Verify**: after the single Stop click + full-drain poll, the timeline
+     contains BOTH Interjection 1 and Interjection 2 as normal user messages,
+     each with its own agent response, and `interjection-queue-area` is gone
+     (count 0) — i.e. nothing was lost, both messages are now ordinary
+     timeline entries, reached via exactly ONE Stop click.
 7. Verify message text matches the original exactly for both.
    - **Verify**: the two user-authored timeline entries' text is byte-for-byte
      "First queued message" / "Second queued message" — no corruption, no
@@ -86,7 +99,7 @@
 | 2 Queue first interjection message | First message appears in queue | step 2 | step 2 | asserted |
 | 3 Queue second interjection message | Second message appears in queue, count "Waiting messages · 2" | step 3 | step 3: exact live text `"Waiting messages – 2"` | asserted *(clarification: en dash not middot — same family-wide drift, see ELITEA-2875)* |
 | 4 Click Stop button | Agent run stops immediately | step 4 | step 4 | asserted *(clarification: "stops immediately" is imprecise — the live mechanism rescues the head item into a resend rather than halting instantaneously with nothing moving; see row below)* |
-| 5 Verify queued messages preserved in timeline | Both queued messages remain visible in chat timeline | steps 5-6 | step 6: both present as normal timeline entries after full drain | asserted *(decomposed: case implies both appear after ONE click; live mechanism needs Stop clicked once per queued item to fully drain — see Known Defects/Clarifications)* |
+| 5 Verify queued messages preserved in timeline | Both queued messages remain visible in chat timeline | steps 5-6 | step 6: both present as normal timeline entries after the single-click auto-drain | asserted *(AMENDED by implementer 2026-10-17: ONE Stop click rescues and auto-drains the WHOLE queue — a second click is a no-op during the auto-drain and must not be sent; see step 6's amendment note and Known Defects/Clarifications)* |
 | 6 Verify message text matches original | Message content is exactly preserved | step 7 | step 7: byte-for-byte text match | asserted |
 | 7 Send new message to continue chatting | New message sent successfully and receives response | step 8 | step 8 | asserted |
 
@@ -142,6 +155,27 @@ both are case-text-precision issues on the same TMS case family, not separate
 defects) rather than a second new issue, per the same declared-improvisation
 reasoning given there.
 
+**AMENDED by implementer (2026-10-17, declared improvisation per
+`.agents/role-overrides.md` § Declared-improvisation protocol) — the AFS's
+own original step 6/Automation Hints claim ("expect to call Stop TWICE... once
+per queued item") is itself case-text/AFS drift from the live mechanism, not
+just the original TMS case text.** Decisive re-check: 2 independent headless
+Playwright trials against DEV, exactly ONE Stop click each, zero further
+interaction, full-drain reached via poll alone (`interjection-composer` AND
+`interjection-queue-area` both count 0) with the final DOM state cross-checked
+against the conversation's own API `message_groups` (4 persisted groups:
+Interjection 1, its response, Interjection 2, its response — matching the DOM
+exactly, so this isn't a UI-only illusion). Reading `ChatBox.jsx` precisely:
+the Stop-path rescue (`isStreaming` effect, "Safety net") pushes **every**
+entry in `pendingInjectionsRef` (not just the head) onto `stopQueueRef` in one
+batch, and `drainQueue()` then dequeues that whole batch one item at a time,
+automatically re-triggered by each turn's own `isStreaming` transition — no
+further click is read anywhere in that path. A second Stop click during this
+auto-drain has nothing left in `pendingInjections` to rescue (the queue is
+mid-drain under `stopQueueRef`) and is a no-op, so sending one would be
+indistinguishable from not sending it and must not be scripted as a
+case step.
+
 ## Blocked Steps
 None — the Stop-control handle gap is recorded above as a Concrete Handles
 item + `testid needed`, not a blocker: the ladder's lowest rung (a
@@ -151,9 +185,12 @@ any other `migrate-locators-to-testids` candidate.
 ## Automation Hints
 - Shares the `midturn_injection_enabled` fixture with the rest of this
   family.
-- The implementer should expect to call the Stop control TWICE to reach the
-  fully-drained state asserted in step 6, when 2 items were queued (once per
-  queued item) — this is the confirmed live mechanism, not an automation
-  bug to work around.
+- **AMENDED by implementer (2026-10-17):** click the Stop control exactly
+  ONCE — it rescues and auto-drains the ENTIRE queue, not just the head
+  item. Do NOT click it a second time (no-op during the auto-drain, and
+  scripting it would silently pass even if the auto-drain mechanism ever
+  broke, since a second click can mask a missing redrain). Poll for the
+  full-drain signal (`interjection-composer` count == 0 AND
+  `interjection-queue-area` count == 0) after the single click.
 - Reuse `wait_for_ai_response()`/`wait_for_message_content_stable()` for all
   post-Stop waits.
