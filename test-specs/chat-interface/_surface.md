@@ -2,9 +2,52 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-3369, 2026-10-17
+a time; last confirmed by: qa-engineer analyst, ELITEA-3315, 2026-10-17
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-3368, 2026-10-17).
+confirmer: ELITEA-3369, 2026-10-17).
+
+## Project Context — cross-project isolation + project switch (ELITEA-3315)
+
+- **`ProjectContextContent.jsx`'s `useProjectContextQuery` is keyed purely by
+  `useSelectedProjectId()`** — confirmed via source read: zero cross-project
+  awareness of any kind, no special-casing for "other projects". Switching
+  the active project (sidebar selector / `BasePage.switch_project()`)
+  reactively re-queries on the SAME page instance with **no explicit
+  page reload/re-navigate needed** — confirmed live: `/settings/project-context`
+  correctly flips from Project A's populated editor content to Project B's
+  empty-state ("Still no Project Context" + `project-context-create-button`)
+  immediately after `switch_project()` returns, no intervening `page.goto()`.
+- **A second project for isolation/cross-project tests is discovered at
+  runtime via `ProjectAPI.list_projects()`** (same pattern
+  `test_pipeline_fork_to_different_project.py`'s `_resolve_source_project_id()`
+  already established for a different case) — never hardcode a second
+  project id. This session resolved: `1` ("promptlib_public", public, always
+  excluded), `470` ("Elitea Automation"), `575` ("project_user_940", UI
+  label "Private", `${ELITEA_PROJECT_ID}`). `GET
+  /api/v2/projects/project/default/1?check_public_role=true` is the
+  underlying request.
+- **`ProjectContextAPI` already accepts an explicit `project_id` override**
+  in its constructor (`ProjectContextAPI(browser_cookies=..., project_id=str(other_id))`)
+  — use a SECOND instance scoped to the other project for cross-project API
+  verification; don't mutate the shared session-scoped `project_context_api`
+  fixture (stays pinned to `ELITEA_PROJECT_ID` for every other test that
+  uses it).
+- **The Settings → Project Context "enabled" toggle switch
+  (`EnableToggleCard.jsx`'s `Switch.BaseSwitch`, saved-view only — NOT the
+  empty-state or the editor) has ZERO testid/aria-label/name of any kind**
+  — confirmed via full source read, `role="switch"` only, nothing else.
+  Distinct from the chat Modules-panel toggles (which DO have
+  `modules-toggle-{tool_key}` testids) — don't confuse the two. No case so
+  far clicks or reads this control directly (ELITEA-3315 asserts "enabled"
+  via the API's own `enabled: true` field instead); flagged here for
+  whichever future case first needs it (`suggested_testid=
+  "project-context-enabled-toggle"` if that case arrives).
+- **Project selector trigger's visible text concatenates a leading
+  avatar-letter glyph with the project label** — confirmed live:
+  `"PProject:Private"` for Project A (575), `"EProject:Elitea Automation"`
+  for Project B (470). Assert via substring/contains on the label, never an
+  exact string match (the leading glyph is cosmetic, not confirmed stable
+  across every project name's first letter).
 
 ## Ask User clarifying-question card (`ClarifyingQuestionControl`, ELITEA-3369)
 
