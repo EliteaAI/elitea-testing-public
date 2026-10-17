@@ -75,6 +75,31 @@ confirmer: ELITEA-3368, 2026-10-17).
   feature's actual purpose — ask for missing info, use the answer — IS met);
   see ELITEA-3369's AFS Known Defects for the full clarification writeup.
 
+**Resolved/confirmed during ELITEA-3369 implementation (2026-10-17, extends
+the section above with a WIDER non-determinism sample — does not supersede
+the mechanism findings):** 8+ live implementer runs of the IDENTICAL
+ambiguous message + IDENTICAL short Q1 answer found BOTH documented
+non-determinism axes firing much more often than the analyst's 3/3 sample
+suggested:
+- Question COUNT: the 2-question and 1-question paths each occurred
+  roughly HALF the time (not a rare alternate path).
+- Question/option CONTENT on a 2-question run: the second question is NOT
+  reliably the "when to load" Always/When-relevant select this section
+  documents above — also observed as an "Activation"/"Setup Mode"-headed
+  question with 2-3 differently worded options (e.g. "Generate a
+  draft"/"Use exact text", or "Always"/"When project details
+  matter"/"Custom instruction"). The "option LABELS stable verbatim across
+  all 3 runs" claim above held only within that session's 3 runs, not more
+  broadly. **Automation implication, confirmed working**: never select an
+  option row by label for this flow — answer EVERY question (first and any
+  follow-up) via the card's own free-text input instead, which
+  `ClarifyingQuestionControl.jsx` accepts as a valid answer to a
+  select-type question too (typing clears any radio selection, source:
+  `handleCustomChange`). `ChatPage.answer_clarifying_question()` /
+  `get_clarifying_question_stepper_text()` (new this pass) implement this
+  loop-until-stepper-says-done pattern — reuse them rather than hardcoding
+  a question count or an option label on this surface again.
+
 ## Project Context chip + in-chat Canvas (`generated-entity-chip`, ELITEA-3368)
 
 - **`project_context_builder` module toggle is OFF by default, per-conversation**
