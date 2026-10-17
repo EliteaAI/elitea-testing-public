@@ -37,12 +37,14 @@ from fixtures.api_fixtures import (
     artifact_api_team_project,
     artifact_api_user_b_team_project,
     credential_api,
+    module_settings_api,
     skill_api,
     toolkit_api,
     pipeline_api,
 )
 from fixtures.data_fixtures import (
     conversation_id,
+    midturn_injection_enabled,
     agent_id,
     pipeline_id,
     pipeline_with_llm_id,
