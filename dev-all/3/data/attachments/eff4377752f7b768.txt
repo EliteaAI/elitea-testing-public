@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Switch project — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"select-option-471\"]") to be visible
+ERROR    elitea.steps:actions.py:49 Step failed: Switch project — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"select-option-471\"]") to be visible
