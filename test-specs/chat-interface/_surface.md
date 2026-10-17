@@ -2,9 +2,92 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2458, 2026-08-07
+a time; last confirmed by: qa-engineer analyst, ELITEA-3368, 2026-10-17
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2086/2087/2088, 2026-08-03).
+confirmer: ELITEA-2458, 2026-08-07).
+
+## Project Context chip + in-chat Canvas (`generated-entity-chip`, ELITEA-3368)
+
+- **`project_context_builder` module toggle is OFF by default, per-conversation**
+  (`GET /api/v2/social/module_settings/{project_id}` → `default_project_context_builder_enabled:
+  false`, confirmed live for this project). Every new conversation starts
+  with it unchecked — enable via the `+` menu → Modules submenu's
+  `modules-toggle-project_context_builder` switch (already in
+  `ChatPage.MODULE_TOGGLE_ORDER`) before sending a creation message, same
+  mechanism every other module key uses.
+- **Submenu-interception gotcha, confirmed live**: after clicking a Modules
+  toggle, the submenu/tooltip stays open and its DOM intercepts pointer
+  events on the composer underneath (`subtree intercepts pointer events`
+  Playwright error on a subsequent `composer.click()`) unless explicitly
+  dismissed first (`close_modules_panel()`, or click elsewhere on the page
+  body — both confirmed to work live).
+- **`generated-entity-chip` is the SAME component used for every in-chat
+  create flow** (Agent/Pipeline/Toolkit/Skill/Project-Context "Build with
+  AI"/create-via-chat) — `GeneratedEntityChip.jsx`, testid
+  `data-testid="generated-entity-chip"`, label text = the entity's name
+  (literal `"Project Context"` for this entity type). **NOT YET** a declared
+  `ChatPage` field as of this session — only confirmed live via raw DOM
+  query, not yet added as a `LocatorDescriptor`. Only renders once
+  `!isStreaming && !isLoading` (same `ApplicationAnswer.jsx` gating as every
+  other entity-chip type) — wait for the chip, don't assume it's present
+  immediately after the response text appears.
+- **A bare click on the chip's own `Box` container is a no-op** — confirmed
+  live via full source read (`GeneratedEntityChip.jsx` has no `onClick` on
+  the main container). The chip must be HOVERED first to reveal two child
+  buttons: `role="button" name="Open entity"` (opens the Canvas,
+  `onEntityCreated?.(entity, true)`) and `role="button" name="Delete entity"`
+  (opens a confirm-delete modal). **Neither button carries a testid** —
+  `suggested_testid="generated-entity-chip-open-button"` /
+  `"generated-entity-chip-delete-button"`.
+- **The in-chat Project Context Canvas reuses `ProjectContextPage`'s
+  EXISTING testids verbatim** (`project-context-editor-content`,
+  `project-context-save-button`, `project-context-char-counter` — all from
+  ELITEA-2272, confirmed identical live inside the chat-hosted Canvas, same
+  `ProjectContextEditor.jsx` component the Settings page's "Create" flow
+  also renders). Compose `ProjectContextPage(page)` on the SAME `page`
+  rather than redeclaring these — same pattern as `AgentCanvasPage`+
+  `AgentFormPage`.
+- **Canvas heading has NO testid** — `ProjectContextEditor.jsx`'s
+  `<BaseEditor title="Project Context">` call never passes `titleTestId`
+  (prop exists, wired end-to-end in `EditorHeader.jsx`, same omitted-prop
+  gap `mcp-canvas-title`/`agent-canvas-title` had before their own fixes).
+  `suggested_testid="project-context-canvas-title"`. Confirmable live only
+  by exact text match (`"Project Context"`).
+- **Canvas close (X) button has NO testid either** — same `EditorHeader.jsx`
+  close `IconButton`, same omitted `closeButtonTestId` prop at
+  `ProjectContextEditor.jsx`'s `<BaseEditor>` call site.
+  `suggested_testid="project-context-canvas-close-button"`. Scope
+  non-positionally to a Canvas-container ancestor and pick the one
+  icon-button with no visible text inside that scope — do NOT pick by raw
+  page-wide coordinate (an exploration-only scratch-script expedient, never
+  a shipped locator shape).
+- **Project Context is a per-project SINGLETON, not a list** — the case-text
+  phrase "navigate to the Project Context list" does not map to any literal
+  UI element; `GET .../project-context` always returns one object (never a
+  collection) and the Settings sidebar has a single "Project Context" item,
+  not a list/table view. Verify "no duplicate was created" via the same
+  singleton GET endpoint (`id` stable before/after an update), not a UI list
+  navigation.
+- **Project Context is correctly NOT auto-added as a chat participant** —
+  confirmed live: immediately after chip/Canvas-open, the expanded
+  PARTICIPANTS panel (`expand_participants_panel_via_toggle()`) shows ZERO
+  rows (`PARTICIPANT_ROW_PREFIX` count == 0) and no badge of any kind,
+  unlike Agent/Pipeline/Toolkit/MCP/Skill creation, all of which DO add a
+  participant on completion. This is this entity type's own correct,
+  distinct behavior — not a regression of the participant-add pattern.
+- **Create path = one tool call that generates AND saves**: the create
+  message's tool-chip reads `"Elitea Project Context:
+  post_elitea_core_generate_project_context_draft"`, and the content is
+  already persisted (confirmed via API GET) with no separate manual Save
+  click — matching the sibling (unmerged) ELITEA-3254 test's own documented
+  drift note. The UPDATE path instead shows a read-then-write PAIR of chips:
+  `"...get_project_context_project-context"` then
+  `"...put_project_context_project-context"`.
+- **AI-generated content is non-deterministic** (same caveat as the
+  AI-generated-table family above) — six separate create-prompt runs this
+  session produced six differently-worded responses, all topically
+  faithful. Never assert exact generated text; assert non-empty + topical
+  keyword presence, and use the API-level `id` for the no-duplicate check.
 
 ## Folder rename editor — checkmark enable/disable logic + a11y-snapshot gotcha (ELITEA-2458)
 - **Full validation logic, read from `FolderItem.jsx` source** (grounds every
