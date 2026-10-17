@@ -2,9 +2,78 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-3368, 2026-10-17
+a time; last confirmed by: qa-engineer analyst, ELITEA-3369, 2026-10-17
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2458, 2026-08-07).
+confirmer: ELITEA-3368, 2026-10-17).
+
+## Ask User clarifying-question card (`ClarifyingQuestionControl`, ELITEA-3369)
+
+- **BOTH `project_context_builder` AND `ask_user` modules must be enabled
+  per-conversation to reach the clarifying-question card for an ambiguous
+  Project Context request.** `ask_user`'s default is OFF too
+  (`GET /api/v2/social/module_settings/{project_id}` →
+  `default_ask_user_enabled: false`), same per-conversation-toggle mechanism
+  already documented below for `project_context_builder`. Confirmed live:
+  `ChatPage.ensure_module_toggle_checked()` (existing, built for ELITEA-3368)
+  works UNCHANGED for the `ask_user` key too (no confirmation toast, same as
+  `project_context_builder`).
+- **Omitting `ask_user` causes SILENT degradation, not a visible failure.**
+  With only `project_context_builder` enabled, the identical ambiguous
+  message ("Set up project context for this.") gets a plain text follow-up
+  question in the chat response ("There is no project context configured
+  yet. Please provide the project background...") — no `ask_user` tool chip,
+  no clarifying-question card, no stepper. A test that forgets to enable
+  `ask_user` will NOT clearly fail on that precondition — it will just never
+  see the card and fail several steps later with a confusing symptom.
+- **`ClarifyingQuestionControl.jsx` (confirmed via full source read) renders
+  ZERO testids anywhere** — the whole card is a plain `<Box>` with no
+  `data-testid`, no `role`, no `aria-label`. Detect the card's
+  presence/absence via its custom-text input instead (next bullet).
+- **The card's custom-text input has a `placeholder="Your option"` but NO
+  `aria-label`/`<label>`** — confirmed live `get_by_label("Your option")`
+  returns 0 matches; use `css='input[placeholder="Your option"]'` (rung 4),
+  not `label=`.
+- **A stepper (`"1/2"`, `"2/2"`, ...) only renders when the question set has
+  MORE THAN ONE entry** (`total > 1` in source) — a single-question flow
+  (confirmed live reachable with a fuller Q1 answer, see below) shows no
+  stepper at all. Don't assert the stepper's mere presence as a flow
+  invariant; assert its text only within a test that has already confirmed
+  a multi-question run.
+- **The submit button's ACCESSIBLE NAME toggles `"Skip"` ⇄ `"Continue"`**
+  based on whether the current question has been answered (`answered`
+  boolean in source) — no `aria-pressed`/`data-*` state attribute exists, so
+  the name itself is the only differentiator. No testid on this button
+  either. Flagged as a `question` for the lead/testid-migrator (a genuine
+  state-dependent-NAME locator, not a state-dependent-handle violation with
+  a cleaner alternative available) — `suggested_testid=
+  "chat-clarifying-question-submit-button"` would retire the ambiguity.
+- **Selecting an option on a NON-last question auto-advances the stepper**
+  (`handleSelectSingle` calls `goNext()`); **selecting an option on the LAST
+  question does NOT auto-submit** — the submit button must still be clicked.
+  Confirmed live and in source (`if (!isLastStep) goNext()` — the final step
+  has no equivalent auto-submit branch). A test that assumes the last
+  radio-click alone completes the flow will hang waiting for the response.
+- **Option rows have no testid and the nested radio control itself has
+  `pointerEvents: 'none'`** — click the Typography/row text instead
+  (`get_by_text(exact_option_label)`), confirmed live this reliably hits the
+  row's own `onClick`.
+- **Live question content for the case's own Test Data message ("Set up
+  project context for this.") is a reproducible 2-question sequence**
+  (confirmed deterministic 3/3 with a SHORT single-sentence Q1 answer): Q1 —
+  open-ended project-background free text; Q2 — single-select "when should
+  the model load the full context", options `"Always"` / `"When relevant"`
+  (option LABELS stable verbatim across all 3 runs — safe to assert exactly;
+  the Q1 question's exact WORDING varies run to run, assert topically only).
+  **This is NOT a fixed invariant of the `ask_user` tool in general** — a
+  fuller Q1 answer (explicitly stating scope inline) was observed to collapse
+  the flow to a SINGLE question before completing. Scope any "N questions"
+  assertion to the specific test's own run, never assert it as a general
+  product fact.
+- **The case-text's named scope options ("current project only / all
+  conversations / specific Agent or Pipeline") do not exist anywhere in the
+  live card** — this is a case-text/product-intent gap, not a defect (the
+  feature's actual purpose — ask for missing info, use the answer — IS met);
+  see ELITEA-3369's AFS Known Defects for the full clarification writeup.
 
 ## Project Context chip + in-chat Canvas (`generated-entity-chip`, ELITEA-3368)
 
