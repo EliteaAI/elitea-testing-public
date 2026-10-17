@@ -53,3 +53,4 @@
 - [Recurring failure after the fix shipped = new cause](recurring_test_failure_after_fix_shipped_is_a_new_cause.md) — check `git merge-base --is-ancestor` before saying "rides the old PR"
 - [Sandbox APP_PREFIX/MCP-browser gaps are independent](sandbox_app_prefix_and_mcp_browser_can_both_be_broken_independently.md) — missing `/app` looks like a timeout; MCP-broken ≠ triage-blocked, script it directly
 - [Retiring a case ≠ adjusting it](retiring_a_case_is_delete_plus_tms_deprecated_pr.md) — delete test+AFS; TMS `status: deprecated` via lead-opened, never-merged PR
+- ["Issue with the selected model" is transient](workflow_transient_model_access_error_resume_not_restart.md) — check git, then resumeFromRunId, never a fresh dispatch
