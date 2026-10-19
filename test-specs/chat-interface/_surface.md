@@ -1115,3 +1115,32 @@ the scroll container isn't rendered yet; unchanged when it is. Also added
 a confirmation toast that `project_context_builder` never shows (confirmed
 live, 10s timeout), so the new method polls the switch's own checked state
 instead and is click-idempotent (no-ops if already checked).
+
+**ELITEA-3370 (2026-10-19) — `skill_builder`/`project_context_builder`
+default-OFF + server-side enforcement, confirmed live.** Both toggles are
+`False` by default on a never-touched fresh conversation (confirmed live via
+`is_module_toggle_checked()` immediately after `sidebar-create-button`).
+With either disabled, the AI **never attempts the tool call at all** — no
+`chat-answer-tool-chip` renders, confirming this is enforced server-side via
+`meta.internal_tools` (the predict payload), not merely a disabled UI
+control (`ChatBox.jsx:3183` passes `internal_tools` straight through, source
+read on `origin/main` in `EliteaUI`) — a more explicit/insistent chat message
+does not bypass it (tried 3/3 this run). Enabling `skill_builder` mid-
+conversation and re-sending only affects the NEW request; the earlier
+message/response pair is byte-identical before/after (string-equality
+checked). **New handle, not previously documented anywhere in this suite:
+`[data-testid="generated-entity-chip"]`** — renders inside an AI message
+only when a chat-builder module (Skill confirmed this run; likely also
+Agent/Pipeline/Project-Context, not independently verified for those) ACTUALLY
+created/persisted an entity; absent when the owning module is disabled.
+Distinct from `chat-answer-tool-chip` (the tool-invocation label, which also
+only renders when the tool fires) — `ChatPage` has no `LocatorDescriptor`
+field for either the entity chip yet; `chat-answer-tool-chip` was used
+ad-hoc via raw locator in this exploration, worth promoting to a class-level
+field when an implementer first touches it. Also re-confirmed (same flake
+class `click_module_toggle()`'s docstring already names for
+`project_context_builder`): `skill_builder`'s toggle-click sometimes raced
+`click_module_toggle()`'s `expect_response` wait into a `TimeoutError` even
+though the switch DID flip and a toast WAS shown when polled directly —
+`ensure_module_toggle_checked()` is the robust helper for this module too,
+not just `project_context_builder`.
