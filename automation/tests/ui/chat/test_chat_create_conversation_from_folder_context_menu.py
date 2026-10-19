@@ -66,7 +66,7 @@ class TestChatCreateConversationFromFolderMenu:
                 assert re.search(r"/chat/?(\?.*)?$", page.url), (
                     f"A blank chat has no conversation id in the URL, got {page.url}"
                 )
-                expect(chat.get_folder_item(folder_id).locator(chat.CONVERSATION_ITEM_PREFIX)).to_have_count(
+                expect(chat.get_folder_conversation_items(folder_id)).to_have_count(
                     0, timeout=UI_ELEMENT_TIMEOUT
                 )
 
@@ -91,7 +91,7 @@ class TestChatCreateConversationFromFolderMenu:
                 assert auto_name, "Auto-generated conversation name should be non-empty"
 
             with allure.step("Step 6 — Conversation is in the folder only, not in a date group"):
-                expect(chat.get_folder_item(folder_id).locator(chat.CONVERSATION_ITEM.format(conv_id))).to_have_count(1)
+                expect(chat.get_folder_conversation_items(folder_id, conv_id)).to_have_count(1)
                 expect(chat.get_conversation_item(conv_id)).to_have_count(1)
                 for group in ("today", "this_week", "older"):
                     assert not chat.is_conversation_in_group(conv_id, group, timeout=1000), (

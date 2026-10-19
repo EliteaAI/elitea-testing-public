@@ -6673,6 +6673,16 @@ class ChatPage(BasePage):
         self.folder_menu_new_chat_item.click()
         self.folder_menu_new_chat_item.wait_for(state="hidden", timeout=timeout)
 
+    def get_folder_conversation_items(self, folder_id: str | int, conversation_id: str | int | None = None):
+        """Locator for conversation items inside *folder_id*'s row (one id, or all when None)."""
+        item = self.get_folder_item(folder_id)
+        selector = (
+            self.CONVERSATION_ITEM.format(conversation_id)
+            if conversation_id is not None
+            else self.CONVERSATION_ITEM_PREFIX
+        )
+        return item.locator(selector)
+
     @action("Toggle folder")
     def toggle_folder(self, folder_id: str | int):
         """Click the folder icon in the folder's row (expands/collapses it)."""
