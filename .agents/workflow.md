@@ -1,14 +1,16 @@
 # How This Team Works
 
 _Seeded 2026-07-10 from operator way-of-work brief + PR sampling (merged PRs #10–15
-on `main`). **Revised 2026-10 (current): one target, one repo.** Tests are built,
+on `main`). **Revised 2026-10: one target, one repo.** Tests are built,
 run and gated against the **DEV env as deployed**, with ladder locators
 (`.agents/testing.md` § Locator policy), and every artifact a case produces lands in
-**this** repo. Refresh when the process shifts._
+**this** repo. **Revised 2026-10-16 (current): base is `main`; the lead squash-pushes
+each gated batch straight to it** — no PR, no human merge; `automation/factory` is
+frozen history. Refresh when the process shifts._
 
 ## Git host
 
-- **Host**: GitHub · **CLI**: `gh` · **Unit of change**: Pull Request
+- **Host**: GitHub · **CLI**: `gh` · **Unit of change**: one squash commit per batch on `main`, pushed directly
 - **Remote**: this repo, `EliteaAI/elitea-testing-public` (admin). It is the only
   repo a case commits to.
 
@@ -19,12 +21,12 @@ run and gated against the **DEV env as deployed**, with ladder locators
 | Input | TMS cases |
 | Target | DEV — `https://dev.elitea.ai`, `APP_PREFIX=/app` |
 | Locators | the ladder — existing testid → role+name → label → css → xpath, each non-testid declaration carrying `suggested_testid=` |
-| Output | **one** PR per case → `automation/factory`, in this repo |
+| Output | **one** squash commit per batch on `main`, in this repo (a batch of one = one case) — **pushed by the lead** after review + the 3× DEV gate |
 
 **Why it looks like this.** An earlier loop coupled every case to the frontend repo: a
 test needed a testid, the testid needed a frontend change, that change needed days of
 review, and each case produced two PRs in two repos. Building on DEV with the ladder
-removes the coupling — a test is green on the env it targets the day it merges, and a
+removes the coupling — a test is green on the env it targets the day it lands, and a
 missing testid is a `suggested_testid=` hint rather than a blocker. Converting those
 hints into real testids is a separate, on-request process with its own session and its
 own procedure (`.claude/skills/migrate-locators-to-testids`); it never runs as part of
@@ -34,12 +36,23 @@ a case and needs no space in your context.
 
 | Repo | Long-lived branch | Rule |
 |---|---|---|
-| elitea-testing-public | `automation/factory` (`main` merged in periodically) | small PRs into it, one per test/feature area; **never PR `main` directly** |
+| elitea-testing-public | `main` | one squash commit per batch (the gated `tests/batch-<slug>` trunk; a batch of one is one case branch), **pushed directly by the lead** — only after every unit is reviewer-`APPROVED` and the trunk passed the lead's 3× DEV gate. No other role pushes `main`; nobody rebases or force-pushes it |
 
-- There is **no CI on `automation/factory`** — the green run from this machine against
-  DEV before the PR is the only verification. You are the CI.
+- There is **no CI before `main`** — the green run from this machine against DEV
+  (implementer), the fresh-session review and the lead's 3× gate before landing are
+  the verification. You are the CI. The human acceptance step is `Ready` → `Done` on
+  the card, after the work is already on `main`.
+- **`main` also moves on its own**: `build-test-index.yml` commits
+  `automation/index.json` (as `github-actions[bot]`) after every push touching
+  `automation/tests/ui/**` — including your own landing. Always `git fetch origin`
+  before a push to `main`; a rejected push is normal, never a reason to `--force`.
+- `automation/factory` and `automation/base` are **frozen history** (cut-over
+  2026-10-16, both identical to `main` at that point). Never branch from, PR into or
+  sync them.
 - There is **no `pending_testid` marker**. Do not invent one.
-- Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/factory`**.
+- Branches: a batch trunk `tests/batch-<slug>` (or, for a batch of one,
+  `tests/<case-id>-<slug>`) cut from a freshly fetched **`origin/main`**; a batch's
+  unit branches `tests/<case-id>-<slug>` are cut from the trunk and merge back into it.
 - Commit style (sampled from history): conventional-ish — `test: (5199) Add guardrails
   live-reload UI tests`, `refactor: use default gpt-5.2 model`, `docs(afs): amend selectors…`.
 
@@ -65,7 +78,7 @@ up 2026-07-24) which corrupt the load-bearing four-sibling topology.
 |---|---|
 | Read a file on another branch | `git show <branch>:<path>` |
 | Compare against another branch | `git diff <branch>...HEAD` · `git log <branch>..HEAD` |
-| Review a PR's code | Static review — **no execution, no checkout** (reviewer slot is static by contract) |
+| Review a unit's code | Static review — **no execution, no checkout** (reviewer slot is static by contract) |
 | Run a case's tests | The case's own branch, checked out normally, one at a time |
 | Work another branch mid-task | Commit or park current work, `git checkout`, then return |
 | Parallel work on shared files | Don't — serialize it. Two agents in one tree collide. |
@@ -74,10 +87,15 @@ If a checkout genuinely must move while another agent depends on the current one
 is a **coordination** problem: finish or park the in-flight work first, don't fork the
 tree.
 
-### Sync: `automation/factory` ← `main`
+### Keeping a trunk current
 
-Periodically (and before the first case of a session): merge `main` into
-`automation/factory` — `sync-base-branches` Part 1. Never rebase a shared branch.
+There is no base-branch sync — branches are cut from `origin/main` directly. What
+drifts is a **trunk between its gate and its landing**: when `origin/main` moved in a
+way that touches the batch's files, merge `origin/main` into the trunk (never rebase,
+never force-push) and re-run the gate before landing. Cases that depend on each other
+belong in the same batch (one commit); a case that needs another batch that has not
+landed yet is parked `Blocked` — "Waiting on #N" — never stacked on the unlanded
+trunk.
 
 **Never shallow clones.** Check `test -f .git/shallow`; fix with `git fetch --unshallow origin`.
 
@@ -90,28 +108,52 @@ Periodically (and before the first case of a session): merge `main` into
    first, then role+name, label, stable css, declared xpath.
 3. **`page-object-generator` skill** — emit class-level declarations on that rung,
    every non-testid one with `suggested_testid=` (`.claude/rules/page-objects.md`).
-4. **Write the test**, run it green against DEV, PR into `automation/factory`.
-5. **After merge**, `locator_inventory.py sync-ledger` registers the new non-testid
-   declarations as `raw` rows — the locator-debt ledger.
+4. **Write the test**, run it green against DEV, review, gate, land on `main`.
+5. **After landing**, `locator_inventory.py sync-ledger` registers the new
+   non-testid declarations as `raw` rows — the locator-debt ledger (part of
+   § After landing).
 
-The loop is self-contained: one repo, one env, nothing to wait for.
+The loop is self-contained: one repo, one env, one session — nothing waits.
 
-## Promotion — HUMAN-TRIGGERED ONLY
+## Promotion — none for this repo
 
-What the lead performs — **only on explicit request**, never autonomously — is the
-batch promotion (`batch-promote` skill): run the suite from GHA against the deployed
-env, then open the `automation/factory → main` gate PR (gate = green deployed run) and
-merge.
+Every batch lands on `main` directly, so there is nothing to promote in
+`elitea-testing-public`. `batch-promote` survives only for the testid integration
+branches (`automation/testids` in `EliteaUI` / `elitea_assistant`) — human-triggered
+only, as before.
 
-Because every test on `automation/factory` was built and gated against DEV as
-deployed, the branch never depends on something that isn't live yet — the promotion
-gate is the green deployed run, full stop.
+## After landing
+
+The lead does this **in the same session** that pushed the batch, right after the
+push succeeds — there is no separate post-merge loop. For every case of the batch:
+
+1. TMS back-write (`.agents/test-automation.yaml` § `backwrite_on_done`) + rebuild
+   `index.json` in the TMS repo — that repo keeps its own landing practice.
+2. Once per batch, after the back-writes: `git fetch origin`, then on the landed
+   `main` run `locator_inventory.py scan` + `sync-ledger`. If the ledger changed,
+   commit **only** `.agents/locator-migration/ledger.json`
+   (`chore(ledger): sync after batch <slug>`) and push it to `main` the same way
+   (fetch, fast-forward, push; never `--force`).
+3. Post the **closure record** (below) on every card and move each to `Ready`. The
+   card stays open until a human closes it (`Done` stays human-only).
+
+A session that pushed a batch but died before steps 1–3 left the card `In Progress`
+with work on `main`: the next session (or the control loop's flag) finishes 1–3 from
+the landed commit — never re-land it.
 
 ## Review gates (pipeline-internal)
 
-- Every automation PR into `automation/factory`: adversarial review by `qa-engineer`
+- Every unit of an automation batch: adversarial review by `qa-engineer`
   (fresh session, `code-review` + triangulation vs TMS case and AFS) →
-  `APPROVED` | `CHANGES_REQUESTED`; the lead merges.
+  `APPROVED` | `CHANGES_REQUESTED`, before it merges into the batch trunk; then the
+  lead's 3× DEV gate on the trunk; then **the lead squash-lands the trunk on `main`
+  and pushes it** (`.agents/role-overrides.md` § Orchestrator slot — *Landing a
+  batch*). The review and the gate are the only acceptance before `main`.
+- **Landing commits link the card with `Refs #<card>` — never `Closes` / `Fixes` /
+  `Resolves`.** A closing keyword in a commit pushed to `main` auto-closes the card
+  on push, before the back-write and the closure record; the card stays open in
+  `Ready` until a human closes it. This overrides any skill example that says
+  `Closes #N` (e.g. `completing-a-task`).
 - **Dispatch-prompt contract (lead):** every analyst, implementer and reviewer dispatch
   prompt carries the target + locator-policy line verbatim — see
   `.agents/role-overrides.md` § Orchestrator slot. The dispatch prompt is the gate.
@@ -121,7 +163,7 @@ gate is the green deployed run, full stop.
   `fallback=`, and positional picks are `CHANGES_REQUESTED`. Existing raw handles are
   tracked tech debt (#25/#42), not precedent.
 - Commit authority: the implementer commits on the work branch the lead names
-  (or creates one from `automation/factory` when dispatched standalone).
+  (or creates one from `origin/main` when dispatched standalone).
 
 ## Work tracking
 
@@ -153,33 +195,36 @@ same way as any blocker — with two cross-repo specifics:
 
 ### Closure record
 
-The lead posts this as the final comment on the automation issue. A case is promotable
-as soon as it is merged — it was built and gated on the env it targets:
+The lead posts it on **every card the batch covers** once the batch is on `main` and
+§ After landing steps 1–2 are done; each issue then moves to **`Ready`**:
 
 ```markdown
-🔗 **Closure record — <CASE-ID>**
+✅ **Closure record — <CASE-ID>**
 
 | Artifact | Where | State |
 |---|---|---|
-| Test | #<N> — `tests/<case>-<slug>` → `automation/factory` | ✅ merged (`<sha>`) |
-| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/factory` |
-| Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> | ledger: <L> new `raw` rows |
+| Test | `main` @ `<sha>` — batch `<slug>` (<K> cases: <IDs>) · this case: `<node-id>` | ✅ landed (trunk `tests/batch-<slug>` kept for history) |
+| Gate | 3 separate DEV runs of the batch's specs on the trunk | ✅ 3/3 green — or sanctioned RED (`#<defect>`) |
+| Review | qa-engineer fresh session | ✅ APPROVED |
+| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `main` |
+| Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> · ledger: <L> new `raw` rows | pre-landing `origin/main` vs `<sha>` |
+| TMS back-write | <case file> → `automation_test_id: <Form C ref>` | <TMS commit/PR> |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
-**Status:** merged to `automation/factory` · green on DEV · promotable.
+**Status:** on `main` · awaiting human acceptance (`Done`).
 **Still open:** <follow-ups, or "none">
 ```
 
-The Locators row is the `locator_inventory.py scan` delta, **re-run by the lead on
-`automation/factory` after the merge and pasted** — never copied from the Run Report.
-The issue moves to **`Ready`**; `Done` stays human-only.
+Every number in the record is **re-run by the lead and pasted** — never copied from
+the Run Report. The issue stays `Ready` until a human closes it; `Done` stays
+human-only.
 
-The work-log comments posted during a run (started → AFS ready → PR opened → review →
-merged) are a **narrative**. The closure record is the **artifact index**. Nobody
-re-reads the narrative six months later; they read this one comment to find out where
-the work lives and whether it's actually finished — so **a bare "✅ merged" is not a
-closure record**, and every row states a fact the lead verified itself, never one
-copied from the AFS or the Run Report.
+The work-log comments posted during a run (started → AFS ready → review → gated →
+landed) are a **narrative**. The closure record is the **artifact index**. Nobody
+re-reads the narrative six months later; they read this comment to find out where the
+work lives and whether it's actually finished — so a bare "✅ landed" is not a closure
+record, and every row states a fact the lead verified itself, never one copied from
+the AFS or the Run Report.
 
 ## Traps (cost someone an hour already)
 
@@ -195,5 +240,5 @@ copied from the AFS or the Run Report.
 
 ## Unconfirmed
 
-- `automation/factory` PR review-approval count (branch is new — no PR history yet;
-  pipeline-internal review applies regardless).
+- How often the `build-test-index.yml` bot commit races a landing push (direct push
+  is new as of 2026-10-16 — the rejected-push → merge → re-land path is unmeasured).

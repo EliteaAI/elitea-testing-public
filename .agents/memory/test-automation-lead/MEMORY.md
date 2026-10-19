@@ -8,7 +8,8 @@
 > into their richest survivor, demoted surface lookups to disk-only, cut 2 lines
 > whose claims are now contradicted by the code. No entry file was deleted.
 
-- [Project briefing](project_briefing.md) — stack, pipeline, systems map, PR + merge policy
+- [Project briefing](project_briefing.md) — stack, pipeline, systems map, landing policy
+- [Base is main; lead lands by direct push](main_direct_push_landing_cutover.md) — since 2026-10-16: one ticket = one batch = ONE squash commit you push to main (no PR); back-write + ledger + closure record same session
 - [Shared-tree git discipline](shared_tree_git_discipline.md) — one tree, many sessions; destructive git eats memory; worktrees stay banned
 - [Closure-record discipline](closure_record_discipline.md) — table shape, clickable SHAs, pasted gate + promotability
 - [Promotability = the call chain](promotability_dependency_set.md) — derive deps from code at check time, never the AFS
@@ -27,7 +28,7 @@
 - [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 6× violated (now beyond sync-conflicts too); dispatch, always
 - [Workflow outcomes aren't ground truth](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — gh pr view + git log every unit (8×)
 - [Gate stalls: 4 shapes, 4 recoveries](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — hard-fail resumes; not-run you run (7×)
-- [Landing is manual](batch_workflow_never_opens_trunk_to_base_pr.md) — push local refs, open trunk→base PR, verify report.json landed (12×)
+- [Landing is manual](batch_workflow_never_opens_trunk_to_base_pr.md) — push local refs, open the ONE trunk→main PR yourself (never merge it), verify report.json landed (12×)
 - [CORRECT report.json after your own gate](report_writer_agent_can_refuse_disk_write.md) — a lead-run gate must be written back; audits read this file
 - [Gate scope = node-ids, not files](large_batch_gate_scope_by_nodeid_not_file.md) — file scope sweeps in pre-existing flaky siblings
 - [Blast-radius red doesn't block](blast_radius_red_does_not_block_gate_verdict.md) — trust gate.verdict; file the reds as their own issue
@@ -42,10 +43,9 @@
 - [`gh run view --log` stub = false zero](gh_run_log_stub_is_a_false_zero.md) — in-progress run = 81B stub; counts lie
 - [Whole-matrix CI red = shared machinery](ci_blast_radius_points_at_shared_machinery.md) — triage the shared frame
 - [No TaskOutput tool → fallback](no_taskoutput_tool_fallback_is_listagents_plus_background_sleep.md) — ListAgents + bounded `run_in_background` sleep, still in-turn
-- [adjust-automated-test expected-result change](adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr.md) — lead opens the TMS PR, never merges it; test PR still yours to gate+merge
+- [adjust-automated-test expected-result change](adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr.md) — lead opens the TMS PR, never merges it; the test change still lands on main by your gated push
 - [adjust-skill Step 6 (AFS) falls through split dispatches](adjust_skill_step6_afs_update_falls_through_split_dispatches.md) — assign it explicitly or resume the analyst after merge
 - [New FIX card can dup a sibling's root cause](fix_card_shared_page_object_method_dedup.md) — check open PRs/issues for the shared method/symptom before triaging fresh
-- [Check origin-ahead before the mandatory sync merge](sync_check_origin_ahead_before_local_merge.md) — factory-ops may have already synced; don't double-merge
 - [Scan tracker text for secrets too](scan_tracker_text_for_secrets_too.md) — a subagent's auth-failure report can quote live creds; scrub before posting, not just before commit
 - [VoiceButton focus-steal on instructions clear](voicebutton_focus_steal_on_instructions_clear.md) — any clear-Instructions step mounts a fresh chat panel that steals focus; Class B, don't adjust the test (#2451)
 - [Sibling clone may lack git identity](sibling_clone_git_identity_can_be_unset_silent_noop_commit.md) — unset user.name/email fails commit; push then silently no-ops

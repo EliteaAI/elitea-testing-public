@@ -30,7 +30,7 @@ column is the state machine:
 | `Approved` | A human approved it; may be worked | human only |
 | `In Progress` | Being worked right now | you, when you start |
 | `Blocked` | Waiting on a human — the last comment says why | you, when you park it |
-| `Done` | The PR is merged. Nothing else counts as done | you, after the merge |
+| `Done` | The work is on the base branch (merged or pushed per the project's landing policy). Nothing else counts as done | the project's policy decides — a human, where the work repo's `.agents/` says `Done` is human-only |
 
 Rules you follow in every session:
 

@@ -45,9 +45,10 @@ type: project
   in `.agents/test-automation.yaml` (`tms.adapter: …`) so Tal loads the right
   adapter skill conditionally.
 - **Detect the issue tracker + automation PR policy:** base branch, merge policy
-  (`auto-merge` / `human-approved` / `manual`), merge strategy
+  (`auto-merge` / `human-approved` / `manual` / `direct-push`), merge strategy
   (`squash`/`rebase`/`merge`). Record under `.agents/profile.md` § Automation PR
-  policy — Tal reads it before every merge.
+  policy — Tal reads it before every landing. (This project: `direct-push`, squash,
+  since 2026-10-16.)
 - **Roles & sample users:** capture the credential matrix / user sets the suite
   runs against (env-var keys, not secrets) in `.agents/profile.md`.
 
@@ -62,7 +63,7 @@ type: project
 - **Seed complete** — CLAUDE.md rewritten, AGENTS.md project sections added (bundle
   block preserved), full `.agents/*` set written, 4 memory briefings adjusted.
 - **Topology:** siblings under the parent folder (NOT a git repo, don't init):
-  this repo (`automation/factory`) and `../onetest-ai-tm-Elitea` (TMS, `.onetest/`
+  this repo (base `main`; the lead pushes gated batches straight to it) and `../onetest-ai-tm-Elitea` (TMS, `.onetest/`
   cwd-relative). A frontend-source clone also sits beside them as a **read-only
   reference** — grepped on `origin/main` to answer "how is this control wired as DEV
   ships it", never edited, never built, never run.
@@ -70,7 +71,7 @@ type: project
   intake/back-write policy in `.agents/test-automation.yaml`.
 - **Exploration shortcuts:** framework truth = `pyproject.toml` + `automation/pytest.ini`
   + `.venv/bin/pip list`; rules in `.claude/rules/`; upstream-main skills already all
-  present on `automation/base` (verified — don't re-copy); case sample =
+  present on `main` (verified — don't re-copy); case sample =
   any `.md` under `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`.
 - **Operator decisions on record:** no `env.sh` (killed — repo-relative paths instead);
   no onboarding GitHub issue (local `.agents/onboarding.md` only); memory briefings

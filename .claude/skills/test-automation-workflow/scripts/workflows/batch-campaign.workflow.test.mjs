@@ -149,6 +149,19 @@ test('per-batch landing returns between waves; campaign-end rolls on', () => {
 // units sit on the trunk, unproven. Field measurement: a mid-gate crash
 // reported nothing-landed/blocked:14 while 13 of 14 units were merged; the
 // conductor must say "re-run the gate", never "nothing happened".
+// prUnit is forwarded to every build child, and under 'per-case' no landing
+// text may promise a trunk PR or a merging closer.
+test("prUnit is forwarded, and 'per-case' lands per unit instead of per trunk", () => {
+  assert.match(text, /'extendRateThreshold', 'prUnit'\]/);
+  assert.match(text, /const PR_UNIT = POLICY\.prUnit \?\? 'trunk'/);
+  assert.match(text, /its trunk is GATE-ONLY: open one PR per 'automated' unit/);
+  assert.match(text, /every wave trunk is GATE-ONLY/);
+  assert.match(text, /only after its PR has merged/);
+  // The default trunk path names the direct-push landing too.
+  assert.match(text, /under direct-push: one squash commit of its trunk/);
+  assert.match(text, /Under direct-push you land each trunk yourself as one squash commit/);
+});
+
 test("an interrupted wave surfaces as 'ungated', never 'nothing-landed'", () => {
   assert.match(text, /report\?\.totals\?\.\['merged-ungated'\] \? 'ungated'/);
   assert.match(text, /report_written: report\?\.report_written \?\? false/);

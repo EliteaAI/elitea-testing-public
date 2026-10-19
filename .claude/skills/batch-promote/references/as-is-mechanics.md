@@ -3,6 +3,10 @@
 Concrete recipes for Mode A. Everything here was executed for real on 2026-07-31;
 the traps are failures that actually happened, not hypotheticals.
 
+> **2026-10-16:** the `elitea-testing-public` / `automation/factory` half of these recipes is
+> history — tests now land by per-case PRs straight into `main`, so no test-repo snapshot is
+> ever built. The mechanics still apply as written to the `automation/testids` branches.
+
 ---
 
 ## 1. Why a synthetic snapshot branch, and not a merge or a cherry-pick

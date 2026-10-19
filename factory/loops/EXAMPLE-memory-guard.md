@@ -54,6 +54,16 @@ tomorrow's tick).
    MEMORY.md 47752 → 3800 bytes`. One commit per role touched, not one giant
    commit — keeps `git blame`/revert scoped if an archive move ever turns
    out wrong.
+5. Commit on local `main` (fast-forwarded from a fresh `origin/main` first —
+   `git fetch origin && git checkout main && git merge --ff-only origin/main`)
+   and push: `env -u GITHUB_TOKEN git push origin main`. **This is the loop's
+   named exception** to "only the lead pushes `main`"
+   (`.agents/role-overrides.md` § the working branch is `main`): it is limited
+   to verbatim moves under `.agents/memory/` — stage those paths by name and
+   nothing else. A rejected push means `main` moved: `git fetch origin`,
+   `git reset --hard origin/main` (local `main` only — your unpushed archive
+   commits are discarded), and redo the moves on the new tip. Never `--force`,
+   never rebase.
 
 **Do not:**
 - Rewrite, merge, or reword any entry while moving it — this is a

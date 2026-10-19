@@ -57,7 +57,9 @@ intake:
     never skip silently
 
 backwrite_on_done:
-  # Post-merge, orchestrator's job — edit the case file in cases_repo:
+  # Post-landing, orchestrator's job — runs right AFTER the lead has pushed the case's
+  # batch to main, in the same session (.agents/workflow.md § After landing). Never for
+  # a batch that is not on origin/main yet. Edit the case file in cases_repo:
   execution_type: automated
   status: ready
   # automation_test_id — the CI CORRELATION KEY (ground truth, not style). onetest-tms
@@ -95,7 +97,9 @@ backwrite_on_done:
     # ⚠ index.json is NOT auto-rebuilt (build-index CI is a stub). After editing case files,
     #   rebuild it (build_index MCP verb, or the packaged scripts/_index.py) or correlate_results
     #   reads the stale ref and still reports a gap.
-  automation_pr: URL of the merged automation/factory PR (observed practice, now policy)
+  # automation_pr — field name kept (older cases hold a PR URL). Since 2026-10-16 batches
+  # land without a PR, so the value is the landed batch commit on main:
+  automation_pr: https://github.com/EliteaAI/elitea-testing-public/commit/<sha>
 
 reporting:
   # No pytest-wired TMS reporter exists and none should be added silently.
