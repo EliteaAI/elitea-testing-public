@@ -1,0 +1,27 @@
+{
+  "v": 1,
+  "session": "642602c2-7a6a-4475-abd5-0c187c5fd08f",
+  "intent": "automation",
+  "batch": "chat-project-context-builder",
+  "cases": [
+    "ELITEA-3315",
+    "ELITEA-3368",
+    "ELITEA-3369"
+  ],
+  "declaredAt": "2026-10-19T23:14:18.869Z",
+  "updatedAt": "2026-10-19T23:14:18.924Z",
+  "outcomes": {
+    "ELITEA-3368": {
+      "outcome": "blocked",
+      "at": "2026-10-19T23:14:18.924Z"
+    },
+    "ELITEA-3369": {
+      "outcome": "blocked",
+      "at": "2026-10-19T23:14:18.924Z"
+    },
+    "ELITEA-3315": {
+      "outcome": "blocked",
+      "at": "2026-10-19T23:14:18.924Z"
+    }
+  }
+}
