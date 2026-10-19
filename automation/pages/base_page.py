@@ -389,6 +389,39 @@ class BasePage:
         self.dismiss_banner_if_present()
         self.dismiss_nps_survey_if_present()
 
+    PLATFORM_RELEASE_BANNER_CLOSE_BUTTON = LocatorDescriptor(
+        testid="platform-banner-close",
+        description=(
+            "'Got it' button on the platform release-notes announcement "
+            "modal (data-testid=\"platform-banner-center\", e.g. 'Announcing "
+            "ELITEA 2.0.7!'), confirmed live 2026-10-19 (ELITEA-3372 "
+            "implementation). A full-screen MUI Dialog, distinct from the "
+            "z-index-1200 overlay `dismiss_banner_if_present()` targets (which "
+            "only matches `button[aria-label=\"close\"]`) — this modal's only "
+            "control is this named 'Got it' button. Dismissing once per "
+            "session appears to persist (not re-shown after a later "
+            "navigation in the same session, confirmed live)."
+        ),
+    )
+
+    def dismiss_platform_release_banner_if_present(self, timeout: int = 2000) -> None:
+        """Dismiss the full-screen platform release-notes announcement modal
+        if it is currently shown.
+
+        Best-effort transit machinery, same spirit as
+        :meth:`dismiss_banner_if_present` — nothing asserts on whether the
+        modal was present; this exists so a later click (e.g. the plus-menu
+        button) is not intercepted by it.
+        """
+        try:
+            button = self.PLATFORM_RELEASE_BANNER_CLOSE_BUTTON
+            button.wait_for(state="visible", timeout=timeout)
+            button.click()
+            self.page.wait_for_timeout(300)
+            logger.info("Dismissed platform release-notes banner")
+        except PlaywrightTimeoutError:
+            logger.debug("No platform release-notes banner found to dismiss")
+
     def capture_requests_matching(self, url_substring: str, method: str | None = None) -> "CapturedRequests":
         """Start capturing network requests whose URL contains *url_substring*.
 
