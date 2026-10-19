@@ -1115,3 +1115,11 @@ the scroll container isn't rendered yet; unchanged when it is. Also added
 a confirmation toast that `project_context_builder` never shows (confirmed
 live, 10s timeout), so the new method polls the switch's own checked state
 instead and is click-idempotent (no-ops if already checked).
+
+## Folder dot-menu "New chat" (ELITEA-2757, 2026-10-19)
+- Folder menu items (`FolderItem.jsx` menuItems, no testids on New chat/Pin/): **New chat, Rename, Pin on top, Delete**. Reach: hover `chat-folder-icon` in `chat-folder-item-{id}`, click scoped `conversation-menu-menu-button` `.first` (force). Item by `role=menuitem name="New chat"`.
+- New chat opens a BLANK chat (URL stays `/chat`); folder does NOT expand on click - it expands (`data-expanded=true`) when the first message creates the conversation; item shows `Naming` ~0.4s then the auto-name ("Explain concept machine learning"). No date-group headers render when the folder holds the only conversation.
+- Right-click on folder row: no menu (no onContextMenu). Case-text drift.
+- Release dialog "Announcing ELITEA 2.0.7" (`platform-banner-center`, MuiDialog, button "Got it") blocks pointer events on fresh storage state; `dismiss_banner_if_present()` (aria-label=close) does not close it.
+- Folder create API: `POST /elitea_core/folder/prompt_lib/{pid}` {"name"} -> 201 {id}; deletes 204. Probe via `page.request` works with storage state (plain `requests`+Bearer redirect-loops).
+- Playwright MCP chrome binary missing on this host (/opt/google/chrome) - used scripted python Playwright instead.
