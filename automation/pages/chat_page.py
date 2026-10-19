@@ -779,6 +779,35 @@ class ChatPage(BasePage):
         )
     )
 
+    # Created-entity chip/link rendered inside an AI message only when a
+    # chat-builder module (Skill / Project Context / Agent / Pipeline)
+    # actually created or persisted an entity — ELITEA-3370. Rung 1: the
+    # testid already exists on DEV (confirmed live during analysis); only
+    # the page-object declaration is new work. Scoped — resolved inside a
+    # specific message locator (``ScopedLocator.within(message)``), since
+    # the chip only renders on the message whose tool call actually created
+    # something, not on every AI message.
+    GENERATED_ENTITY_CHIP = ScopedLocator(
+        testid="generated-entity-chip",
+        description=(
+            "Renders inside an AI message only when a chat-builder module "
+            "(Skill/Project Context/Agent/Pipeline) actually created or "
+            "persisted an entity; absent when the owning module is disabled "
+            "or the AI never attempted the tool call."
+        ),
+    )
+
+    def message_has_generated_entity_chip(self, message_locator) -> bool:
+        """Return True if *message_locator* (a ``chat-message-item`` ``<li>``)
+        renders a ``generated-entity-chip`` — i.e. the AI's tool call in that
+        message actually created/persisted an entity (ELITEA-3370).
+
+        Args:
+            message_locator: the message ``<li>`` Locator to check, e.g.
+                ``self.messages_container.nth(ai_response_index)``.
+        """
+        return self.GENERATED_ENTITY_CHIP.within(message_locator).count() > 0
+
     # Chat-area conversation-starter tile (NewConversationView.jsx's call site
     # onto the shared EllipsisTextWithTooltip, ELITEA-2369 — the new-
     # conversation landing view this case's flow actually renders through,
