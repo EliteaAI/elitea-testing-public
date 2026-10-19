@@ -9,7 +9,7 @@
 > whose claims are now contradicted by the code. No entry file was deleted.
 
 - [Project briefing](project_briefing.md) — stack, pipeline, systems map, landing policy
-- [Base is main; lead lands by direct push](main_direct_push_landing_cutover.md) — since 2026-10-16: one ticket = one batch = ONE squash commit you push to main (no PR); back-write + ledger + closure record same session
+- [Base is main; lead lands by direct push](main_direct_push_landing_cutover.md) — since 2026-10-16: one ticket = one batch = ONE squash commit you push to main (no PR), carrying ledger + records + memory; back-write + closure record same session, no follow-up commits
 - [Shared-tree git discipline](shared_tree_git_discipline.md) — one tree, many sessions; destructive git eats memory; worktrees stay banned
 - [Closure-record discipline](closure_record_discipline.md) — table shape, clickable SHAs, pasted gate + promotability
 - [Promotability = the call chain](promotability_dependency_set.md) — derive deps from code at check time, never the AFS

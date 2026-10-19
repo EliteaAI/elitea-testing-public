@@ -109,9 +109,9 @@ trunk.
 3. **`page-object-generator` skill** — emit class-level declarations on that rung,
    every non-testid one with `suggested_testid=` (`.claude/rules/page-objects.md`).
 4. **Write the test**, run it green against DEV, review, gate, land on `main`.
-5. **After landing**, `locator_inventory.py sync-ledger` registers the new
-   non-testid declarations as `raw` rows — the locator-debt ledger (part of
-   § After landing).
+5. **Before landing, on the trunk**, `locator_inventory.py sync-ledger` registers the
+   new non-testid declarations as `raw` rows — the locator-debt ledger rides in the
+   batch's one commit (§ Closing a batch).
 
 The loop is self-contained: one repo, one env, one session — nothing waits.
 
@@ -122,23 +122,56 @@ Every batch lands on `main` directly, so there is nothing to promote in
 branches (`automation/testids` in `EliteaUI` / `elitea_assistant`) — human-triggered
 only, as before.
 
+## Closing a batch — everything in ONE commit
+
+**A batch reaches `main` as exactly one commit, and that commit is complete.** Every
+change the batch makes to this repo — tests, page objects, AFS, the locator-debt
+ledger, the batch's records, the team's memory — rides in the one squash commit.
+There are no follow-up `chore(ledger)` / memory / daily-log commits on `main`.
+
+So after the gate is green, and **before** the squash, the lead commits the batch's
+bookkeeping **on the trunk** (`tests/batch-<slug>`):
+
+1. **Locator ledger** — `git fetch origin`, then on the trunk run
+   `locator_inventory.py scan` (paste it; the delta vs the pre-landing `origin/main`
+   goes in the commit message) + `sync-ledger`; commit
+   `.agents/locator-migration/ledger.json` if it changed.
+2. **Batch records** — `.agents/automation/<slug>/report.json` with the gate verdict
+   written back (orchestration playbook § Close), plus `gate-runs.jsonl`. Then close
+   the session's work scope (`work-scope.mjs close --session <id>`): it writes
+   `cost.json` + `batch-report.*` / `batch-tokenomics.*` into the same dir. Those
+   are the files `.gitignore` lets through from `.agents/automation/**`; the rest of
+   the batch dir stays local.
+3. **Memory** — the lead's (and any role's) `.agents/memory/**` entries and the
+   daily log for this batch.
+
+These touch only `.agents/**`, so they do not re-open the gate. Anything committed to
+the trunk after the gate under `automation/` **does** — re-gate before landing.
+
+Then land the trunk (`.agents/role-overrides.md` § Orchestrator slot — *Landing a
+batch*): one `git merge --squash`, one commit, one push.
+
 ## After landing
 
 The lead does this **in the same session** that pushed the batch, right after the
-push succeeds — there is no separate post-merge loop. For every case of the batch:
+push succeeds — there is no separate post-merge loop, and **nothing further is
+committed to `main`** for the batch. For every case of the batch:
 
 1. TMS back-write (`.agents/test-automation.yaml` § `backwrite_on_done`) + rebuild
-   `index.json` in the TMS repo — that repo keeps its own landing practice.
-2. Once per batch, after the back-writes: `git fetch origin`, then on the landed
-   `main` run `locator_inventory.py scan` + `sync-ledger`. If the ledger changed,
-   commit **only** `.agents/locator-migration/ledger.json`
-   (`chore(ledger): sync after batch <slug>`) and push it to `main` the same way
-   (fetch, fast-forward, push; never `--force`).
-3. Post the **closure record** (below) on every card and move each to `Ready`. The
+   `index.json` in the TMS repo — a different repo, with its own landing practice
+   (it needs the landed commit URL, so it can only follow the push).
+2. Post the **closure record** (below) on every card and move each to `Ready`. The
    card stays open until a human closes it (`Done` stays human-only).
 
-A session that pushed a batch but died before steps 1–3 left the card `In Progress`
-with work on `main`: the next session (or the control loop's flag) finishes 1–3 from
+Anything found missing after the push (a ledger row, a memory entry) is **not** a
+follow-up commit: `sync-ledger` is idempotent and the next batch's run registers
+the row, and a memory entry rides in the next batch's commit — say so in this
+batch's closure record. The cost record is a recompute at close, so spend after it
+(the back-write, the closure records) shows in `team-report.mjs`, never by amending
+`main`.
+
+A session that pushed a batch but died before steps 1–2 left the card `In Progress`
+with work on `main`: the next session (or the control loop's flag) finishes 1–2 from
 the landed commit — never re-land it.
 
 ## Review gates (pipeline-internal)
@@ -196,7 +229,8 @@ same way as any blocker — with two cross-repo specifics:
 ### Closure record
 
 The lead posts it on **every card the batch covers** once the batch is on `main` and
-§ After landing steps 1–2 are done; each issue then moves to **`Ready`**:
+§ After landing step 1 (the TMS back-write) is done; each issue then moves to
+**`Ready`**:
 
 ```markdown
 ✅ **Closure record — <CASE-ID>**
@@ -207,7 +241,7 @@ The lead posts it on **every card the batch covers** once the batch is on `main`
 | Gate | 3 separate DEV runs of the batch's specs on the trunk | ✅ 3/3 green — or sanctioned RED (`#<defect>`) |
 | Review | qa-engineer fresh session | ✅ APPROVED |
 | AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `main` |
-| Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> · ledger: <L> new `raw` rows | pre-landing `origin/main` vs `<sha>` |
+| Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> · ledger: <L> new `raw` rows (in `<sha>`) | pre-landing `origin/main` vs `<sha>` |
 | TMS back-write | <case file> → `automation_test_id: <Form C ref>` | <TMS commit/PR> |
 | Defects filed | #<X>, #<Y> — or "none" | |
 

@@ -71,7 +71,8 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **URL**: https://github.com/EliteaAI/elitea-testing-public/issues · https://github.com/orgs/EliteaAI/projects/9
 - **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY) → `In Progress` →
   **`Ready`** (agent-terminal: batch reviewed APPROVED, gated 3× on DEV, pushed to
-  `main` by the lead, TMS back-write + ledger sync done, closure record with *verified*
+  `main` by the lead as ONE commit carrying its ledger sync + records, TMS back-write
+  done, closure record with *verified*
   facts posted, issue OPEN, awaiting human acceptance) → `Done` (HUMAN-ONLY: a human
   accepts the landed work and closes the issue). `Blocked`
   is a side state for REAL blockers only (`Waiting on #N`). Agents never set

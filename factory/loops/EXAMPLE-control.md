@@ -85,12 +85,16 @@ subagent under Tal's identity; never treat the absence of one as a finding). Tal
      rm -rf "$d"; done
    ```
    Unmanaged handles must not increase. Ledger rows are registered by
-   `sync-ledger` right after landing, in the lead's same session
-   (`.agents/workflow.md` § After landing) — so at `Ready` every new non-testid
-   declaration must have a row on `main`
-   (`git show origin/main:.agents/locator-migration/ledger.json`
+   `sync-ledger` on the trunk before the squash (`.agents/workflow.md` § Closing
+   a batch) — so every new non-testid declaration must have a row **in the
+   landed commit itself**
+   (`git show <sha>:.agents/locator-migration/ledger.json`
    → `.entries["pages/<file>.py::<Class>.<field>"]`, state `raw`); missing rows
-   = FAIL (the ledger is the only record of the debt).
+   = FAIL (the ledger is the only record of the debt). Same for the batch
+   records: `git show <sha> --name-only` must list
+   `.agents/automation/<slug>/report.json` (gate verdict written back — not
+   `not-run` / `merged-ungated` over a green gate) and `cost.json`; missing =
+   FAIL.
 4. **Closure record.** The record must match `.agents/workflow.md` § Closure
    record: artifact table (Test = `main` @ landed sha, Gate, Review, AFS path on
    `main`, Locators row = declared D (testid T · ladder L) · unmanaged handles
@@ -100,8 +104,9 @@ subagent under Tal's identity; never treat the absence of one as a finding). Tal
    card when the commit reaches `main`, taking `Done` away from the human).
    The landed commit is the one squash commit the canon describes (subject
    `test: batch <slug> — <N> cases (<IDs>)`, one parent on `main`) — a batch
-   that reached `main` as several commits, a merge commit, or a force-push
-   (`main` history rewritten) = FAIL. Cross-repo links as plain
+   that reached `main` as several commits (including a follow-up
+   `chore(ledger)` / memory / daily-log commit after it), a merge commit, or a
+   force-push (`main` history rewritten) = FAIL. Cross-repo links as plain
    `owner/repo#N` (never backticked), status line, still-open line. The
    Locators row must AGREE with your item-3 scan — a row that ground truth
    contradicts, or one copied from the Run Report instead of re-run by the
@@ -172,12 +177,14 @@ Append to your verdict comment a short watch note if anything is amiss
 3. `question` issues unanswered >24h;
 4. automation commits on `main` (`test: …`) with NO corresponding card that
    ever reached `Ready` (silent delivery — nobody will ever audit it unless
-   flagged), or any commit on `main` by a role other than the lead's landing /
-   bookkeeping and the index bot;
+   flagged), or any commit on `main` other than a lead's batch landing
+   (`test: batch …`), the index bot, the memory-guard loop's declared moves
+   and human-merged PRs — a lead `chore(ledger)` / memory commit is exactly
+   what the one-commit landing forbids;
 5. `In Progress` cards whose batch already landed on `main` (a `Refs #<card>`
    commit exists) more than 24h ago with no closure record — a lead session
-   died after the push; the next iteration must finish the bookkeeping from the
-   landed commit, never re-land.
+   died after the push; the next iteration must finish the back-write + closure
+   record from the landed commit, never re-land and never add a commit.
 
 ## Deltas (factory mode)
 

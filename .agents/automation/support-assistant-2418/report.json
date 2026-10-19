@@ -1,0 +1,39 @@
+{
+  "batch": {
+    "slug": "support-assistant-2418",
+    "created": "2026-08-18T14:22:00Z",
+    "base": "automation/base",
+    "units": 1,
+    "completed": 1
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2418",
+      "title": "Empty message cannot be sent",
+      "outcome": "defect-found",
+      "afs_path": "test-specs/support-assistant/l2_empty_message_cannot_be_sent_ELITEA-2418.md",
+      "afs_commit": "d472a6103",
+      "findings": [
+        {
+          "type": "product-defect",
+          "severity": "critical",
+          "issue": "#1581",
+          "summary": "Send button stays disabled when actual text is typed",
+          "impact": "Users cannot send any messages via Support Assistant widget",
+          "steps_affected": ["Step 6"],
+          "steps_passing": ["Steps 1-5"]
+        }
+      ],
+      "notes": "Deterministic defect in Step 6. Steps 1-5 pass (empty/whitespace input validation works correctly). Analyst recommends sanctioned-RED automation option to preserve coverage of passing validation logic."
+    }
+  ],
+  "gate": {
+    "status": "not-applicable",
+    "reason": "defect-found outcome blocks implementation until product fix"
+  },
+  "next": {
+    "action": "await-defect-resolution",
+    "defect": "#1581",
+    "alternative": "sanctioned-RED automation with expect.soft() on Step 6 if coverage of Steps 1-5 is prioritized"
+  }
+}

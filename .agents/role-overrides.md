@@ -53,13 +53,17 @@ them, PR into them, or sync them.
 
 **Batches land by direct push — no PR, no human merge.** The lead squash-lands a
 batch's gated trunk onto `main` as ONE commit and pushes it (§ Orchestrator slot —
-*Landing a batch*). That push is the delivery; the TMS back-write, the post-landing
-locator scan + ledger sync and the closure record follow in the **same session**
+*Landing a batch*). That one commit carries **everything** the batch changes in this
+repo — the ledger sync, the batch records (`report.json`, `cost.json`, …) and the
+memory / daily log are committed on the trunk before the squash
+(`.agents/workflow.md` § Closing a batch). The push is the delivery; only the TMS
+back-write (another repo) and the closure record follow, in the **same session**
 (`.agents/workflow.md` § After landing). Who may push `main`, and when:
 
 - **The lead (`test-automation-lead`) only**, and only a batch whose every unit is
-  reviewer-`APPROVED` and whose trunk passed the lead's own 3× DEV gate — plus the
-  lead's own post-landing bookkeeping commits (ledger sync, memory / daily log).
+  reviewer-`APPROVED` and whose trunk passed the lead's own 3× DEV gate — **one
+  commit per batch, nothing after it.** No separate ledger, memory or daily-log
+  commits on `main`.
 - **Nobody else pushes `main`** — not the analyst, implementer, reviewer,
   factory-ops, testid-migrator or a cardless loop, except where that loop's own
   prompt names a narrower, explicit exception (memory-guard: verbatim moves under
@@ -333,7 +337,12 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
      must not be on the trunk: a unit that never merged back left none. If
      `origin/main` moved since the gate and the incoming change touches the batch's
      files, merge `origin/main` into the trunk and re-gate first.
-  2. Land it — from the trunk's tree, onto a `main` fast-forwarded to `origin/main`:
+  2. Commit the batch's bookkeeping **on the trunk** (`.agents/workflow.md` § Closing
+     a batch): `scan` + `sync-ledger` → `ledger.json`; `report.json` with the gate
+     verdict, `gate-runs.jsonl`, then `work-scope.mjs close` → `cost.json` +
+     `batch-report.*`; the memory / daily-log entries. `.agents/**` only — anything
+     under `automation/` after the gate means re-gate.
+  3. Land it — from the trunk's tree, onto a `main` fast-forwarded to `origin/main`:
      ```bash
      git checkout main && git merge --ff-only origin/main
      git merge --squash tests/batch-<slug>
@@ -343,16 +352,18 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
      Commit subject `test: batch <slug> — <N> cases (<ID>, <ID>, …)`; body one line
      per case — case id, outcome, spec node-id, review verdict — then the gate result,
      the locator delta, defects filed, and `Refs #<card>` for every card in the batch
-     (never `Closes` — the card stays open for the human's `Done`). The batch's shared
-     memory / `_surface.md` changes ride in the same commit; there is no separate
-     knowledge commit. **Push rejected** (`main` moved — e.g. the
+     (never `Closes` — the card stays open for the human's `Done`). The batch's
+     ledger, records, shared memory / `_surface.md` changes ride in the same commit;
+     there is no separate knowledge or bookkeeping commit — before committing,
+     `git diff --cached --name-only` must show them. **Push rejected** (`main` moved — e.g. the
      `build-test-index.yml` bot commit) ⇒ `git reset --hard origin/main` on your local
      `main` only (it holds nothing but the squash you just made), merge `origin/main`
      into the trunk, re-gate if the incoming change touches the batch's files, and
      land again. Never `--force`.
-  3. Do the post-landing work in the same session (`.agents/workflow.md` § After
-     landing), then post the closure record on **every** card the batch covers (same
-     commit, same gate, the card's own case row) and move each to `Ready`.
+  4. Do the post-landing work in the same session (`.agents/workflow.md` § After
+     landing — the TMS back-write, in the TMS repo; nothing more on `main`), then
+     post the closure record on **every** card the batch covers (same commit, same
+     gate, the card's own case row) and move each to `Ready`.
   **A batch of one degenerates cleanly** — no trunk, the case branch is squash-landed
   the same way. **A campaign splits a ticket into waves only on an explicit human
   ask**; by default the whole ticket is one batch. **Gate red on the trunk ⇒ nothing
