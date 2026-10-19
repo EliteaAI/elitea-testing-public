@@ -1315,6 +1315,12 @@ class ChatPage(BasePage):
 
     # FolderItem.jsx menuItems carry no `key` for "New chat", so DEV serves no
     # testid for it — ladder rung 2 (role+name), unique in the open popper menu.
+    folder_menu_items = LocatorDescriptor(
+        role="menuitem",
+        suggested_testid="chat-folder-menu-item-{}",
+        description="All items of the open folder dot-menu popper (enumerated, never picked).",
+    )
+
     folder_menu_new_chat_item = LocatorDescriptor(
         role="menuitem",
         name="New chat",
@@ -6497,6 +6503,10 @@ class ChatPage(BasePage):
         menu_button.wait_for(state="visible", timeout=timeout)
         menu_button.click(force=True)
         self.folder_menu_new_chat_item.wait_for(state="visible", timeout=timeout)
+
+    def get_folder_menu_labels(self) -> list[str]:
+        """Return the visible labels of the open folder dot-menu, in order."""
+        return [t.strip() for t in self.folder_menu_items.all_text_contents()]
 
     @action("Start new chat in folder via dot-menu")
     def click_folder_menu_new_chat(self, timeout: int = 5000):

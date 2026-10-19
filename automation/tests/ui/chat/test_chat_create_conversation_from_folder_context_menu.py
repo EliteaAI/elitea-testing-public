@@ -56,7 +56,7 @@ class TestChatCreateConversationFromFolderMenu:
 
             with allure.step("Step 1 — Open the folder three-dot menu; verify its items"):
                 chat.open_folder_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
-                labels = [t.strip() for t in chat.page.get_by_role("menuitem").all_text_contents()]
+                labels = chat.get_folder_menu_labels()
                 assert labels == EXPECTED_MENU_LABELS, (
                     f"Folder menu items should be {EXPECTED_MENU_LABELS}, got {labels}"
                 )
