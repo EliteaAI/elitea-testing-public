@@ -1190,3 +1190,9 @@ the scroll container isn't rendered yet; unchanged when it is. Also added
 a confirmation toast that `project_context_builder` never shows (confirmed
 live, 10s timeout), so the new method polls the switch's own checked state
 instead and is click-idempotent (no-ops if already checked).
+
+## ELITEA-3316 probe (2026-10-19): project scoping of Skills Builder - BLOCKED
+
+- Projects in selector (`project-selector-trigger-combobox`; options `select-option-{id}`): Public=1, Private=575 (active), Elitea Automation=470.
+- First-load `platform-banner-center` dialog blocks clicks until `platform-banner-close` ("Got it"); after hovering Modules, a tooltip popper intercepts the composer click (click elsewhere/Escape first).
+- DEV chat produced no reply (only the model chip) for 120s on a Skills Builder message; same as ELITEA-3367. See AFS l1_skill-builder-runtime-context-current-project-only_ELITEA-3316.md.
