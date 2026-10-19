@@ -1,9 +1,189 @@
 {
   "schema": 1,
   "entries": {
+    "pages/artifacts_page.py::ArtifactsPage.EDIT_EXCEPTION_PERMISSION_SELECT": {
+      "file": "pages/artifacts_page.py",
+      "line": 2770,
+      "kind": "css",
+      "selector": "#simple-select-Permissions",
+      "suggested_testid": "edit-exception-permission-select",
+      "description": "MUI Select trigger; stable id, no role+name of its own",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.EDIT_EXCEPTION_SAVE_BUTTON": {
+      "file": "pages/artifacts_page.py",
+      "line": 2788,
+      "kind": "role",
+      "selector": "button[name='Save']",
+      "suggested_testid": "edit-exception-save-button",
+      "description": "Save button inside the Edit exception dialog",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.PERMISSIONS_ADD_EXCEPTION_BUTTON": {
+      "file": "pages/artifacts_page.py",
+      "line": 2719,
+      "kind": "role",
+      "selector": "button[name='Add exception']",
+      "suggested_testid": "bucket-access-add-exception-button",
+      "description": "toolbar add-exception button, or the empty state's 'Add Exceptions' CTA",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.PERMISSIONS_MODAL_CLOSE_BUTTON": {
+      "file": "pages/artifacts_page.py",
+      "line": 2700,
+      "kind": "role",
+      "selector": "button[name='Close']",
+      "suggested_testid": "manage-permissions-close-button",
+      "description": "BaseModal close icon button; accessible name comes from aria-label=\"Close\"",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.PERMISSIONS_MODAL_SKELETON": {
+      "file": "pages/artifacts_page.py",
+      "line": 2710,
+      "kind": "css",
+      "selector": ".MuiSkeleton-root",
+      "suggested_testid": "manage-permissions-loading-skeleton",
+      "description": "loading placeholder; no higher rung exists for a skeleton (no role/label/id)",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.PERMISSION_EXCEPTION_EDIT_BUTTON": {
+      "file": "pages/artifacts_page.py",
+      "line": 2748,
+      "kind": "css",
+      "selector": "[aria-label=\"Edit exception\"] button",
+      "suggested_testid": "bucket-access-exception-edit-button",
+      "description": "pencil icon button; its accessible name sits on the Tooltip's span wrapper, not on the button, so role+name does not resolve",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.PERMISSION_EXCEPTION_ROW": {
+      "file": "pages/artifacts_page.py",
+      "line": 2732,
+      "kind": "xpath",
+      "selector": ".//div[.//*[@aria-label=\"Edit exception\"]][contains(normalize-space(.), \"{}\")][not(.//div[.//*[@aria-label=\"Edit exception\"]][contains(normalize-space(.), \"{}\")])]",
+      "suggested_testid": "bucket-access-exception-row-{}",
+      "description": "exception row: grid <Box> div with no testid, no role and only an emotion css-* class, so rungs 1-4 cannot address it; innermost-match predicate keeps it non-positional",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.bucket_footer": {
+      "file": "pages/artifacts_page.py",
+      "line": 91,
+      "kind": "xpath",
+      "selector": "//span[text()=\"Buckets:\"]/parent::div/parent::div",
+      "suggested_testid": "artifacts-bucket-footer",
+      "description": "Left-panel footer showing 'Buckets:N' and 'Size:X' (BucketFooter.jsx, ELITEA-1805). No data-testid, no ARIA role or label on this element; only MUI-generated classes (css-*) exist as alternatives, so rungs 1-4 all fail — declared xpath last resort, confirmed live and unique on the page. Read the full text_content() and regex-parse 'Buckets:(\\d+)' / 'Size:(.+)$' — see get_bucket_footer_text().",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.bucket_info_button": {
+      "file": "pages/artifacts_page.py",
+      "line": 280,
+      "kind": "role",
+      "selector": "button[name='Bucket info']",
+      "suggested_testid": "artifacts-bucket-info-button",
+      "description": "Main-panel info icon next to the breadcrumb header (BucketInfoTooltip.jsx's IconButton, ELITEA-1805) — no data-testid on DEV yet; aria-label='Bucket info' IS the accessible name, confirmed live unique on the page. Hovering it shows the retention-policy / file-count tooltip (issue #1617 — NOT the left-panel bucket-name hover, which shows nothing for a short name). See hover_bucket_info_button() / get_bucket_info_tooltip_text().",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.bucket_info_tooltip": {
+      "file": "pages/artifacts_page.py",
+      "line": 294,
+      "kind": "role",
+      "selector": "tooltip",
+      "suggested_testid": "artifacts-bucket-info-tooltip",
+      "description": "Ambient '[role=\"tooltip\"]' landmark for the retention-policy / file-count popper opened by hovering :attr:`bucket_info_button` (ELITEA-1805, issue #1617). No data-testid on this popper's content yet, so the standard ARIA role is the rung — confirmed live exactly one tooltip is open at a time in this flow. Content confirmed live: two stacked label/value rows ('Retention Policy:1 Year' / 'Number of files:0'), concatenated by .text_content().",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.edit_exception_dialog": {
+      "file": "pages/artifacts_page.py",
+      "line": 2759,
+      "kind": "xpath",
+      "selector": "//div[@role=\"dialog\"][.//h2[normalize-space()=\"Edit exception\"]]",
+      "suggested_testid": "edit-exception-modal",
+      "description": "Edit exception dialog. No testid, and BaseModal's dangling aria-labelledby leaves the dialog with an empty accessible name, so rungs 1-4 cannot address it; anchored on its title <h2>.",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.permissions_modal": {
+      "file": "pages/artifacts_page.py",
+      "line": 2686,
+      "kind": "xpath",
+      "selector": "//div[@role=\"dialog\"][.//h2[normalize-space()=\"Manage Permissions\"]]",
+      "suggested_testid": "manage-permissions-modal",
+      "description": "Manage Permissions dialog. No testid (ManagePermissionsModal passes none), no accessible name (BaseModal's aria-labelledby points at a non-existent id), no label, and no id/attribute CSS that distinguishes it from any other BaseModal — so the title <h2> is the discriminator.",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/artifacts_page.py::ArtifactsPage.storage_selector": {
+      "file": "pages/artifacts_page.py",
+      "line": 78,
+      "kind": "css",
+      "selector": "[data-tour=\"artifacts-storage-selector\"]",
+      "suggested_testid": "artifacts-storage-selector",
+      "description": "Storage-provider block ('Storage: <name>' + dropdown chevron) above the bucket list — no data-testid on DEV yet; BucketStorageSelector.jsx's root Box already carries a stable, non-generated data-tour attribute for the interactive-tours feature, confirmed live and used here as the css rung (ELITEA-1805). The dropdown chevron SVG inside it is purely decorative (no role/label of its own) and is not declared as its own handle — no case step interacts with it directly.",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.AI_MESSAGE_LOGO": {
+      "file": "pages/chat_page.py",
+      "line": 185,
+      "kind": "css",
+      "selector": "img[alt=\"Elitea\"]",
+      "suggested_testid": "chat-message-ai-author-marker",
+      "description": "BrandLogo <img alt='Elitea'> inside an AI-authored message's header — presence distinguishes an AI message from a user-authored one (UserAvatar renders no such <img>).",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.STOP_BUTTON": {
+      "file": "pages/chat_page.py",
+      "line": 160,
+      "kind": "xpath",
+      "selector": "../../preceding-sibling::div[not(.//*[@data-testid])]//button",
+      "suggested_testid": "chat-stop-button",
+      "description": "Stop-generation icon button, resolved relative to chat_inject_button's own sendButtonContainer Box (two ancestor hops) -> the one preceding sibling Box with no testid'd descendant (excludes the Attach-Files Box earlier in the same footer row). Only present while streaming (same `!isStreaming || isUploadingAttachments` branch as chat_inject_button's parent). xpath= used because rungs 1-4 all fail: no testid, no accessible name (Tooltip title isn't forwarded as aria-label), no stable label/css distinguishing it from any other icon button in the composer footer.",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1848,
+      "line": 1811,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -15,7 +195,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_cron_input": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1531,
+      "line": 1518,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('input[type=\"text\"]').first",
       "suggested_testid": null,
@@ -27,7 +207,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1511,
+      "line": 1498,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').first",
       "suggested_testid": null,
@@ -39,7 +219,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_apply_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1526,
+      "line": 1513,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Save\")').first",
       "suggested_testid": null,
@@ -51,7 +231,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_cancel_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1521,
+      "line": 1508,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cancel\")').first",
       "suggested_testid": null,
@@ -63,7 +243,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_advanced": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1545,
+      "line": 1532,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cron Expression\")').first",
       "suggested_testid": null,
@@ -75,7 +255,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_default": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1540,
+      "line": 1527,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Builder\")').first",
       "suggested_testid": null,
@@ -87,7 +267,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_summary_text": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1516,
+      "line": 1503,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('text=/At \\\\d+:\\\\d+|Every |Daily|Weekly|Monthly/').first",
       "suggested_testid": null,
@@ -109,9 +289,105 @@
       "updated": "2026-10-05",
       "history": []
     },
+    "pages/project_context_page.py::ProjectContextPage.AI_EDIT_APPLY_SAVE_BUTTON": {
+      "file": "pages/project_context_page.py",
+      "line": 174,
+      "kind": "role",
+      "selector": "button[name='Apply & Save']",
+      "suggested_testid": "ai-edit-project-context-apply-save-button",
+      "description": "'Edit with AI' modal's combined Apply+Save button (unlike the create flow's separate Apply-then-Save, this surface applies and saves in one action).",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/project_context_page.py::ProjectContextPage.BUILD_WITH_AI_APPLY_BUTTON": {
+      "file": "pages/project_context_page.py",
+      "line": 128,
+      "kind": "role",
+      "selector": "button[name='Apply']",
+      "suggested_testid": "project-context-build-with-ai-apply-button",
+      "description": "Review step's 'Apply' button — applies the generated draft to the main editor.",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/project_context_page.py::ProjectContextPage.BUILD_WITH_AI_ERROR_ALERT": {
+      "file": "pages/project_context_page.py",
+      "line": 135,
+      "kind": "role",
+      "selector": "alert",
+      "suggested_testid": "project-context-build-with-ai-error-alert",
+      "description": "Inline MUI Alert shown on a 422 (generated draft would exceed 2500 chars).",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/project_context_page.py::ProjectContextPage.BUILD_WITH_AI_GENERATE_BUTTON": {
+      "file": "pages/project_context_page.py",
+      "line": 122,
+      "kind": "role",
+      "selector": "button[name='Generate Draft']",
+      "suggested_testid": "project-context-build-with-ai-generate-button",
+      "description": "Dialog's 'Generate Draft' button — disabled until the prompt is non-empty.",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/project_context_page.py::ProjectContextPage.BUILD_WITH_AI_PROMPT_INPUT": {
+      "file": "pages/project_context_page.py",
+      "line": 115,
+      "kind": "css",
+      "selector": "textarea[placeholder^=\"Describe your project\"]",
+      "suggested_testid": "project-context-build-with-ai-prompt-input",
+      "description": "Dialog's prompt textarea — stable css on the placeholder prefix (the field has no label/aria-label; the placeholder text itself is the only unique, stable handle).",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/project_context_page.py::ProjectContextPage.BUILD_WITH_AI_REVIEW_DRAFT": {
+      "file": "pages/project_context_page.py",
+      "line": 140,
+      "kind": "css",
+      "selector": "textarea:not([aria-hidden='true'])",
+      "suggested_testid": "project-context-build-with-ai-review-draft",
+      "description": "Review step's editable 'Project Background' textarea — the dialog's only non-aria-hidden textarea once generation succeeds (MUI's multiline TextField renders a second, aria-hidden sizing-mirror textarea alongside the real one; this excludes it, confirmed live).",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/project_context_page.py::ProjectContextPage.build_with_ai_button": {
+      "file": "pages/project_context_page.py",
+      "line": 103,
+      "kind": "role",
+      "selector": "button[name='Build with AI']",
+      "suggested_testid": "project-context-build-with-ai-button",
+      "description": "Empty-state 'Build with AI' button — opens the AI-generation dialog.",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/project_context_page.py::ProjectContextPage.build_with_ai_dialog": {
+      "file": "pages/project_context_page.py",
+      "line": 110,
+      "kind": "role",
+      "selector": "dialog",
+      "suggested_testid": "project-context-build-with-ai-dialog",
+      "description": "The 'Build with AI' modal (prompt step + review step share one dialog).",
+      "state": "raw",
+      "added": "2026-10-19",
+      "updated": "2026-10-19",
+      "history": []
+    },
     "pages/support_assistant_page.py::SupportAssistantPage.attach_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 99,
+      "line": 94,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button[aria-label=\"Attach file\"]').first",
       "suggested_testid": null,
@@ -123,7 +399,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.close_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 55,
+      "line": 50,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button[aria-label=\"Close chat\"], button:has-text(\"Close chat\")').first",
       "suggested_testid": null,
@@ -135,7 +411,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.collapse_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 75,
+      "line": 70,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button[aria-label=\"Collapse chat\"], button[aria-label=\"Minimize chat\"], button[aria-label=\"Shrink chat\"]').first",
       "suggested_testid": null,
@@ -147,7 +423,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.expand_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 70,
+      "line": 65,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button[aria-label=\"Expand chat\"], button:has-text(\"Expand chat\")').first",
       "suggested_testid": null,
@@ -159,7 +435,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.history_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 65,
+      "line": 60,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button[aria-label=\"Chat history\"], button:has-text(\"Chat history\")').first",
       "suggested_testid": null,
@@ -171,7 +447,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.launcher_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 46,
+      "line": 41,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button.elitea-assistant-button, button[aria-label=\"Support Assistant\"]')",
       "suggested_testid": null,
@@ -183,7 +459,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.message_input": {
       "file": "pages/support_assistant_page.py",
-      "line": 89,
+      "line": 84,
       "kind": "fallback",
       "selector": "lambda page: page.locator('.elitea-assistant-input').first",
       "suggested_testid": null,
@@ -195,7 +471,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.messages_container": {
       "file": "pages/support_assistant_page.py",
-      "line": 117,
+      "line": 112,
       "kind": "fallback",
       "selector": "lambda page: page.locator('.elitea-assistant-messages').first",
       "suggested_testid": null,
@@ -207,7 +483,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.new_chat_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 60,
+      "line": 55,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button[aria-label=\"New chat\"], button:has-text(\"New chat\")').first",
       "suggested_testid": null,
@@ -219,7 +495,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.send_button": {
       "file": "pages/support_assistant_page.py",
-      "line": 94,
+      "line": 89,
       "kind": "fallback",
       "selector": "lambda page: page.locator('button[aria-label=\"Send message\"], button:has-text(\"Send message\")').first",
       "suggested_testid": null,
@@ -231,7 +507,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.widget_container": {
       "file": "pages/support_assistant_page.py",
-      "line": 108,
+      "line": 103,
       "kind": "fallback",
       "selector": "lambda page: page.locator('.elitea-assistant-window').first",
       "suggested_testid": null,
@@ -243,7 +519,7 @@
     },
     "pages/support_assistant_page.py::SupportAssistantPage.widget_title": {
       "file": "pages/support_assistant_page.py",
-      "line": 80,
+      "line": 75,
       "kind": "fallback",
       "selector": "lambda page: page.locator('.elitea-assistant-header-title').first",
       "suggested_testid": null,
@@ -254,19 +530,22 @@
       "history": []
     }
   },
-  "last_sync": "2026-10-05",
+  "last_sync": "2026-10-19",
   "metric": {
-    "declared_total": 1838,
-    "declared_testid": 1817,
-    "declared_non_testid": 21,
-    "non_testid_with_hint": 0,
+    "declared_total": 1257,
+    "declared_testid": 1213,
+    "declared_non_testid": 44,
+    "non_testid_with_hint": 23,
     "non_testid_without_hint": 21,
     "by_kind": {
+      "css": 7,
       "fallback": 20,
       "locator": 1,
-      "testid": 1817
+      "role": 11,
+      "testid": 1213,
+      "xpath": 5
     },
-    "locator_debt": 0.0114,
-    "unmanaged_handles": 389
+    "locator_debt": 0.035,
+    "unmanaged_handles": 351
   }
 }
