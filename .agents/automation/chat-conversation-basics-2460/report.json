@@ -1,0 +1,304 @@
+{
+  "batch": "chat-conversation-basics-2460",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-conversation-basics-2460",
+  "gate": {
+    "verdict": "red",
+    "runs": 0,
+    "seconds": [
+      333.6
+    ],
+    "failures": [
+      {
+        "spec": "tests/ui/chat/test_chat_add_participants.py::TestChatAddParticipants::test_create_conversation_and_add_all_participant_types",
+        "signature": "Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"chat-message-input\") to be visible (after 2 reruns)",
+        "case_ids": [
+          "ELITEA-2455"
+        ]
+      },
+      {
+        "spec": "tests/ui/chat/test_chat_create_conversation_from_folder_context_menu.py::TestChatCreateConversationFromFolderMenu::test_create_conversation_from_folder_context_menu",
+        "signature": "Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"chat-message-input\") to be visible (after 2 reruns)",
+        "case_ids": [
+          "ELITEA-2757"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2455",
+      "outcome": "blocked",
+      "note": "gate red: Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"chat-message-input\") to be visible (after 2 reruns)",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 18 (owner icon added in PARTICIPANTS after send) does not match a Private project on DEV. No USERS section or avatar appears in the panel, and the owner avatar shows only in the message header. The case also names example entities (agent, ALL Pipeline Nodes, storage, Aha!) that the spec replaces with fixtures. Step 5 mentions Attach Files showing '10 left' and Invite Users, which are env… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2455"
+        },
+        {
+          "kind": "note",
+          "note": "DEV shows a 'platform-banner-center' announcement dialog whose 'Got it' button (testid platform-banner-close) intercepts clicks. BasePage.dismiss_banner_if_present only handles aria-label=close banners inside a z-index>1000 overlay, so it does not clear this dialog. I added ChatPage.dismiss_platform_announcement as an additive helper. Other specs may hit the same intercept."
+        },
+        {
+          "kind": "note",
+          "note": "Participant row testids change on first send. Before it they use the entity id (chat-participant-row-{entity_id}), and after it they use the persisted participant id. The test checks rows by count and name after the send. The misconfigured MCP card renders no chat-participant-row testid, only chat-participant-warning-icon. Pipelines with no nodes error on send ('Pipeline has no nodes to execute'),… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The plus-menu submenu row testids embed the project id, and Catalog agents use project 1 (agents-menu-item-agent-1-{id}). A suffix-only match on the id is ambiguous, so the spec builds the full testid from the fixture's project_id."
+        },
+        {
+          "kind": "note",
+          "note": "The intake snapshot .agents/automation/chat-conversation-basics-2460/cases/ELITEA-2455.md is missing, and the onetest-tms get_test_case verb returned 'not found'. I triangulated against the case file in the TMS clone: onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ELITEA-2455_chat-create-new-conversation-and-add-agent-pipeline-toolkit.md. The lead should still check for drift at the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep over `git diff main...tests/ELITEA-2455-chat-add-participants -- automation/pages automation/tests`, pattern `^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)`. Hits by diff line: L92 and L98 `self.page.get_by_test_id(f\"{menuitem}-...\")` in open_plus… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 18 expects an owner icon in PARTICIPANTS after send. The analyst did not see one in a Private project. This is correctly not asserted, but the AFS disposition reads 'dropped'. It should read 'clarification' under the reverse-masking guard, and the clarification issue should be filed and linked. I did not verify that the issue was filed.",
+          "ref": "AFS Coverage Map row 18"
+        },
+        {
+          "kind": "note",
+          "note": "get_participant_row_icon_geometry ends in `.first`, and the spec uses `.first` on the warning and name locators. This is a positional pick, justified only by a description saying the icon is the row's first svg. It is a weakness, not a mechanical hit. Prefer scoping to the icon container, or keep it with an explicit rationale.",
+          "ref": "automation/pages/chat_page.py (PARTICIPANT_ROW_ICON_PATH use)"
+        },
+        {
+          "kind": "note",
+          "note": "`to_contain_text(\"autotest_\")` asserts only a name prefix. The row is already keyed by entity id, so the check is weak but not harmful. Asserting the fixture's real agent name would be stronger.",
+          "ref": "test_chat_add_participants.py Step 4"
+        },
+        {
+          "kind": "note",
+          "note": "`bounding_box()` returns None if the element is detached, which would raise a TypeError instead of an assertion failure. Add an explicit not-None check.",
+          "ref": "test_chat_add_participants.py Step 8"
+        },
+        {
+          "kind": "note",
+          "note": "The case step 5 'Attach Files (10 left)' counter and 'Invite Users' are not asserted. The Axis-2 note justifies this as tenant/project dependent, and Invite Users is genuinely absent in Private. Acceptable, but the Axis-1 row for case steps 4-5 should say 'partial' explicitly. The toggle-switch nature of the toolkit/MCP rows in case steps 10 and 12 is also not asserted.",
+          "ref": "Coverage Map axis 2"
+        },
+        {
+          "kind": "note",
+          "note": "I found no defect masking. There is no skip, no test.fail and no weakened expectation. Steps are wrapped in allure.step. The @pytest.mark.tms marker is present. Cleanup runs in try/finally and does not mask the verdict. I did not execute the spec (static review)."
+        },
+        {
+          "kind": "note",
+          "note": "No automation/.env.test exists in this checkout and APP_PREFIX is unset in the shell. Without APP_PREFIX=/app every DEV UI run lands on the 404 page, and the symptom is a timeout on chat-message-input at Step 1. The lead's gate runs need APP_PREFIX=/app exported or an env file."
+        },
+        {
+          "kind": "note",
+          "note": "pytest-rerunfailures is not installed in .venv, and .venv has no pip module. pytest.ini addopts (--reruns, --only-rerun) therefore aborts the run. I ran with `-o addopts=\"\"` and installed nothing. The gate agent will hit the same error unless the environment is repaired."
+        },
+        {
+          "kind": "note",
+          "note": "Coverage gap: the MCP participant icon (case step 15) is not asserted. The AFS Coverage Map row is now 'partial' to say so. A follow-up could capture the MCP card's icon geometry and compare it with the other three.",
+          "ref": "ELITEA-2455"
+        },
+        {
+          "kind": "note",
+          "note": "The dispatch's blocking-findings list was truncated after finding 4. Any further findings from the reviewer are unaddressed."
+        },
+        {
+          "kind": "note",
+          "note": "Prior finding 1 (raw get_by_test_id f-strings in open_plus_menu_submenu) is fixed. Both are now class-level [data-testid=\"{}-...\"] template constants. The remaining page.locator(...) hits take those constants, or the existing PARTICIPANT_ROW / PARTICIPANT_ROW_PREFIX / PARTICIPANT_WARNING_ICON / *_PARTICIPANT_MENU_ITEM constants, which are also [data-testid= strings. All pass the one-hop check.",
+          "ref": "chat_page.py PLUS_MENU_NAMED_ITEM / PLUS_MENU_NAMED_SEARCH_INPUT"
+        },
+        {
+          "kind": "note",
+          "note": "Prior finding 2 is fixed. The spec now calls chat.get_plus_menuitem(tid). No raw get_by_* or page.locator calls remain in the spec.",
+          "ref": "test_chat_add_participants.py Step 3"
+        },
+        {
+          "kind": "note",
+          "note": "The one .nth(i) hit loops range(rows.count()) to read each row's data-testid for the duplicate check. It enumerates every match and picks none, so it is compliant under the reviewer rule.",
+          "ref": "test_chat_add_participants.py Step 10 (rows.nth(i))"
+        },
+        {
+          "kind": "note",
+          "note": "Prior finding 3 is fixed on the AFS side. The row now says what the spec asserts: panel toggle visible with data-expanded=true, 0 participant rows and 0 section titles. It no longer claims a title-visible assertion. Step 2 asserts exactly that.",
+          "ref": "AFS Coverage-Map row 3 (PARTICIPANTS empty)"
+        },
+        {
+          "kind": "note",
+          "note": "Prior finding 4 is fixed. The row is now 'partial', says the MCP icon is not asserted and calls it a known coverage gap. This matches the spec: Step 9 asserts pairwise-distinct icon geometry for agent, pipeline and toolkit only, plus the MCPs section title visible.",
+          "ref": "AFS Coverage-Map row 15 (distinct icons)"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS drops this row as not observable in a Private project and records it as a clarification. The reasoning is sound and declared, and the spec header documents it. The orchestrator should confirm a case-text clarification issue is filed.",
+          "ref": "AFS row 18 (owner icon)"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS and the diff agree on the section-title xpath, the row-icon css and the participant-name xpath. Each has a suggested_testid and a description. The xpath rungs say why rungs 1-4 failed. No locator= or fallback=, no positional handles, no MUI css-* classes. The step 4-7 and 13 coverage rows match actual assertions: agent row contains name and version 'base', toolkit row contains name, MCP na… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "locator declarations"
+        },
+        {
+          "kind": "note",
+          "note": "No skip, test.fail or weakened assertions. The finally-block cleanup swallows only its own delete failure, which is logged and does not affect the verdict. Case steps 1-20 map to spec Steps 1-13, and the merged steps are accounted for in the AFS map. The case's literal entity names are replaced by fixtures, which is declared in the AFS. Review was static; I did not execute the spec.",
+          "ref": "masking hunt"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_chat-create-conversation-add-agent-pipeline-toolkit-mcp-participants_ELITEA-2455.md",
+      "branch": "tests/ELITEA-2455-chat-add-participants",
+      "pr": 2496
+    },
+    {
+      "id": "ELITEA-2757",
+      "outcome": "blocked",
+      "note": "gate red: Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"chat-message-input\") to be visible (after 2 reruns)",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 2 says the folder auto-expands on clicking 'New chat'. Live on DEV the folder expands only when the first message is sent and the conversation is created. The AFS asserts expansion after send.",
+          "ref": "ELITEA-2757"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case's Expected Final State says 'New chat' is available by right-click on the folder. Right-click opens no menu: FolderItem has no onContextMenu handler on origin/main, and live right-click showed 0 menuitems. Only the three-dot menu exists, so it is not asserted.",
+          "ref": "ELITEA-2757"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case's example default LLM 'Anthropic Sonnet 5' is stale. DEV default is Dial-GPT-5.6-Luna. The AFS compares against the landing-page model-selector value instead of hardcoding.",
+          "ref": "ELITEA-2757"
+        },
+        {
+          "kind": "note",
+          "note": "The 'Announcing ELITEA 2.0.7' platform-banner-center dialog ('Got it' button) blocks hover on a fresh storage state. The autouse dismiss_banner_after_navigation fixture does not close it, because it looks for an aria-label=close button. The implementer may need a guarded dismiss. This is a possible framework gap."
+        },
+        {
+          "kind": "note",
+          "note": "The 'Naming' transient label is visible for only about 0.4-0.8s. Treat it as a soft assertion and gate on the end state, where the name is non-empty and not 'Naming'.",
+          "ref": "ELITEA-2757"
+        },
+        {
+          "kind": "note",
+          "note": "The Playwright MCP chrome binary was absent on this host during the original run. The probes used scripted Python Playwright instead."
+        },
+        {
+          "kind": "note",
+          "note": "Host has no automation/.env.test and the shell has no APP_PREFIX, so every chat spec hits the 404 Page Not Found page and fails at wait_for_page_load. Run with APP_PREFIX=/app in the shell; the lead's gate needs the same. test_pin_conversation.py failed the same way before the fix."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text drifts from DEV (already in the AFS): the folder auto-expands on first send rather than on clicking 'New chat'; the right-click folder menu does not exist; the default LLM is Dial-GPT-5.6-Luna, not 'Anthropic Sonnet 5'. The spec asserts the live behaviour.",
+          "ref": "ELITEA-2757"
+        },
+        {
+          "kind": "note",
+          "note": "Possible framework gap: the 'Announcing ELITEA 2.0.7' dialog ('Got it') is not handled by the autouse banner dismissal. I added ChatPage.dismiss_announcement_dialog_if_present() for this spec only."
+        },
+        {
+          "kind": "note",
+          "note": "The transient 'Naming' label (about 0.4-0.8s) is not asserted. Only the end state is checked: name non-empty and not 'Naming'."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep over the diff of automation/pages and automation/tests found no raw get_by_*/page.locator in the spec. The only hits are item.locator(self.FOLDER_ICON), item.locator(self.CONVERSATION_MENU_BUTTON).first and item.locator(selector) in chat_page.py methods. Each passes an UPPER_CASE [data-testid=...] class constant (FOLDER_ICON, CONVERSATION_MENU_BUTTON, CONVERSATION_ITEM, CONV… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:6655"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case-to-AFS-to-code. Steps 1 (exact ordered menu labels), 2 (URL has no conversation id; folder has 0 conversation items), 3 (model equals the landing value), 5 (not 'Naming' and non-empty), 6 (folder-scoped count 1, page-wide count 1, not in today/this_week/older), 7 (data-expanded true to false to true, then item present) and 8 (after reload, item in folder with name equal to auto_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "folder_menu_items is an enumerating role=menuitem descriptor over all page menuitems, and get_folder_menu_labels asserts an exact list. This is acceptable only because exactly one popper is open at that moment. Consider scoping it to the open menu (role=menu) so a stray open menu cannot add items. The unscoped declaration is also slightly misleading against its suggested_testid 'chat-folder-menu-i… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:1317"
+        },
+        {
+          "kind": "note",
+          "note": "The Run Report should declare a locator delta: new non-testid declarations are folder_menu_items and folder_menu_new_chat_item. announcement_got_it_button should be removed per the blocker. The AFS and code agree that 'New chat' has no testid (FolderItem.jsx menuItems carry no key), so role+name is correct."
+        },
+        {
+          "kind": "note",
+          "note": "Static review only; the spec was not executed. The implementer log says local runs need APPROVED APP_PREFIX=/app and -o addopts='' on this host. The hardening gate should use its normal environment."
+        },
+        {
+          "kind": "note",
+          "note": "automation/.env.test is missing from this working tree (symlink target ../../.env.test absent). Without APP_PREFIX=/app every chat spec 404s at chat-message-input. The lead should restore the env file before the 3x gate."
+        },
+        {
+          "kind": "clarification",
+          "note": "The Step 4 'Naming' spinner is checked by a best-effort tight poll that logs and tolerates a miss. The AFS Coverage Map row 4 says 'asserted', which fits only if the reviewer accepts tolerate-miss. Otherwise the AFS disposition should be 'best-effort'.",
+          "ref": "ELITEA-2757"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 1 (duplicate 'Got it' locator) is resolved. The 2757 spec calls chat.dismiss_platform_announcement(). That method uses platform_banner_close_button (testid='platform-banner-close'), and no role=button 'Got it' re-declaration remains in the diff. Both the handle and the method arrive on the trunk through the merged ELITEA-2455 unit, not through 2757's own commits.",
+          "ref": "automation/pages/chat_page.py:5558"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker 2 (Step 4 'Naming' spinner) is addressed. The spec now calls chat.observe_naming_label(conv_id, timeout=1500) right after send, with a 500ms retry in Step 5. That is a best-effort tight poll, and it is the only check on the Naming spinner. The result is only logged and never asserted, because the 0.4-0.8s window is too short for a hard gate. The AFS Axis 1 row 4 still reads 'asserted… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l1_chat-create-conversation-from-folder-context-menu_ELITEA-2757.md"
+        },
+        {
+          "kind": "note",
+          "note": "Step 8 asserts that the conversation persists in the folder with an unchanged auto-name. It does not open the conversation to check that the message content is intact, which the case's Step 8 mentions. The AFS marks that check optional. A cheap later addition would be opening the item and asserting TEST_MESSAGE in chat-message-item.",
+          "ref": "automation/tests/ui/chat/test_chat_create_conversation_from_folder_context_menu.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep, run by reading the diff of automation/pages/chat_page.py and the spec: 0 hits in the spec. Hits in chat_page.py, by group. (1) 2757's own code: folder_menu_items, folder_menu_new_chat_item and model_selector_name are class-level LocatorDescriptors on role/testid rungs with suggested_testid. item.locator(FOLDER_ICON), item.locator(CONVERSATION_MENU_BUTTON) and item.locator(… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case, AFS and diff, step by step. Step 1: the menu labels list is asserted equal to New chat, Rename, Pin on top, Delete. Step 2: the URL has no conversation id and the folder holds 0 items. Step 3: the model matches the landing value, which is a deliberate clarification because the case's 'Sonnet 5' example is stale. Step 4: the message is sent, the URL gets an id, data-expanded … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_chat-create-conversation-from-folder-context-menu_ELITEA-2757.md",
+      "branch": "tests/ELITEA-2757-chat-create-conversation-from-folder-context-menu"
+    },
+    {
+      "id": "ELITEA-2466",
+      "outcome": "blocked",
+      "note": "Inherited an existing branch (AFS, page-object locators, and spec). It was coherent, so I continued it and merged the trunk in. The trunk already added `dismiss_platform_announcement` for ELITEA-2757, so I removed my duplicate declaration and method and reuse the trunk's. Spec: `automation/tests/ui/chat/test_message_input_send_button.py`.\n\nLocal run is RED, not green. Steps 1-9 pass. Step 10 fails… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Playwright MCP is unusable in this environment: the Chrome binary is missing at /opt/google/chrome/chrome. The earlier analysis used scratch sync_playwright scripts instead. I did not re-verify the handles live in this dispatch."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text drift (not a defect). The 'gear icon' is the model-settings button. The 'microphone' and 'waveform' icons are two separate buttons ('start voice input' and 'enter speaking mode'). The teal/cyan 'border' on focus is actually a box-shadow glow on the composer wrapper, so the spec asserts focus rather than colour. Step 10 differs from live behaviour: the waveform is NOT shown while a respon… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2466"
+        },
+        {
+          "kind": "note",
+          "note": "The DEV platform banner dialog ('Got it', testid platform-banner-close) intercepts pointer events on the composer. The implementer should reuse the existing platform-banner dismiss helper that ELITEA-2757 added on this trunk."
+        },
+        {
+          "kind": "defect",
+          "note": "DEV LLM runs stall: the Elitea reply stays on a spinner for 120s+ (Dial-GPT-5.6-Luna). test_chat_interface send tests also time out. This blocks ELITEA-2466 step 10 and any AI-response test. Treat as DEV outage and re-run later; no ticket filed."
+        },
+        {
+          "kind": "note",
+          "note": "Env gap: no automation/.env.test exists here and APP_PREFIX is unset. The default URL 404s. Run with APP_PREFIX=/app until the env file is provided."
+        },
+        {
+          "kind": "note",
+          "note": "DEV shows a corner banner (platform-banner-corner, also testid platform-banner-close) after the center dialog is dismissed. It intercepts clicks on the composer Send button. The trunk's dismiss_platform_announcement dismisses only one at a time, so callers should call it twice. Consider making the method loop."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text drift as in the AFS: the 'gear' is the model-settings button, and mic and waveform are separate buttons. The waveform button is absent while a run streams and returns only after completion."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_message-input-send-button-visibility-and-clear_ELITEA-2466.md"
+    }
+  ],
+  "totals": {
+    "blocked": 3
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
