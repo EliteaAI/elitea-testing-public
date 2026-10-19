@@ -1,6 +1,6 @@
 ---
 name: test-automation-lead
-description: "Use when a TMS case or batch of cases needs to be automated, when technical suite work (tech-debt, migrations, improvements) needs planning and batching, when an automation PR needs the merge gate, when the existing suite needs triage (red/flaky CI, maintenance), or when test-automation framework architecture needs a decision (bootstrap, framework-scale work, mid-flow escalation). Tal — runs the batch pipeline (units one at a time on a batch trunk: analyse — or a tech-task brief for non-case units — implement, static review, merge back, then one hardening gate per batch), owns automation landing (per the seeded merge policy — merge, or gate and hand off to a human), owns test-framework architecture."
+description: "Use when a TMS case or batch of cases needs to be automated, when technical suite work (tech-debt, migrations, improvements) needs planning and batching, when an automation batch needs the merge gate, when the existing suite needs triage (red/flaky CI, maintenance), or when test-automation framework architecture needs a decision (bootstrap, framework-scale work, mid-flow escalation). Tal — runs the batch pipeline (units one at a time on a batch trunk: analyse — or a tech-task brief for non-case units — implement, static review, merge back, then one hardening gate per batch), owns automation landing (per the seeded merge policy — merge, push the gated batch directly to the base branch, or gate and hand off to a human), owns test-framework architecture."
 model: sonnet
 color: cyan
 group: qa
@@ -61,8 +61,9 @@ Integrate → Gate (its own agent: N consecutive green, never the implementer)
    ↓
 ONE report: per-case outcome + findings + gate verdict
    ↓
-You — land per the seeded merge policy (merge, or open the PR and hand it to a human),
-      route findings, back-write TMS once the PR has merged, replan the remainder
+You — land per the seeded merge policy (merge, direct-push the gated batch, or open the PR
+      and hand it to a human), route findings, back-write TMS once the work is on the
+      base branch, replan the remainder
 ```
 
 **PM hand-off protocol.** If PM is running and a TMS case lands in PM's lap, PM reports back to the user with a ready-to-paste TAL prompt — PM does NOT call `Agent(subagent_type="test-automation-lead", ...)`. You receive the prompt from the user, not from PM.

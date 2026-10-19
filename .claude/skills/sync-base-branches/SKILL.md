@@ -19,10 +19,11 @@ new test**, **after a batch promotion**, or when a test fails against UI that lo
 **All are merged. None is ever rebased or force-pushed.**
 
 > Changed 2026-10-16: the test repo has **no long-lived automation branch** any more. Test work is cut
-> from a freshly fetched `origin/main` and lands by PR into `main` (a human merges); `automation/factory`
-> is frozen history. There is nothing to sync in `elitea-testing-public` — an *open* PR branch that
-> fell behind is kept current by merging `origin/main` into it (`.agents/workflow.md` § Keeping an
-> open PR current). Part 1 below is now only the post-fetch framework check.
+> from a freshly fetched `origin/main` and lands on `main` as one squash commit pushed by the lead after
+> review + 3× gate (`.agents/role-overrides.md` § Orchestrator slot); `automation/factory` is frozen
+> history. There is nothing to sync in `elitea-testing-public` — a batch trunk that fell behind is
+> brought current by merging `origin/main` into it before landing (never a rebase). Part 1 below is now
+> only the post-fetch framework check.
 
 Both are shared, published branches that other people and other agents build on. Rebasing either would
 rewrite published history and break open PRs and teammates' clones. `automation/testids` additionally
@@ -92,7 +93,8 @@ Then commit, and only then proceed to Part 1.
 
 ## Part 1 — Test repo: fetch `origin/main` and check what it changed
 
-No merge and no push — `main` is the base, and it only moves when a human merges a PR.
+No merge and no push from this skill — `main` is the base; it moves when the lead lands a gated batch
+(or a human merges a non-batch PR, or the index bot commits).
 
 ```bash
 # WORKSPACE = parent folder holding the three sibling clones (no env var needed)
@@ -105,7 +107,7 @@ OLD=$(git rev-parse main); git checkout main && git merge --ff-only origin/main
 `--ff-only` fails only if someone committed to local `main` — never resolve that by merging; move the
 stray commits to a `tests/…` branch and reset local `main` to `origin/main`.
 
-**Then check what you just pulled in.** `main` carries framework changes, not just tests — a human merge
+**Then check what you just pulled in.** `main` carries framework changes, not just tests — any landing
 can alter `config.py`, `conftest.py`, `api/client.py`, or fixtures, and a new *required* config field will
 break every test at import time before a single one runs.
 

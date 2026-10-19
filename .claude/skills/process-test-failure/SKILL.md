@@ -200,7 +200,8 @@ fi
 
 ```bash
 # Check if the test is merged on main, or still only on an open PR branch
-# (since 2026-10-16 every test PR targets main; there is no integration branch)
+# (since 2026-10-16 the lead squash-lands gated batches straight onto main; there is no
+#  integration branch — an open PR into main is a non-batch change, e.g. a testid swap)
 
 # 1. Fetch latest
 git fetch origin --no-tags --prune
@@ -212,7 +213,7 @@ OPEN_PR=$(env -u GITHUB_TOKEN gh pr list --repo EliteaAI/elitea-testing-public -
 
 if [ -n "$TEST_ON_MAIN" ]; then
   TEST_LOCATION="main"
-  FIX_BRANCH_STRATEGY="Cut fix branch from origin/main, PR to main (a human merges)"
+  FIX_BRANCH_STRATEGY="Cut fix branch from origin/main; after review + 3x gate the lead squash-lands it on main (direct push)"
   echo "✓ Test found on main (merged)"
 elif [ -n "$OPEN_PR" ]; then
   # Not merged yet — the fix belongs on the open PR's own branch
@@ -239,13 +240,15 @@ From issue #1776 (correct pattern):
 and fix anything DEV-specific ... cut a fix branch from main per normal PR flow,
 still targeting main since that's where this test now lives
 ```
+(Since 2026-10-16 "normal PR flow" reads "normal batch flow": the fix lands on `main` by the
+lead's gated direct push — `.agents/role-overrides.md` § Orchestrator slot.)
 
 From issue #1800 (incorrect — fixed on automation/base when should be main; the long-lived
-automation branches are frozen history since 2026-10-16, so this mistake now means "PR to
+automation branches are frozen history since 2026-10-16, so this mistake now means "landing on
 anything but main"):
 - Test was on main (promoted)
 - Fix PR opened to automation/base (wrong target)
-- Should have been: fix branch from main → PR to main
+- Should have been: fix branch from main → landed on main
 
 **Rule:**
 - **Test on main** → Fix on main (tests already delivered to users)
@@ -383,8 +386,8 @@ Examples:
 
 <If test is on MAIN:>
 - **Branch from:** `main`
-- **PR target:** `main`
-- **Why:** Test already merged to main (delivered). Every fix PR targets main; a human merges it.
+- **Lands on:** `main` — reviewed, 3× gated, squash-pushed by the lead (no PR)
+- **Why:** Test already on main (delivered). Every fix lands on main; the frozen automation branches are never targets.
 - **Example:** See issue #1776 (correct pattern)
 
 <If test is only on an open PR into main:>
@@ -399,8 +402,8 @@ Examples:
 
 Choose ONE based on root cause:
 
-1. **Test code fix → PR opened** into main (or a commit on the open PR's branch)
-   - Includes: fix commit, 3/3 green verification, PR description
+1. **Test code fix → landed** on main by the lead's gated push (or a commit on the open PR's branch)
+   - Includes: fix commit, 3/3 green verification, closure record
    
 2. **Product bug → Bug filed + test marked**
    - Bug issue in elitea-testing-public (with evidence)
@@ -614,7 +617,7 @@ OPEN_PR=$(env -u GITHUB_TOKEN gh pr list --repo EliteaAI/elitea-testing-public -
 
 if [ -n "$TEST_ON_MAIN" ]; then
   TEST_LOCATION="main"
-  FIX_INSTRUCTIONS="Branch from: origin/main → PR target: main (test merged; a human merges the fix)"
+  FIX_INSTRUCTIONS="Branch from: origin/main → lands on: main (reviewed + 3x gated, squash-pushed by the lead)"
   echo "✓ Test found on main (merged)"
 elif [ -n "$OPEN_PR" ]; then
   TEST_LOCATION="open PR $OPEN_PR"
@@ -684,7 +687,7 @@ $ARTIFACTS_URL
 
 **Fix instructions:** $FIX_INSTRUCTIONS
 
-**Why this matters:** Every fix PR targets \`main\` (a human merges it); the long-lived automation branches are frozen. See issue #1776 (correct) vs #1800 (incorrect - fixed on automation/base when should be main).
+**Why this matters:** Every fix lands on \`main\` (the lead's gated direct push); the long-lived automation branches are frozen. See issue #1776 (correct) vs #1800 (incorrect - fixed on automation/base when should be main).
 EOF
 
 # File issue
@@ -746,11 +749,11 @@ echo "✅ Intake complete: issue #${ISSUE_NUM} filed and approved"
 
 **Problem:** Test was on `main` (promoted), but fix PR opened to `automation/base`
 
-**Why it's wrong:** Tests on `main` are delivered. Fixes MUST go to `main` — and since 2026-10-16 every PR does; `automation/factory` / `automation/base` are frozen.
+**Why it's wrong:** Tests on `main` are delivered. Fixes MUST go to `main` — and since 2026-10-16 every batch lands there by the lead's gated push; `automation/factory` / `automation/base` are frozen.
 
 **How this skill prevents it:** 
 1. Checks `git ls-tree origin/main` for test file
-2. If found on main → explicitly states "Branch from: main → PR target: main"
+2. If found on main → explicitly states "Branch from: main → lands on: main"
 3. Issue body explains WHY this matters
 
 **Investigation agent's responsibility:** Follow the fix instructions in the issue exactly

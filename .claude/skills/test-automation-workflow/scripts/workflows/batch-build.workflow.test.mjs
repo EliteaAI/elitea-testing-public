@@ -386,10 +386,13 @@ test('the trunk is created only when it exists nowhere', () => {
 
 test('case PRs target the trunk, and ONE PR takes the trunk to base', () => {
   assert.match(text, /Open your PR against \$\{TRUNK\}, NOT against \$\{BASE\}/);
-  assert.match(text, /one PR takes the trunk to \$\{BASE\} after the gate/);
+  assert.match(text, /the lead lands the trunk on \$\{BASE\} as one unit after the gate/);
   // What is gated and what lands are the same object.
   assert.match(text, /one PR from \$\{gateBranch\} to \$\{BASE\}/);
   assert.match(text, /Automation PR policy/);
+  // Under direct-push the trunk lands as one squash commit — never a force-push.
+  assert.match(text, /under direct-push: squash \$\{gateBranch\} onto a fresh \$\{BASE\} as ONE commit/);
+  assert.match(text, /never --force; a rejected push = merge \$\{BASE\} into \$\{gateBranch\}, re-gate/);
 });
 
 // A human-merge base wants small, per-case PRs. 'per-case' keeps the trunk as

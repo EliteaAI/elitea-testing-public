@@ -19,9 +19,10 @@ finishing a test. It opens PRs into `main` in one repo — two when the batch to
 the Support Assistant. Wait to be asked; confirm scope first. **Merging is always human.**
 
 > **Cut-over 2026-10-16 — the test repo left this skill.** `elitea-testing-public` has no
-> integration branch any more: every case, adjust and migration PR is cut from
-> `origin/main` and targets `main` directly, merged by a human
-> (`.agents/workflow.md` § Branching). `automation/factory` is frozen history. So there is
+> integration branch any more: case and adjust work is cut from `origin/main` and lands on
+> `main` by the lead's gated direct push; a non-batch change (a testid-migration swap, a fix
+> found here) is a PR into `main` that a human merges (`.agents/role-overrides.md` § the
+> working branch is `main`). `automation/factory` is frozen history. So there is
 > no **PR-Test** and no test-repo snapshot here; wherever a step below still names the test
 > repo, read it as follows:
 > - a test/page-object fix found while stabilizing → its own PR into `elitea-testing-public

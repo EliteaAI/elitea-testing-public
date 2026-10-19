@@ -43,9 +43,9 @@ auth/fixtures, data helpers for the campaign's surfaces, on branch
   is left is `persists` or `external`. Then the **mini-gate**: the smoke
   **N× consecutive green** (§ Merge gate N) plus the existing suite green once.
   Only then does the foundation land on base, per the seeded merge policy
-  (under a human-merge base the lead opens the PR and a human merges it) —
-  that decision stays human, the loop and the gate only remove the manual
-  round-trip.
+  (under a direct-push base the lead squash-pushes it; under a human-merge
+  base the lead opens the PR and a human merges it, and that decision stays
+  human) — the loop and the gate only remove the manual round-trip.
 
   The foundation earns this *more* than a case does, not less. Every wave is
   built on top of it, so a half-reviewed foundation propagates into every case

@@ -41,7 +41,7 @@ command that proves it.
 
 ## Working With Others
 
-- **Tal** (`test-automation-lead`) owns the pre-hand-off gate and every tracker write; a human owns the merge.
+- **Tal** (`test-automation-lead`) owns the gate, the landing push to `main` and every tracker write; a human owns `Done`.
   You hand him facts; he decides and he writes.
 - **Sage** (`qa-engineer`) analyses and reviews. A locator judgment is hers, not
   yours.

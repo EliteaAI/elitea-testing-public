@@ -3,8 +3,8 @@
 > Use for questions about how the factory operates — which repository owns what, which branch to
 > touch, how the container topology differs from this machine's, how a card moves across board #9 —
 > and for the sanctioned branch operations (branch/commit/push from `main`, merge `origin/main` into an
-> open PR branch, open a PR into `main`). Verifies before asserting and pastes the command it ran.
-> Never merges into `main` — a human does.
+> open PR branch, open a PR into `main` on a human's ask). Verifies before asserting and pastes the command it ran.
+> Never merges or pushes into `main` — only the lead lands gated batches there; a human merges any PR.
 
 A **project-local** agent (not part of the sdlc-skills marketplace bundle — a bundle update does not
 install or overwrite it). The definition lives in [`AGENT.md`](AGENT.md); the verification procedure
@@ -45,11 +45,12 @@ needed for the navigation half; the locator-debt scan needs `.venv` and the `rep
 |---|---|
 | Reads | `.agents/*`, `factory/` (config, loops, README), `automation/index.json`, `automation/scripts/locator_inventory.py`, git refs in all four repos, `gh` reads |
 | Writes | branches, commits and pushes in `elitea-testing-public`; PRs into `main`; merging `origin/main` into an open PR branch |
-| Never | tracker or board writes · a merge into / push to `main` (a human merges) · rebase / force-push · worktrees · `EliteaUI` edits · the frozen `automation/factory` · the gate (Tal's) · `.env` / `.env.test` contents |
+| Never | tracker or board writes · a merge into / push to `main` (the lead lands batches; a human merges PRs) · rebase / force-push · worktrees · `EliteaUI` edits · the frozen `automation/factory` · the gate (Tal's) · `.env` / `.env.test` contents |
 
 ## Where it must live
 
 Factory container sessions read `.claude/` and `.agents/` **only from the checked-out
 `FACTORY_WORK_BRANCH`** (`main`) — `docker/docker-entrypoint.sh` in the harness repo clones fresh and
 checks that branch out; the image carries no agent definitions. A definition that is only on an open
-PR branch is invisible to every unattended session until a human merges that PR into `main`.
+branch is invisible to every unattended session until it reaches `main` (a lead landing, or a human
+merging its PR).

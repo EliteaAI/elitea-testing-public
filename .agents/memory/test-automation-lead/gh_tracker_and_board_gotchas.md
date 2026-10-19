@@ -24,9 +24,11 @@ type: feedback
   can post a verdict and skip the attach, leaving the completion signal missing.
   Generalizes to every register-then-set pair (milestones, project field options).
   On resume, re-read `--json labels` rather than trusting memory that it finished.
-- **Strip auto-close keywords before merging.** Implementers' PR tooling inserts
-  `Closes #N` by habit; a squash-merge then auto-closes an issue that must stay OPEN
-  at `Ready`. Grep the PR body for `Closes|Fixes|Resolves #N` (case-insensitive) as
+- **Strip auto-close keywords before landing.** Implementers' PR tooling inserts
+  `Closes #N` by habit; a squash-merge — or, since 2026-10-16, a landing commit whose
+  message carries it reaching `main` ([[main_direct_push_landing_cutover]]) — then
+  auto-closes an issue that must stay OPEN at `Ready`. Check unit commit messages and
+  your own landing message too. Grep the PR body for `Closes|Fixes|Resolves #N` (case-insensitive) as
   a standing pre-merge step and rewrite to `Refs #N`. Put it in the gate, not the
   dispatch prompt — instructions get missed, gates don't.
 - **`gh pr merge` needs the strategy flag typed explicitly.** Passing `--merge`

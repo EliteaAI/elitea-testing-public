@@ -4,12 +4,13 @@ description: The workflow's report ends at gate-green on the batch trunk; the le
 type: feedback
 ---
 
-> **RE-ANCHORED 2026-10-16.** Base is `main`, `prUnit: "trunk"`: the rule below still
-> holds — YOU open the one trunk → `main` PR by hand after the green gate — but you
-> **never merge it**: open it ready, "Squash and merge" in the body, hand it to a
-> human (`.agents/role-overrides.md` § Orchestrator slot). Ignore the `gh pr merge`
-> line in the snippet below. The unpushed-trunk check still applies — run it before
-> opening the PR.
+> **RE-ANCHORED 2026-10-16.** Base is `main`, `prUnit: "trunk"`, and there is no
+> trunk → `main` PR any more: the rule below still holds in its new shape — the
+> workflow never LANDS the trunk; YOU do, by hand, after the green gate, as one
+> squash commit pushed to `main` (`.agents/role-overrides.md` § Orchestrator slot —
+> *Landing a batch*). Ignore the `gh pr create` / `gh pr merge` snippet below. The
+> unpushed-trunk check still applies — run it before landing (the trunk is pushed
+> for history too). See [[main_direct_push_landing_cutover]].
 
 ## Rule
 

@@ -11,7 +11,7 @@ service architecture.
 ```
 <workspace>/                             (= parent folder of this clone; plain dir, NOT a repo)
 ├── .env  .env.test                      master secrets (symlink targets)
-├── elitea-testing-public/               THIS repo — tests · base branch main (PRs, human merge) · admin
+├── elitea-testing-public/               THIS repo — tests · base branch main (lead pushes gated batches) · admin
 │   └── automation/.env.test → ../../.env.test
 ├── onetest-ai-tm-Elitea/                TMS repo ($OT_REPO_ROOT) · admin
 │   ├── .onetest/                        config the @onetest/tms MCP package reads via cwd
@@ -68,6 +68,6 @@ debt is enumerable and burning it down is mechanical.
 This replaced an earlier "coverage = testid presence" metric, which made a missing
 testid a blocker on every case and pinned each case's fate to a frontend review
 cycle. Under the ladder, a missing testid is a hint recorded in the declaration;
-the test is green on DEV the day it merges. Converting hints into real testids is a
+the test is green on DEV the day it lands. Converting hints into real testids is a
 separate, on-request process with its own session and procedure — out of scope for
 any work described in these docs.

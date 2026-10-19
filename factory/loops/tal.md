@@ -64,11 +64,13 @@ Deltas:
    fast-forward local `main` (`sync-base-branches` § Test repo — no merge, no
    push) BEFORE dispatching the first case; the batch trunk is cut from it
    (`.agents/role-overrides.md` § Orchestrator). **Every case your card names is
-   ONE batch, in THIS session, landing as ONE PR** — run them all through one
-   batch workflow (`base: "main"`, `prUnit: "trunk"`); never split a card into
-   several PRs or several sessions. `automation/factory` is FROZEN —
-   never branch from, PR into, or sync it. **You never merge into `main`** — a
-   human does. The pipeline targets DEV as deployed (`https://dev.elitea.ai`).
+   ONE batch, in THIS session, landing as ONE squash commit on `main`** — run them
+   all through one batch workflow (`base: "main"`, `prUnit: "trunk"`); never split a
+   card into several commits or several sessions. `automation/factory` is FROZEN —
+   never branch from, PR into, or sync it. **You land the batch yourself — a direct
+   push to `main`, no PR, no human merge** — and only after rule 7's review + gate
+   hold; never `--force`, never a rebase. The pipeline targets DEV as deployed
+   (`https://dev.elitea.ai`).
    Every dispatch prompt carries the target + locator-policy line verbatim
    (§ Orchestrator slot — the dispatch prompt is the gate).
 4. **Run your pipeline by dispatch, as always**: analyst (qa-engineer) writes
@@ -121,20 +123,25 @@ Deltas:
    **`Ready` requires ALL of** (`.agents/workflow.md` + `.agents/testing.md`):
    test green · reviewer APPROVED (fresh session) · your own 3× gate (§ Merge
    gate — three SEPARATE invocations, against DEV, of the batch's specs on the
-   trunk as it will merge) · **one PR into `main` for the whole card** — the gated
-   `tests/batch-<slug>` trunk, every case in it (body: one row per case, `Refs
-   #<card>` for every card it covers, never `Closes`, "Squash and merge"), marked
-   ready for review, and a HUMAN squash-merges it; never `gh pr merge` · **hand-off
-   record posted**
-   (`.agents/workflow.md` § Closure record — two parts): its Locators row is the
-   `automation/scripts/locator_inventory.py scan` delta that YOU re-ran on the
-   PR branch vs `origin/main` and pasted (never copied from the Run Report).
-   Then card → **`Ready`**, issue stays OPEN; that is your terminal state.
-   The TMS back-write, `sync-ledger` and the **merge record** happen only after
-   the human merge — the `postmerge` loop does them (`.agents/workflow.md`
-   § After a human merges); never back-write for an unmerged PR. A case that
-   needs another case's still-open PR parks `Blocked` — `Waiting on #<PR>` —
-   never stacked on it. A case of the card that can't be made green is reverted
-   off the trunk and reported on the card — the rest still land in the one PR.
-   `Done` and issue-close are the HUMAN's move. Nothing
-   less counts as delivered.
+   trunk as it will land) · **the whole card landed as ONE squash commit on
+   `main`, pushed by you** — the gated `tests/batch-<slug>` trunk, every case in
+   it (subject `test: batch <slug> — <N> cases (<IDs>)`, body one line per case,
+   `Refs #<card>` for every card it covers, never `Closes`), via
+   `env -u GITHUB_TOKEN git push origin main` (`.agents/role-overrides.md`
+   § Orchestrator slot — *Landing a batch*; a rejected push = fetch, merge
+   `origin/main` into the trunk, re-gate if it touches the batch, land again —
+   never `--force`) · **the post-landing work done in THIS session**
+   (`.agents/workflow.md` § After landing): TMS back-write for every case
+   (`automation_pr` = the landed commit URL), `locator_inventory.py scan` +
+   `sync-ledger` on the landed `main` with any ledger change pushed to `main` ·
+   **closure record posted** (`.agents/workflow.md` § Closure record) on every
+   card: its Locators row is the scan delta that YOU re-ran (pre-landing
+   `origin/main` vs the landed commit) and pasted — never copied from the Run
+   Report. Then card → **`Ready`**, issue stays OPEN; that is your terminal
+   state. Pushed but the bookkeeping not done (a previous iteration died after
+   the push)? Finish it from the landed commit — never re-land. A case that
+   needs another batch that has not landed parks `Blocked` — `Waiting on #<card>`
+   — never stacked on its trunk. A case of the card that can't be made green is
+   reverted off the trunk and reported on the card — the rest still land in the
+   one commit. `Done` and issue-close are the HUMAN's move. Nothing less counts
+   as delivered.

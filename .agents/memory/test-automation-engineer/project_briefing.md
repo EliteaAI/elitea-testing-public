@@ -38,7 +38,7 @@ type: project
   Headed is default; `HEADLESS=true` for quiet runs. `pip install -e ".[reporting]"`
   or pytest won't start (allure in addopts).
 - **Target DEV — `https://dev.elitea.ai/app`, as deployed** (`ELITEA_URL`/`APP_PREFIX`
-  in `.env.test`). Green there is the implementer's gate — no CI on PRs into `main`.
+  in `.env.test`). Green there is the implementer's gate — no CI before `main`.
   Refresh `scripts/dev_storage_state.py` before browser exploration.
 - **Locators follow the ladder — HARD OVERRIDE (`.agents/role-overrides.md`,
   `.claude/rules/page-objects.md`).** Use the AFS rung (climb higher if DEV allows):
@@ -49,10 +49,11 @@ type: project
   `[data-testid=` constants only — never built in methods or specs; `fallback=` /
   `locator=` are legacy, never in new code. Existing raw handles are tech debt
   (#25/#42), never precedent.
-- **Your PR in this repo is the only artifact.** Nothing outside it is changed to make
+- **Your branch in this repo is the only artifact.** Nothing outside it is changed to make
   a locator work: if DEV does not serve a testid, drop a rung and write the hint.
 - **The per-test loop:** explore DEV → `page-object-generator` (ladder declarations) →
-  write test → green on DEV → `locator_inventory.py scan` delta → PR to `main` (a human merges).
+  write test → green on DEV → `locator_inventory.py scan` delta → Run Report; the lead
+  merges your unit into the batch trunk after review and lands the batch on `main` (direct push).
 - **Wrap every test step in `with allure.step("Step N — …"):`** — one per AFS step,
   assertions inside their step's block (pattern: `test_artifacts_multi_file.py`).
   Auto-applied rules: `.claude/rules/{page-objects,ui-tests,mui-patterns,api-*}.md`.

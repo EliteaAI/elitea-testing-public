@@ -6,8 +6,9 @@ type: feedback
 
 > **SUPERSEDED 2026-10-16 — history only.** There is no per-session sync any more:
 > `automation/factory` is frozen, case branches are cut from a fresh `origin/main`,
-> and agents never merge into `main`. Kept for the mechanism (redundant divergent
-> merge commits); dropped from `MEMORY.md`. See [[main_base_human_merge_cutover]].
+> and the lead lands batches on `main` as squash commits (`--ff-only` sync of local
+> `main` first). Kept for the mechanism (redundant divergent merge commits);
+> dropped from `MEMORY.md`. See [[main_direct_push_landing_cutover]].
 
 ## The trap
 

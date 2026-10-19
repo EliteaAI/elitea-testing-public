@@ -8,8 +8,8 @@
 > into their richest survivor, demoted surface lookups to disk-only, cut 2 lines
 > whose claims are now contradicted by the code. No entry file was deleted.
 
-- [Project briefing](project_briefing.md) — stack, pipeline, systems map, PR + merge policy
-- [Base is main; humans merge](main_base_human_merge_cutover.md) — since 2026-10-16: one ticket = one batch = ONE PR into main, human squash-merges, never `gh pr merge`; post-merge work waits for the human
+- [Project briefing](project_briefing.md) — stack, pipeline, systems map, landing policy
+- [Base is main; lead lands by direct push](main_direct_push_landing_cutover.md) — since 2026-10-16: one ticket = one batch = ONE squash commit you push to main (no PR); back-write + ledger + closure record same session
 - [Shared-tree git discipline](shared_tree_git_discipline.md) — one tree, many sessions; destructive git eats memory; worktrees stay banned
 - [Closure-record discipline](closure_record_discipline.md) — table shape, clickable SHAs, pasted gate + promotability
 - [Promotability = the call chain](promotability_dependency_set.md) — derive deps from code at check time, never the AFS
@@ -43,7 +43,7 @@
 - [`gh run view --log` stub = false zero](gh_run_log_stub_is_a_false_zero.md) — in-progress run = 81B stub; counts lie
 - [Whole-matrix CI red = shared machinery](ci_blast_radius_points_at_shared_machinery.md) — triage the shared frame
 - [No TaskOutput tool → fallback](no_taskoutput_tool_fallback_is_listagents_plus_background_sleep.md) — ListAgents + bounded `run_in_background` sleep, still in-turn
-- [adjust-automated-test expected-result change](adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr.md) — lead opens the TMS PR, never merges it; test PR still yours to gate+merge
+- [adjust-automated-test expected-result change](adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr.md) — lead opens the TMS PR, never merges it; the test change still lands on main by your gated push
 - [adjust-skill Step 6 (AFS) falls through split dispatches](adjust_skill_step6_afs_update_falls_through_split_dispatches.md) — assign it explicitly or resume the analyst after merge
 - [New FIX card can dup a sibling's root cause](fix_card_shared_page_object_method_dedup.md) — check open PRs/issues for the shared method/symptom before triaging fresh
 - [Scan tracker text for secrets too](scan_tracker_text_for_secrets_too.md) — a subagent's auth-failure report can quote live creds; scrub before posting, not just before commit

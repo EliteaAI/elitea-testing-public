@@ -70,9 +70,10 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Project / board key**: `EliteaAI/elitea-testing-public` + GitHub Projects board **#9** (owner `EliteaAI`)
 - **URL**: https://github.com/EliteaAI/elitea-testing-public/issues · https://github.com/orgs/EliteaAI/projects/9
 - **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY) → `In Progress` →
-  **`Ready`** (agent-terminal: PR into `main` open, gated 3× on DEV, review
-  APPROVED, hand-off record with *verified* facts posted, issue OPEN, awaiting the
-  human merge) → `Done` (HUMAN-ONLY: a human merged the PR and closes the issue). `Blocked`
+  **`Ready`** (agent-terminal: batch reviewed APPROVED, gated 3× on DEV, pushed to
+  `main` by the lead, TMS back-write + ledger sync done, closure record with *verified*
+  facts posted, issue OPEN, awaiting human acceptance) → `Done` (HUMAN-ONLY: a human
+  accepts the landed work and closes the issue). `Blocked`
   is a side state for REAL blockers only (`Waiting on #N`). Agents never set
   `Approved` or `Done` — humans own both ends. New issues auto-add
   to the entry column — file them unassigned, set no status.
@@ -177,41 +178,46 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **AFS location**: `test-specs/<feature>/` in this repo (analyst output, git-tracked)
 
 ### Status reporting
-- **TMS execution back-write**: yes — after a human merges the PR (picked up by the
-  `postmerge` loop or the lead's next session, `.agents/workflow.md` § After a human
-  merges), orchestrator edits the case file in
+- **TMS execution back-write**: yes — right after the batch lands on `main`, in the
+  same session (`.agents/workflow.md` § After landing), orchestrator edits the case file in
   `onetest-ai-tm-Elitea`: `execution_type: automated`, `status: ready`,
   `automation_test_id: <dotted tests.-rooted path>` — NOT the `.py::` node-id form and NOT
   `automation.`-prefixed; both fail CI correlation (see `.agents/test-automation.yaml`
   § backwrite_on_done)
-- **Comment PR link on the originating issue**: yes — work-log comments
-  (🔧 started / 📝 update / 🚫 blocked / 🔗 handed off / ✅ merged) + PR link on the
+- **Comment the landed commit on the originating issue**: yes — work-log comments
+  (🔧 started / 📝 update / 🚫 blocked / ✅ landed) + the `main` commit link on the
   tracking card
 - **Board tracking**: assign self, move to `In Progress` when starting; `Blocked` +
-  "Waiting on #N" when parked; `Ready` once the PR is gated + handed off with the
-  hand-off record (verified locator delta — see workflow.md § Closure record; never
-  copy the implementer's claim); merge record posted after the human merge; `Done`
-  is human-only
+  "Waiting on #N" when parked; `Ready` once the batch is landed on `main` and the
+  closure record is posted (verified locator delta — see workflow.md § Closure record;
+  never copy the implementer's claim); `Done` is human-only
 - **Gating**: no automated result reporters wired into pytest; back-writes are
   explicit orchestrator actions, never per-local-run
 
 ### Automation PR policy
-- **Base branch for automation PRs**: `main` (since 2026-10-16; `automation/factory`
-  and `automation/base` are frozen history). A ticket's cases run as one batch; the
+_(Heading kept for the many `§ Automation PR policy` references. Since 2026-10-16
+there is no PR: this is the **landing** policy.)_
+- **Base branch**: `main` (since 2026-10-16; `automation/factory` and
+  `automation/base` are frozen history). A ticket's cases run as one batch; the
   batch trunk `tests/batch-<slug>` is cut from a fresh `origin/main` and lands as
-  **one PR per batch** (a single case = a batch of one).
-- **Merge policy**: **human merge only.** The orchestrator opens the PR (draft while
-  in review/fix rounds), and once review is APPROVED and its 3× DEV gate is green,
-  marks it ready for review and hands it off. **Agents never `gh pr merge` into
-  `main` and never push to `main`.** There is NO CI on PRs into `main`; the gate run
-  posted in the hand-off record is the evidence the human merges on.
-- **One PR, one repo.** A batch's PR touches this repo only — nothing outside it is
-  changed, and nothing in it waits on another repo's review.
-- **No promotion step for this repo** — PRs land on `main` directly via the human
-  merge. `batch-promote` remains only for the `automation/testids` branches in the
-  frontend repos. See `.agents/workflow.md` § Promotion.
-- **Squash / rebase / merge**: **squash** for batch PRs — one commit on `main` per
-  batch. State "Squash and merge" in the PR body so the human merging it picks it.
+  **one squash commit per batch** (a single case = a batch of one).
+- **Merge policy**: **direct push by the lead — no PR, no human merge.** Once every
+  unit is review-APPROVED and the lead's own 3× DEV gate on the trunk is green, the
+  lead squash-lands the trunk on `main` and runs `env -u GITHUB_TOKEN git push origin
+  main` (`.agents/role-overrides.md` § Orchestrator slot — *Landing a batch*). Only the
+  lead pushes `main`; never `--force`, never a rebase. There is NO CI before `main`;
+  the gate run in the closure record is the evidence. Human acceptance = `Done`.
+- **Branch protection**: `main` has none (rulesets `[]`, `protected: false`, checked
+  2026-10-16). Adding a "require a pull request" rule would block every landing — change
+  this policy first.
+- **One commit, one repo.** A batch's commit touches this repo only — nothing outside
+  it is changed, and nothing in it waits on another repo's review.
+- **No promotion step for this repo** — batches land on `main` directly.
+  `batch-promote` remains only for the `automation/testids` branches in the frontend
+  repos. See `.agents/workflow.md` § Promotion.
+- **Squash / rebase / merge**: **squash** — `git merge --squash` of the trunk, one
+  commit on `main` per batch (subject `test: batch <slug> — <N> cases (<IDs>)`, body
+  one line per case + `Refs #<card>`, never `Closes`).
 
 ### Additional notes
 - Parent folder of this clone = the workspace (plain directory, NOT a git

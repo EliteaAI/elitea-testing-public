@@ -4,9 +4,10 @@ description: The orchestrator's independent live-run gate (N=3 GREEN) must run B
 type: feedback
 ---
 
-> **RE-ANCHORED 2026-10-16.** Read "before `gh pr merge`" as "before you mark the PR
-> ready and hand it to a human" — the lead no longer merges into `main`. The rule
-> itself is unchanged: your own 3× gate runs strictly before the hand-off.
+> **RE-ANCHORED 2026-10-16.** Read "before `gh pr merge`" as "before you push the
+> batch's squash commit to `main`" — the lead lands batches by direct push. The rule
+> itself is unchanged, and matters more now that no human merge follows: your own
+> 3× gate runs strictly before the landing push.
 
 ## What happened
 

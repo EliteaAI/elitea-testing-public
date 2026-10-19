@@ -22,8 +22,8 @@ case/guarantee is gone, not changed.
    grep that no sibling spec imports from the deleted module, and that every
    page-object/API-client method the deleted test called is still used
    elsewhere (shared methods are the common case — don't let a retirement
-   turn into an unplanned method-removal sweep). Normal PR → `main` (since 2026-10-16),
-   normal lead gate-then-hand-off (a human merges) (though "gate" here means collection + lint
+   turn into an unplanned method-removal sweep). Normal batch → `main` (since 2026-10-16),
+   normal lead gate-then-land (a direct squash push) (though "gate" here means collection + lint
    clean, not 3x pytest green — nothing executes anymore).
 
 2. **TMS repo (onetest-ai-tm-Elitea):** there is no "deleted" case status —

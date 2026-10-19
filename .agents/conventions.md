@@ -34,7 +34,7 @@ This file only records what those don't.
 - **Config:** everything through `from config import settings` (pydantic-settings);
   no `os.environ` reads scattered in tests; `.env.test` is authoritative over shell env.
 - **Lint:** ruff — `E,F,I,W,UP`, line length 120, target py311. Run
-  `../.venv/bin/ruff check .` before PR.
+  `../.venv/bin/ruff check .` before review.
 - **Types:** mypy configured (`warn_return_any`, `warn_unused_configs`).
 - **Imports:** stdlib → third-party → local (ruff `I` enforces).
 - **Page navigation:** page objects call `navigate("/skills/all")` with bare paths;
@@ -45,9 +45,10 @@ This file only records what those don't.
 - Work branches from a fresh `origin/main`: `tests/<case-id>-<slug>` (canonical; older
   `automation/<case-id>-<slug>` branches exist historically — don't create new ones)
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
-- PRs: small, one per test/feature area, target `main`; opened by agents, merged by a human
+- Landing: one squash commit per batch, pushed straight to `main` by the lead after review +
+  the 3× DEV gate (no PR, no human merge — `.agents/profile.md` § Automation PR policy)
   (squash recommended)
-- Every artifact a case produces lands in **this** repo — one branch, one PR, one repo
+- Every artifact a case produces lands in **this** repo — one branch, one commit on `main`, one repo
 
 ## Hard don'ts
 

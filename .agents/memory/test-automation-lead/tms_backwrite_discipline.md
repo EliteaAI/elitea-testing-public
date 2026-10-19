@@ -11,14 +11,17 @@ type: feedback
    `backwrite_on_done`'s "edit the case file" is literal: `cd ../onetest-ai-tm-Elitea`,
    `Edit` the YAML frontmatter, commit, `env -u GITHUB_TOKEN git push origin main`.
    Commit shape: `chore(<TMS-ID>): back-write automation status — ready/automated`
-   plus a `Test merged: <PR URL>` body line.
+   plus a `Test merged: <PR URL>` body line — since 2026-10-16 `Test landed: <commit URL>`
+   (`automation_pr` = `https://github.com/EliteaAI/elitea-testing-public/commit/<sha>`,
+   [[main_direct_push_landing_cutover]]).
 2. **Stage by exact path — never `git add -A`.** That clone chronically carries a
    multi-thousand-line uncommitted `index.json` drift; a blanket add sweeps it into
    your one-line back-write.
 3. **All four fields are re-derived fresh on every rework.** `automation_test_id`
    and `automation_pr` are *independent* facts: a testid-only rework leaves the test
    identity unchanged but supersedes the PR. Check that `automation_pr` names the PR
-   currently merged into `automation/base` — "present" is not "correct".
+   currently merged into `automation/base` — "present" is not "correct". (Now: names the
+   commit that currently landed the test on `main`; a rework lands a new commit.)
 4. **`index.json` back-write is surgical, never a full rebuild.** `correlate_results`
    reads the index, so the case's entry must be updated — but the committed index is
    ~300 cases behind disk, and `_index.py --dir tests --out index.json` yields a

@@ -30,9 +30,9 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 - **Headed vs headless:** headed is the **default** (`config.py: headless=False`);
   `HEADLESS=true` for quiet runs. CI-on-deployed-envs uses the GHA workflows
   (`.github/workflows/test-ui-*.yml`) — not the local loop's concern.
-- **Local verification gate:** there is no CI on PRs into `main`; a test must run
+- **Local verification gate:** there is no CI before `main`; a test must run
   green from this machine against the **DEV env** (`ELITEA_URL=https://dev.elitea.ai`,
-  `APP_PREFIX=/app` in `automation/.env.test`) before its PR — that is the
+  `APP_PREFIX=/app` in `automation/.env.test`) before review — that is the
   *implementer's* gate. The *merge* gate is separate and stricter — see § Merge gate.
   **DEV is the only target** — never point a run at a local dev server.
 - **Browser exploration (Playwright MCP) on DEV:** the analyst/implementer MCP starts
@@ -46,14 +46,13 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
 - **N = 3, and it means three SEPARATE consecutive pytest invocations of the SAME
   spec** — not one invocation in which 3 different tests pass (the 30e159d9
   anti-pattern). Three processes, same test node id(s), zero failures between them.
-- **Run by the LEAD, independently, on the batch trunk, strictly BEFORE the batch PR
-  is handed to a human**
-  (marked ready for review + hand-off record). Reviewer `APPROVED` is necessary but
-  not sufficient; the implementer's green run is not the gate; handing off before the
-  gate is a violation even if it later passes (the baf8f3cf anti-pattern, re-anchored
-  2026-10-16: the lead no longer merges — a human does, on the gate evidence). If
-  `main` is merged into the PR branch afterwards (§ Keeping an open PR current in
-  `workflow.md`), the gate re-runs.
+- **Run by the LEAD, independently, on the batch trunk, strictly BEFORE the batch is
+  pushed to `main`.** Reviewer `APPROVED` is necessary but not sufficient; the
+  implementer's green run is not the gate; landing before the gate is a violation even
+  if it later passes (the baf8f3cf anti-pattern — since 2026-10-16 the lead's push to
+  `main` IS the merge, so nothing after the gate catches a skipped one). If
+  `origin/main` is merged into the trunk afterwards and touches the batch's files
+  (§ Keeping a trunk current in `workflow.md`), the gate re-runs.
 - **Sanctioned-RED exception (isolated known defect):** a spec whose failure is
   (a) deterministic — identical failure 3/3, (b) single-cause, tied to an OPEN
   defect issue linked in the test (soft-assert or `# Known defect: #N` comment
@@ -137,7 +136,7 @@ outside any case) names no case id — there is none to name. That is the only
 exemption, not a loophole for a case-derived test.
 
 Distinct from the `automation_test_id` back-write below: that one is written by
-the orchestrator post-merge and is a machine correlation key. Both name the same
+the orchestrator after landing and is a machine correlation key. Both name the same
 case; neither substitutes for the other.
 
 ## Coverage tagging (TMS traceability)
@@ -169,8 +168,8 @@ states the policy and who owns what. See also `.agents/role-overrides.md`._
 **Everything in this project's test loop targets the DEV env as deployed**
 (`https://dev.elitea.ai`, `APP_PREFIX=/app`). The DEV DOM is the only ground truth
 for a locator: if DEV serves a `data-testid`, use it; otherwise take the next
-ladder rung that is unique and record a `suggested_testid=` hint. One PR per batch,
-into `main` (squash-merged by a human), in this repo.
+ladder rung that is unique and record a `suggested_testid=` hint. One squash commit
+per batch on `main`, pushed by the lead after review + gate, in this repo.
 
 A missing testid is **not** work — it is a hint on a lower rung. Nothing in the
 loop waits on a frontend change, and no test ever depends on a testid DEV does not
@@ -221,7 +220,7 @@ wait on a frontend change. Baseline at cut-over (2026-10): 1838 declared, 21
 non-testid (1.14%), 389 unmanaged handles.
 
 Writing tests on the ladder **raises** debt by design; the separate migration
-process burns it down. Report the delta on any PR that touches `automation/pages/`;
+process burns it down. Report the delta on any batch that touches `automation/pages/`;
 unmanaged handles must never increase.
 
 ### Third-party internals — a permanent `css=` rung
@@ -295,7 +294,7 @@ case-derived test missing its TMS case id (§ TMS case id in the test above).
 - `.github/workflows/`: `test-ui-dev.yml`, `test-ui-next.yml`, `test-ui-stage2.yml`,
   `test-ui-custom.yml`, `test-api.yml`, `docs-build.yml`, `delete-stale-branches.yml`.
 - These target **deployed** envs and are run by humans / the batch process — the local
-  pipeline never gates on them. PRs into `main` have no CI by design.
+  pipeline never gates on them. Nothing runs CI before `main` by design.
 
 ## Known issues
 

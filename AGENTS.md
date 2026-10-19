@@ -1,8 +1,9 @@
 # AGENTS — elitea-testing
 
 Playwright/pytest test-automation suite for the Elitea AI platform. This team turns
-onetest TMS cases into honest automated tests delivered as **PRs into `main`** (a human
-merges them; `automation/factory` is frozen history since 2026-10-16), built and verified against the **DEV env as deployed** (`https://dev.elitea.ai/app`,
+onetest TMS cases into honest automated tests delivered as **squash commits pushed
+straight to `main`** by the lead after review + the 3× DEV gate (no PR, no human merge;
+`automation/factory` is frozen history since 2026-10-16), built and verified against the **DEV env as deployed** (`https://dev.elitea.ai/app`,
 2026-10). One env, one repo: every artifact a case produces lands here.
 
 ## Tech Stack
@@ -77,9 +78,9 @@ Way of work — the loop, sync procedures, batch operations — in
 
 GitHub Actions workflows run the suite against deployed envs (`test-ui-dev.yml`,
 `test-ui-next.yml`, `test-ui-stage2.yml`, `test-api.yml`) — **that is not the local
-loop's job**. There is NO CI on PRs into `main`: the engineer running tests green
-against DEV from their machine before PR, and the lead's 3× gate before hand-off, are the
-verification. A human merges.
+loop's job**. There is NO CI before `main`: the engineer running tests green
+against DEV from their machine, the fresh-session review, and the lead's 3× gate before
+landing are the verification. The lead pushes; a human accepts the card (`Done`).
 
 <!-- BUNDLE:test-automation START -->
 # Test Automation Team — shared conventions
@@ -95,8 +96,9 @@ wins over this file.
 
 - **`test-automation-lead` (Tal)** is the orchestrator. On this team he collapses
   the PM and tech-lead roles: he runs the batch pipeline, owns test-framework
-  architecture decisions, and owns the pre-PR gate and the hand-off (on this
-  project a human merges every PR into `main` — `.agents/role-overrides.md`).
+  architecture decisions, and owns the pre-landing gate and the landing (on this
+  project he pushes each gated batch straight to `main` — no PR, no human merge —
+  `.agents/role-overrides.md`).
   **The user launches
   Tal directly** (`claude --agent test-automation-lead`) for automation work —
   there is no PM above him. He is a top-level orchestrator, not a subagent.
@@ -143,10 +145,10 @@ of TMS cases (a single case is a batch of one)
             together, N consecutive green (default 3)
           · Report — the run's single disk write:
             `.agents/automation/<slug>/report.{json,md}`, one row per case
-      → Close: Tal reads the report — opens ONE PR for the whole batch
-        (`tests/batch-<slug>` → `main`, the gated trunk itself) for a human to
-        squash-merge, routes the findings, classifies a red gate, replans
-        whatever isn't done; the TMS back-write follows the human merge
+      → Close: Tal reads the report — squash-lands the gated trunk
+        (`tests/batch-<slug>`) on `main` as ONE commit and pushes it, does the
+        TMS back-write + ledger sync, posts the closure records, routes the
+        findings, classifies a red gate, replans whatever isn't done
 ```
 
 ## Working agreements (team-wide)

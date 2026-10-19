@@ -1,8 +1,9 @@
 # elitea-testing — Elitea AI Platform Test Automation
 
 Playwright + pytest automation for [Elitea](https://elitea.ai), an AI collaboration
-platform. Base branch: **`main`** — the factory opens PRs into it, **a human merges them**
-(agents never merge into `main`). `automation/factory` is frozen history since 2026-10-16.
+platform. Base branch: **`main`** — the lead **pushes each gated batch straight to it**
+(one squash commit, no PR, no human merge; only the lead pushes `main`, never `--force`).
+`automation/factory` is frozen history since 2026-10-16.
 
 ## Layout (sibling clones — parent dir is NOT a git repo)
 
@@ -39,10 +40,10 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
 - **The DEV env as deployed is the only target** — `https://dev.elitea.ai`,
   `APP_PREFIX=/app` (2026-10). Nothing is built or served locally.
   `next.elitea.ai` / stage remain CI's job.
-- **One repo, one PR per batch.** A ticket's cases run as one batch in one session,
+- **One repo, one commit per batch.** A ticket's cases run as one batch in one session,
   and every artifact they produce — tests, page objects, AFS, memory — lands here as
-  ONE PR into `main` (the gated batch trunk); agents open it, a human squash-merges it.
-  A single case is a batch of one.
+  ONE squash commit on `main` (the gated batch trunk), pushed by the lead after review
+  + the 3× DEV gate. A single case is a batch of one.
 - **No git worktrees for regular work** — plain branching, one thing at a time. Read
   another branch with `git show <branch>:<path>` / `git diff <branch>...HEAD`, never a
   checkout. Worktrees only on an explicit human ask (`.agents/workflow.md` § Branching).
@@ -79,7 +80,7 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
 Seeded config in `.agents/`, imported below so every session and every dispatched
 subagent gets it in full (uncapped — see `.claude/hooks/sdlc-skills/config.sh` for
 why this replaced the hook's inline delivery): system design (`architecture.md`),
-coding standards (`conventions.md`), systems/PR policy/credentials map
+coding standards (`conventions.md`), systems/landing policy/credentials map
 (`profile.md`), per-role locator/testid overrides (`role-overrides.md`), roster
 (`team-comms.md`), TMS intake/back-write policy (`test-automation.yaml`),
 framework detail (`testing.md`), the two-branch dance (`workflow.md`).
@@ -111,8 +112,9 @@ wins over this file.
 
 - **`test-automation-lead` (Tal)** is the orchestrator. On this team he collapses
   the PM and tech-lead roles: he runs the batch pipeline, owns test-framework
-  architecture decisions, and owns the pre-PR gate and the hand-off (on this
-  project a human merges every PR into `main` — `.agents/role-overrides.md`).
+  architecture decisions, and owns the pre-landing gate and the landing (on this
+  project he pushes each gated batch straight to `main` — no PR, no human merge —
+  `.agents/role-overrides.md`).
   **The user launches
   Tal directly** (`claude --agent test-automation-lead`) for automation work —
   there is no PM above him. He is a top-level orchestrator, not a subagent.
@@ -159,10 +161,10 @@ of TMS cases (a single case is a batch of one)
             together, N consecutive green (default 3)
           · Report — the run's single disk write:
             `.agents/automation/<slug>/report.{json,md}`, one row per case
-      → Close: Tal reads the report — opens ONE PR for the whole batch
-        (`tests/batch-<slug>` → `main`, the gated trunk itself) for a human to
-        squash-merge, routes the findings, classifies a red gate, replans
-        whatever isn't done; the TMS back-write follows the human merge
+      → Close: Tal reads the report — squash-lands the gated trunk
+        (`tests/batch-<slug>`) on `main` as ONE commit and pushes it, does the
+        TMS back-write + ledger sync, posts the closure records, routes the
+        findings, classifies a red gate, replans whatever isn't done
 ```
 
 ## Working agreements (team-wide)

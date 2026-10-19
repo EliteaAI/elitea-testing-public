@@ -4,10 +4,12 @@ description: gh pr merge defaults to whatever the repo UI default is, NOT the pr
 type: feedback
 ---
 
-> **RE-ANCHORED 2026-10-16.** Agents no longer `gh pr merge` into `main` — a human
-> merges. The lesson survives as: state the strategy ("squash recommended") in the
-> PR body so the human picks it. The `--squash` flag rule applies only where the
-> lead still merges (e.g. unit PRs into a batch trunk). See [[main_base_human_merge_cutover]].
+> **RE-ANCHORED 2026-10-16.** Batches no longer reach `main` through a PR — you
+> land them yourself with `git merge --squash tests/batch-<slug>` + one commit +
+> `git push origin main`. The lesson survives as: the landing strategy is SQUASH,
+> always — never a plain `git merge` of the trunk into `main` (that is the merge
+> commit this note warns about). The `--squash` flag rule still applies wherever
+> you `gh pr merge` (e.g. unit PRs into a batch trunk). See [[main_direct_push_landing_cutover]].
 
 ## What happened (issue #60 / ELITEA-1922, PR #292)
 

@@ -18,7 +18,8 @@ type: project
 - **Phase A (DEV, test repo):** rows in `on-dev` → swap the declaration to `testid=`
   on branch `locators/<yyyy-mm-dd>` from `origin/main`, run every node id that uses
   the field green against `https://dev.elitea.ai` (`APP_PREFIX=/app`), revert any red
-  swap (`mark … testid-proposed`), ONE PR → `main` (a human merges). Diff touches
+  swap (`mark … testid-proposed`), ONE PR → `main` (a human merges — this out-of-band
+  process is NOT covered by the lead's direct-push landing; only the lead pushes `main`). Diff touches
   `automation/pages/**` + the ledger only — specs, fixtures, conftest, assertions are
   out of bounds. You never self-merge; a fresh `qa-engineer` reviews per the skill's § Review.
 - **Phase B (localhost:5173, EliteaUI):** the next `raw` batch (`queue --limit 25`)
