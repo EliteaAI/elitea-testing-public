@@ -1123,3 +1123,9 @@ instead and is click-idempotent (no-ops if already checked).
 - Release dialog "Announcing ELITEA 2.0.7" (`platform-banner-center`, MuiDialog, button "Got it") blocks pointer events on fresh storage state; `dismiss_banner_if_present()` (aria-label=close) does not close it.
 - Folder create API: `POST /elitea_core/folder/prompt_lib/{pid}` {"name"} -> 201 {id}; deletes 204. Probe via `page.request` works with storage state (plain `requests`+Bearer redirect-loops).
 - Playwright MCP chrome binary missing on this host (/opt/google/chrome) - used scripted python Playwright instead.
+
+## Composer send/voice toggle (ELITEA-2466, DEV 2026-10-19)
+- Empty input: `chat-send-button` absent from DOM; `button[aria-label="enter speaking mode"]` (waveform) shown rightmost; `start voice input` (mic) always present. Typing swaps speaking-mode -> send. During a run: neither send nor speaking-mode; `chat-inject-button` shows; speaking-mode returns after completion.
+- `platform-banner-center` MuiDialog (release announcement) intercepts clicks on the composer until `platform-banner-close` ("Got it") is clicked; stored session may show it on fresh context.
+- Focus: wrapper (6th ancestor of the textarea) gets teal box-shadow glow; textarea border colour unchanged.
+- Playwright MCP Chrome was missing at /opt/google/chrome in this env; scratch `sync_playwright` with storage state works.
