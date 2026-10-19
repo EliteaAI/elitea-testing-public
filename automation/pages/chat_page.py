@@ -3798,6 +3798,14 @@ class ChatPage(BasePage):
         """
         logger.info("Opening modules menu via plus menu")
 
+        # Dismiss the platform release-notes modal if present — on a cold
+        # chat page this session, it is a full-screen overlay that
+        # intercepts the plus-menu click below (ELITEA-3370 gate finding,
+        # 2026-10-19). Belt-and-suspenders with BasePage.navigate()'s own
+        # dismiss_popups() call: callers that skip navigate() (already on
+        # /chat) or reach this page via a raw page.goto() still get it.
+        self.dismiss_platform_release_banner_if_present()
+
         # Step 1: Open plus menu
         if not self.plus_menu_button.is_visible():
             raise FeatureNotAvailableError(

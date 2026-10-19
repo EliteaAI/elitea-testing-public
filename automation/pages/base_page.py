@@ -380,12 +380,59 @@ class BasePage:
         else:
             logger.debug("No NPS survey popup found")
 
+    PLATFORM_RELEASE_BANNER_CLOSE_BUTTON = LocatorDescriptor(
+        testid="platform-banner-close",
+        description=(
+            "'Got it' button on the platform release-notes announcement "
+            "modal (data-testid=\"platform-banner-center\", e.g. 'Announcing "
+            "ELITEA 2.0.7!'), confirmed live 2026-10-19. A full-screen MUI "
+            "Dialog, distinct from the z-index-1200 overlay "
+            "`dismiss_banner_if_present()` targets (which only matches "
+            "`button[aria-label=\"close\"]`) — this modal's only control is "
+            "this named 'Got it' button, with no `aria-label`. Dismissing "
+            "once per session appears to persist (not re-shown after a "
+            "later navigation in the same session, confirmed live)."
+        ),
+    )
+
+    def dismiss_platform_release_banner_if_present(self, timeout: int = 2000) -> None:
+        """Dismiss the full-screen platform release-notes announcement modal
+        (``data-testid="platform-banner-center"``, e.g. "Announcing ELITEA
+        2.0.7!") if it is currently shown.
+
+        A NEW modal type DEV started serving (2.0.7, 2026-10) that
+        :meth:`dismiss_banner_if_present` does not cover — that helper only
+        matches ``button[aria-label="close"]``, and this modal's dismiss
+        control is a labeled "Got it" button with no such attribute. Left
+        undismissed it sits on top of the page and intercepts the next
+        click underneath it (e.g. the chat plus-menu button).
+
+        Best-effort transit machinery, same spirit as
+        :meth:`dismiss_banner_if_present`: nothing asserts on whether the
+        modal was present; this exists so a later click is not intercepted.
+        """
+        try:
+            button = self.PLATFORM_RELEASE_BANNER_CLOSE_BUTTON
+            button.wait_for(state="visible", timeout=timeout)
+            button.click()
+            self.page.wait_for_timeout(300)
+            logger.info("Dismissed platform release-notes banner")
+        except PlaywrightTimeoutError:
+            logger.debug("No platform release-notes banner found to dismiss")
+
     def dismiss_popups(self) -> None:
         """Dismiss all known popups that may interfere with tests.
 
-        Combines banner overlay and NPS survey dismissal.
-        Call this before interacting with elements that may be covered.
+        Combines the platform release-notes modal, banner overlay, and NPS
+        survey dismissal. Call this before interacting with elements that
+        may be covered.
+
+        The release-notes modal is dismissed FIRST — it is a full-screen
+        overlay that sits on top of everything else (including the banner
+        overlay it can itself reveal once closed), so it must clear before
+        the other dismissals have anything to act on.
         """
+        self.dismiss_platform_release_banner_if_present()
         self.dismiss_banner_if_present()
         self.dismiss_nps_survey_if_present()
 
