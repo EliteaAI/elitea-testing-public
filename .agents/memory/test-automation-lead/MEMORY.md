@@ -54,3 +54,4 @@
 - [Sandbox APP_PREFIX/MCP-browser gaps are independent](sandbox_app_prefix_and_mcp_browser_can_both_be_broken_independently.md) — missing `/app` looks like a timeout; MCP-broken ≠ triage-blocked, script it directly
 - [Retiring a case ≠ adjusting it](retiring_a_case_is_delete_plus_tms_deprecated_pr.md) — delete test+AFS; TMS `status: deprecated` via lead-opened, never-merged PR
 - ["Issue with the selected model" is transient](workflow_transient_model_access_error_resume_not_restart.md) — check git, then resumeFromRunId, never a fresh dispatch
+- [AI-timeout RED can be one model route](ai_response_timeout_can_be_model_route_specific.md) — swap models in-conversation before classifying as pipeline-wide outage
