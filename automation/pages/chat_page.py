@@ -779,6 +779,34 @@ class ChatPage(BasePage):
         )
     )
 
+    # Centered maintenance/announcement dialog ("Got it") — blocks all clicks
+    # until acknowledged; not covered by BasePage.dismiss_banner_if_present.
+    platform_banner_center = LocatorDescriptor(
+        testid="platform-banner-center",
+        description="Centered platform announcement dialog (CenterBanner.jsx).",
+    )
+    PLATFORM_BANNER_CLOSE = '[data-testid="platform-banner-close"]'
+
+    # Generated-entity chip (agent/pipeline/skill/toolkit creation result) —
+    # shared component, one per created_entities[] entry (ELITEA-3366).
+    generated_entity_chip = LocatorDescriptor(
+        testid="generated-entity-chip",
+        description=(
+            "Chip rendered inside an AI answer for an entity the AI created "
+            "(GeneratedEntityChip.jsx). Shared across agent/pipeline/skill/"
+            "toolkit/project_context; its label is the created entity's name."
+        ),
+    )
+
+    # Hover-revealed 'Open entity' icon button inside a generated-entity chip.
+    # No testid on DEV; aria-label is its stable accessible name (rung 2).
+    OPEN_ENTITY_BUTTON = ScopedLocator(
+        role="button",
+        name="Open entity",
+        suggested_testid="chat-generated-entity-chip-open-button",
+        description="Edit/open icon button of a generated-entity chip; visible only while the chip is hovered.",
+    )
+
     # Chat-area conversation-starter tile (NewConversationView.jsx's call site
     # onto the shared EllipsisTextWithTooltip, ELITEA-2369 — the new-
     # conversation landing view this case's flow actually renders through,
@@ -6492,3 +6520,48 @@ class ChatPage(BasePage):
             return tooltip.text_content() or ""
         except PlaywrightTimeoutError:
             return ""
+
+    # ------------------------------------------------------------------
+    # Generated-entity chip (ELITEA-3366)
+    # ------------------------------------------------------------------
+
+    @action("Get generated-entity chip labels")
+    def get_generated_entity_chip_labels(self, timeout: int = 15000) -> list:
+        """Wait for at least one generated-entity chip, return all chip labels.
+
+        Args:
+            timeout: Maximum wait for the first chip, in milliseconds.
+        """
+        self.generated_entity_chip.first.wait_for(state="visible", timeout=timeout)
+        chips = self.generated_entity_chip
+        return [(chips.nth(i).inner_text() or "").strip() for i in range(chips.count())]
+
+    @action("Open generated-entity chip in Canvas")
+    def open_generated_entity_chip(self, timeout: int = 10000):
+        """Hover the (single) generated-entity chip and click its 'Open entity' button.
+
+        The button is in the DOM but not visible until the chip is hovered
+        (confirmed live: a cold click times out), so hover first.
+        """
+        chip = self.generated_entity_chip.first
+        chip.hover()
+        button = self.OPEN_ENTITY_BUTTON.within(chip)
+        button.wait_for(state="visible", timeout=timeout)
+        button.click()
+
+    @action("Dismiss centered platform announcement")
+    def dismiss_center_banner_if_present(self, timeout: int = 3000):
+        """Acknowledge ('Got it') the centered announcement dialog if one is shown.
+
+        Scoped to the center dialog: the top banner also uses
+        ``platform-banner-close`` and is handled by the shared
+        ``dismiss_banner_if_present``.
+        """
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+        try:
+            self.platform_banner_center.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError:
+            return
+        self.platform_banner_center.locator(self.PLATFORM_BANNER_CLOSE).click()
+        expect(self.platform_banner_center).to_have_count(0, timeout=timeout)
