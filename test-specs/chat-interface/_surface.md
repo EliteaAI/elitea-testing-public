@@ -1144,3 +1144,57 @@ class `click_module_toggle()`'s docstring already names for
 though the switch DID flip and a toast WAS shown when polled directly —
 `ensure_module_toggle_checked()` is the robust helper for this module too,
 not just `project_context_builder`.
+
+**ELITEA-3372 (2026-10-19) — `internal_mcp`/`ask_user` positive path +
+`generated-entity-chip` confirmed for Agent/Pipeline too + Guardrails WORKS
+on DEV.** Three load-bearing findings this pass:
+1. **`generated-entity-chip` fires for `entity_type: 'agent'` and
+   `'pipeline'`, not just `'skill'`** — confirmed live via
+   `ChatPage.GENERATED_ENTITY_CHIP`/`message_has_generated_entity_chip()`
+   (added by ELITEA-3370's implementation, unchanged, direct reuse — no new
+   page-object work needed for THIS case).
+2. **The Ask-User clarifying card's trigger is genuinely non-deterministic**
+   for identical messages across fresh conversations — confirmed ~14 live
+   runs, same message ("Create an agent for customer support" and
+   variants) sometimes produces the card (`ClarifyingQuestionControl.jsx`,
+   `get_by_placeholder("Your option")`), sometimes the AI proceeds directly
+   and the `generated-entity-chip` appears with no card at all. This is a
+   genuine LLM routing decision, not a test-infra flake — any automation
+   touching Agent/Pipeline-builder creation via chat MUST branch (poll for
+   either outcome), never assert the card always/never appears. Full
+   evidence table in ELITEA-3372's own AFS § Known Defects/Clarifications —
+   don't re-derive, reuse that table. **No `data-testid` on either the
+   custom-option `TextField` or its submit button** (`Continue`/`Skip` same-
+   element ternary, `ClarifyingQuestionControl.jsx`) — reachable via
+   `get_by_placeholder("Your option")` (rung 3) and
+   `get_by_role("button", name="Continue")` (rung 2, re-query after
+   filling — the accessible name changes from `"Skip"` once answered).
+   `testid needed: ask-user-custom-option-input` /
+   `ask-user-clarifying-submit-button`.
+3. **Admin UI Guardrails (`/admin/app/configuration#guardrails`) IS served
+   on DEV** — confirmed live, `add_sensitive_tool`/`is_tool_in_sensitive_list`/
+   `save_configuration` all worked exactly as the existing
+   `GuardrailsAdminPage` methods already document. This is the OPPOSITE of
+   the long-standing localhost gap the ELITEA-2211..2215 HITL cluster AFS
+   (2026-08-03 section above) and `test_guardrails_live_reload.py`'s own
+   comments describe — that gap is specific to `localhost:5173`, not DEV.
+   **A test whose Guardrails precondition runs against DEV (per the 2026-10
+   cut-over this whole suite now targets) does NOT need
+   `pytest.mark.guardrails`/a CI-only gate** — don't copy that marker onto a
+   new DEV-targeted HITL test by habit; it would wrongly exclude it from the
+   normal local loop. The ELITEA-2211..2215 cluster's specs are still
+   unautomated as of this pass (no corresponding files under
+   `automation/tests/`) and should be re-examined against this finding when
+   next picked up — their AFS's "CI-only, localhost doesn't serve Guardrails"
+   framing is accurate for the environment they were analysed against but
+   is stale advice for a DEV-targeted implementation.
+4. **`ChatPage.add_toolkit_participant()` can be blocked by a lingering open
+   popper** — confirmed live: adding a toolkit participant right after
+   closing the Modules panel (same conversation, same session) intercepted
+   the method's own internal click on a stale popper subtree
+   (`[data-testid="skills-menuitem"]`/a leftover tooltip, "intercepts
+   pointer events" per the Playwright error). Fix: `page.keyboard.press("Escape")`
+   + an outside-point click (`page.mouse.click(10, 10)`) before calling
+   `add_toolkit_participant()` when it follows ANY other popper interaction
+   in the same conversation — not previously documented because earlier
+   HITL AFS (ELITEA-2211) never chained it after a Modules-panel sequence.

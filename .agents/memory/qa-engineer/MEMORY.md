@@ -51,3 +51,4 @@
 - [Bucket-row DotMenu hover is flaky, not drift](bucket_row_hover_reveal_flaky_retry_recovers.md) — hover-reveal timeout? retry hover (away+back) before filing class A/B
 - [DEV password schema changed 2026-10-15](dev_password_schema_changed_2026_10_15.md) — login fails? check `.env.test` predates commit `13e68be3` before assuming a bug
 - [Pipeline attachment content needs toolkit wired](pipeline_attachment_content_needs_artifact_toolkit_wired.md) — Attachments toggle alone never lets an LLM read file bytes
+- [Ask-User card non-deterministic for builder prompts](ask_user_clarifying_card_nondeterministic_for_builder_modules.md) — never assert it always/never fires; branch and poll both outcomes
