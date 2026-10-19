@@ -5582,19 +5582,26 @@ class ChatPage(BasePage):
         ),
     )
 
+    PLUS_MENU_NAMED_ITEM = '[data-testid="{}-menuitem"]'
+    PLUS_MENU_NAMED_SEARCH_INPUT = '[data-testid="{}-search-input"]'
+
+    def get_plus_menuitem(self, menuitem: str):
+        """Locator for the plus-menu item ``<menuitem>-menuitem`` (e.g. 'agents', 'internal-tools')."""
+        return self.page.locator(self.PLUS_MENU_NAMED_ITEM.format(menuitem))
+
     def open_plus_menu_submenu(self, menuitem: str, timeout: int = 10000):
         """Open the plus menu (if not already open) and reveal the submenu of
         ``<menuitem>-menuitem`` ('agents' | 'pipelines' | 'toolkits' | 'mcps').
 
         Closes nothing: callers close the popper with ``close_plus_menu_popper``.
         """
-        item = self.page.get_by_test_id(f"{menuitem}-menuitem")
+        item = self.get_plus_menuitem(menuitem)
         if not item.is_visible():
             self.plus_menu_button.wait_for(state="visible", timeout=timeout)
             self.plus_menu_button.click()
         item.wait_for(state="visible", timeout=timeout)
         item.click()
-        self.page.get_by_test_id(f"{menuitem}-search-input").wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.PLUS_MENU_NAMED_SEARCH_INPUT.format(menuitem)).wait_for(state="visible", timeout=timeout)
 
     def get_participant_menu_item(self, kind: str, project_id: int, entity_id: int):
         """Locator for a plus-menu submenu row; kind in agent|pipeline|toolkit|mcp."""

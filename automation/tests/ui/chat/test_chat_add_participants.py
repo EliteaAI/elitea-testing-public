@@ -53,6 +53,9 @@ class TestChatAddParticipants:
             with allure.step("Step 2 — PARTICIPANTS panel is visible and has no participants yet"):
                 chat.dismiss_platform_announcement()
                 chat.expand_participants_panel_via_toggle()
+                expect(chat.participants_panel_toggle_button).to_be_visible(timeout=UI_TIMEOUT)
+                expect(chat.participants_panel_toggle_button).to_have_attribute(
+                    "data-expanded", "true", timeout=UI_TIMEOUT)
                 expect(chat.get_participant_rows()).to_have_count(0, timeout=UI_TIMEOUT)
                 for label in SECTION_LABELS:
                     expect(chat.get_participant_section_title(label)).to_have_count(0)
@@ -60,7 +63,7 @@ class TestChatAddParticipants:
             with allure.step("Step 3 — Plus menu lists Modules, Agents, Pipelines, Toolkits, MCPs"):
                 chat.plus_menu_button.click()
                 for tid in ("internal-tools", "agents", "pipelines", "toolkits", "mcps"):
-                    expect(page.get_by_test_id(f"{tid}-menuitem")).to_be_visible(timeout=UI_TIMEOUT)
+                    expect(chat.get_plus_menuitem(tid)).to_be_visible(timeout=UI_TIMEOUT)
                 expect(chat.attach_files_button).to_be_visible(timeout=UI_TIMEOUT)
                 chat.close_plus_menu_popper_in_blank_conversation()
 
