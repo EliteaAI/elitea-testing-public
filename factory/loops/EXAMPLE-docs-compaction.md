@@ -121,7 +121,7 @@ guessing.
 - Do not commit or push directly to `main` under any circumstance. **This loop
   is a deliberate exception to the direct-push landing** (`.agents/role-overrides.md`
   § the working branch is `main`): only the lead pushes `main`, and only gated
-  batches plus their bookkeeping. A doctrine rewrite is neither — it is advisory,
+  batches, one commit each. A doctrine rewrite is neither — it is advisory,
   so its only write path to `main` is a draft PR a human merges.
 - Do not touch a file's meaning, only its restatement — if trimming a
   passage would require deciding whether two slightly-different wordings

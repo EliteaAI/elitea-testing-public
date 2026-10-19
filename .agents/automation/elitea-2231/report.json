@@ -1,0 +1,59 @@
+{
+  "batch": "elitea-2231",
+  "date": "2026-08-18",
+  "cases": [
+    {
+      "id": "ELITEA-2231",
+      "title": "Onboarding — Welcome to Elitea page is displayed on first login",
+      "outcome": "blocked",
+      "afs": "test-specs/onboarding/lmedium_welcome_page_first_login_ELITEA-2231.md",
+      "test_file": null,
+      "pr": null,
+      "blocker": {
+        "type": "R2",
+        "category": "test-environment-capability",
+        "description": "Test requires first-time user with user.personal_project_id=null. Current test user already has personal project from previous runs.",
+        "unblocking_requirements": [
+          "New user provisioning fixture (Keycloak API)",
+          "Backend API to reset user state",
+          "Frontend mocking capability",
+          "Database snapshot/restore infrastructure"
+        ],
+        "recommended_action": "Create enhancement ticket for new-user provisioning capability"
+      },
+      "findings": [],
+      "testids": {
+        "needed": 0,
+        "added": 0,
+        "all_on_main": true,
+        "list": [
+          "onboarding-page-container",
+          "onboarding-page-logo",
+          "onboarding-welcome-card",
+          "onboarding-welcome-illustration",
+          "onboarding-welcome-title",
+          "onboarding-welcome-greeting",
+          "onboarding-welcome-body-text",
+          "onboarding-welcome-secondary-text",
+          "onboarding-welcome-get-started-button",
+          "onboarding-progress-footer"
+        ]
+      },
+      "analysis_method": "code-review-only",
+      "execution_blocked": true
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "automated": 0,
+    "blocked": 1,
+    "already_covered": 0,
+    "out_of_scope": 0,
+    "not_started": 0
+  },
+  "next": [
+    "Create enhancement ticket for new-user provisioning",
+    "Route infrastructure decision to operator",
+    "Park ELITEA-2231 until infrastructure ready"
+  ]
+}

@@ -161,9 +161,10 @@ of TMS cases (a single case is a batch of one)
             together, N consecutive green (default 3)
           · Report — the run's single disk write:
             `.agents/automation/<slug>/report.{json,md}`, one row per case
-      → Close: Tal reads the report — squash-lands the gated trunk
-        (`tests/batch-<slug>`) on `main` as ONE commit and pushes it, does the
-        TMS back-write + ledger sync, posts the closure records, routes the
+      → Close: Tal reads the report — commits the ledger sync, batch records
+        and memory on the gated trunk (`tests/batch-<slug>`), squash-lands it on
+        `main` as ONE commit and pushes it, does the TMS back-write, posts the
+        closure records, routes the
         findings, classifies a red gate, replans whatever isn't done
 ```
 

@@ -61,6 +61,14 @@ if [ -n "$EXEC_LOOP" ]; then
     else
       [ -d factory ] || warn "work repo has no factory/ mirror of the harness copy"
     fi
+    # Tokenomics comments need BOTH halves: the SessionEnd capture hook in the
+    # work branch's .claude/settings.json, and .agents/telemetry as a live
+    # submodule (else the ledger never syncs). Either missing = silent skip.
+    grep -q 'telemetry-capture.mjs' .claude/settings.json 2>/dev/null \
+      && pass "tokenomics SessionEnd capture wired" \
+      || warn "no tokenomics capture hook in .claude/settings.json — no tokenomics comments will be posted"
+    [ -e .agents/telemetry/.git ] && pass "telemetry submodule checked out ($(git -C .agents/telemetry rev-parse --abbrev-ref HEAD 2>/dev/null))" \
+      || warn "telemetry is not a submodule checkout — git submodule update --init -- .agents/telemetry"
     (cd automation && ../.venv/bin/python -c 'from config import settings; assert settings.elitea_api_token and settings.test_user_email and settings.test_user_password and settings.elitea_url and settings.elitea_project_id') 2>/dev/null \
       && pass "credentials resolve through config.py" || fail "config.py resolves empty credentials"
     cd "$HARNESS"

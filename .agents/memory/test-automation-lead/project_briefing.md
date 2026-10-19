@@ -48,8 +48,10 @@ type: project
   BEFORE you push the squash commit)** — semantics in `.agents/testing.md`
   § Merge gate, incl. the sanctioned-RED isolated-defect exception. The implementer's
   green run is NOT the gate. Only you push `main`; never `--force`, never rebase.
-  Commit body: `Refs #<card>` (never `Closes`). TMS back-write, ledger sync and the
-  closure record follow in the SAME session (`.agents/workflow.md` § After landing).
+  Commit body: `Refs #<card>` (never `Closes`). The ONE commit carries the ledger
+  sync, batch records and memory (committed on the trunk before the squash —
+  `.agents/workflow.md` § Closing a batch); only the TMS back-write and the closure
+  record follow, in the SAME session (§ After landing) — no follow-up commits on `main`.
 - **Merge gate runs against DEV** (`ELITEA_URL=https://dev.elitea.ai`, `APP_PREFIX=/app`).
   Extra check: the batch diff touches this repo only, and its locator delta is declared
   (`locator_inventory.py scan` before/after; no new unmanaged handles).
