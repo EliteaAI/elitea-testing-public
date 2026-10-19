@@ -1328,16 +1328,6 @@ class ChatPage(BasePage):
         description="'New chat' item in the open folder dot-menu popper.",
     )
 
-    # Release-announcement dialog (platform-banner-center) intercepts pointer
-    # events on a fresh storage state; dismiss_banner_if_present() (aria-label=close)
-    # does not close it.
-    announcement_got_it_button = LocatorDescriptor(
-        role="button",
-        name="Got it",
-        suggested_testid="platform-banner-got-it-button",
-        description="'Got it' button of the release-announcement dialog (transit only).",
-    )
-
     # Currently selected model name label (landing and in-conversation).
     model_selector_name = LocatorDescriptor(
         testid="model-selector-name",
@@ -6618,19 +6608,20 @@ class ChatPage(BasePage):
                 f"{response.status} {response.text()}"
             )
 
-    @action("Dismiss release-announcement dialog")
-    def dismiss_announcement_dialog_if_present(self, timeout: int = 2000):
-        """Click 'Got it' on the release-announcement dialog when it is shown.
+    @action("Observe transient 'Naming' label on conversation item")
+    def observe_naming_label(self, conv_id: str | int, timeout: int = 1500) -> bool:
+        """Best-effort tight poll: True if the item text shows 'Naming' within ``timeout``.
 
-        Transit machinery: the dialog blocks hover/click on the chat panel on a
-        fresh session; absence is the normal case and is not an error.
+        The label lasts ~0.4-0.8s, so False only means it was missed/already resolved;
+        callers must then assert the resolved end state.
         """
         try:
-            self.announcement_got_it_button.wait_for(state="visible", timeout=timeout)
-        except Exception:
-            return
-        self.announcement_got_it_button.click()
-        self.announcement_got_it_button.wait_for(state="hidden", timeout=5000)
+            expect(self.get_conversation_item(conv_id)).to_have_text(
+                re.compile(r"Naming"), timeout=timeout
+            )
+            return True
+        except AssertionError:
+            return False
 
     @action("Create folder via API")
     def create_folder_via_api(

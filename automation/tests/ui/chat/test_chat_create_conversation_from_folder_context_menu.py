@@ -49,7 +49,7 @@ class TestChatCreateConversationFromFolderMenu:
                 folder_id = chat.create_folder_via_api(f"autotest_2757_{int(time.time())}")
                 chat.navigate_to_chat()
                 chat.wait_for_page_load()
-                chat.dismiss_announcement_dialog_if_present()
+                chat.dismiss_platform_announcement()
                 expect(chat.get_folder_item(folder_id)).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 landing_model = (chat.model_selector_name.first.text_content() or "").strip()
                 assert landing_model, "Landing page should show a default model name"
@@ -77,6 +77,8 @@ class TestChatCreateConversationFromFolderMenu:
                 chat.send_message(TEST_MESSAGE, use_enter=True)
                 page.wait_for_url(re.compile(r"/chat/\d+"), timeout=UI_ELEMENT_TIMEOUT)
                 conv_id = re.search(r"/chat/(\d+)", page.url).group(1)
+                # Case: "Naming" spinner appears next to the entry (~0.4-0.8s window) - tight poll.
+                naming_seen = chat.observe_naming_label(conv_id, timeout=1500)
                 expect(chat.get_folder_item(folder_id)).to_have_attribute(
                     "data-expanded", "true", timeout=UI_ELEMENT_TIMEOUT
                 )
@@ -86,6 +88,8 @@ class TestChatCreateConversationFromFolderMenu:
 
             with allure.step("Step 5 — Auto-naming completes: non-empty title, not 'Naming'"):
                 item = chat.get_conversation_item(conv_id)
+                saw_naming = naming_seen or chat.observe_naming_label(conv_id, timeout=500)
+                logger.info("Transient 'Naming' label observed: %s", saw_naming)
                 expect(item).not_to_have_text(re.compile(r"Naming"), timeout=NAMING_TIMEOUT)
                 auto_name = (item.text_content() or "").strip()
                 assert auto_name, "Auto-generated conversation name should be non-empty"
@@ -111,7 +115,7 @@ class TestChatCreateConversationFromFolderMenu:
             with allure.step("Step 8 — Reload; conversation persists in the folder with its name"):
                 page.reload()
                 chat.wait_for_page_load()
-                chat.dismiss_announcement_dialog_if_present()
+                chat.dismiss_platform_announcement()
                 expect(chat.get_folder_item(folder_id)).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 if not chat.is_folder_expanded(folder_id):
                     chat.expand_folder(folder_id)
