@@ -27,6 +27,7 @@ Usage:
 """
 
 import logging
+import time
 
 import allure
 import pytest
@@ -42,7 +43,12 @@ pytestmark = [pytest.mark.ui, pytest.mark.security, pytest.mark.regression]
 # Test configuration
 # ---------------------------------------------------------------------------
 
-# Bucket and file used for permission testing
+# Bucket and file used for permission testing.
+# BUCKET_NAME is a human-readable PREFIX only — the test_bucket fixture appends
+# a per-invocation unique suffix (see fixture docstring, ELITEA-2493/#2419:
+# a shared, never-rotated bucket name let a permission exception leak across
+# runs/tests sharing this fixture). Follows the same pattern as the
+# `artifact_bucket` fixture in fixtures/data_fixtures.py (ELITEA-1327).
 BUCKET_NAME = "permissionstest"
 TEST_FILENAME = "permission_test_file.txt"
 TEST_FILE_CONTENT = b"This file is used for bucket permission API enforcement tests."
@@ -66,43 +72,58 @@ API_TIMEOUT = 30_000
 
 
 @pytest.fixture(scope="function")
-def test_bucket(artifact_api_team_project):
-    """Ensure test bucket exists with a test file in Team project.
+def test_bucket(artifact_api_team_project, request):
+    """Create a fresh, uniquely-named test bucket with a test file in Team project.
 
     Uses Team project (not private) because bucket permissions feature
     is only available in Team projects.
 
-    Creates the bucket and file if they don't exist. Tracks whether we created
-    them so cleanup only removes data we created (preserves pre-existing data).
+    The bucket name is generated per-invocation (``BUCKET_NAME`` prefix +
+    test node name + millisecond timestamp, same shape as the
+    ``artifact_bucket`` fixture in ``fixtures/data_fixtures.py``) rather than
+    reusing a shared constant. ELITEA-2493/#2419: a single hardcoded,
+    never-rotated bucket name (``"permissionstest"``) was reused by both
+    ``test_no_access_permission_blocks_all_api_operations`` and
+    ``test_read_only_permission_allows_get_blocks_write_operations``; since
+    the bucket was only deleted when the fixture itself created it, it
+    persisted across every run that found it already present, and a
+    permission exception set on it in one invocation leaked into the next —
+    the exact kind of shared-state flake Rule 10 (read-only-by-default) exists
+    to avoid when the observable can't be satisfied on existing stable data.
+    A fresh, unique bucket always has zero exceptions and is always created
+    (so always cleaned up), eliminating the leak entirely.
 
     Yields:
         dict with keys:
-            - name: bucket name
+            - name: bucket name (unique per invocation)
             - filename: test file name
-            - created_bucket: True if we created the bucket
+            - created_bucket: True if we created the bucket (always True now)
             - created_file: True if we created the file
     """
     api = artifact_api_team_project
-    created_bucket = False
     created_file = False
 
-    # Check if bucket exists
-    if not api.bucket_exists(BUCKET_NAME):
-        logger.info("Test bucket '%s' not found — creating", BUCKET_NAME)
-        api.create_bucket(BUCKET_NAME)
-        created_bucket = True
-        logger.info("Created test bucket '%s'", BUCKET_NAME)
+    ts = str(int(time.time() * 1000))[-6:]  # last 6 digits for brevity
+    raw = f"{BUCKET_NAME}-{request.node.name}"
+    safe = raw.lower().replace("_", "-").replace("[", "").replace("]", "")[:40]
+    bucket_name = f"{safe}-{ts}"
 
-    # Check if test file exists
-    existing_files = api.list_bucket_files(BUCKET_NAME)
+    logger.info("Creating uniquely-named test bucket '%s'", bucket_name)
+    api.create_bucket(bucket_name)
+    created_bucket = True
+    logger.info("Created test bucket '%s'", bucket_name)
+
+    # Check if test file exists (defensive — a brand-new bucket never has it,
+    # but keeps the fixture correct if ever reused against an existing bucket)
+    existing_files = api.list_bucket_files(bucket_name)
     if TEST_FILENAME not in existing_files:
         logger.info("Test file '%s' not found — uploading", TEST_FILENAME)
-        api.upload_file(BUCKET_NAME, TEST_FILENAME, TEST_FILE_CONTENT)
+        api.upload_file(bucket_name, TEST_FILENAME, TEST_FILE_CONTENT)
         created_file = True
         logger.info("Uploaded test file '%s'", TEST_FILENAME)
 
     yield {
-        "name": BUCKET_NAME,
+        "name": bucket_name,
         "filename": TEST_FILENAME,
         "created_bucket": created_bucket,
         "created_file": created_file,
@@ -110,16 +131,16 @@ def test_bucket(artifact_api_team_project):
 
     # Cleanup: only delete what we created
     if created_bucket:
-        logger.info("Cleanup: deleting test bucket '%s' (created by test)", BUCKET_NAME)
+        logger.info("Cleanup: deleting test bucket '%s' (created by test)", bucket_name)
         try:
-            api.delete_bucket(BUCKET_NAME)
+            api.delete_bucket(bucket_name)
         except Exception as e:
             logger.warning("Failed to delete test bucket: %s", e)
     elif created_file:
         # Bucket existed but we added the file — just delete the file
         logger.info("Cleanup: deleting test file '%s' (created by test)", TEST_FILENAME)
         try:
-            api.delete_file_raw(BUCKET_NAME, TEST_FILENAME)
+            api.delete_file_raw(bucket_name, TEST_FILENAME)
         except Exception as e:
             logger.warning("Failed to delete test file: %s", e)
 
