@@ -1012,6 +1012,54 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.chat.test_chat_interjection_attachment_blocking.TestInterjectionAttachmentBlockingDuringActiveRun.test_attachment_blocked_during_run_plain_text_interjection_still_queues",
+      "markers": [
+        "chat",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2877"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.chat.test_chat_interjection_fifo_order.TestInterjectionFifoMessageOrderPreservation.test_three_interjections_process_in_fifo_order",
+      "markers": [
+        "chat",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2876"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.chat.test_chat_interjection_queuing.TestInterjectionQueuingSequentialProcessing.test_interjection_queues_and_processes_in_fifo_order",
+      "markers": [
+        "chat",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2875"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.chat.test_chat_interjection_stop_preserves_queue.TestInterjectionStopPreservesQueuedMessages.test_stop_rescues_and_auto_drains_queue_without_loss",
+      "markers": [
+        "chat",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2878"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[10k_tokens]",
       "markers": [
         "chat",
