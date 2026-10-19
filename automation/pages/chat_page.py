@@ -1309,6 +1309,31 @@ class ChatPage(BasePage):
     # Pin remains untouched (this case's test never opens Pin).
     FOLDER_MENU_RENAME_ITEM = '[data-testid="chat-folder-menu-rename-menuitem"]'
 
+    # ------------------------------------------------------------------
+    # Folder dot-menu "New chat" (ELITEA-2757)
+    # ------------------------------------------------------------------
+
+    # FolderItem.jsx menuItems carry no `key` for "New chat", so DEV serves no
+    # testid for it — ladder rung 2 (role+name), unique in the open popper menu.
+    folder_menu_items = LocatorDescriptor(
+        role="menuitem",
+        suggested_testid="chat-folder-menu-item-{}",
+        description="All items of the open folder dot-menu popper (enumerated, never picked).",
+    )
+
+    folder_menu_new_chat_item = LocatorDescriptor(
+        role="menuitem",
+        name="New chat",
+        suggested_testid="chat-folder-menu-new-chat-menuitem",
+        description="'New chat' item in the open folder dot-menu popper.",
+    )
+
+    # Currently selected model name label (landing and in-conversation).
+    model_selector_name = LocatorDescriptor(
+        testid="model-selector-name",
+        description="Selected model name text in the model selector.",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -6582,6 +6607,77 @@ class ChatPage(BasePage):
                 f"API delete of folder {folder_id} failed: "
                 f"{response.status} {response.text()}"
             )
+
+    @action("Observe transient 'Naming' label on conversation item")
+    def observe_naming_label(self, conv_id: str | int, timeout: int = 1500) -> bool:
+        """Best-effort tight poll: True if the item text shows 'Naming' within ``timeout``.
+
+        The label lasts ~0.4-0.8s, so False only means it was missed/already resolved;
+        callers must then assert the resolved end state.
+        """
+        try:
+            expect(self.get_conversation_item(conv_id)).to_have_text(
+                re.compile(r"Naming"), timeout=timeout
+            )
+            return True
+        except AssertionError:
+            return False
+
+    @action("Create folder via API")
+    def create_folder_via_api(
+        self, name: str, project_id: str | int | None = None, timeout: int = 10000,
+    ) -> int:
+        """Create an empty chat folder via ``POST /elitea_core/folder/prompt_lib/{project}``.
+
+        Mirrors ``delete_folder_via_api`` (same auth fallback). Returns the new folder id.
+
+        Raises:
+            RuntimeError: on a non-2xx response.
+        """
+        project = project_id if project_id is not None else settings.elitea_project_id
+        url = f"{settings.elitea_api_base.rstrip('/')}/elitea_core/folder/prompt_lib/{project}"
+        headers = {}
+        if not self.page.context.cookies() and settings.elitea_api_token:
+            headers["Authorization"] = f"Bearer {settings.elitea_api_token}"
+        response = self.page.request.post(url, data={"name": name}, headers=headers, timeout=timeout)
+        if not response.ok:
+            raise RuntimeError(f"API create of folder {name!r} failed: {response.status} {response.text()}")
+        return response.json()["id"]
+
+    @action("Open folder dot-menu")
+    def open_folder_menu(self, folder_id: str | int, timeout: int = 5000):
+        """Hover the folder icon and open the folder's scoped 3-dot menu."""
+        item = self.get_folder_item(folder_id)
+        item.locator(self.FOLDER_ICON).hover()
+        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON).first
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+        self.folder_menu_new_chat_item.wait_for(state="visible", timeout=timeout)
+
+    def get_folder_menu_labels(self) -> list[str]:
+        """Return the visible labels of the open folder dot-menu, in order."""
+        return [t.strip() for t in self.folder_menu_items.all_text_contents()]
+
+    @action("Start new chat in folder via dot-menu")
+    def click_folder_menu_new_chat(self, timeout: int = 5000):
+        """Click 'New chat' in the open folder dot-menu (menu closes afterwards)."""
+        self.folder_menu_new_chat_item.click()
+        self.folder_menu_new_chat_item.wait_for(state="hidden", timeout=timeout)
+
+    def get_folder_conversation_items(self, folder_id: str | int, conversation_id: str | int | None = None):
+        """Locator for conversation items inside *folder_id*'s row (one id, or all when None)."""
+        item = self.get_folder_item(folder_id)
+        selector = (
+            self.CONVERSATION_ITEM.format(conversation_id)
+            if conversation_id is not None
+            else self.CONVERSATION_ITEM_PREFIX
+        )
+        return item.locator(selector)
+
+    @action("Toggle folder")
+    def toggle_folder(self, folder_id: str | int):
+        """Click the folder icon in the folder's row (expands/collapses it)."""
+        self.get_folder_item(folder_id).locator(self.FOLDER_ICON).click()
 
     @action("Open folder rename editor")
     def open_folder_rename_editor(self, folder_id: str | int, timeout: int = 5000):
