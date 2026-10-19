@@ -9,7 +9,7 @@ import re
 import time
 from playwright.sync_api import Page, expect
 from .base_page import BasePage
-from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor, ScopedLocator
 from components.mui import Dialog, Popper
 from utils.actions import action
 from config import settings
@@ -62,6 +62,134 @@ class ChatPage(BasePage):
     attach_files_button = LocatorDescriptor(
         testid="chat-attach-menuitem-button",
         description="'Attach Files' menu item inside the open plus-menu popper.",
+    )
+
+    # ------------------------------------------------------------------
+    # Mid-turn interjection / message queuing (ELITEA-2875/2876/2877/2878)
+    # All testids below are real, on-main, confirmed live 2026-10-16 — see
+    # test-specs/chat-interface/_surface.md § Mid-turn interjection.
+    # Gated by the project-tier `midturn_injection_enabled` module-settings
+    # flag (fixtures.data_fixtures.midturn_injection_enabled) — none of these
+    # elements render at all while the feature is off for the project.
+    # ------------------------------------------------------------------
+
+    interjection_composer = LocatorDescriptor(
+        testid="interjection-composer",
+        description=(
+            "Composer wrapper present ONLY while `isStreaming && isInjectable` "
+            "(UserInput.jsx) — appears once the running turn reports it is "
+            "listening, NOT the instant Send is clicked. There is a "
+            "'Waking the agent…'/early-stream window before (and after) it "
+            "where this is absent — never assert interjectability from a "
+            "loading indicator alone, wait for this testid instead."
+        ),
+    )
+
+    chat_inject_button = LocatorDescriptor(
+        testid="chat-inject-button",
+        description=(
+            "Send-to-running-agent icon, alongside the Stop icon, once "
+            "interjection_composer is present. Disabled while the composer "
+            "is empty (UserInput.jsx `disabled={!question.trim()}`)."
+        ),
+    )
+
+    interjection_queue_area = LocatorDescriptor(
+        testid="interjection-queue-area",
+        description=(
+            "Pending-injection queue container (PendingInjectionList.jsx). "
+            "Only rendered while `pendingInjections.length > 0` — it UNMOUNTS "
+            "entirely (not merely empties) once the queue drains to 0; assert "
+            "absence via `.count() == 0`, not a '0 remaining' text read."
+        ),
+    )
+
+    interjection_queue_label = LocatorDescriptor(
+        testid="interjection-queue-label",
+        description=(
+            "Queue count label inside interjection_queue_area. Exact live "
+            "text is 'Waiting messages – {N}' (EN DASH, confirmed live "
+            "PendingInjectionList.jsx) — not the hyphen/middot some case text "
+            "paraphrases use; assert the literal en-dash string."
+        ),
+    )
+
+    interjection_queue_item = LocatorDescriptor(
+        testid="interjection-queue-item",
+        description=(
+            "One per queued interjection (PendingInjectionItem.jsx), in "
+            "submission order (ChatBox.jsx's `stopQueueRef` always appends "
+            "to the tail). `.nth(i)` here enumerates a count-verified set in "
+            "submission order, not a positional pick."
+        ),
+    )
+
+    interjection_queue_remove_button = LocatorDescriptor(
+        testid="interjection-queue-remove",
+        description=(
+            "Per-queued-item remove/delete icon. Only rendered while "
+            "`!item.inFlight` — hidden for the head-of-queue item currently "
+            "being sent (PendingInjectionItem.jsx)."
+        ),
+    )
+
+    # Substring-match testid selector for "does this queue item carry ANY
+    # attachment-related element" (ELITEA-2877) — same sanctioned
+    # testid-rung-constant idiom as CHAT_ATTACHMENT_CHIP_PREFIX above.
+    # PendingInjectionItem.jsx only ever renders the item's text (confirmed
+    # live/source-read) — there is no attach-while-queued path at all, so
+    # this should always resolve to 0 for a plain-text interjection.
+    INTERJECTION_QUEUE_ITEM_ATTACHMENT_SELECTOR = '[data-testid*="attachment"]'
+
+    # Stop control — NO testid, NO forwarded accessible name exists today
+    # (UserInput.jsx: a bare icon `BaseBtn` wrapped only in a `Tooltip` whose
+    # title "Stop generating" is not wired as an aria-label). Confirmed via
+    # source read + live DOM walk 2026-10-16/17 (ELITEA-2878 implementation):
+    # the Stop button and the inject button share one `sendButtonContainer`
+    # row, each in its OWN sibling `Box`; the inject button is the only
+    # stable, uniquely-testid'd anchor in that row, so this is scoped
+    # relative to it (two ancestor hops to its `sendButtonContainer` Box,
+    # then the one preceding-sibling Box that contains NO testid'd
+    # descendant — the Stop button's own container; the Attach-Files Box
+    # earlier in the row DOES contain a testid'd descendant and is excluded
+    # by the predicate) — the standard "scope to a declared parent" ladder
+    # technique for a 2-button row, not a positional pick on an arbitrary
+    # list. `testid needed: chat-stop-button` on the Stop `BaseBtn` in
+    # UserInput.jsx — flagged for the migrator (this case's own executed
+    # path, test-specs AFS Concrete Handles table).
+    STOP_BUTTON = ScopedLocator(
+        xpath="../../preceding-sibling::div[not(.//*[@data-testid])]//button",
+        suggested_testid="chat-stop-button",
+        description=(
+            "Stop-generation icon button, resolved relative to "
+            "chat_inject_button's own sendButtonContainer Box (two ancestor "
+            "hops) -> the one preceding sibling Box with no testid'd "
+            "descendant (excludes the Attach-Files Box earlier in the same "
+            "footer row). Only present while streaming (same `!isStreaming "
+            "|| isUploadingAttachments` branch as chat_inject_button's "
+            "parent). xpath= used because rungs 1-4 all fail: no testid, no "
+            "accessible name (Tooltip title isn't forwarded as aria-label), "
+            "no stable label/css distinguishing it from any other icon "
+            "button in the composer footer."
+        ),
+    )
+
+    # AI-authored message marker — resolved inside a messages_container <li>
+    # (ELITEA-2876/2878). AI messages render <BrandLogo> as <img alt="Elitea">
+    # in their header (ApplicationAnswerHeader.jsx); user messages render a
+    # <UserAvatar> initials circle instead, with no <img alt="Elitea">
+    # descendant — confirmed live 2026-10-16/17. css= (not testid=): no
+    # data-testid exists on this element on DEV; the alt text is the
+    # library's own stable public contract on the <img>, not a generated
+    # MUI class, so it is a legitimate css= rung.
+    AI_MESSAGE_LOGO = ScopedLocator(
+        css='img[alt="Elitea"]',
+        suggested_testid="chat-message-ai-author-marker",
+        description=(
+            "BrandLogo <img alt='Elitea'> inside an AI-authored message's "
+            "header — presence distinguishes an AI message from a "
+            "user-authored one (UserAvatar renders no such <img>)."
+        ),
     )
 
     # ------------------------------------------------------------------
@@ -1376,7 +1504,137 @@ class ChatPage(BasePage):
             if i < len(lines) - 1:
                 self.message_input.press("Shift+Enter")
         self.send_button.click(force=True)
-        
+
+    # ------------------------------------------------------------------
+    # Mid-turn interjection / message queuing (ELITEA-2875/2876/2877/2878)
+    # ------------------------------------------------------------------
+
+    @action("Wait for interjectable window")
+    def wait_for_interjectable(self, timeout: int = 30000):
+        """Wait until the running turn reports it is listening for interjections.
+
+        ``interjection_composer`` appears only once ``isStreaming &&
+        isInjectable`` (UserInput.jsx) — i.e. AFTER the early "Waking the
+        agent…"/pre-stream window, not the instant Send is clicked. Callers
+        must wait for this before attempting an interjection; attempting one
+        earlier would test the wrong (not-yet-interjectable) state.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.interjection_composer.wait_for(state="visible", timeout=timeout)
+        logger.info("Interjectable window reached (interjection-composer present)")
+
+    @action("Queue an interjection message")
+    def queue_interjection(self, text: str, timeout: int = 5000):
+        """Type *text* and click the inject button to queue a mid-turn interjection.
+
+        Caller must already be in the interjectable window (see
+        ``wait_for_interjectable``). Does not wait for the queue item to
+        appear — callers that need that signal poll ``get_interjection_queue_count()``
+        or read ``interjection_queue_item`` directly.
+
+        Args:
+            text: Interjection message text.
+            timeout: Maximum wait for the inject button to become clickable.
+        """
+        logger.info("Queuing interjection: %s...", text[:50])
+        self.message_input.fill(text)
+        self.chat_inject_button.wait_for(state="visible", timeout=timeout)
+        self.chat_inject_button.click(force=True, timeout=timeout)
+
+    def get_interjection_queue_count(self) -> int:
+        """Return the number of currently queued (not yet consumed) interjections."""
+        return self.interjection_queue_item.count()
+
+    def get_interjection_queue_label_text(self, timeout: int = 5000) -> str:
+        """Return the exact text of the queue count label (e.g. 'Waiting messages – 2')."""
+        self.interjection_queue_label.wait_for(state="visible", timeout=timeout)
+        return (self.interjection_queue_label.text_content() or "").strip()
+
+    def get_interjection_queue_item_texts(self) -> list[str]:
+        """Return the text of every currently queued interjection, in queue order (0..N-1)."""
+        items = self.interjection_queue_item
+        return [items.nth(i).text_content() or "" for i in range(items.count())]
+
+    def is_inject_button_errored(self) -> bool:
+        """Return True if chat_inject_button carries an aria-disabled/error state.
+
+        A successful queue click leaves the button with no such attribute —
+        callers assert ``not is_inject_button_errored()`` right after
+        ``queue_interjection()`` to confirm the click succeeded cleanly.
+        """
+        return self.chat_inject_button.get_attribute("aria-disabled") is not None
+
+    def get_user_message_texts(self) -> list[str]:
+        """Return the body text of every USER-authored timeline entry, top-to-bottom.
+
+        Filters out AI-authored entries via ``_is_ai_message`` — used to
+        assert submission order (e.g. initial prompt -> A -> B -> C)
+        independent of each message's own interleaved agent response.
+        """
+        messages = self.messages_container
+        texts = []
+        for i in range(messages.count()):
+            msg = messages.nth(i)
+            if not self._is_ai_message(msg):
+                texts.append(self._extract_message_body(msg))
+        return texts
+
+    def get_queue_item_attachment_descendant_count(self, index: int = 0) -> int:
+        """Return the count of attachment-related descendants on queue item *index*.
+
+        ``PendingInjectionItem.jsx`` only ever renders the item's text — there
+        is no attach-while-queued path at all, so this should always be 0 for
+        a plain-text interjection.
+        """
+        item = self.interjection_queue_item.nth(index)
+        return item.locator(self.INTERJECTION_QUEUE_ITEM_ATTACHMENT_SELECTOR).count()
+
+    def click_stop(self, timeout: int = 5000):
+        """Click the Stop-generation control (see ``STOP_BUTTON``'s declaration docstring).
+
+        One click rescues ALL currently-queued interjections and drains them
+        automatically, one at a time (ChatBox.jsx's `stopQueueRef` safety-net
+        rescue + `drainQueue()`) — this method only performs the single click;
+        callers wait for the drain themselves (``wait_for_interjection_drain``).
+
+        Args:
+            timeout: Maximum wait for the Stop control to be clickable.
+        """
+        stop_button = self.STOP_BUTTON.within(self.chat_inject_button)
+        stop_button.wait_for(state="visible", timeout=timeout)
+        stop_button.click(timeout=timeout)
+        logger.info("Clicked Stop control")
+
+    def wait_for_interjection_drain(self, timeout: int = 30000):
+        """Wait until the queue has fully drained (no pending interjections, no active run).
+
+        Polls BOTH ``interjection_composer`` and ``interjection_queue_area``
+        down to 0 — the full-drain signal confirmed live (never a fixed
+        sleep): a run may finish streaming while items remain queued, and a
+        queue may empty mid-turn while the composer is still active for the
+        last item's response.
+
+        Args:
+            timeout: Maximum total wait time in milliseconds.
+
+        Raises:
+            TimeoutError: if the drain does not complete within ``timeout``.
+        """
+        logger.info("Waiting for interjection queue to fully drain (timeout=%dms)...", timeout)
+        deadline = time.monotonic() + timeout / 1000.0
+        while time.monotonic() < deadline:
+            if self.interjection_composer.count() == 0 and self.interjection_queue_area.count() == 0:
+                logger.info("Interjection queue fully drained")
+                return
+            time.sleep(0.5)
+        raise TimeoutError(
+            f"Interjection queue did not fully drain within {timeout}ms — "
+            f"composer_present={self.interjection_composer.count()}, "
+            f"queue_present={self.interjection_queue_area.count()}"
+        )
+
     def get_message_count(self) -> int:
         """Get the count of messages in the chat history.
 
@@ -1420,6 +1678,19 @@ class ChatPage(BasePage):
         return before, after
         
     @staticmethod
+    def _is_ai_message(message_locator) -> bool:
+        """Return True if *message_locator* (a ``chat-message-item`` ``<li>``) is AI-authored.
+
+        AI messages render ``<BrandLogo>`` as ``<img alt="Elitea">`` in their
+        header (``ApplicationAnswerHeader.jsx``); user messages render a
+        ``<UserAvatar>`` initials circle instead — confirmed live 2026-10-16/17
+        (ELITEA-2876/2878 implementation). Used to filter the timeline down to
+        USER-authored entries when asserting submission order independent of
+        each message's own agent response.
+        """
+        return ChatPage.AI_MESSAGE_LOGO.within(message_locator).count() > 0
+
+    @staticmethod
     def _extract_message_body(message_locator) -> str:
         """Extract the body text from a message ``<li>``, excluding headers.
 
@@ -1455,8 +1726,23 @@ class ChatPage(BasePage):
             if text:
                 return text
 
-        # User messages: content is in bodyMedium Typography spans
-        body_spans = message_locator.locator('.MuiTypography-bodyMedium')
+        # User messages: content is in bodyMedium Typography spans.
+        # EXCLUDE spans inside `[data-testid="injected-message-chunk"]`
+        # (ELITEA-2875/2876/2877/2878 fix, 2026-10-17): when a mid-turn
+        # interjection was sent against THIS message's run, the original
+        # message's own <li> grows an extra "sent while running: <text>"
+        # annotation block rendered via its OWN nested bodyMedium span —
+        # confirmed live via a real DOM dump. The un-scoped selector
+        # previously concatenated that annotation's text into the body,
+        # corrupting every caller's read of the ORIGINAL message once an
+        # interjection had fired against its run (first observed:
+        # ELITEA-2875 implementation — a 4-entry timeline's entry 0 read
+        # back as "<prompt>\nInterjection message" instead of just
+        # "<prompt>"). No other caller's message ever contains this testid,
+        # so excluding it only affects content that was wrong before.
+        body_spans = message_locator.locator(
+            '.MuiTypography-bodyMedium:not([data-testid="injected-message-chunk"] .MuiTypography-bodyMedium)'
+        )
         if body_spans.count() > 0:
             parts = []
             for i in range(body_spans.count()):
@@ -1665,6 +1951,47 @@ class ChatPage(BasePage):
 
         raise TimeoutError(
             f"Message body did not grow past {previous_length} chars within {timeout}ms"
+        )
+
+    def wait_for_message_body_text(self, message_locator, expected_text: str, timeout: int = 5000) -> str:
+        """Condition-wait until a message's body text equals *expected_text* exactly.
+
+        ELITEA-2878 fix (2026-10-17): confirmed live that clicking Stop
+        rescues the head-of-queue item by REPLACING the content of the
+        ORIGINAL (already-visible) message's own ``<li>`` DOM node in place
+        — it is not a new element appearing. ``wait_for(state="visible")``
+        on that already-visible node resolves instantly and does not wait
+        for its text to actually change, which races the rescue and can read
+        back stale (pre-Stop) content. Unlike
+        :meth:`wait_for_message_body_growth` (which only detects the text
+        getting LONGER), this polls for exact equality, since a rescued
+        interjection's text can be SHORTER than the long-running prompt it
+        replaces.
+
+        Args:
+            message_locator: the message ``<li>`` Locator being sampled.
+            expected_text: the exact body text to wait for.
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The matched text (always == expected_text on success).
+
+        Raises:
+            TimeoutError: if the body text does not match within ``timeout``.
+        """
+        poll_interval = 0.3  # seconds
+        deadline = time.monotonic() + timeout / 1000.0
+        last_seen = ""
+        while time.monotonic() < deadline:
+            try:
+                last_seen = self._extract_message_body(message_locator)
+            except Exception:
+                last_seen = ""
+            if last_seen == expected_text:
+                return last_seen
+            time.sleep(poll_interval)
+        raise TimeoutError(
+            f"Message body never equalled {expected_text!r} within {timeout}ms — last seen {last_seen!r}"
         )
 
     # Transient messages that indicate generation is still in progress
@@ -1946,6 +2273,40 @@ class ChatPage(BasePage):
         self.plus_menu_button.wait_for(state="visible", timeout=timeout)
         self.plus_menu_button.click()
         self.attach_files_button.wait_for(state="visible", timeout=timeout)
+
+    def is_attach_menuitem_disabled(self) -> bool:
+        """Return the real DOM `disabled` state of the (already-open) attach menu item.
+
+        Blocked while a run is active (``disableAttachments || isLoading ||
+        isStreaming`` in NewChatInput.jsx — ELITEA-2877), confirmed live via
+        both the DOM attribute and ``pointer-events: none``. Caller must have
+        already opened the popper via ``open_attach_menuitem()``.
+        """
+        return self.attach_files_button.evaluate("el => el.disabled === true")
+
+    def wait_for_attach_menuitem_enabled(self, timeout: int = 10000):
+        """Poll until the (already-open) attach menu item's `disabled` DOM attribute clears.
+
+        ELITEA-2877 fix (2026-10-17): confirmed live that the re-enable does
+        NOT land synchronously with the drain signal
+        (``wait_for_interjection_drain``) — a one-shot check right after drain
+        can race a short propagation window and read ``disabled`` stale.
+        Caller must have already opened the popper via
+        ``open_attach_menuitem()`` and must re-open it after a prior
+        ``Escape`` if the popper was closed between calls.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: if the attribute does not clear within ``timeout``.
+        """
+        deadline = time.monotonic() + timeout / 1000.0
+        while time.monotonic() < deadline:
+            if self.attach_files_button.evaluate("el => el.disabled === false"):
+                return
+            time.sleep(0.3)
+        raise TimeoutError(f"chat-attach-menuitem-button did not re-enable within {timeout}ms")
 
     def open_file_chooser(self, timeout: int = 10000):
         """Open the plus menu's Attach Files item and return the FileChooser dialog.

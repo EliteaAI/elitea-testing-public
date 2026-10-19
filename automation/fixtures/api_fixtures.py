@@ -25,6 +25,7 @@ from api import (
     ArtifactAPI,
     ConversationAPI,
     CredentialAPI,
+    ModuleSettingsAPI,
     PipelineAPI,
     ProjectContextAPI,
     SkillAPI,
@@ -253,6 +254,26 @@ def artifact_api(_browser_cookies):
     yield api
     api.close()
     logger.debug("Closed ArtifactAPI client")
+
+
+@pytest.fixture(scope="session")
+def module_settings_api(_browser_cookies):
+    """Session-scoped ModuleSettingsAPI client for project module feature flags.
+
+    Uses cookie-based authentication, same pattern as :func:`conversation_api`.
+    Session-scoped: the mid-turn-injection family (ELITEA-2875/2876/2877/2878)
+    toggles ``midturn_injection_enabled`` once per test via the
+    ``midturn_injection_enabled`` fixture (``fixtures/data_fixtures.py``), not
+    once per client.
+
+    Yields:
+        ModuleSettingsAPI: Authenticated module-settings API client
+    """
+    api = ModuleSettingsAPI(browser_cookies=_browser_cookies)
+    logger.info("Created session-scoped ModuleSettingsAPI client")
+    yield api
+    api.close()
+    logger.debug("Closed ModuleSettingsAPI client")
 
 
 @pytest.fixture(scope="session")
