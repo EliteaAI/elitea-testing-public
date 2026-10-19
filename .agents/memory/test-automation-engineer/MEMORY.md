@@ -69,3 +69,5 @@
 - [Custom pipeline node deprecated](pipeline_custom_node_type_deprecated_hidden_from_picker.md) — EL-6616 hid it from Add Node menu forever; never "fix" the locator
 - [Sandbox browser rev mismatch](sandbox_playwright_browser_revision_mismatch_readonly_cache.md) — read-only `/opt/ms-playwright`; symlink expected rev → installed rev via `PLAYWRIGHT_BROWSERS_PATH`
 - [get_row_by_name is pagination-blind](personal_tokens_search_filter_bypasses_pagination.md) — 0-count on a growing GridTable list ⇒ suspect paging before data loss; search() first
+- [Bearer fallback can 302 per-endpoint](bearer_token_fallback_can_302_on_specific_endpoints.md) — verify both auth modes live before building a new entity client
+- [3-state page helpers hide a 3rd state](project_context_three_render_states_and_codemirror_newline_strip.md) — enumerate ALL server states live, not just the two you've seen; CodeMirror strips "\n"
