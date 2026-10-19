@@ -36,7 +36,16 @@ import logging
 import time
 
 import pytest
-from api import AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, ModuleSettingsAPI, PipelineAPI, ToolkitAPI
+from api import (
+    AgentAPI,
+    ArtifactAPI,
+    ConversationAPI,
+    CredentialAPI,
+    ModuleSettingsAPI,
+    PipelineAPI,
+    ProjectContextAPI,
+    ToolkitAPI,
+)
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
@@ -1982,3 +1991,32 @@ def pipeline_llm_printer_connected(pipeline_api: PipelineAPI, request):
         logger.info("Deleted edge-deletion pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete edge-deletion pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def clean_project_context(project_context_api: ProjectContextAPI):
+    """Ensure the active project has no Project Context before AND after the
+    test (ELITEA-3252/3253/3254/3255 family).
+
+    Deletes via the API (tolerating any non-2xx — 404 "not found" means
+    already clean, which is itself a pass) both before the test runs (clean
+    precondition for the empty-state "Build with AI" flow) and after it
+    finishes (teardown, restores the empty-state precondition for the next
+    run). Confirmed live 2026-10-16: DELETE returns 204 on success, 404 when
+    already empty — this fixture does not distinguish the two, since both
+    leave the project in the same "no context" state.
+
+    No corresponding "id" is yielded: this fixture's only job is the
+    delete-before/delete-after bracket, not creating an entity. Same shape
+    as ELITEA-2272's own now-removed ``clean_project_context`` fixture
+    (commit d883d12e), rebuilt here on cookie auth since the bearer-token
+    fallback 302s on this endpoint.
+    """
+    project_context_api.delete_project_context()
+
+    yield
+
+    try:
+        project_context_api.delete_project_context()
+    except Exception as exc:
+        logger.warning("Failed to delete Project Context in teardown: %s", exc)

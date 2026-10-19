@@ -14,6 +14,11 @@ A squash-merge with that keyword intact would have auto-closed #18 the moment th
 merge landed, silently violating the terminal-state contract with no error, no
 warning — GitHub just does it.
 
+> **Still live after the 2026-10-16 direct-push cutover** ([[main_direct_push_landing_cutover]]):
+> GitHub auto-closes on a closing keyword in any COMMIT MESSAGE that reaches `main` too.
+> The landing commit links cards with `Refs #<card>` only — and `git merge --squash`
+> pre-fills the message with every unit commit's text, so scrub it before committing.
+
 ## Fix applied
 
 `gh pr edit <N> --repo <repo> --body "$(gh pr view <N> ... -q .body | sed 's/^Closes #18$/Refs #18 (factory mode: issue stays OPEN at Ready; humans close it)/')"`

@@ -11,7 +11,7 @@ buttons went from "present and disabled" to "structurally absent" because the
 product changed. `adjust-automated-test` Step 3's preserve-the-nature rail is
 explicit: an assertion may change only because the case's expected result
 genuinely changed, **and then the TMS case changes in the same PR pair**
-(Step 8: a test PR → `automation/factory` AND a TMS PR → the cases repo).
+(Step 8: a test PR → `main` (since 2026-10-16) AND a TMS PR → the cases repo).
 
 The implementer correctly fixed the code and opened PR #2398 but never opened
 the TMS PR — its remit is this repo only (`.agents/role-overrides.md` §
@@ -33,16 +33,18 @@ by the orchestrator; case *content* = PR, orchestrator opens it, human merges.
 
 ## Rule going forward
 
-1. If the PR body's "Expected-result changes" is anything but "none", a
+1. If the unit's "Expected-result changes" is anything but "none", a
    companion TMS PR is mandatory before the unit is complete — check for it
    BEFORE dispatching the reviewer, not after a review round catches the gap.
 2. The orchestrator opens that TMS PR, never the implementer (different repo,
    different authority) and never leaves it for a re-dispatch.
-3. Merge the test PR after your normal gate (3× green, independent, DEV) —
-   that part is unchanged, you retain standing merge authority there.
+3. Land the test change on `main` after your normal gate (3× green,
+   independent, DEV) — a direct squash push, as for any batch
+   ([[main_direct_push_landing_cutover]]). The direct-push authority covers
+   THIS repo's `main` only; it never extends to the TMS repo.
 4. Do NOT merge the TMS PR. Note it under the closure record's "Still open"
    row — this is itself anticipated by the record's own template field, not an
-   incomplete delivery. The card still goes to `Ready` with the test merged;
+   incomplete delivery. The card still goes to `Ready` with the test landed;
    the TMS PR is the human's remaining action, same as any other
    awaiting-external-acceptance item.
 5. Set `automation_pr` on the TMS case in the SAME PR as the content change

@@ -102,6 +102,7 @@ if (!A.slug || !A.base || !Array.isArray(A.cases) || A.cases.length === 0 || A.c
     'analyzeOnly?, preAnalyzed?: [{id, afs_path, surface_key}], quotaResume?, root?, reportDir?, ' +
     'agentTypes?, workerModel?, workerEffort?, reviewerModel?, mergeModel?, reporterModel?, triageModel?, ' +
     'extendImplementerModel?, fixRounds?, gateN?, gateCmd?, integrationBranch?, skipGate?, ' +
+    "prUnit?: 'trunk'|'per-case', " +
     "tiering?: 'auto'|'off', reviewPanel?, breakerThreshold?, extendRateThreshold?, budgetReserve? }"
   )
 }
@@ -201,6 +202,14 @@ const GATE_CMD = A.gateCmd ?? null          // project's suite command; null →
 // from it and merges back into it, so it accumulates the batch's work in order
 // and is the single thing the gate proves and the lead lands.
 const TRUNK = A.integrationBranch ?? `tests/batch-${SLUG}`
+// PR UNIT — what reaches base, a seeded policy (.agents/profile.md § Automation
+// PR policy). 'trunk' (default): the gated trunk reaches base as one unit — one PR,
+// or, under a direct-push merge policy, one squash commit the lead pushes. 'per-case':
+// the trunk is GATE-ONLY — it still carries the run and the gate still proves it,
+// but it is never PR'd; the lead opens one PR per automated unit, cut from base,
+// for a reviewer to merge case by case (a human-merge base wants small PRs).
+const PR_UNIT = A.prUnit ?? 'trunk'
+if (!['trunk', 'per-case'].includes(PR_UNIT)) throw new Error(`prUnit must be 'trunk' or 'per-case', got ${JSON.stringify(A.prUnit)}`)
 const SKIP_GATE = A.skipGate === true
 // Intake writes each case body here (fetch-once-to-disk); workers read the
 // snapshot instead of re-fetching the TMS.
@@ -944,7 +953,9 @@ async function buildUnit(u, pre = null) {
     // go costs the same merges, smaller and while their author is still live.
     `The tree is on ${TRUNK} and that is where you start. Cut your feature branch FROM ${TRUNK} — it already carries every unit that finished before you, so page-object and fixture work accumulates and you are never rebasing onto a surprise. ` +
     `If ${TRUNK} does not exist anywhere yet (you are the first unit of a fresh batch), create it: \`git checkout -B ${TRUNK} ${BASE} && git push -u origin ${TRUNK}\`. Never -B an existing trunk — that discards the units already merged into it. ` +
-    `Open your PR against ${TRUNK}, NOT against ${BASE} — case PRs land on the batch trunk, and one PR takes the trunk to ${BASE} after the gate. `+
+    (PR_UNIT === 'per-case'
+      ? `Open your PR against ${TRUNK}, NOT against ${BASE} — case PRs land on the batch trunk, which is gate-only on this project: after the gate the lead carries each automated case to ${BASE} as its own PR. `
+      : `Open your PR against ${TRUNK}, NOT against ${BASE} — case PRs land on the batch trunk, and the lead lands the trunk on ${BASE} as one unit after the gate (one PR, or one squash commit pushed directly — the project's merge policy decides). `) +
     // A retried unit can arrive at a feature branch a previous attempt already
     // built on. Whether that work is usable is a judgement about the diff, so
     // it is yours — a script cannot tell "half-finished and coherent" from
@@ -1398,6 +1409,7 @@ if (analyzedCount >= 4 && extendishCount / analyzedCount > EXTEND_RATE) {
 const report = {
   batch: SLUG,
   base: BASE,
+  pr_unit: PR_UNIT,
   integration_branch: merged.length ? gateBranch : null,
   gate: gate ? { verdict: gate.verdict, runs: gate.runs, seconds: gate.seconds ?? [], failures: (gate.failures ?? []).map((f) => ({ ...f, ...(typeof f?.signature === 'string' ? { signature: clip(f.signature) } : {}) })) } : null,
   cases: rows,
@@ -1447,7 +1459,12 @@ return {
     : gate?.verdict === 'green'
       // ONE PR takes the whole trunk to base — the units already merged into it,
       // so what was gated and what lands are the same object.
-      ? `Gate green on ${gateBranch}. LAND IT: one PR from ${gateBranch} to ${BASE} per .agents/profile.md § Automation PR policy (auto-merge / human-approved / manual decides who presses it), then mirror to the TMS and run the close sweep. Replan anything not 'automated'.`
+      ? (PR_UNIT === 'per-case'
+        // The trunk was gated, the case PRs are what land: each is cut from
+        // base and re-gated alone, because base plus one case is a different
+        // tree from the trunk. Nothing merges the trunk itself.
+        ? `Gate green on ${gateBranch} — it is GATE-ONLY, never PR it. LAND PER CASE: for each 'automated' unit, in report order, cut a branch from a fresh ${BASE}, carry that unit's own change from ${gateBranch}, gate it alone, and open one PR into ${BASE} per .agents/profile.md § Automation PR policy (who merges is that policy's call, not yours) — a unit whose change does not apply without an earlier unit's still-open PR is parked waiting on that PR, never stacked. Then one PR for the batch's shared memory/digests, the close sweep, and the TMS mirror once each PR has merged. Replan anything not 'automated'.`
+        : `Gate green on ${gateBranch}. LAND IT per .agents/profile.md § Automation PR policy — under direct-push: squash ${gateBranch} onto a fresh ${BASE} as ONE commit and push it yourself (never --force; a rejected push = merge ${BASE} into ${gateBranch}, re-gate if it touches the batch, land again); otherwise one PR from ${gateBranch} to ${BASE} (auto-merge / human-approved / manual decides who presses it). Then mirror to the TMS and run the close sweep. Replan anything not 'automated'.`)
       : merged.length && (!gate || gate.verdict === 'not-run' || gate.verdict === 'incomplete')
         // THE RECEIPT IS THE DELIVERABLE. Measured across two audits: leads
         // recover a failed gate flawlessly and then never correct report.json,

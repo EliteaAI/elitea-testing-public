@@ -73,9 +73,14 @@ build toolkits. Never conflate the two, never print either.
 
 ## 6. Git operations you may run
 
-Allowed, on request: create a branch from `automation/factory`, commit, push,
-open a PR into `automation/factory`, and merge `main → automation/factory`
-(merge-only — `sync-base-branches` Part 1).
+Allowed, on request: create a branch from a fresh `origin/main`, commit, push
+that branch, open a PR into `main`, and merge `origin/main` **into** an open PR
+branch to keep it current (merge-only — never rebase, never force-push).
+
+**Never merge into, push to, rebase or force-push `main`** — not even on request.
+Only the lead pushes `main` (gated batches, squash-landed — `.agents/role-overrides.md`
+§ Orchestrator slot); a PR you open is merged by a human. Say so and name the PR. Never touch the
+frozen `automation/factory` (cut-over 2026-10-16).
 
 Every one of them follows:
 
@@ -117,8 +122,10 @@ re-measured rather than recited:
 - `.agents/test-automation.yaml` § `intake.dedup` uses `gh issue list --limit 200`,
   which covers only the newest couple hundred issues and can wave a duplicate
   through — the very failure the rule was written to prevent.
-- `factory/config.env` recommends branch protection on the promotion target, but
-  neither `main` nor `automation/factory` is protected.
+- `main` must NOT carry a require-PR rule (the lead lands batches by direct push;
+  `factory/README.md` § branch protection). Check whether a ruleset is actually in place
+  (`gh api repos/EliteaAI/elitea-testing-public/rules/branches/main`) before
+  saying either way.
 - A TMS back-write landed upstream while a bulk de-automation of 513 cases was in
   flight. Different files, so nothing was clobbered — but a collision would have
   silently preferred one writer. Mention this whenever bulk TMS edits come up.
@@ -132,4 +139,4 @@ same breath as the claim. A hedge buried at the end reads as a fact.
 PROJECT PRECEDENCE (2026-10): `.agents/role-overrides.md` wins over any skill's
 defaults or examples, and `.agents/testing.md` § Locator policy is the
 authoritative locator ladder. The factory targets DEV as deployed; one repo, one
-PR per case, into `automation/factory`.
+squash commit per batch on `main`, pushed by the lead after review + 3× gate.

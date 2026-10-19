@@ -1,6 +1,6 @@
 ---
 name: batch-promote
-description: Promotes automation work from the long-lived integration branches to main — either the whole current state as-is (Mode A, proven) or a human-chosen subset of Ready tickets by cherry-pick (Mode B, draft pending #703). Cuts branches from main in 2 repos (3 when the batch touches the Support Assistant), then STABILIZES them in a loop — run the suite on localhost, triage every red to a class, fix upstream on the integration branch, rebuild, repeat — before opening BATCHED draft PRs and gating the deployed run between the merges. No defect masking to get a promotion out. Human-triggered only. Supersedes promote-automation-batch.
+description: Promotes testid work from the long-lived automation/testids integration branches (EliteaUI, plus elitea_assistant when touched) to main — either the whole current state as-is (Mode A, proven) or a human-chosen subset of Ready tickets by cherry-pick (Mode B, draft pending #703). Tests need no promotion — since 2026-10-16 every test PR targets main directly. Cuts branches from main in 1 repo (2 when the batch touches the Support Assistant), then STABILIZES them in a loop — run the suite on localhost, triage every red to a class, fix upstream on the integration branch, rebuild, repeat — before opening BATCHED draft PRs and gating the deployed run between the merges. No defect masking to get a promotion out. Human-triggered only. Supersedes promote-automation-batch.
 allowed-tools:
   - Bash
   - Read
@@ -10,13 +10,26 @@ allowed-tools:
 
 # Batch Promote
 
-Promotes automation work from the long-lived integration branches
-(`elitea-testing-public automation/factory`, `EliteaAI/EliteaUI automation/testids`, and
-`elitea_assistant automation/testids`) into the respective `main` branches.
+Promotes testid work from the long-lived integration branches
+(`EliteaAI/EliteaUI automation/testids`, and `elitea_assistant automation/testids`) into
+the respective `main` branches.
 
 **HUMAN-TRIGGERED ONLY.** Never autonomous, never scheduled, never a follow-on from
-finishing a test. It opens PRs into `main` in two repos — three when the batch touches
+finishing a test. It opens PRs into `main` in one repo — two when the batch touches
 the Support Assistant. Wait to be asked; confirm scope first. **Merging is always human.**
+
+> **Cut-over 2026-10-16 — the test repo left this skill.** `elitea-testing-public` has no
+> integration branch any more: case and adjust work is cut from `origin/main` and lands on
+> `main` by the lead's gated direct push; a non-batch change (a testid-migration swap, a fix
+> found here) is a PR into `main` that a human merges (`.agents/role-overrides.md` § the
+> working branch is `main`). `automation/factory` is frozen history. So there is
+> no **PR-Test** and no test-repo snapshot here; wherever a step below still names the test
+> repo, read it as follows:
+> - a test/page-object fix found while stabilizing → its own PR into `elitea-testing-public
+>   main` (cut from `origin/main`), never a promote branch;
+> - "the suite" you run against the promoted testids → `origin/main` of the test repo;
+> - swapping page objects onto the newly deployed testids → the `testid-migrator`'s phase A,
+>   after this promotion has deployed — not this skill.
 
 > **Supersedes `promote-automation-batch`** (retired 2026-07-31). That skill was the
 > single case "promote everything, testids already on `main`, gate on a DEV run" — which
@@ -56,7 +69,6 @@ set of **paths**, not tickets. The 2026-07-31 run used:
 
 | Repo | Promoted paths | Deliberately excluded |
 |---|---|---|
-| `elitea-testing-public` | `automation/`, `test-specs/` | `.claude/`, `.agents/`, `docs/` — agent/tooling config is not the deliverable |
 | `EliteaUI` | `src/` | everything else |
 | `elitea_assistant` | `src/` | everything else |
 
@@ -70,7 +82,7 @@ env -u GITHUB_TOKEN gh project item-list 9 --owner EliteaAI --format json --limi
 > **`[DISCUSS]`** column names; whether **Promoted** is an agent-terminal state between
 > `Ready` and human-only `Done`.
 
-### Stage 0.5 — 2 repos or 3?
+### Stage 0.5 — 1 repo or 2?
 
 Testids can live in two UI repos (`.agents/workflow.md` § Connected repos). Most batches
 touch only EliteaUI:
@@ -81,7 +93,7 @@ git -C "$WORKSPACE/elitea_assistant" fetch origin main --no-tags
 git -C "$WORKSPACE/elitea_assistant" log --oneline origin/main..origin/automation/testids
 ```
 
-Empty ⇒ **2-repo batch**; skip every "Assistant" step. Non-empty ⇒ **3-repo batch**: an
+Empty ⇒ **UI-only batch**; skip every "Assistant" step. Non-empty ⇒ **Assistant batch** (2 repos): an
 extra branch, PR, backport target, and — the part that bites — a **lockfile bump**
 (Stage 6.2).
 
@@ -100,9 +112,6 @@ git -C "$WORKSPACE/EliteaUI" fetch origin main --no-tags
 git -C "$WORKSPACE/EliteaUI" merge-base --is-ancestor origin/main origin/automation/testids \
   && echo "EliteaUI: main contained" || echo "EliteaUI: NEEDS SYNC"
 
-git fetch origin main --no-tags
-git merge-base --is-ancestor origin/main origin/automation/factory \
-  && echo "tests: main contained" || echo "tests: NEEDS SYNC"
 ```
 
 Also read what arrived from `main` — new commits touching areas the suite covers are a
@@ -119,8 +128,9 @@ cheap; the fetch is one second (`--no-tags`, see the traps file).
 concurrently with the rest of the team, who are looking at the same red suite:
 
 ```bash
-comm -12 <(git diff --name-only origin/automation/factory...origin/main -- automation/ | sort) \
-         <(git diff --name-only origin/main...origin/automation/factory -- automation/ | sort)
+cd "$WORKSPACE/EliteaUI"
+comm -12 <(git diff --name-only origin/automation/testids...origin/main -- src/ | sort) \
+         <(git diff --name-only origin/main...origin/automation/testids -- src/ | sort)
 ```
 
 Overlap is not a problem to route around — it is a **decision to surface**. Where both
@@ -187,8 +197,7 @@ Branch names (both modes):
 
 ```
 EliteaUI:              testids/promote-<date>   from origin/main
-elitea-testing-public: tests/promote-<date>     from origin/main
-elitea_assistant:      testids/promote-<date>   from origin/main   ← 3-repo batch ONLY
+elitea_assistant:      testids/promote-<date>   from origin/main   ← Assistant batch ONLY
 ```
 
 **Mode A** — build a scoped snapshot commit. Full recipe, verification steps, and the
@@ -237,7 +246,7 @@ promoted state honest is the work. Expect several passes.
 | Cause | Fix where | Rebuild needed? |
 |---|---|---|
 | **The cut itself** — wrong scope, a subtree missed, tree composed incorrectly | Fix the *recipe* and rebuild. Nothing is wrong upstream. | Yes |
-| **A general defect** — drift, missing/lost testid, data hygiene, flaky wait | **Upstream**: `automation/factory` for test/page-object code, `automation/testids` for testids. Then rebuild. | Yes |
+| **A general defect** — drift, missing/lost testid, data hygiene, flaky wait | **Upstream**: a PR into test-repo `main` (cut from `origin/main`) for test/page-object code, `automation/testids` for testids. Then rebuild. | Yes |
 | **A product bug** | Nowhere in this skill. File it, link it, hold the assertion at the correct value. | No |
 
 **Mode A: never edit a promote branch directly.** It is *derived* — regenerating it from
@@ -326,7 +335,7 @@ genuinely different content:
 ```bash
 pkill -f vite || true
 git -C "$WORKSPACE/EliteaUI" checkout testids/promote-<date>
-# 3-repo batch: the dev server serves the Assistant from the sibling clone's WORKING TREE
+# Assistant batch: the dev server serves the Assistant from the sibling clone's WORKING TREE
 # (vite.config.js aliases the package → ../elitea_assistant/src when VITE_ASSISTANT_LOCAL=1),
 # so the Assistant branch must be checked out too or you verify the wrong Assistant code:
 git -C "$WORKSPACE/elitea_assistant" checkout testids/promote-<date>
@@ -380,16 +389,13 @@ Stage 6 is the gate.
 
 ## Stage 5 — Open the DRAFT PRs to `main` (batched, cross-linked)
 
-- **PR-Assistant** *(3-repo only)* → `elitea_assistant main`: all the batch's Assistant
+- **PR-Assistant** *(Assistant batch only)* → `elitea_assistant main`: all the batch's Assistant
   testids. Body: **"merge FIRST — EliteaUI's lockfile bump depends on this landing."**
 - **PR-UI** → `EliteaUI main`: **all** the batch's testids in one PR. Body: testid list,
   companion test-PR link, **"merge before the test PR."**
-- **PR-Test** → `elitea-testing-public main`: test files, companion UI-PR link (must merge
-  **and deploy** first), Stage-4 evidence, and a note that the **DEV gate runs before this
-  merges.**
 
 All **draft**, mutually cross-linked. Merge order is strict:
-**Assistant → UI (+ lockfile bump) → Test.** One batched PR per repo is the point — it is
+**Assistant → UI (+ lockfile bump).** One batched PR per repo is the point — it is
 what keeps PR volume down, and it is the shape the per-case flow's 2026-07-16 suspension
 was waiting for.
 
@@ -404,8 +410,8 @@ diff.
 At Stage 4 the testids live only on the promote branch, so this is where the "does it work
 on the real environment" proof happens. **Human-owned.**
 
-1. *(3-repo)* Human merges **PR-Assistant** → `elitea_assistant main`.
-2. *(3-repo)* **Bump EliteaUI's lockfile** — easy to miss, silently breaks the batch.
+1. *(Assistant batch)* Human merges **PR-Assistant** → `elitea_assistant main`.
+2. *(Assistant batch)* **Bump EliteaUI's lockfile** — easy to miss, silently breaks the batch.
    `package.json` declares a *branch* dep, but `package-lock.json` pins a resolved SHA and
    deploy builds run `npm ci` (lockfile-exact), so merging the Assistant alone changes
    nothing on DEV:
@@ -428,10 +434,10 @@ on the real environment" proof happens. **Human-owned.**
    A zero count = not deployed yet; wait, do not proceed. An Assistant testid missing =
    the bump didn't ship. **Green is the gate** — never rationalize a failure as flaky
    without re-running that single test and showing the output.
-5. **Only then** merge **PR-Test**.
+5. **Only then** hand the newly live testids to the `testid-migrator` (phase A swaps the
+   page objects in a PR into test-repo `main`) — on request, never automatically.
 
-> **`[DISCUSS]`** who runs step 2 (human, or agent-on-request between merges), and whether
-> PR-Test stays draft until the DEV run is green (recommend yes).
+> **`[DISCUSS]`** who runs step 2 (human, or agent-on-request between merges).
 
 ---
 
@@ -451,9 +457,9 @@ rename during review**. That is real divergence and must be backported.
   (A and B), or a post-PR fix pushed onto a promote branch (A and B).
 - **Destinations:** EliteaUI testid edits → `EliteaUI automation/testids`; Assistant edits
   → `elitea_assistant automation/testids`; `LocatorDescriptor`/test fixes →
-  `elitea-testing-public automation/factory`. All shared org branches: **merge-only, never
+  a PR into `elitea-testing-public main` (human-merged). All shared org branches: **merge-only, never
   rebase, never force-push.**
-- **Renamed testid?** grep it across `automation/factory` and re-verify those tests — a
+- **Renamed testid?** grep it across test-repo `origin/main` and re-verify those tests — a
   rename can affect tests outside this batch.
 
 This is the divergence rule (`.agents/workflow.md` § Sync) applied proactively instead of
@@ -467,15 +473,15 @@ surfacing at the next `sync-base-branches`.
 ## Stage 8 — Board, cleanup, re-sync
 
 - **Mode B:** per ticket, move **Ready → Promoted** with a work-log comment (PR links,
-  gate evidence, and the Assistant lockfile SHA for a 3-repo batch). Delete the collector.
+  gate evidence, and the Assistant lockfile SHA for a Assistant batch). Delete the collector.
 - **Both:** delete every promote branch **after its PR merges** (long-lived branches are
   never deleted). Restore any clone Stage 4 checked out:
   ```bash
   git -C "$WORKSPACE/EliteaUI"         checkout automation/testids
   git -C "$WORKSPACE/elitea_assistant" checkout automation/testids
   ```
-- Re-run **`sync-base-branches`** — `main` moved in 2–3 repos, and `automation/factory` is
-  now behind by the merge commit. Merge, never rebase.
+- Re-run **`sync-base-branches`** — `main` moved in 1–2 repos, and each `automation/testids`
+  is now behind by the merge commit. Merge, never rebase.
 - Back-write the TMS per the seeded policy (`.agents/test-automation.yaml`
   § `backwrite_on_done`) — only if the seed establishes it; never invent it.
 
@@ -483,10 +489,11 @@ surfacing at the next `sync-base-branches`.
 
 ## Does NOT touch
 
-- `automation/factory` and both `automation/testids` branches are **read-only sources** here,
+- Both `automation/testids` branches are **read-only sources** here,
   except the Stage-7 backport (merge-only). **Never rebase or force-push them.**
 - `EliteaUI/vite.config.js` — the local-Assistant alias is operator-local
   (`skip-worktree`'d). Never commit it to a promote branch.
+- `elitea-testing-public` — no promote branch, no PR-Test; `automation/factory` is frozen.
 - **Merging any PR is always a human action.**
 - Force-pushing a promote branch is fine **only while no PR is open on it**
   (`references/as-is-mechanics.md` §4); once a PR exists, push normal commits.
@@ -504,7 +511,7 @@ surfacing at the next `sync-base-branches`.
 4. **`[DISCUSS]`** Board columns + the **Promoted** state (vs reusing `Ready`/`Done`).
 5. **`[DISCUSS]`** Who owns the Assistant lockfile bump (Stage 6.2) — pushed onto the open
    PR-UI branch (lean this), its own tiny PR, or a human step?
-6. **`[DISCUSS]`** Should a 3-repo batch be **split**, so a lockfile problem can't hold up
+6. **`[DISCUSS]`** Should a Assistant batch be **split**, so a lockfile problem can't hold up
    EliteaUI-only tickets? Cost: two promotion runs.
 
 **Answered 2026-07-31 by the first Mode A run:** the batched testid PR does resolve the

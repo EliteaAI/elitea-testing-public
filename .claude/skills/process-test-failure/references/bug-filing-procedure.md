@@ -100,7 +100,7 @@ grep -i "<symptom>" /tmp/existing-bugs.json
 ## Environment
 
 - **URL:** https://dev.elitea.ai (`APP_PREFIX` = `/app`)
-- **Test branch:** <automation/factory | main>
+- **Test branch:** <main | open PR #N branch>
 - **Browser:** Chromium (Playwright <version>)
 - **Auth:** Keycloak TEST_USER
 

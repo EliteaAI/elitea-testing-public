@@ -2415,6 +2415,62 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.settings.test_project_context_ai_generation_char_limit.TestProjectContextAIGenerationCharLimit.test_build_with_ai_short_prompt_under_limit",
+      "markers": [
+        "chat",
+        "new",
+        "p0",
+        "regression",
+        "settings",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3252"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.settings.test_project_context_ai_generation_char_limit.TestProjectContextAIGenerationCharLimit.test_build_with_ai_verbose_prompt_exceeds_limit",
+      "markers": [
+        "chat",
+        "new",
+        "p0",
+        "regression",
+        "settings",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3253"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.settings.test_project_context_ai_generation_char_limit.TestProjectContextAIGenerationCharLimit.test_chat_project_context_builder_under_limit",
+      "markers": [
+        "chat",
+        "new",
+        "p0",
+        "regression",
+        "settings",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3254"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.settings.test_project_context_ai_generation_char_limit.TestProjectContextAIGenerationCharLimit.test_edit_with_ai_expand_content_under_limit",
+      "markers": [
+        "chat",
+        "new",
+        "p0",
+        "regression",
+        "settings",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3255"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.settings.test_set_llm_model_default_high_low_tier.TestSetLLMModelTiers.test_set_llm_model_default_high_low_tier",
       "markers": [
         "new_verified",

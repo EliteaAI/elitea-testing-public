@@ -40,16 +40,41 @@ that says "testid-only", "testid needed ⇒ add it", "run against a local UI" or
 
 The per-slot consequences are below (§ Analyst / § Implementer / § Reviewer slot).
 
-## Every role — the working branch is `automation/factory` (2026-10-05)
+## Every role — the working branch is `main`; the lead pushes gated batches straight to it (2026-10-16)
 
-The factory's long-lived working/base branch in this repo is **`automation/factory`**
-(cut from `automation/base` with the DEV-target split; the factory server checks it out
-via `FACTORY_WORK_BRANCH`). Every bundle skill, example, template, memory note or
-historical record that says `automation/base` **means `automation/factory`** for new
-work: test branches are cut from it, unit/batch PRs target it, `sync-base-branches`
-merges `main` into it, `batch-promote` gates `automation/factory → main`, the batch
-workflow's `base` argument is `automation/factory`. `automation/base` is frozen
-history — never branch from it, PR into it, or sync it.
+The factory's working/base branch in this repo is **`main`** (the factory server checks
+it out via `FACTORY_WORK_BRANCH=main`). Every bundle skill, example, template, memory
+note or historical record that says `automation/factory` or `automation/base`
+**means `main`** for new work: test branches are cut from `origin/main`, the batch
+workflow's `base` argument is `main`. There is no `main → automation/factory` sync
+and no `automation/factory → main` promotion for this repo any more.
+`automation/factory` and `automation/base` are frozen history — never branch from
+them, PR into them, or sync them.
+
+**Batches land by direct push — no PR, no human merge.** The lead squash-lands a
+batch's gated trunk onto `main` as ONE commit and pushes it (§ Orchestrator slot —
+*Landing a batch*). That push is the delivery; the TMS back-write, the post-landing
+locator scan + ledger sync and the closure record follow in the **same session**
+(`.agents/workflow.md` § After landing). Who may push `main`, and when:
+
+- **The lead (`test-automation-lead`) only**, and only a batch whose every unit is
+  reviewer-`APPROVED` and whose trunk passed the lead's own 3× DEV gate — plus the
+  lead's own post-landing bookkeeping commits (ledger sync, memory / daily log).
+- **Nobody else pushes `main`** — not the analyst, implementer, reviewer,
+  factory-ops, testid-migrator or a cardless loop, except where that loop's own
+  prompt names a narrower, explicit exception (memory-guard: verbatim moves under
+  `.agents/memory/` only).
+- **Non-batch changes still go by PR, and a human merges them** — testid-migrator
+  phase A, factory-ops branch work done on a human's ask, the docs-compaction
+  loop's advisory draft. These are reviewable changes outside the batch pipeline,
+  with no gate to stand in for review; the direct-push authority above is the
+  lead's, for gated batches, and nobody else's.
+- **Never rebase, never force-push, never rewrite `main`'s history.** A rejected push
+  (non-fast-forward) means `main` moved: `git fetch origin`, merge `origin/main` into
+  the trunk, re-gate if the incoming change touches the batch's files, land again.
+
+**There is no open-PR state for a batch.** Nothing waits on a human between the gate
+and `main`; the human acceptance step is moving the card from `Ready` to `Done`.
 
 ## Every role — fresh ground truth (hard rule)
 
@@ -63,7 +88,7 @@ PASTE the command output.
 ## Every role — declared-improvisation protocol (canon gaps)
 
 When the canon has NO pattern for your case: pick the most spirit-compliant option
-AND declare it explicitly — in the Run Report and the PR description — as a
+AND declare it explicitly — in the Run Report and the landing commit message — as a
 proposed pattern with reasoning ("no sanctioned shape for X; chose Y because Z").
 A DECLARED improvisation is a canon-gap escalation: the reviewer verifies the
 reasoning, the auditor reports it as a `question` — it can never solo-FAIL a
@@ -227,7 +252,7 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   work order; if DEV now serves a testid for it, use `testid=` (rung 1 always wins).
   Never descend below the AFS rung "for now" — a lower rung than specified is
   escalated to the lead, not shipped.
-- **Your PR in this repo is the only artifact.** Nothing outside it is changed to
+- **Your branch in this repo is the only artifact.** Nothing outside it is changed to
   make a locator work: if DEV does not serve a testid, you drop a rung and write
   the hint. Every run targets DEV as deployed — never a locally served UI.
 - Locators are class-level `LocatorDescriptor` / `OptionalLocatorDescriptor` /
@@ -247,7 +272,7 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 
 ## Reviewer slot (qa-engineer, fresh session)
 
-- **Locator mechanical check on every PR** (ladder policy, `.agents/testing.md`
+- **Locator mechanical check on every unit diff** (ladder policy, `.agents/testing.md`
   § Locator policy):
   `git diff <base>...HEAD -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\(|\.nth\(|locator=|fallback=)'`
   A hit is COMPLIANT only if it (a) passes a literal `[data-testid=` selector or an
@@ -261,7 +286,7 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   `description=` saying why rungs 1–4 failed; no MUI generated/structural classes
   (`css-*`, `Mui*-root`) as a `css=` rung; no text that embeds user data, counts or
   the selected model. Import-time validation catches syntax; you catch judgment.
-- **This repo only.** A PR that reaches outside it, or whose locators depend on a
+- **This repo only.** A unit that reaches outside it, or whose locators depend on a
   testid DEV does not serve yet, is `CHANGES_REQUESTED` — the correct shape is a
   lower rung plus a `suggested_testid=` hint.
 - **Show your grep to the orchestrator.** Include the mechanical grep's actual
@@ -286,15 +311,60 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   `suggested_testid=`, class-level only, no positional handles
   (`.agents/testing.md` § Locator policy). Work in this repo only."*
   The dispatch prompt is the gate — put the policy where it cannot lose.
-- **Closure records state verified facts.** The closure record cites the merged PR
-  and the **locator delta** (`locator_inventory.py scan` before/after, pasted).
-  Never copy the implementer's numbers — re-run the scan on `automation/factory`
-  after the merge.
-- Sync `automation/factory` with `main` before dispatching the first case of a
-  session.
+- **Closure records state verified facts.** The closure record cites the landed
+  commit on `main`, the gate result, and the **locator delta** (`locator_inventory.py
+  scan` on the pre-landing `origin/main` vs the landed `main`, pasted). Never copy the
+  implementer's numbers — re-run the scan yourself.
+- **You own the pre-landing gate AND the landing.** Reviewer `APPROVED` on every unit +
+  your 3× DEV gate on the trunk ⇒ you push the batch to `main`. Nothing less lands.
+- Cut every batch trunk (and a batch-of-one case branch) from a freshly fetched
+  `origin/main` — there is no base branch to sync. Units inside a batch branch from
+  the trunk.
+- **Landing a batch = ONE squash commit on `main`, pushed by you.** One ticket = one
+  batch = one session = one commit on `main`. Invoke the batch workflows with
+  `base: "main"` and `prUnit: "trunk"` (the engine default; campaigns:
+  `plan.policy.prUnit: "trunk"`). The trunk `tests/batch-<slug>` carries the run —
+  units branch from it, merge back into it, the batch gate proves it — and the
+  trunk **is** what lands, so the gated tree and the shipped tree are the same
+  object. At close:
+  1. `git fetch origin` and confirm the trunk holds every `automated` unit. Units that
+     are not `automated` (blocked, parked, terminal AFS statuses) may still have their
+     AFS on the trunk; that is fine — their AFS records the verdict. Their **code**
+     must not be on the trunk: a unit that never merged back left none. If
+     `origin/main` moved since the gate and the incoming change touches the batch's
+     files, merge `origin/main` into the trunk and re-gate first.
+  2. Land it — from the trunk's tree, onto a `main` fast-forwarded to `origin/main`:
+     ```bash
+     git checkout main && git merge --ff-only origin/main
+     git merge --squash tests/batch-<slug>
+     git commit -F <msg-file>      # see below
+     env -u GITHUB_TOKEN git push origin main
+     ```
+     Commit subject `test: batch <slug> — <N> cases (<ID>, <ID>, …)`; body one line
+     per case — case id, outcome, spec node-id, review verdict — then the gate result,
+     the locator delta, defects filed, and `Refs #<card>` for every card in the batch
+     (never `Closes` — the card stays open for the human's `Done`). The batch's shared
+     memory / `_surface.md` changes ride in the same commit; there is no separate
+     knowledge commit. **Push rejected** (`main` moved — e.g. the
+     `build-test-index.yml` bot commit) ⇒ `git reset --hard origin/main` on your local
+     `main` only (it holds nothing but the squash you just made), merge `origin/main`
+     into the trunk, re-gate if the incoming change touches the batch's files, and
+     land again. Never `--force`.
+  3. Do the post-landing work in the same session (`.agents/workflow.md` § After
+     landing), then post the closure record on **every** card the batch covers (same
+     commit, same gate, the card's own case row) and move each to `Ready`.
+  **A batch of one degenerates cleanly** — no trunk, the case branch is squash-landed
+  the same way. **A campaign splits a ticket into waves only on an explicit human
+  ask**; by default the whole ticket is one batch. **Gate red on the trunk ⇒ nothing
+  lands**: classify and stabilize on the trunk (`batch-stabilize`), re-gate, then
+  land. A case that can't be made green is reverted off the trunk
+  (`git revert -m 1 <its merge commit>`, never a rebase) and parked `Blocked` on its
+  own card, then the trunk is re-gated and lands without it. Push the trunk to
+  `origin` too, so the per-unit history the squash collapses stays inspectable; it is
+  left for `delete-stale-branches`.
 - **Never dispatch `ui-test-orchestrator` or `failure-investigator`.** They are
   installed for the HUMAN team's direct use only — their flows bypass the pipeline's
-  gates (AFS, fresh-session review, merge gate, closure record). Every stage they
+  gates (AFS, fresh-session review, pre-landing gate, closure record). Every stage they
   cover has a canonical owner in your pipeline.
 
 ## Locator-debt burndown (`testid-migrator`) — out of band

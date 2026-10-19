@@ -480,6 +480,67 @@ class ConversationAPI:
         return resp.json()
 
 
+class ProjectContextAPI:
+    """Manage the Project Context feature (Settings -> Project Context) via
+    the Elitea API — ELITEA-3252/3253/3254/3255.
+
+    Uses Keycloak session cookies (from browser auth state) like
+    :class:`ConversationAPI`. Confirmed live 2026-10-16: the bearer-token
+    fallback (``ELITEA_API_TOKEN``) 302-redirects to ``/access_denied`` on
+    this endpoint even with a well-formed token — cookie auth is the only
+    path that works for Project Context, so this client ALWAYS requires
+    ``browser_cookies`` (unlike its siblings, there is no silent bearer
+    fallback worth relying on; a caller with no cookies gets 302s, same
+    as today).
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+        project_id: Project identifier (defaults to ``ELITEA_PROJECT_ID``).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+        self.project_id = project_id or str(settings.elitea_project_id)
+
+        self._session = _create_retry_session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+
+        logger.debug("ProjectContextAPI initialised — base_url=%s", self.base_url)
+
+    def _project_context_url(self) -> str:
+        return f"{self.base_url}/elitea_core/project_context/prompt_lib/{self.project_id}/project-context"
+
+    def get_project_context(self) -> requests.Response:
+        """GET the project's Project Context. Always 200 — ``content``/``id``
+        are empty/``null`` when unset. Does NOT raise on non-2xx; callers
+        assert status/body themselves (matches the AFS's own GET-based
+        "no partial content saved" check)."""
+        url = self._project_context_url()
+        logger.debug("GET project context %s", url)
+        return self._session.get(url)
+
+    def delete_project_context(self) -> requests.Response:
+        """DELETE the project's Project Context. Confirmed live: 204 on
+        success, 404 when already empty — both are a clean "no context"
+        state for setup/teardown purposes; caller tolerates either."""
+        url = self._project_context_url()
+        logger.debug("DELETE project context %s", url)
+        return self._session.delete(url)
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
+
+
 class AgentAPI:
     """Manage agents (applications) via the Elitea API.
 
