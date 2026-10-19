@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "session": "6f4b08b7-11ad-4c81-af51-d6d2f7805924",
+  "intent": "automation",
+  "batch": "builder-modules-chat-2459",
+  "cases": [
+    "ELITEA-3370",
+    "ELITEA-3372"
+  ],
+  "declaredAt": "2026-10-19T10:40:43.673Z",
+  "updatedAt": "2026-10-19T10:40:43.673Z"
+}
