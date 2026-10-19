@@ -244,6 +244,128 @@ canvas-chrome locators on any future case touching this same chip/canvas.
 directly. `api.client.ProjectContextAPI` + `project_context_api`/
 `clean_project_context` fixtures now exist in this branch's `api/client.py`/
 `fixtures/`.
+a time; last confirmed by: qa-engineer analyst, ELITEA-2875/2876/2877/2878,
+2026-10-16 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: ELITEA-2458, 2026-08-07).
+
+## Mid-turn interjection / message queuing (ELITEA-2875/2876/2877/2878, 2026-10-16)
+
+- **Feature-gated, OFF by default per project — gate check before any case in
+  this family.** `ChatBox.jsx`'s `isMidturnInjectionEnabled` requires BOTH tiers:
+  platform tier (`GET /elitea_core/platform_settings/prompt_lib` →
+  `is_midturn_injection_blocked`/`midturn_injection_whitelist_project_ids` — this
+  env has it unblocked for everyone, confirmed `is_midturn_injection_blocked:
+  false`) AND project tier (`GET /api/v2/social/module_settings/{projectId}` →
+  `midturn_injection_enabled`, confirmed **`false`** for this suite's default
+  project, `ELITEA_PROJECT_ID`). **The project-tier flag must be turned on before
+  any case in this family can run** — `PUT /api/v2/social/module_settings/{projectId}`
+  with body `{"midturn_injection_enabled": true}` (confirmed live, 200, persists).
+  No UI control reachable without Admin-UI access from this harness (the toggle
+  lives at a project-settings "Mid-turn input" card, source-confirmed
+  `MidturnInjection.jsx`, hidden entirely — not just disabled — when either tier
+  is off) — the API PUT is the only reachable path from automation. **A fixture
+  (session- or project-scoped, enable-once / restore-after) is needed before any
+  test in this family can run reliably in CI** — flagged as an Automation Hint on
+  every member AFS, not duplicated per-file here.
+- **Core confirmed testids (all real, on `main`, zero gaps found this pass):**
+  `interjection-composer` (data-testid on the composer's outer `Box`, present only
+  while `isStreaming && isInjectable` — i.e. appears once the running turn reports
+  it is listening, NOT the instant Send is clicked — confirmed live, there is a
+  "Waking the agent…"/early-stream window before it as well as after, during
+  which it is absent), `chat-inject-button` (send-to-running-agent icon,
+  `disabled` while the composer is empty, same send icon as the normal send
+  button), `interjection-queue-area` (container, only rendered when
+  `pendingInjections.length > 0`), `interjection-queue-label` (exact text format
+  **`"Waiting messages – {N}"`** — en-dash `–`, not hyphen; the case texts'
+  paraphrase "Waiting messages · N" with a middot is cosmetic case-text drift,
+  not a defect — assert the literal en-dash string), `interjection-queue-item`
+  (one per queued item, contains the raw message text), `interjection-queue-remove`
+  (per-item remove/delete icon, only rendered while `!item.inFlight` — i.e.
+  hidden for the head-of-queue item currently being sent, confirmed via source
+  read of `PendingInjectionItem.jsx`; not independently click-tested this pass).
+- **Stop button has NO testid and NO aria-label** (confirmed via source read,
+  `UserInput.jsx` — a bare icon `BaseBtn` wrapped only in a `Tooltip` whose title
+  is "Stop generating", not forwarded as an accessible name) — same gap class as
+  Regenerate (ELITEA-2181 section above). **Only reliable handle found this pass**:
+  DOM-position relative to `chat-inject-button` — it is the icon button
+  immediately preceding `chat-inject-button`'s own container `Box` inside the
+  composer's `sendButtonContainer` row (confirmed live via `previousElementSibling`
+  walk + click, see probe in daily log). **`testid needed: chat-stop-button`**
+  on the Stop `BaseBtn` in `UserInput.jsx` — this is the family's own executed
+  path (ELITEA-2878), so flag it as a real gap, not a lower-priority item.
+- **Attach-blocking mechanism, confirmed live both halves**: the real "Attach
+  Files" entry point (`chat-attach-menuitem-button`, inside the `plus-menu-button`
+  popper — see ELITEA-2197/2200 section above for why it's not a standalone
+  button) renders with the DOM `disabled` attribute present and
+  `pointerEvents: none` while a turn is streaming (`disableAttachments ||
+  isLoading || isStreaming` in `NewChatInput.jsx`) — a real click during this
+  state fires **zero** `filechooser` event (confirmed via Playwright's own
+  `page.on("filechooser")` listener, 0 opens). Re-enables (`disabled` attribute
+  gone) within ~1s of the turn completing (`InjectionConsumedReport`/stream-end).
+  **Drag-and-drop onto the composer during a run is ALSO blocked**, same gate
+  (`onDrop` in `NewChatInput.jsx` checks `disableAttachments || isLoading ||
+  isStreaming` and short-circuits to `toastError('Attachments are not
+  allowed.')` before ever reaching the file-processing path) — not independently
+  drag-tested this pass (JS-dispatched `dragend`/`drop` events are unreliable
+  for Playwright file transfer simulation without a real OS-level drag; the
+  disabled-button + zero-filechooser proof is the stronger, already-live-verified
+  signal for this case's actual Pass/Fail criteria).
+- **A plain-text interjection sent while attach is blocked carries no attachment
+  indicator** — confirmed live, `interjection-queue-item`'s DOM has zero
+  `[data-testid*="attachment"]` descendants (there is no attach-while-queued path
+  to begin with; `PendingInjectionItem.jsx` only ever renders the item's text).
+- **FIFO order, confirmed live for 3 rapid injections ("First message"/"Second
+  message"/"Third message")**: `interjection-queue-item`s render in submission
+  order (`stopQueueRef.current.push` always appends to the tail — ChatBox.jsx's
+  own comment: "so all messages process in submission order rather than
+  injecting ahead of the queue"), and each of the 3 produced **exactly one**
+  individual agent response in the SAME order they were submitted — verified by
+  reading the full message timeline after drain, not just the queue-area
+  snapshot. No duplicate or missing responses across 2 independent live runs.
+- **Stop preserves the queue, confirmed live, exact mechanism**: clicking Stop
+  while N items are queued converts the **head-of-queue item only** into a real
+  sent user message immediately (its own placeholder agent response starts
+  "Waking the agent…" within ~1s — this is the rescue-then-redrain mechanism,
+  `onInjectionReport`/the `isStreaming` effect's "safety net" rescue in
+  `ChatBox.jsx`), while the REMAINING queued items stay visible in
+  `interjection-queue-area` with a decremented `interjection-queue-label` count.
+  The whole queue is preserved and NOTHING is silently dropped, but it drains
+  automatically rather than freezing; a case asserting "both queued messages
+  visible in the timeline immediately after ONE Stop click" needs amending —
+  **CLARIFICATION filed** (see case's own Known Defects/Clarifications
+  section) since the live mechanism (auto-resume-drain, not a frozen queue) is
+  the correct, by-design behavior (confirmed by the explicit `ChatBox.jsx`
+  code comments narrating this exact rescue path), not a defect. After the
+  full queue drains, a brand-new message sends and gets a response normally —
+  chat is not left broken.
+  **Resolved/corrected during ELITEA-2878 implementation (2026-10-17):** the
+  line above ("Clicking Stop again continues draining one at a time") in this
+  digest's own earlier analyst pass was itself imprecise and is corrected
+  here — a SINGLE Stop click rescues the ENTIRE pending-injection map (not
+  just the head item) into `stopQueueRef` in one batch (the `isStreaming`
+  effect's rescue reads `[...pendingInjectionsRef.current.entries()]`, not
+  just one entry), and `drainQueue()` then dequeues that whole batch
+  automatically, one item at a time, re-triggered by each turn's own
+  `isStreaming` transition — no second click is read anywhere in that path,
+  and a second click during the auto-drain is a no-op (nothing left in
+  `pendingInjections` to rescue). Decisive re-check: 2 independent headless
+  trials, exactly one Stop click each, full drain reached by polling alone,
+  cross-verified against the conversation's own API `message_groups` (4
+  persisted groups matching the DOM exactly — not a UI-only illusion). The
+  implementer-side AFS (`l1_interjection-stop-preserves-queued-messages_ELITEA-2878.md`)
+  carries the full correction and the test asserts single-click drain.
+- **`conversation_id` API-created conversations reach the interjectable state
+  reliably** — confirmed across 10+ independent live conversations this pass,
+  zero reproductions of the #1085-class loading-spinner hang (that gotcha is
+  tied to raw `sidebar-create-button` clicks, not API-created + direct
+  `/chat/{id}` navigation, which is what every probe in this family used).
+- **Model used in this environment, `Dial-GPT-5.6-Luna`, answers a "write a
+  500-word story" prompt in ~5-6s "Thought for N secs"** — long enough to
+  reliably observe the interjection-composer/queue window, but short enough that
+  a case relying on a LONGER busy-window (e.g. to queue 3+ messages with real
+  typing delay between them, not back-to-back `.click()`) should pad with an
+  explicitly slower prompt or accept the fast-model timing; not independently
+  stress-tested beyond 3 near-simultaneous injections.
 
 ## Folder rename editor — checkmark enable/disable logic + a11y-snapshot gotcha (ELITEA-2458)
 - **Full validation logic, read from `FolderItem.jsx` source** (grounds every
@@ -1210,3 +1332,28 @@ plus-menu's full top-level item list was also live-confirmed this session (non-T
 project): exactly 6 items in DOM order — Attach Files, Modules, Agents, Pipelines,
 Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
 `invite_users_menuitem` docstring).
+
+**ELITEA-3254 (2026-10-16) — `project_context_builder` module, confirmed
+live.** Enabling this toggle (already in `MODULE_TOGGLE_ORDER`) and sending a
+chat message that both describes the project AND asks to generate+save a
+context makes the AI invoke a tool whose live chip reads `"Elitea Project
+Context: put_project_context_project-context"` — it both generates AND
+persists in one call (confirmed via a follow-up API GET,
+`/elitea_core/project_context/prompt_lib/{project_id}/project-context`,
+content length ≤2500). A message with no project description in it (just
+"generate a project context for this project") makes the AI ask a
+clarifying follow-up instead of invoking any tool. Full detail + the family
+AFS: `test-specs/settings-project-params/_surface.md` and
+`l1_project-context-char-limit-enforced-across-surfaces_ELITEA-3252.md`.
+
+**Resolved/added during ELITEA-3254 implementation (2026-10-16):**
+`ChatPage.close_modules_panel()` clicks the top-left corner of
+`chat_messages_scroll_container`, which does not exist yet on a brand-new
+conversation with zero messages (confirmed live: `.count() == 0`) — the
+method would hang on its own `expect(...)` otherwise. Fixed to fall back to
+`self.page.mouse.click(10, 10)` (equally "outside" the Modules popper) when
+the scroll container isn't rendered yet; unchanged when it is. Also added
+`ChatPage.ensure_module_toggle_checked()`: `click_module_toggle()` waits for
+a confirmation toast that `project_context_builder` never shows (confirmed
+live, 10s timeout), so the new method polls the switch's own checked state
+instead and is click-idempotent (no-ops if already checked).

@@ -79,10 +79,14 @@ unattended sessions cannot click "approve", so a permission wall dead-ends the
 run — the first live attempt proved it. Your interactive sessions are
 untouched. This makes the next paragraph more than a nicety:
 
-Strongly recommended, one command: require the CI check on the work repo's
-`main` (branch protection). With it, a red PR cannot merge even if an agent disobeys
-its prompt; without it, the merge gate is the loop-prompt rule "merge only on
-a green `gh pr checks` exit".
+The lead lands each gated batch by pushing straight to the work repo's `main`
+(no PR — `.agents/role-overrides.md` § the working branch is `main`). So the
+guard on `main` is the loop-prompt rule itself — "land only after a fresh
+APPROVED review and the lead's own 3× DEV gate" — plus the `control` loop's
+independent audit of every landed commit. Do NOT add branch protection that
+requires a PR on `main`: it would reject every landing. If you want a platform
+guard, restrict pushes to `main` to the factory's identity and the humans who
+own the repo.
 
 ## Landing on an existing project (minimal)
 
@@ -307,7 +311,6 @@ and skills it mentions. Each shows one pattern:
 | `reproduce` | dequeue by LABEL, not by card move: the agent stamps a verdict + terminal label, the loop's `QUERY` excludes it |
 | `control` | verdict-only audit of `Ready` deliveries: `STATUS_ACTIVE=""`, own `SID_SCOPE` so it never resumes the deliverer's conversation |
 | `track-app-issues` | poll an upstream bug tracker and un-park `Blocked` cards when the fix ships (draft) |
-| `syncbranch` | cardless + `EXCLUSIVE`: sync long-lived branches while nothing else is mid-session |
 | `docs-compaction` | cardless + `EXCLUSIVE`, weekly: propose a dedup PR, never merge it |
 | `memory-guard` | cardless + `EXCLUSIVE`, nightly: archive per-role memory over the hook's context budget |
 

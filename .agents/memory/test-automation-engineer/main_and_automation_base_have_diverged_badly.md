@@ -8,6 +8,11 @@ created: 2026-09-07
 updated: 2026-09-07
 ---
 
+> **SUPERSEDED 2026-10-16 — history only.** At the cut-over `origin/main` and
+> `origin/automation/factory` were the same commit (`2cf136a2d`), the planted
+> `INTENTIONAL FAILURE` is gone from `main`, and `main` is now the base for all
+> work. Don't treat `main` as a lagging branch. Kept for the 2026-09 incident.
+
 ## What bit me (2026-09-07, issue #2023 / PR #2025)
 
 Dispatched to fix a CI failure **on `main`** (issue #2023's Fix Branch Strategy targets `main`,

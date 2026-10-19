@@ -26,12 +26,26 @@ Fixtures:
 - github_toolkit: GitHub toolkit attached to a fresh credential
 - github_toolkit_with_selected_tools: GitHub toolkit with settings.selected_tools
   set (required for the pipeline Toolkit node's Tool select to render)
+- midturn_injection_enabled: PUTs the project's ``midturn_injection_enabled``
+  module-settings flag true before the test, restores the ORIGINAL value
+  after — shared infrastructure for the mid-turn interjection family
+  (ELITEA-2875/2876/2877/2878); see that AFS family's Preconditions/Automation
+  Hints and ``test-specs/chat-interface/_surface.md`` § Mid-turn interjection
 """
 import logging
 import time
 
 import pytest
-from api import AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, ProjectContextAPI, ToolkitAPI
+from api import (
+    AgentAPI,
+    ArtifactAPI,
+    ConversationAPI,
+    CredentialAPI,
+    ModuleSettingsAPI,
+    PipelineAPI,
+    ProjectContextAPI,
+    ToolkitAPI,
+)
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
@@ -77,6 +91,50 @@ def conversation_id(conversation_api: ConversationAPI, request):
         logger.info("Deleted conversation %s", conv_id)
     except Exception as exc:
         logger.warning("Failed to delete conversation %s: %s", conv_id, exc)
+
+
+@pytest.fixture
+def midturn_injection_enabled(module_settings_api: ModuleSettingsAPI):
+    """Enable the project's mid-turn injection feature for the test, then restore it.
+
+    Mid-turn injection (the chat "interjection" queue — ``interjection-composer``,
+    ``chat-inject-button``, ``interjection-queue-area``/``-label``/``-item``) is
+    gated by TWO tiers (confirmed live 2026-10-16, ELITEA-2875/2876/2877/2878):
+
+    - Platform tier (``is_midturn_injection_blocked``) — already unblocked on
+      this environment; this fixture never touches it.
+    - Project tier (``midturn_injection_enabled``) — defaults to ``false`` for
+      this suite's project. **This fixture flips it true before the test and
+      restores the ORIGINAL value (read first, not hardcoded ``False``) after**,
+      because the flag is project-wide and persists across conversations/tests.
+
+    No reachable UI toggle exists from this harness (the project-settings
+    "Mid-turn input" card is hidden, not disabled, whenever either tier is
+    off) — the API PUT is the only practical path. Required by every case in
+    this family; see ``test-specs/chat-interface/_surface.md`` § Mid-turn
+    interjection for the full handle set.
+
+    Function-scoped and NOT parallel-safe: the flag is project-wide, so this
+    family's specs must run serial (``pytest-xdist`` is installed; shared
+    project-level state must not run under ``-n`` > 1 for this file).
+
+    Args:
+        module_settings_api: ModuleSettingsAPI client (from api_fixtures)
+
+    Yields:
+        None — tests consume this fixture for its side effect only.
+    """
+    original = module_settings_api.get_module_settings().get("midturn_injection_enabled", False)
+    module_settings_api.set_midturn_injection_enabled(True)
+    logger.info("Enabled midturn_injection_enabled for project %s (was %s)", module_settings_api.project_id, original)
+
+    yield
+
+    try:
+        module_settings_api.set_midturn_injection_enabled(original)
+        logger.info("Restored midturn_injection_enabled=%s for project %s", original, module_settings_api.project_id)
+    except Exception as exc:
+        logger.warning("Failed to restore midturn_injection_enabled to %s: %s", original, exc)
 
 
 @pytest.fixture
@@ -1938,18 +1996,21 @@ def pipeline_llm_printer_connected(pipeline_api: PipelineAPI, request):
 @pytest.fixture
 def clean_project_context(project_context_api: ProjectContextAPI):
     """Ensure the active project has no Project Context before AND after the
-    test (ELITEA-3368 precondition: "no existing Project Context configured").
+    test (ELITEA-3252/3253/3254/3255 family).
 
     Deletes via the API (tolerating any non-2xx — 404 "not found" means
     already clean, which is itself a pass) both before the test runs (clean
-    precondition) and after it finishes (teardown, restores the empty-state
-    precondition for the next run). Confirmed live 2026-10-17: DELETE
-    returns 204 on success, 404 when already empty — this fixture does not
-    distinguish the two, since both leave the project in the same
-    "no context" state.
+    precondition for the empty-state "Build with AI" flow) and after it
+    finishes (teardown, restores the empty-state precondition for the next
+    run). Confirmed live 2026-10-16: DELETE returns 204 on success, 404 when
+    already empty — this fixture does not distinguish the two, since both
+    leave the project in the same "no context" state.
 
     No corresponding "id" is yielded: this fixture's only job is the
-    delete-before/delete-after bracket, not creating an entity.
+    delete-before/delete-after bracket, not creating an entity. Same shape
+    as ELITEA-2272's own now-removed ``clean_project_context`` fixture
+    (commit d883d12e), rebuilt here on cookie auth since the bearer-token
+    fallback 302s on this endpoint.
     """
     project_context_api.delete_project_context()
 

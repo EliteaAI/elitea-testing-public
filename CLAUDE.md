@@ -1,14 +1,16 @@
 # elitea-testing — Elitea AI Platform Test Automation
 
 Playwright + pytest automation for [Elitea](https://elitea.ai), an AI collaboration
-platform. Working branch: **`automation/factory`** (never PR `main` directly).
+platform. Base branch: **`main`** — the lead **pushes each gated batch straight to it**
+(one squash commit, no PR, no human merge; only the lead pushes `main`, never `--force`).
+`automation/factory` is frozen history since 2026-10-16.
 
 ## Layout (sibling clones — parent dir is NOT a git repo)
 
 ```
 <parent>/                        ← this repo's parent folder (sibling clones; no env var needed)
 ├── .env  .env.test              master secrets — NEVER commit, NEVER print
-├── elitea-testing-public/       THIS repo · branch automation/factory · .venv (Python 3.13)
+├── elitea-testing-public/       THIS repo · base branch main · .venv (Python 3.13)
 ├── onetest-ai-tm-Elitea/        TMS repo (test cases as markdown + GitHub issues)
 └── EliteaUI/                    frontend source — READ-ONLY reference, grepped on `main`
                                  to answer "how is this control wired as DEV ships it".
@@ -38,8 +40,10 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
 - **The DEV env as deployed is the only target** — `https://dev.elitea.ai`,
   `APP_PREFIX=/app` (2026-10). Nothing is built or served locally.
   `next.elitea.ai` / stage remain CI's job.
-- **One repo, one PR per case.** Every artifact a case produces — test, page objects,
-  AFS — lands here and targets `automation/factory`, never `main`.
+- **One repo, one commit per batch.** A ticket's cases run as one batch in one session,
+  and every artifact they produce — tests, page objects, AFS, memory — lands here as
+  ONE squash commit on `main` (the gated batch trunk), pushed by the lead after review
+  + the 3× DEV gate. A single case is a batch of one.
 - **No git worktrees for regular work** — plain branching, one thing at a time. Read
   another branch with `git show <branch>:<path>` / `git diff <branch>...HEAD`, never a
   checkout. Worktrees only on an explicit human ask (`.agents/workflow.md` § Branching).
@@ -76,7 +80,7 @@ HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
 Seeded config in `.agents/`, imported below so every session and every dispatched
 subagent gets it in full (uncapped — see `.claude/hooks/sdlc-skills/config.sh` for
 why this replaced the hook's inline delivery): system design (`architecture.md`),
-coding standards (`conventions.md`), systems/PR policy/credentials map
+coding standards (`conventions.md`), systems/landing policy/credentials map
 (`profile.md`), per-role locator/testid overrides (`role-overrides.md`), roster
 (`team-comms.md`), TMS intake/back-write policy (`test-automation.yaml`),
 framework detail (`testing.md`), the two-branch dance (`workflow.md`).
@@ -108,7 +112,10 @@ wins over this file.
 
 - **`test-automation-lead` (Tal)** is the orchestrator. On this team he collapses
   the PM and tech-lead roles: he runs the batch pipeline, owns test-framework
-  architecture decisions, and owns the automation merge gate. **The user launches
+  architecture decisions, and owns the pre-landing gate and the landing (on this
+  project he pushes each gated batch straight to `main` — no PR, no human merge —
+  `.agents/role-overrides.md`).
+  **The user launches
   Tal directly** (`claude --agent test-automation-lead`) for automation work —
   there is no PM above him. He is a top-level orchestrator, not a subagent.
 - **`scout`** seeds the project first (`claude --agent scout`): framework, TMS
@@ -154,9 +161,11 @@ of TMS cases (a single case is a batch of one)
             together, N consecutive green (default 3)
           · Report — the run's single disk write:
             `.agents/automation/<slug>/report.{json,md}`, one row per case
-      → Close: Tal reads the report — merges the `automated` cases, routes the
-        findings, classifies a red gate, back-writes the TMS/tracker once,
-        replans whatever isn't done
+      → Close: Tal reads the report — commits the ledger sync, batch records
+        and memory on the gated trunk (`tests/batch-<slug>`), squash-lands it on
+        `main` as ONE commit and pushes it, does the TMS back-write, posts the
+        closure records, routes the
+        findings, classifies a red gate, replans whatever isn't done
 ```
 
 ## Working agreements (team-wide)

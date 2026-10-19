@@ -2,7 +2,7 @@
 project: elitea-testing
 team: elitea-test-automation
 issue-tracker: https://github.com/EliteaAI/elitea-testing-public/issues
-default-branch: automation/factory
+default-branch: main
 languages: [python]
 ---
 
@@ -70,9 +70,11 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Project / board key**: `EliteaAI/elitea-testing-public` + GitHub Projects board **#9** (owner `EliteaAI`)
 - **URL**: https://github.com/EliteaAI/elitea-testing-public/issues · https://github.com/orgs/EliteaAI/projects/9
 - **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY) → `In Progress` →
-  **`Ready`** (agent-terminal: test merged + closure record with *verified*
-  promotability posted, issue OPEN, awaiting external merges / human acceptance)
-  → `Done` (HUMAN-ONLY: promotable/accepted, human closes the issue). `Blocked`
+  **`Ready`** (agent-terminal: batch reviewed APPROVED, gated 3× on DEV, pushed to
+  `main` by the lead as ONE commit carrying its ledger sync + records, TMS back-write
+  done, closure record with *verified*
+  facts posted, issue OPEN, awaiting human acceptance) → `Done` (HUMAN-ONLY: a human
+  accepts the landed work and closes the issue). `Blocked`
   is a side state for REAL blockers only (`Waiting on #N`). Agents never set
   `Approved` or `Done` — humans own both ends. New issues auto-add
   to the entry column — file them unassigned, set no status.
@@ -177,32 +179,46 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **AFS location**: `test-specs/<feature>/` in this repo (analyst output, git-tracked)
 
 ### Status reporting
-- **TMS execution back-write**: yes — post-merge, orchestrator edits the case file in
+- **TMS execution back-write**: yes — right after the batch lands on `main`, in the
+  same session (`.agents/workflow.md` § After landing), orchestrator edits the case file in
   `onetest-ai-tm-Elitea`: `execution_type: automated`, `status: ready`,
   `automation_test_id: <dotted tests.-rooted path>` — NOT the `.py::` node-id form and NOT
   `automation.`-prefixed; both fail CI correlation (see `.agents/test-automation.yaml`
   § backwrite_on_done)
-- **Comment PR link on the originating issue**: yes — work-log comments
-  (🔧 started / 📝 update / 🚫 blocked / ✅ done) + PR link on the tracking card
+- **Comment the landed commit on the originating issue**: yes — work-log comments
+  (🔧 started / 📝 update / 🚫 blocked / ✅ landed) + the `main` commit link on the
+  tracking card
 - **Board tracking**: assign self, move to `In Progress` when starting; `Blocked` +
-  "Waiting on #N" when parked; `Ready` after merge + closure record (verified locator
-  delta — see workflow.md § Closure record; never copy the implementer's claim);
-  `Done` is human-only
+  "Waiting on #N" when parked; `Ready` once the batch is landed on `main` and the
+  closure record is posted (verified locator delta — see workflow.md § Closure record;
+  never copy the implementer's claim); `Done` is human-only
 - **Gating**: no automated result reporters wired into pytest; back-writes are
   explicit orchestrator actions, never per-local-run
 
 ### Automation PR policy
-- **Base branch for automation PRs**: `automation/factory` (long-lived; cut 2026-10-05 from `automation/base` + the DEV-target factory split, kept current by merging `main`).
-  **Never** open a PR against `main`. Feature branches cut from `automation/factory`,
-  one PR per test / feature area, small.
-- **Merge policy**: auto-merge into `automation/factory` — the orchestrator merges once the
-  test ran green against DEV from this machine + review passed. There is NO CI on
-  `automation/factory`; that green run IS the gate.
-- **One PR, one repo.** A case's PR touches this repo only — nothing outside it is
-  changed, and nothing in it waits on another repo's review.
-- **Batch promotion is human-triggered only** (never autonomous): GHA runs,
-  `automation/factory → main` gate PR. See `.agents/workflow.md` § Promotion.
-- **Squash / rebase / merge**: squash (default) for small PRs into `automation/factory`.
+_(Heading kept for the many `§ Automation PR policy` references. Since 2026-10-16
+there is no PR: this is the **landing** policy.)_
+- **Base branch**: `main` (since 2026-10-16; `automation/factory` and
+  `automation/base` are frozen history). A ticket's cases run as one batch; the
+  batch trunk `tests/batch-<slug>` is cut from a fresh `origin/main` and lands as
+  **one squash commit per batch** (a single case = a batch of one).
+- **Merge policy**: **direct push by the lead — no PR, no human merge.** Once every
+  unit is review-APPROVED and the lead's own 3× DEV gate on the trunk is green, the
+  lead squash-lands the trunk on `main` and runs `env -u GITHUB_TOKEN git push origin
+  main` (`.agents/role-overrides.md` § Orchestrator slot — *Landing a batch*). Only the
+  lead pushes `main`; never `--force`, never a rebase. There is NO CI before `main`;
+  the gate run in the closure record is the evidence. Human acceptance = `Done`.
+- **Branch protection**: `main` has none (rulesets `[]`, `protected: false`, checked
+  2026-10-16). Adding a "require a pull request" rule would block every landing — change
+  this policy first.
+- **One commit, one repo.** A batch's commit touches this repo only — nothing outside
+  it is changed, and nothing in it waits on another repo's review.
+- **No promotion step for this repo** — batches land on `main` directly.
+  `batch-promote` remains only for the `automation/testids` branches in the frontend
+  repos. See `.agents/workflow.md` § Promotion.
+- **Squash / rebase / merge**: **squash** — `git merge --squash` of the trunk, one
+  commit on `main` per batch (subject `test: batch <slug> — <N> cases (<IDs>)`, body
+  one line per case + `Refs #<card>`, never `Closes`).
 
 ### Additional notes
 - Parent folder of this clone = the workspace (plain directory, NOT a git

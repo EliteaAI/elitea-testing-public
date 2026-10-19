@@ -1,0 +1,5 @@
+[submodule ".agents/telemetry"]
+	path = .agents/telemetry
+	url = ./
+	branch = telemetry
+	ignore = all

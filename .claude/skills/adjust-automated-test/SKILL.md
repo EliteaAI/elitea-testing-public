@@ -1,6 +1,6 @@
 ---
 name: adjust-automated-test
-description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs handle gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, and raise PRs for a human to accept. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
+description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs handle gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, have the lead land the test on main (direct push), and raise the TMS PR for a human to accept. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
 allowed-tools:
   - Bash
   - Read
@@ -53,11 +53,12 @@ dispatch. The method below does not change; **your own slot contract does.** So:
 
 ## Step 1 — Ground truth BEFORE any diagnosis
 
-1. **Sync**, or you diagnose against stale code: `sync-base-branches` Part 1 (merges
-   `main` into `automation/factory`). Guard first — never sync over another agent's
+1. **Sync**, or you diagnose against stale code: `git fetch origin` in this repo and
+   diagnose against `origin/main` (the base branch — there is no long-lived automation
+   branch to merge into). Guard first — never move a checkout under another agent's
    in-flight work. Then `git fetch origin` in the read-only frontend-source reference
    clone, so what you read there is the product as DEV ships it (`origin/main`).
-2. **Diagnose on DEV — always.** Every test on `automation/factory` targets the DEV env as
+2. **Diagnose on DEV — always.** Every test on `main` targets the DEV env as
    deployed (`https://dev.elitea.ai`, `APP_PREFIX=/app`; Keycloak login,
    `TEST_USER_EMAIL`/`_PASSWORD` from `.env.test`, field `input[name="username"]`).
    Refresh the browser auth first: `cd automation && ../.venv/bin/python
@@ -68,7 +69,7 @@ dispatch. The method below does not change; **your own slot contract does.** So:
    ```
    **Green from this machine but red in CI ⇒ NOT drift** — env/infra/data (class **D**).
 4. **Handle pre-check — mandatory before calling a testid failure "drift."** A test on
-   `automation/factory` only ever uses handles DEV serves, so a `testid=` that resolves to
+   `main` only ever uses handles DEV serves, so a `testid=` that resolves to
    nothing is a fact about the deployment, not a bug in the test. Confirm which it is on
    DEV itself, in the DOM — take a Playwright MCP snapshot of the page the test was on and
    check whether the element is present **without** its testid:
@@ -118,8 +119,9 @@ suspicion, say so plainly and stop; that is a successful outcome, not a failure.
 | Renamed handles after a restructure | Replacing a state assertion with a mere presence check |
 
 An assertion may change **only** because the *case's expected result* genuinely changed —
-and then the TMS case changes in the same PR pair (Step 8). Record every such change in the
-AFS and under **"Expected-result changes"** in the PR body; if there are none, **say so
+and then the TMS case changes alongside it (Step 8 — the landed test commit + the TMS PR).
+Record every such change in the AFS and under **"Expected-result changes"** in the commit
+body and the TMS PR; if there are none, **say so
 explicitly.** Markers, docstring TMS links, and `allure.step("Step N — …")` structure are
 preserved verbatim — only internals move.
 
@@ -151,7 +153,7 @@ why, the triage class, and any Expected-result changes.
 
 ## Step 7 — Update the code
 
-Branch `tests/adjust-ELITEA-<id>-<slug>` from fresh `origin/automation/factory`. **Plain
+Branch `tests/adjust-ELITEA-<id>-<slug>` from fresh `origin/main`. **Plain
 branching, one thing at a time — no git worktrees** (`.agents/workflow.md` § No git
 worktrees).
 
@@ -161,18 +163,18 @@ worktrees).
   `LocatorDescriptor` / `ScopedLocator` fields or UPPER_CASE `[data-testid="…"]` constants
   only, every non-testid one with `suggested_testid=`. No `fallback=`/`locator=`, nothing
   built in a method body, no raw handle chained off a field, no positional picks.
-- **Your PR in this repo is the only artifact.** Nothing outside it is changed to make a
+- **Your change in this repo is the only artifact.** Nothing outside it is changed to make a
   locator work: a missing testid is a ladder rung + hint, not work.
 - Obey the preserve-the-nature rail (Step 3).
 - **Self-check before handoff** — run the reviewer's mechanical grep
   (`.agents/role-overrides.md` § Reviewer slot) on your own diff and paste the output,
   plus the `locator_inventory.py scan` delta (unmanaged handles must not increase):
   ```bash
-  git diff origin/automation/factory...HEAD -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\(|\.nth\(|locator=|fallback=)'
+  git diff origin/main...HEAD -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\(|\.nth\(|locator=|fallback=)'
   cd automation && ../.venv/bin/python scripts/locator_inventory.py scan
   ```
 
-## Step 8 — Gate, then raise the PRs
+## Step 8 — Gate, then land the test and raise the TMS PR
 
 **Gate** (`.agents/testing.md` § Merge gate), against DEV: **3 separate consecutive invocations of the
 same node id**, clean process each time:
@@ -184,18 +186,23 @@ Red during the gate ⇒ **re-triage** (Step 2). Never re-adjust to force green. 
 (deterministic 3/3 identical, single-cause or an enumerated closed set, linked OPEN defect,
 soft-asserted) — name which members fired.
 
-**Then two PRs — this skill prepares, a human accepts:**
+**Then two deliverables:**
 
-1. **Test PR → `automation/factory`** · `test(adjust): ELITEA-<id> — <what changed>`. Body:
-   the originating task link, **triage class + evidence**, what drifted (old→new),
-   **Expected-result changes** (or "none"), gate evidence 3/3, handle provenance, and the
-   self-check grep + scan output.
+1. **Test change → `main`, landed by the lead** · one squash commit
+   `test(adjust): ELITEA-<id> — <what changed>`, pushed directly after the fresh review +
+   the 3× gate (`.agents/role-overrides.md` § Orchestrator slot — *Landing a batch*; only
+   the lead pushes `main`). Commit body: the originating task link (`Refs #<card>`, never
+   `Closes`), **triage class + evidence**, what drifted (old→new), **Expected-result
+   changes** (or "none"), gate evidence 3/3, handle provenance, and the self-check grep +
+   scan output. Any other slot running this skill stops at a reviewed, gated branch and
+   hands it to the lead.
 2. **TMS PR → `onetest-ai-tm-Elitea`** — the case's steps/expected results updated to
    current behaviour. **Keep `automation_test_id` unchanged** (same test, same dotted path);
-   set `automation_pr` to the test PR URL. Edit case files **by exact path** — several cases
-   can share an `ELITEA-<id>`-looking name, so never glob by id.
+   set `automation_pr` to the landed commit URL. Edit case files **by exact path** — several
+   cases can share an `ELITEA-<id>`-looking name, so never glob by id.
 
-Never merge either PR; merging is always human.
+Never merge the TMS PR — an expected-result change is a human decision, and the lead's
+direct-push authority covers this repo's `main` only.
 
 ## Step 9 — Report
 
@@ -204,7 +211,7 @@ gap:
 
 | Class | What the report must carry |
 |---|---|
-| A drift | old→new handles, Expected-result changes (or "none"), PR links, gate 3/3 |
+| A drift | old→new handles, Expected-result changes (or "none"), landed commit + TMS PR links, gate 3/3 |
 | D pollution | the debris/timing observed, the robustness fix, and that assertions were untouched |
 | B / C bug | repro + `src/` pointer, the issue number, sanctioned-RED justification |
 | E testid gone | which element, the rung + `suggested_testid` now declared (or the `question` filed) |
@@ -217,7 +224,7 @@ Leave board routing and issue closure to the orchestrator/human
 
 - Never adjust a test to make a **product bug** or a **data-pollution** failure go green.
 - Never weaken an assertion, drop a step, or lower a count without explicit human sign-off
-  recorded in the PR body.
+  recorded in the commit body (and the TMS PR).
 - Never write a new test file here — that is `[Automate]` work (`test-automation-workflow`).
 - Never file to `EliteaAI/elitea_issues` — local `bug` issues only; escalation there is
   attended + explicitly requested (`.agents/profile.md` § Bug filing).

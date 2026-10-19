@@ -269,6 +269,88 @@ class ProjectAPI:
         self._session.close()
 
 
+class ModuleSettingsAPI:
+    """Read/write per-project module feature flags (ELITEA-2875/2876/2877/2878).
+
+    Mid-turn injection (the chat "interjection" queue) is gated behind a
+    per-project ``midturn_injection_enabled`` flag on this endpoint, confirmed
+    live 2026-10-16 against ``dev.elitea.ai`` — ``false`` by default for this
+    suite's project, no reachable UI toggle from this harness (the settings
+    card is hidden, not disabled, whenever the project tier is off), so the
+    API PUT below is the only practical way to flip it for automation
+    (see ``test-specs/chat-interface/_surface.md`` § Mid-turn interjection).
+
+    Uses Keycloak session cookies like :class:`ConversationAPI` — same
+    identity-mirroring rationale as :class:`ProjectAPI`.
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+        project_id: Project identifier (defaults to ``ELITEA_PROJECT_ID``).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+        self.project_id = project_id or str(settings.elitea_project_id)
+
+        self._session = _create_retry_session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+
+        logger.debug("ModuleSettingsAPI initialised — base_url=%s", self.base_url)
+
+    def _module_settings_url(self) -> str:
+        return f"{self.base_url}/social/module_settings/{self.project_id}"
+
+    def get_module_settings(self) -> dict:
+        """Return the project's current module settings (all flags)."""
+        url = self._module_settings_url()
+        logger.debug("GET module settings %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def set_midturn_injection_enabled(self, enabled: bool) -> dict:
+        """PUT ``midturn_injection_enabled`` for the project; return the updated settings.
+
+        Confirmed live: 200, persists.  Callers restore the prior value on
+        teardown — this flag is project-wide, so a test that flips it affects
+        every other test/conversation on this project until restored.
+        """
+        url = self._module_settings_url()
+        logger.debug("PUT module settings %s midturn_injection_enabled=%s", url, enabled)
+        resp = self._session.put(
+            url,
+            json={"midturn_injection_enabled": enabled},
+            headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+    def get_platform_settings(self) -> dict:
+        """Return the platform-tier settings (``is_midturn_injection_blocked`` etc.).
+
+        Read-only on this project — the platform tier is already unblocked
+        on DEV; no test in this suite flips it.
+        """
+        url = f"{self.base_url}/elitea_core/platform_settings/prompt_lib"
+        logger.debug("GET platform settings %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
+
+
 class ConversationAPI:
     """Manage chat conversations via the Elitea API.
 
@@ -400,10 +482,10 @@ class ConversationAPI:
 
 class ProjectContextAPI:
     """Manage the Project Context feature (Settings -> Project Context) via
-    the Elitea API — ELITEA-3368.
+    the Elitea API — ELITEA-3252/3253/3254/3255.
 
     Uses Keycloak session cookies (from browser auth state) like
-    :class:`ConversationAPI`. Confirmed live 2026-10-17: the bearer-token
+    :class:`ConversationAPI`. Confirmed live 2026-10-16: the bearer-token
     fallback (``ELITEA_API_TOKEN``) 302-redirects to ``/access_denied`` on
     this endpoint even with a well-formed token — cookie auth is the only
     path that works for Project Context, so this client ALWAYS requires
@@ -440,7 +522,8 @@ class ProjectContextAPI:
     def get_project_context(self) -> requests.Response:
         """GET the project's Project Context. Always 200 — ``content``/``id``
         are empty/``null`` when unset. Does NOT raise on non-2xx; callers
-        assert status/body themselves."""
+        assert status/body themselves (matches the AFS's own GET-based
+        "no partial content saved" check)."""
         url = self._project_context_url()
         logger.debug("GET project context %s", url)
         return self._session.get(url)

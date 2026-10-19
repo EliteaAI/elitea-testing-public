@@ -38,7 +38,12 @@ the damage looks partial and gets missed).
 - **Memory commits land on `automation/base`, never the PR branch.** Re-check
   `gh pr view --json mergeable` AND `gh pr diff --name-only` immediately before
   `gh pr merge` — a memory-landing commit can conflict an open PR or leak into its
-  diff. `.agents/memory/**`-only conflicts are yours to splice (keep both entries,
+  diff. (Since 2026-10-16, revised 2026-10-19: memory is committed **on the batch
+  trunk** before the squash and rides in the batch's ONE commit on `main` — there
+  are no separate memory/bookkeeping commits on `main`; before landing, check
+  `git diff --name-only origin/main...tests/batch-<slug>` shows exactly the memory
+  you meant to ship, nothing leaked from another branch —
+  [[main_direct_push_landing_cutover]].) `.agents/memory/**`-only conflicts are yours to splice (keep both entries,
   chronological order); anything under `automation/**` / `test-specs/**` goes back
   to the implementer. Before discarding leaked files, diff each against
   `automation/base` — a "-" line means real content would be destroyed.

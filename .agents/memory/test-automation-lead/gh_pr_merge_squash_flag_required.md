@@ -4,6 +4,13 @@ description: gh pr merge defaults to whatever the repo UI default is, NOT the pr
 type: feedback
 ---
 
+> **RE-ANCHORED 2026-10-16.** Batches no longer reach `main` through a PR — you
+> land them yourself with `git merge --squash tests/batch-<slug>` + one commit +
+> `git push origin main`. The lesson survives as: the landing strategy is SQUASH,
+> always — never a plain `git merge` of the trunk into `main` (that is the merge
+> commit this note warns about). The `--squash` flag rule still applies wherever
+> you `gh pr merge` (e.g. unit PRs into a batch trunk). See [[main_direct_push_landing_cutover]].
+
 ## What happened (issue #60 / ELITEA-1922, PR #292)
 
 Merged an automation PR with `gh pr merge 292 --repo ... --merge --delete-branch`

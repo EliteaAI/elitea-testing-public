@@ -78,7 +78,7 @@ for the surface it belongs to.
 Ask: **would having this in front of me change my FIRST move, on a task where I
 wouldn't know to look for it?**
 
-- *"PRs target `automation/factory`, never `main`"* — yes. You act on it before you
+- *"The lead lands gated batches on `main` by direct push — nobody else pushes it"* — yes. You act on it before you
   would ever think to search. → index line.
 - *"The MUI popover doesn't close after `window.open()`"* — no. It only matters
   once you are already on that surface, and then you'd grep for it. → entry only.

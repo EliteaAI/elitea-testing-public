@@ -12,8 +12,8 @@ Your mission this tick: find near-verbatim duplication across the 8 shared
 `workflow.md` — all `@`-imported into root `CLAUDE.md`, so every byte here is
 paid on every session AND every dispatched subagent), replace the
 non-canonical copies with a one-line pointer, and open a **draft PR against
-`automation/factory`** for a human to review. **You never merge this PR. You
-never commit this directly to `automation/factory`.** This loop only proposes.
+`main`** for a human to review. **You never merge this PR. You never commit
+or push directly to `main`.** This loop only proposes.
 
 **Scope is narrow on purpose** (per the 2026-07-23 audit that justified
 building this loop at all): only replace a block that is near-verbatim
@@ -44,24 +44,24 @@ duplicate of another block stays untouched, full stop.
    subset. Replace `workflow.md`'s partial copy with a pointer to
    `role-overrides.md`'s full one — never the other way around, the subset
    copy is the one missing coverage. (~350 bytes)
-4. **Branch/PR policy** (`automation/factory`, `tests/<case>-<slug>`, never PR
-   `main`, squash merge) — restated in `conventions.md:40–43`,
-   `profile.md:144–146,156`, `workflow.md:34,40`. Pick `workflow.md` as
-   canonical (it's the fullest), pointer the rest. (~600 bytes)
+4. **Branch/landing policy** (`main` as base, `tests/batch-<slug>`, one squash
+   commit per batch pushed by the lead) — restated in `conventions.md` § Git,
+   `profile.md` § Automation PR policy, `workflow.md` § Branching. Pick
+   `role-overrides.md` § Orchestrator slot (*Landing a batch*) as canonical (it
+   carries the commands), pointer the rest. Line numbers drift — locate by
+   section. (~600 bytes)
 5. **Small one-liner facts duplicated 2–3× each** (OneDrive slowness,
    `.env.test` precedence, deployed-envs-are-CI-only, never shallow-clone,
    ~2s WebSocket delay,
-   Keycloak/`auth_state`, no-CI-on-`automation/factory`) — see
+   Keycloak/`auth_state`, no-CI-on-`main`) — see
    the full audit table (posted to this PR's description by you, or ask
    your dispatcher to re-run the audit if this file has aged) — pick
    whichever file states each most completely, pointer the others.
    (~2,100 bytes)
-6. **Stale note** — `workflow.md:272–275` § Unconfirmed claims "no PR
-   history yet" on `automation/factory`. Verify live with
-   `env -u GITHUB_TOKEN gh pr list --base automation/factory --state all` (per
-   `.agents/profile.md` § Issue tracker identity rule) before touching —
-   if PRs exist (they did as of 2026-07-23: hundreds), delete the stale
-   claim or replace it with a current one-line fact. (~230 bytes)
+6. **Stale notes** — `workflow.md` § Unconfirmed records open questions about
+   the direct-push landing (cut-over 2026-10-16). Verify each live
+   (`git log origin/main --oneline --grep '^test: batch'`) before touching —
+   if one is now answered, replace it with a current one-line fact. (~230 bytes)
 
 **Explicitly OUT of scope this run** (audit classified these RISKY — a
 human's call, not this loop's):
@@ -93,7 +93,7 @@ guessing.
 1. **Never touch a file without reading it in full first** — you're editing
    a rulebook other agents rely on for enforcement; partial context here is
    how a rule quietly gets weakened.
-2. Branch off **fresh `automation/factory`**, named
+2. Branch off **fresh `origin/main`**, named
    `chore/agents-docs-dedup-<YYYY-MM-DD>` (not the `tests/<case>-<slug>`
    pattern — this isn't case work, keep it visually distinct).
 3. Make the edits: shrink the non-canonical copy to one pointer line naming
@@ -102,8 +102,8 @@ guessing.
 4. One commit per source file touched, message naming what was deduped and
    the byte delta, e.g. `chore(docs): dedup testid-flow restatement —
    architecture.md 4757 → 3400 bytes, see workflow.md`.
-5. Push, then **open a DRAFT PR against `automation/factory`**
-   (`env -u GITHUB_TOKEN gh pr create --draft --base automation/factory ...` —
+5. Push, then **open a DRAFT PR against `main`**
+   (`env -u GITHUB_TOKEN gh pr create --draft --base main ...` —
    tracker-write identity rule, `.agents/profile.md` § Issue tracker). PR
    body must include:
    - A table: file, bytes before, bytes after, what now lives where.
@@ -118,8 +118,11 @@ guessing.
 
 ## Do not
 
-- Do not commit directly to `automation/factory` under any circumstance — this
-  loop's only write path to that branch is a PR, same as case work.
+- Do not commit or push directly to `main` under any circumstance. **This loop
+  is a deliberate exception to the direct-push landing** (`.agents/role-overrides.md`
+  § the working branch is `main`): only the lead pushes `main`, and only gated
+  batches, one commit each. A doctrine rewrite is neither — it is advisory,
+  so its only write path to `main` is a draft PR a human merges.
 - Do not touch a file's meaning, only its restatement — if trimming a
   passage would require deciding whether two slightly-different wordings
   mean the same thing or not, that's a RISKY judgment call: skip it and note
@@ -127,7 +130,7 @@ guessing.
   the whole point is the content survives verbatim, just outside the hook's
   inlined payload.
 - Do not open a second compaction PR while an earlier one from this loop is
-  still open — check `env -u GITHUB_TOKEN gh pr list --base automation/factory
+  still open — check `env -u GITHUB_TOKEN gh pr list --base main
   --search "chore/agents-docs-dedup"` first; if one's open, skip this tick
   and report that instead of piling up parallel proposals.
 

@@ -1,0 +1,29 @@
+{
+  "batch": {
+    "slug": "support-assistant-1797",
+    "created": "2026-08-18T00:00:00Z",
+    "base": "automation/base",
+    "units": 1,
+    "completed": 1
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1797",
+      "title": "Widget conversation state persists after close and reopen",
+      "outcome": "already-covered",
+      "covering_spec": "tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantLauncher::test_widget_state_persists_after_close_reopen",
+      "afs_path": "test-specs/support-assistant/lcovered_widget-conversation-state-persists-after-close-reopen_ELITEA-1797.md",
+      "afs_commit": "530dfea10",
+      "findings": [],
+      "notes": "Behavioral equivalence verified — covering test executes the exact observable sequence specified in the case"
+    }
+  ],
+  "gate": {
+    "status": "not-applicable",
+    "reason": "already-covered outcome requires no new test"
+  },
+  "next": {
+    "action": "tms-backwrite",
+    "details": "Update ELITEA-1797: execution_type=automated, status=ready, automation_test_id=tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantLauncher.test_widget_state_persists_after_close_reopen"
+  }
+}

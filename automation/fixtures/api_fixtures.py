@@ -25,6 +25,7 @@ from api import (
     ArtifactAPI,
     ConversationAPI,
     CredentialAPI,
+    ModuleSettingsAPI,
     PipelineAPI,
     ProjectContextAPI,
     SkillAPI,
@@ -256,10 +257,30 @@ def artifact_api(_browser_cookies):
 
 
 @pytest.fixture(scope="session")
+def module_settings_api(_browser_cookies):
+    """Session-scoped ModuleSettingsAPI client for project module feature flags.
+
+    Uses cookie-based authentication, same pattern as :func:`conversation_api`.
+    Session-scoped: the mid-turn-injection family (ELITEA-2875/2876/2877/2878)
+    toggles ``midturn_injection_enabled`` once per test via the
+    ``midturn_injection_enabled`` fixture (``fixtures/data_fixtures.py``), not
+    once per client.
+
+    Yields:
+        ModuleSettingsAPI: Authenticated module-settings API client
+    """
+    api = ModuleSettingsAPI(browser_cookies=_browser_cookies)
+    logger.info("Created session-scoped ModuleSettingsAPI client")
+    yield api
+    api.close()
+    logger.debug("Closed ModuleSettingsAPI client")
+
+
+@pytest.fixture(scope="session")
 def project_context_api(_browser_cookies):
     """Session-scoped ProjectContextAPI client for Settings -> Project Context.
 
-    Uses cookie-based authentication — confirmed live 2026-10-17 that the
+    Uses cookie-based authentication — confirmed live 2026-10-16 that the
     bearer-token fallback 302-redirects on this endpoint even with a
     well-formed ``ELITEA_API_TOKEN``, so cookie auth is the only reliable
     path (see :class:`api.client.ProjectContextAPI`'s own docstring).
