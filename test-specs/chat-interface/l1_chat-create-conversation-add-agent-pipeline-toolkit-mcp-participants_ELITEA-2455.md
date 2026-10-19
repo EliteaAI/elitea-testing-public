@@ -35,7 +35,7 @@
 |---|---|---|---|---|
 | 1 Chats + `+ Chat` | page loads | step 1 | composer visible | asserted |
 | 2 placeholder | "Type your message..." | step 1 | composer placeholder attr == text | asserted |
-| 3 PARTICIPANTS empty | visible, no participants | step 2 | title visible, 0 participant rows, 0 section titles | asserted |
+| 3 PARTICIPANTS empty | visible, no participants | step 2 | PARTICIPANTS panel toggle visible and `data-expanded="true"`, 0 participant rows, 0 section titles | asserted |
 | 4-5 plus menu options | Modules, Agents, Pipelines, Toolkits, MCPs (+ Attach Files) | step 3 | six menuitems visible (Team-only Invite Users + "10 left" counter not asserted, see Axis 2) | asserted (partial: see note) |
 | 6 Agents submenu | search + Create + list | step 4 | search input, create button, our row visible | asserted |
 | 7 agent added | in AGENTS w/ name, version, icon | step 4 | row visible, text has name, icon svg present | asserted |
@@ -43,7 +43,7 @@
 | 10-11 toolkit toggle | same | step 6 | same | asserted |
 | 12-13 MCP toggle | same | step 7 | MCP name visible in panel | asserted |
 | 14 section order | AGENTS, PIPELINES, TOOLKITS, MCPS | step 8 | section title y-coords strictly ascending | asserted |
-| 15 distinct icons | 4 distinct | step 9 | agent/pipeline/toolkit svg path data pairwise different; MCP has its own icon block | asserted (MCP via section presence, see Axis 2) |
+| 15 distinct icons | 4 distinct | step 9 | agent/pipeline/toolkit svg path data pairwise different; MCP has its own icon block | partial: agent/pipeline/toolkit icons asserted; MCP icon NOT asserted (only the MCPs section title is checked) -- known coverage gap |
 | 16 no duplicates/errors | | step 10 | 3 testid rows unique, each name appears once | asserted |
 | 17 send "Hi" | | step 11 | URL has `/chat/<id>` | asserted |
 | 18 owner icon in PARTICIPANTS | | step 11 | **NOT OBSERVED** in a Private project (no USERS section / avatar rendered; owner avatar appears only on the message header) | dropped — clarification filed as finding (Private project has no USERS section) |

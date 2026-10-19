@@ -5505,6 +5505,165 @@ class ChatPage(BasePage):
         item.click()
         self.wait_for_network(timeout=timeout)
 
+    # ------------------------------------------------------------------
+    # Plus-menu entity submenus + expanded PARTICIPANTS panel sections
+    # (ELITEA-2455). Additive: nothing above is modified.
+    # ------------------------------------------------------------------
+
+    agents_search_input = LocatorDescriptor(
+        testid="agents-search-input",
+        description="Search field inside the plus-menu's Agents submenu.",
+    )
+
+    pipelines_search_input = LocatorDescriptor(
+        testid="pipelines-search-input",
+        description="Search field inside the plus-menu's Pipelines submenu.",
+    )
+
+    toolkits_create_new_button = LocatorDescriptor(
+        testid="toolkits-create-new-button",
+        description="'Create Toolkit' item inside the plus-menu's Toolkits submenu.",
+    )
+
+    mcps_create_new_button = LocatorDescriptor(
+        testid="mcps-create-new-button",
+        description="'Create MCP' item inside the plus-menu's MCPs submenu.",
+    )
+
+    platform_banner_close_button = LocatorDescriptor(
+        testid="platform-banner-close",
+        description=(
+            "'Got it' button of the platform announcement dialog "
+            "(platform-banner-center) whose MuiDialog container intercepts pointer events."
+        ),
+    )
+
+    @action("Dismiss platform announcement dialog if shown")
+    def dismiss_platform_announcement(self, timeout: int = 3000):
+        """Close the DEV platform announcement dialog when present (best-effort transit;
+        ``dismiss_banner_if_present`` only handles aria-label=close banners)."""
+        try:
+            self.platform_banner_close_button.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return
+        self.platform_banner_close_button.click()
+
+    AGENT_PARTICIPANT_MENU_ITEM = '[data-testid="agents-menu-item-agent-{}-{}"]'
+    PIPELINE_PARTICIPANT_MENU_ITEM = '[data-testid="pipelines-menu-item-pipeline-{}-{}"]'
+
+    PARTICIPANTS_SECTION_TITLE = ScopedLocator(
+        xpath="//span[normalize-space(.)='{}'][../preceding-sibling::*[name()='svg']]",
+        suggested_testid="chat-participants-section-title-{}",
+        description=(
+            "Section heading ('Agents'/'Pipelines'/'Toolkits'/'MCPs'; CSS-uppercased "
+            "on screen) in the expanded PARTICIPANTS panel (ParticipantsAccordion.jsx). "
+            "xpath= because rungs 1-4 fail: no testid, a bare span with no role/label, "
+            "and the text alone also matches other spans; anchored on the accordion "
+            "arrow svg sibling."
+        ),
+    )
+
+    PARTICIPANT_ROW_ICON_PATH = ScopedLocator(
+        css="svg path",
+        suggested_testid="chat-participant-row-icon",
+        description=(
+            "Entity-type icon geometry inside a participant row; the icon is the "
+            "row's first svg (hover action buttons render after it)."
+        ),
+    )
+
+    PARTICIPANT_NAME_TEXT = ScopedLocator(
+        xpath="//*[contains(normalize-space(text()), '{}')]",
+        suggested_testid="chat-participant-name-{}",
+        description=(
+            "Participant name text in the PARTICIPANTS panel (used for the "
+            "misconfigured MCP card, which renders no chat-participant-row testid). "
+            "xpath= because rungs 1-4 fail: no testid and the name is runtime data."
+        ),
+    )
+
+    PLUS_MENU_NAMED_ITEM = '[data-testid="{}-menuitem"]'
+    PLUS_MENU_NAMED_SEARCH_INPUT = '[data-testid="{}-search-input"]'
+
+    def get_plus_menuitem(self, menuitem: str):
+        """Locator for the plus-menu item ``<menuitem>-menuitem`` (e.g. 'agents', 'internal-tools')."""
+        return self.page.locator(self.PLUS_MENU_NAMED_ITEM.format(menuitem))
+
+    def open_plus_menu_submenu(self, menuitem: str, timeout: int = 10000):
+        """Open the plus menu (if not already open) and reveal the submenu of
+        ``<menuitem>-menuitem`` ('agents' | 'pipelines' | 'toolkits' | 'mcps').
+
+        Closes nothing: callers close the popper with ``close_plus_menu_popper``.
+        """
+        item = self.get_plus_menuitem(menuitem)
+        if not item.is_visible():
+            self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+            self.plus_menu_button.click()
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.page.locator(self.PLUS_MENU_NAMED_SEARCH_INPUT.format(menuitem)).wait_for(state="visible", timeout=timeout)
+
+    def get_participant_menu_item(self, kind: str, project_id: int, entity_id: int):
+        """Locator for a plus-menu submenu row; kind in agent|pipeline|toolkit|mcp."""
+        template = {
+            "agent": self.AGENT_PARTICIPANT_MENU_ITEM,
+            "pipeline": self.PIPELINE_PARTICIPANT_MENU_ITEM,
+            "toolkit": self.TOOLKIT_PARTICIPANT_MENU_ITEM,
+            "mcp": self.MCP_PARTICIPANT_MENU_ITEM,
+        }[kind]
+        return self.page.locator(template.format(project_id, entity_id))
+
+    new_conversation_greeting = LocatorDescriptor(
+        testid="chat-new-conversation-greeting",
+        description="'Hello, <user>! What can I do for you today?' greeting of a blank, unsent conversation.",
+    )
+
+    def close_plus_menu_popper_in_blank_conversation(self, timeout: int = 5000):
+        """Outside-click close for a blank (unsent) conversation, which has no
+        ``messages_list`` -- click the greeting instead. Do NOT use Escape
+        (see ``close_plus_menu_popper``)."""
+        self.new_conversation_greeting.click(position={"x": 5, "y": 5}, timeout=timeout)
+
+    @action("Add participant via plus-menu submenu row")
+    def add_participant_via_plus_menu(self, kind: str, project_id: int, entity_id: int, timeout: int = 10000):
+        """Open the plus menu's submenu for *kind*, click the entity's row, close the popper."""
+        self.open_plus_menu_submenu({"agent": "agents", "pipeline": "pipelines",
+                                     "toolkit": "toolkits", "mcp": "mcps"}[kind], timeout=timeout)
+        row = self.get_participant_menu_item(kind, project_id, entity_id)
+        row.wait_for(state="visible", timeout=timeout)
+        row.click()
+        self.wait_for_network(timeout=timeout)
+        if self.new_conversation_greeting.is_visible():
+            self.close_plus_menu_popper_in_blank_conversation()
+        else:
+            self.close_plus_menu_popper()
+
+    def get_participant_section_title(self, label: str):
+        """Section heading Locator in the expanded PARTICIPANTS panel."""
+        return self.PARTICIPANTS_SECTION_TITLE.within(self.page, label)
+
+    def get_participant_row_by_entity_id(self, entity_id: int):
+        """Participant row Locator keyed by entity id (valid before the first send)."""
+        return self.page.locator(self.PARTICIPANT_ROW.format(entity_id))
+
+    def get_participant_rows(self):
+        """All currently rendered participant rows (testid-bearing cards)."""
+        return self.page.locator(self.PARTICIPANT_ROW_PREFIX)
+
+    def get_participant_row_icon_geometry(self, row, timeout: int = 10000) -> str:
+        """The ``d`` attribute of the icon path inside a participant row."""
+        path = self.PARTICIPANT_ROW_ICON_PATH.within(row).first
+        path.wait_for(state="attached", timeout=timeout)
+        return path.get_attribute("d") or ""
+
+    def get_participant_name_text(self, name: str):
+        """Locator for a participant's name text anywhere in the panel."""
+        return self.PARTICIPANT_NAME_TEXT.within(self.page, name)
+
+    def get_participant_warning_icons(self):
+        """All misconfigured-participant warning icons currently rendered."""
+        return self.page.locator(self.PARTICIPANT_WARNING_ICON)
+
     @action("Close plus-menu popper via outside click")
     def close_plus_menu_popper(self, timeout: int = 5000):
         """Click a neutral point inside the message list to close the
