@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "session": "696cba0b-4862-4b8a-ac16-067f7ede9710",
+  "intent": "automation",
+  "batch": "chat-new-conv-2455",
+  "cases": [
+    "ELITEA-2455"
+  ],
+  "declaredAt": "2026-10-20T13:48:37.742Z",
+  "updatedAt": "2026-10-20T13:48:37.742Z"
+}
