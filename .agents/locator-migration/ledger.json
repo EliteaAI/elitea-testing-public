@@ -169,6 +169,18 @@
       "updated": "2026-10-19",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.GENERATED_ENTITY_OPEN_BUTTON": {
+      "file": "pages/chat_page.py",
+      "line": 6505,
+      "kind": "role",
+      "selector": "button[name='Open entity']",
+      "suggested_testid": "chat-generated-entity-chip-open-button",
+      "description": "Chip's 'Open entity' icon button; rendered visible only while the chip is hovered (isHovering state) — hover the chip first. role+name: no testid on DEV.",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.STOP_BUTTON": {
       "file": "pages/chat_page.py",
       "line": 160,
@@ -179,6 +191,42 @@
       "state": "raw",
       "added": "2026-10-19",
       "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
+      "file": "pages/chat_page.py",
+      "line": 6566,
+      "kind": "role",
+      "selector": "button[name='Got it']",
+      "suggested_testid": "platform-banner-got-it-button",
+      "description": "'Got it' dismiss button inside the platform announcement dialog (no testid on DEV).",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
+      "file": "pages/chat_page.py",
+      "line": 6524,
+      "kind": "role",
+      "selector": "button[name='Discard']",
+      "suggested_testid": "skill-canvas-discard-button",
+      "description": "Skill editor Canvas Discard button (EditorHeader.jsx, no testid on DEV).",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
+      "file": "pages/chat_page.py",
+      "line": 6516,
+      "kind": "role",
+      "selector": "button[name='Save']",
+      "suggested_testid": "skill-canvas-save-button",
+      "description": "Skill editor Canvas Save button (SkillEditorSaveButton.jsx, no testid on DEV).",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
       "history": []
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
@@ -530,22 +578,22 @@
       "history": []
     }
   },
-  "last_sync": "2026-10-19",
+  "last_sync": "2026-10-20",
   "metric": {
-    "declared_total": 1257,
-    "declared_testid": 1213,
-    "declared_non_testid": 44,
-    "non_testid_with_hint": 23,
+    "declared_total": 1263,
+    "declared_testid": 1215,
+    "declared_non_testid": 48,
+    "non_testid_with_hint": 27,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 7,
       "fallback": 20,
       "locator": 1,
-      "role": 11,
-      "testid": 1213,
+      "role": 15,
+      "testid": 1215,
       "xpath": 5
     },
-    "locator_debt": 0.035,
+    "locator_debt": 0.038,
     "unmanaged_handles": 351
   }
 }
