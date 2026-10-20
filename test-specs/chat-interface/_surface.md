@@ -1465,3 +1465,9 @@ instead and is click-idempotent (no-ops if already checked).
 - DEV now serves `chat-regenerate-button` (no aria-label). Regenerate and Delete are rendered ONLY on the last message (`ChatMessageWrapper.jsx` isLastMessage gate); earlier AI items have read-out+copy (hover-gated) but regenerate/delete count 0 in DOM. Last item's Regenerate stayed visible with mouse parked at (0,0).
 - Two short exchanges ("Reply with the single word: one") finish in seconds. `ChatPage._is_ai_message(item)` filters AI rows.
 - `navigate_to_chat(conversation_id=)` timed out again (3rd analysis in a row); `page.goto(app_base_url + "/app/chat/<id>")` works (app_base_url lacks `/app`). Playwright MCP chrome was missing this session; scratch pytest used instead.
+
+## Regenerate flow (ELITEA-2185, 2026-10-20)
+- Clicking `chat-regenerate-button` replaces the last AI item IN PLACE (count unchanged; `onRegenerateAnswer` re-sends the stored question with `message_id` = the AI id). During regeneration: `chat-answer-loading-placeholder` (t~0-0.6s) -> `chat-answer-thought-accordion` + model chip + `chat-inject-button` (Stop) -> Copy/Regenerate/Delete/Read-out back (~2s with Haiku 4.5 for a short prompt). Regenerate/Copy absent while generating.
+- User item text is untouched. Output is nondeterministic: never assert new text != old text hard.
+- "New Models are added" toast can cover the Send button on DEV: send with Enter.
+- `navigate_to_chat(conversation_id=...)` still times out on DEV (15s); goto `/app/chat/<id>` directly.

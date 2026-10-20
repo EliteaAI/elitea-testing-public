@@ -1,0 +1,73 @@
+{
+ "batch": "chat-regenerate-2185",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-chat-regenerate-2185",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "note": "Workflow gate was red for env only (automation/.env.test absent, APP_PREFIX unset). Lead re-ran 3 separate pytest invocations on the trunk with APP_PREFIX=/app: 3/3 passed (19.8s, 20.2s, 20.1s).",
+  "failures": [],
+  "seconds": [
+   19.78,
+   20.24,
+   20.06
+  ],
+  "by": "lead"
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2185",
+   "outcome": "automated",
+   "note": "reviewer APPROVED; lead gate 3/3 green",
+   "findings": [
+    {
+     "kind": "note",
+     "note": "automation/.env.test is absent in this checkout (the symlink target ../../.env.test is missing). config.py then defaults APP_PREFIX to empty, so every UI test navigates to https://dev.elitea.ai/chat and gets a 404. The gate and any later run need APP_PREFIX=/app in the shell env or a restored .env.test. Without it the whole chat suite goes red for an environmental reason."
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation case, AFS and diff: all 6 case steps plus the precondition have a Coverage Map row and a matching assertion at the same step. Step 1 asserts Regenerate count 1 and visible. Step 2 asserts Copy and Regenerate count 0 and message count unchanged. Step 3 asserts Stop count 1, the placeholder or accordion visible, and a non-empty model chip. Step 4 asserts the user texts list equals the \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_chat_regenerate_new_response.py"
+    },
+    {
+     "kind": "note",
+     "note": "Locator mechanical grep, command: git diff main...tests/ELITEA-2185-regenerate-new-response -- automation/pages | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|.locator(|.nth(|locator=|fallback=)'. Result: 0 hits (no matches). The diff adds no page-object changes. Every handle the spec uses is an existing class-level descriptor in chat_page.py. The spec's only .nth(i) calls enumerate every\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "Masking hunt: clean. There is no skip, xfail or weakened assertion. The spec does not assert that the new response text differs from the old one, and the AFS explains why (LLM output can collide). A reviewer might want proof the response is new. The structural proof of replacement is the in-place count, the Copy and Regenerate icons going absent, and the Stop button and placeholder appearing. That\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case text step 3 says 'spinning loading circle'. Live DEV shows a rotating-text placeholder and then a thought accordion with the model chip. The AFS records this as case-text drift (a clarification) and the spec asserts the live widget. This is correct under the reverse-masking guard. The TMS case text should be updated.",
+     "ref": "ELITEA-2185 step 3"
+    },
+    {
+     "kind": "note",
+     "note": "Residual flake risk for the gate: Step 3 asserts Stop count 1, which needs the generation to last long enough to be observed. The 120-word prompt is meant to widen that window, and the AFS flags it. If the gate shows Step 3 flaking, the fix is a longer prompt, not a weaker assertion.",
+     "ref": "automation/tests/ui/chat/test_chat_regenerate_new_response.py"
+    },
+    {
+     "kind": "note",
+     "note": "The spec still uses chat.navigate_to_chat(conversation_id=...), which the _surface.md digest says times out on DEV in recent analyses. The AFS flags this as a possible regression. The gate run will confirm it. If it times out, the fix belongs in the shared page object, not this spec.",
+     "ref": "automation/tests/ui/chat/test_chat_regenerate_new_response.py"
+    },
+    {
+     "kind": "note",
+     "note": "Conventions met: tms marker, allure.step on every step, priority and feature markers, and the _surface.md digest updated. The spec is static-reviewed only; I did not execute it."
+    }
+   ],
+   "afs": "test-specs/chat-interface/l2_regenerate-creates-new-response-same-user-input_ELITEA-2185.md",
+   "branch": "tests/ELITEA-2185-regenerate-new-response",
+   "pr": 2523
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": []
+}
