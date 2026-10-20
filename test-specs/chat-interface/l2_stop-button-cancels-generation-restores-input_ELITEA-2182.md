@@ -20,9 +20,9 @@
 ## Test Steps
 1. Navigate to the fresh conversation; type `generate a poem`; click Send (`chat_page.send_message`).
    - **Verify**: user message appears in the timeline (`ul.MuiList-root > li.MuiListItem-root`, text contains `generate a poem`); `chat-send-button` disappears (generation started).
-2. Wait for the thinking/sub-agent phase and verify the Stop control is visible at the far right of the composer footer.
+2. Wait for the pre-answer (waking/thinking) phase and verify the Stop control is visible at the far right of the composer footer.
    - **Verify**: `ChatPage.STOP_BUTTON.within(chat_inject_button)` — NOTE `chat_inject_button` is NOT present when mid-turn injection is off (see Handles + Question 1). Stop first renders ~0.5s after click (while the agent bubble reads "Waking the agent…"), stays until final text begins; the agent bubble shows `Thinking` text from ~2.3s.
-3. Click Stop while the agent bubble still shows `Thinking` (final answer not started).
+3. Click Stop as soon as it is visible, while the final answer has not started (the pre-answer window; the `Thinking` label is NOT gated on - see Clarification).
    - **Verify**: click succeeds.
 4. Verify no further text streams.
    - **Verify**: after the click, the timeline holds NO agent answer text; poll ~2.5s: `li` count stays 0 (new chat) and never reappears (observed 0 in 3/3 clicks; in a non-empty conversation both the new user turn and the partial agent bubble are removed and the earlier turns remain).
@@ -41,8 +41,8 @@ Generation cancelled in the thinking phase; no answer text; default input bar re
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 Type + Send | user msg appears; generation starts | step 1 | step 1 | asserted |
-| 2 Stop visible during thinking | stop visible | step 2 | step 2 | asserted *(clarification: "far right of bottom input bar" - it is in the footer row left of the inject/send slot; assert visibility, not geometry)* |
-| 3 Click stop during thinking | stops immediately | step 3 | step 3-4 | asserted |
+| 2 Stop visible during pre-answer phase | stop visible | step 2 | step 2 | asserted *(clarification: "far right of bottom input bar" - it is in the footer row left of the inject/send slot; assert visibility, not geometry)* |
+| 3 Click stop in pre-answer phase (not gated on `Thinking` label) | stops immediately | step 3 | step 3-4 | asserted |
 | 4 No further text streams | streaming stopped | step 4 | step 4 (no agent text, stays 0 over ~2.5s) | asserted *(live nuance: the partial agent bubble AND the user bubble are REMOVED from the timeline, not left half-rendered - case text silent on this)* |
 | 5 Stop gone, default bar | normal input bar | step 5 | step 5 | asserted |
 | 6 Input active/editable | editable | step 6 | step 6 | asserted |
@@ -50,7 +50,7 @@ Generation cancelled in the thinking phase; no answer text; default input bar re
 
 Axis 2 - Analyst additions:
 - Step 4 asserts timeline empties (user turn removed) - *added: it is the observable proof that the stop cancelled rather than finished; without it a response that completed in 3s would pass steps 5-7 on a null stop.*
-- Step 2/3 gate on the agent bubble showing `Thinking` (not just Stop visible) - *added: the case is explicitly scoped to the thinking phase (#5196); clicking after final text starts gives a different outcome (button already gone).*
+- Step 2/3 do NOT gate on the `Thinking` label (amended in fix round 1, matching the implementation): the label has no ladder handle (text only, no testid) and the window is ~1-3s; Stop is clicked as soon as it is visible, before final text. Step 4's timeline-emptied + no-answer-text assertions are the proof the click landed pre-answer and cancelled rather than finished.
 
 ## Concrete Handles (verified on DEV 2026-10-20)
 
@@ -66,7 +66,10 @@ Axis 2 - Analyst additions:
 ## Network / Behaviour
 - Timing is tight and fast on DEV (model Claude Haiku 4.5): Stop appears at ~0.5s, `Thinking` text ~2.3s, final text ~2.9-3.5s, Stop vanishes when final text starts. Polling must be tight (<=100ms) via `page.wait_for_function`/Playwright locator waits - a 500ms+ poll can miss the window. If the run is too fast to catch `Thinking`, the test must fail loudly, not skip.
 - Stop on a brand-new chat: conversation row "Generate poem" is created in the sidebar and URL becomes `/chat/<id>?name=Generate+poem`; the conversation is left empty (use `conversation_id` fixture, the API teardown deletes it).
-- Clicking Stop at "Waking the agent..." (before Thinking) behaves the same (input restored) - one intermittent observation: at that moment Stop can re-flicker once (stop/enter-speaking-mode toggles) before settling; so click only after `Thinking`.
+- Clicking Stop at "Waking the agent..." (before Thinking) behaves the same (input restored) - one intermittent observation: at that moment Stop can re-flicker once (stop/enter-speaking-mode toggles) before settling; so the spec clicks as soon as Stop is visible (declared behaviour, see Clarification).
+
+## Clarification (fix round 1)
+The original AFS said to click only after `Thinking`. The implementation clicks at first Stop visibility ("Waking the agent..." or Thinking); both phases are pre-answer and AFS Network notes they behave identically. Gating on `Thinking` would need a text-only declared handle in a ~0.8s window and risks a loud miss; cancel is proven by step 4 assertions instead. Coverage Map row 3 amended accordingly.
 - Console: no errors observed.
 
 ## Known Defects Found During Exploration
