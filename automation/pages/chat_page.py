@@ -192,6 +192,15 @@ class ChatPage(BasePage):
         ),
     )
 
+    # Toggle switch inside a plus-menu participant row (toolkit / MCP items,
+    # ELITEA-2455) — resolved within the row locator. role=switch is the MUI
+    # Switch's own ARIA contract; no testid on DEV.
+    PARTICIPANT_MENU_ITEM_SWITCH = ScopedLocator(
+        role="switch",
+        suggested_testid="chat-plus-menu-participant-switch",
+        description="Toggle switch within a toolkit/MCP participant row of the plus menu.",
+    )
+
     # ------------------------------------------------------------------
     # Sidebar / drawer
     # ------------------------------------------------------------------

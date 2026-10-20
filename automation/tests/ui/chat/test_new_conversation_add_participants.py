@@ -112,10 +112,10 @@ class TestNewConversationParticipants:
             with allure.step("Step 5 — Toggle the toolkit and the MCP (same open popper) -> TOOLKITS / MCPS sections"):
                 chat.add_toolkit_participant_via_slash_menu(project_id, artifact_toolkit["id"])
                 toolkit_item = page.locator(chat.TOOLKIT_PARTICIPANT_MENU_ITEM.format(project_id, artifact_toolkit["id"]))
-                expect(toolkit_item.get_by_role("switch")).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.PARTICIPANT_MENU_ITEM_SWITCH.within(toolkit_item)).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
                 chat.add_mcp_participant_via_slash_menu(project_id, mcp_toolkit_with_tools["id"])
                 mcp_item = page.locator(chat.MCP_PARTICIPANT_MENU_ITEM.format(project_id, mcp_toolkit_with_tools["id"]))
-                expect(mcp_item.get_by_role("switch")).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.PARTICIPANT_MENU_ITEM_SWITCH.within(mcp_item)).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
                 chat.close_plus_menu_popper_on_blank_chat()
                 expect(chat.get_participant_section_title("Toolkits")).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 expect(chat.get_participant_section_title("MCPs")).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
