@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression]
 
 _PROMPT = "generate a poem"
+_SECOND_PROMPT = "hello"
 STOP_VISIBLE_TIMEOUT = 15_000
 RESTORE_TIMEOUT = 10_000
 
@@ -86,3 +87,46 @@ class TestChatStopButtonCancelsGeneration:
             # Final no-stream check, no sleep: Steps 5-7 have just elapsed, so a stray
             # stream would have repopulated the timeline by now.
             expect(chat.messages_container).to_have_count(initial_count)
+
+    @pytest.mark.tms("ELITEA-2183")
+    @allure.title("After stopping a generation a new message can be sent and answered normally")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_send_new_message_after_stop_works(self, page, conversation_id, midturn_injection_enabled):
+        """ELITEA-2183 — extends ELITEA-2182: the post-stop send works, no trace of the stopped exchange.
+
+        AFS: test-specs/chat-interface/lextend_stop-generation-then-send-new-message-works_ELITEA-2183.md
+        """
+        chat = ChatPage(page)
+        stop_button = chat.STOP_BUTTON.within(chat.chat_inject_button)
+
+        with allure.step("Step 1 — Send 'generate a poem'; Stop control is visible while generating"):
+            chat.navigate_to_chat(conversation_id=conversation_id)
+            initial_count = chat.get_message_count()
+            chat.send_message(_PROMPT)
+            expect(stop_button).to_be_visible(timeout=STOP_VISIBLE_TIMEOUT)
+
+        with allure.step("Step 2 — Click Stop; input is restored with the exact original text"):
+            stop_button.click(timeout=5000)
+            expect(stop_button).to_have_count(0, timeout=RESTORE_TIMEOUT)
+            expect(chat.message_input).to_have_value(_PROMPT, timeout=RESTORE_TIMEOUT)
+
+        with allure.step("Step 3 — No user or assistant bubble remains for the stopped exchange"):
+            expect(chat.messages_container).to_have_count(initial_count, timeout=RESTORE_TIMEOUT)
+
+        with allure.step("Step 4 — Clear the input and type 'hello'; Send button appears"):
+            chat.message_input.fill("")
+            chat.message_input.fill(_SECOND_PROMPT)
+            expect(chat.send_button).to_be_visible(timeout=RESTORE_TIMEOUT)
+
+        with allure.step("Step 5 — Click Send; the new message is sent and the LLM answers"):
+            count_before_send = chat.get_message_count()
+            chat.send_message(_SECOND_PROMPT)
+            expect(chat.messages_container.filter(has_text=_SECOND_PROMPT)).to_be_visible(
+                timeout=STOP_VISIBLE_TIMEOUT
+            )
+            chat.wait_for_ai_response(initial_count=count_before_send)
+
+        with allure.step("Step 6 — No error shown; history holds only the new exchange, no stopped bubble"):
+            expect(chat.get_toast_alert("error")).to_have_count(0)
+            expect(chat.messages_container).to_have_count(count_before_send + 2)
+            expect(chat.messages_container.filter(has_text=_PROMPT)).to_have_count(0)
