@@ -1,0 +1,4 @@
+{"batch":"chat-new-conv-2455","spec":"tests/ui/chat/test_new_conversation_add_participants.py","result":"pass","seconds":25.35}
+{"batch":"chat-new-conv-2455","spec":"tests/ui/chat/test_new_conversation_add_participants.py","result":"pass","seconds":23.01}
+{"batch":"chat-new-conv-2455","spec":"tests/ui/chat/test_new_conversation_add_participants.py","result":"pass","seconds":24.04}
+{"verdict":"green","batch":"chat-new-conv-2455","runs":3,"at":"2026-10-20T15:41:33Z"}

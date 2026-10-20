@@ -192,6 +192,15 @@ class ChatPage(BasePage):
         ),
     )
 
+    # Toggle switch inside a plus-menu participant row (toolkit / MCP items,
+    # ELITEA-2455) — resolved within the row locator. role=switch is the MUI
+    # Switch's own ARIA contract; no testid on DEV.
+    PARTICIPANT_MENU_ITEM_SWITCH = ScopedLocator(
+        role="switch",
+        suggested_testid="chat-plus-menu-participant-switch",
+        description="Toggle switch within a toolkit/MCP participant row of the plus menu.",
+    )
+
     # ------------------------------------------------------------------
     # Sidebar / drawer
     # ------------------------------------------------------------------
@@ -820,6 +829,67 @@ class ChatPage(BasePage):
     # site of the same shared component is intentionally left unwired (out of
     # this case's executed code path, canon ruling #511).
     CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
+
+    # ------------------------------------------------------------------
+    # "Entity created via chat" chip (GeneratedEntityChip.jsx, ELITEA-3368) —
+    # ONE shared component across every in-chat "Build with AI"/create-via-
+    # chat flow (Agent/Pipeline/Toolkit/Skill/Project Context). Confirmed
+    # live: the chip's own container has NO onClick — only its two
+    # hover-revealed child buttons do (see open_generated_entity_chip()).
+    # ------------------------------------------------------------------
+
+    generated_entity_chip = LocatorDescriptor(
+        testid="generated-entity-chip",
+        description=(
+            "'Entity created' chip rendered below an assistant answer that "
+            "created an Agent/Pipeline/Toolkit/Skill/Project Context via "
+            "chat. Label text = the created entity's name. Only renders "
+            "once !isStreaming && !isLoading — wait for it, don't assume "
+            "it's present the instant the response text appears. Its own "
+            "container has NO onClick (confirmed live via source read) — "
+            "a bare .click() is a silent no-op; hover it first and use "
+            "GENERATED_ENTITY_CHIP_OPEN_BUTTON / "
+            "GENERATED_ENTITY_CHIP_DELETE_BUTTON."
+        ),
+    )
+
+    GENERATED_ENTITY_CHIP_OPEN_BUTTON = ScopedLocator(
+        role="button",
+        name="Open entity",
+        suggested_testid="generated-entity-chip-open-button",
+    )
+
+    GENERATED_ENTITY_CHIP_DELETE_BUTTON = ScopedLocator(
+        role="button",
+        name="Delete entity",
+        suggested_testid="generated-entity-chip-delete-button",
+    )
+
+    @action("Open a generated-entity chip's entity (hover then click Open entity)")
+    def open_generated_entity_chip(self, entity_label: str | None = None, timeout: int = 10000):
+        """Hover the 'entity created' chip and click its 'Open entity' button.
+
+        A bare click on the chip's own container does nothing (confirmed
+        live — the chip Box has no onClick, only its hover-revealed child
+        buttons do, ELITEA-3368). This method performs the required
+        hover-then-click sequence.
+
+        Args:
+            entity_label: When more than one chip could render in the same
+                answer, filter by the chip's visible label text (e.g.
+                "Project Context"). Not needed when exactly one chip is
+                expected (the common case).
+            timeout: Maximum wait time in milliseconds.
+        """
+        chip = self.generated_entity_chip
+        if entity_label:
+            chip = chip.filter(has_text=entity_label)
+        chip.first.wait_for(state="visible", timeout=timeout)
+        chip.first.hover()
+        open_btn = self.GENERATED_ENTITY_CHIP_OPEN_BUTTON.within(chip.first)
+        open_btn.wait_for(state="visible", timeout=timeout)
+        open_btn.click(timeout=timeout)
+        logger.info("Opened generated-entity chip (label filter=%r)", entity_label)
 
     # ------------------------------------------------------------------
     # HITL sensitive-action authorization card — direct toolkit call, no
@@ -4393,6 +4463,15 @@ class ChatPage(BasePage):
         row.first.wait_for(state="visible", timeout=timeout)
         return row.first
 
+    def get_participant_row_count(self) -> int:
+        """Return the number of participant rows currently rendered in the
+        EXPANDED Participants panel (``PARTICIPANT_ROW_PREFIX``, ELITEA-3368).
+
+        Call after :meth:`expand_participants_panel_via_toggle`. Zero means
+        no entity (of any type) is currently a chat participant.
+        """
+        return self.page.locator(self.PARTICIPANT_ROW_PREFIX).count()
+
     def get_participant_avatar(self, participant_row, timeout: int = 10000):
         """Return the avatar ``<img>`` Locator scoped inside *participant_row*
         (an EXPANDED PARTICIPANTS panel row from
@@ -6539,17 +6618,6 @@ class ChatPage(BasePage):
     # the last message, so declared as a data-testid constant.
     GENERATED_ENTITY_CHIP = '[data-testid="generated-entity-chip"]'
 
-    GENERATED_ENTITY_OPEN_BUTTON = ScopedLocator(
-        role="button",
-        name="Open entity",
-        suggested_testid="chat-generated-entity-chip-open-button",
-        description=(
-            "Chip's 'Open entity' icon button; rendered visible only while the chip "
-            "is hovered (isHovering state) — hover the chip first. role+name: no "
-            "testid on DEV."
-        ),
-    )
-
     skill_canvas_save_button = LocatorDescriptor(
         role="button",
         name="Save",
@@ -6571,17 +6639,6 @@ class ChatPage(BasePage):
         """Return the visible labels of all generated-entity chips in the last message."""
         chips = self.messages_container.last.locator(self.GENERATED_ENTITY_CHIP)
         return [(chips.nth(i).inner_text() or "").strip() for i in range(chips.count())]
-
-    @action("Open the generated entity from the chip in the last message")
-    def open_generated_entity_chip(self, timeout: int = 10000):
-        """Hover the (single) generated-entity chip in the last message and click
-        its 'Open entity' button, which opens the entity editor as a Canvas."""
-        chip = self.messages_container.last.locator(self.GENERATED_ENTITY_CHIP).first
-        chip.wait_for(state="visible", timeout=timeout)
-        chip.hover()
-        open_btn = self.GENERATED_ENTITY_OPEN_BUTTON.within(chip)
-        open_btn.wait_for(state="visible", timeout=timeout)
-        open_btn.click()
 
     def get_current_conversation_id(self) -> int | None:
         """Return the numeric conversation id parsed from the current URL, or None."""
@@ -6616,3 +6673,87 @@ class ChatPage(BasePage):
             return
         self.platform_banner_got_it_button.within(self.platform_banner_dialog).click()
         self.platform_banner_dialog.wait_for(state="hidden", timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # New conversation + four participant types via the plus menu (ELITEA-2455)
+    # ------------------------------------------------------------------
+
+    agents_search_input = LocatorDescriptor(
+        testid="agents-search-input",
+        description="Search field inside the plus-menu's Agents submenu (placeholder 'Search agents...').",
+    )
+
+    pipelines_search_input = LocatorDescriptor(
+        testid="pipelines-search-input",
+        description="Search field inside the plus-menu's Pipelines submenu.",
+    )
+
+    toolkits_create_new_button = LocatorDescriptor(
+        testid="toolkits-create-new-button",
+        description="'Create Toolkit' item inside the plus-menu's Toolkits submenu.",
+    )
+
+    # Dynamic menu-row testids (project id, entity id). Agent/Pipeline rows
+    # select-and-close the popper; Toolkit/MCP rows are toggles (see above).
+    AGENT_PARTICIPANT_MENU_ITEM = '[data-testid="agents-menu-item-agent-{}-{}"]'
+    PIPELINE_PARTICIPANT_MENU_ITEM = '[data-testid="pipelines-menu-item-pipeline-{}-{}"]'
+
+    PARTICIPANT_SECTION_TITLE = ScopedLocator(
+        xpath="//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
+        suggested_testid="chat-participants-section-title-{}",
+        description=(
+            "Participants-panel group header (AGENTS/PIPELINES/TOOLKITS/MCPS; text is "
+            "'Agents'... uppercased by CSS) -- ParticipantsAccordion title Typography, no "
+            "testid on DEV; css classes are generated/structural so xpath is the declared "
+            "last resort; anchored on structure (title span whose wrapper follows the accordion's arrow svg), not on MUI classes; excludes the sidebar nav / plus-menu list items (same text). Format arg: 'Agents' | 'Pipelines' | 'Toolkits' | 'MCPs'."
+        ),
+    )
+
+    PARTICIPANT_ICON_PATHS = ScopedLocator(
+        css="svg path",
+        suggested_testid="chat-participant-icon-path",
+        description=(
+            "Every SVG path inside a participant row/card (type icon + connection/info icons). "
+            "The entity-type icon has no testid and no unique handle, so tests enumerate ALL "
+            "paths (no positional pick) and compare the whole signature between rows. "
+            "Declared improvisation: signature comparison instead of picking the type icon."
+        ),
+    )
+
+    PARTICIPANT_ATTENTION_CARD = ScopedLocator(
+        xpath="//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
+        suggested_testid="chat-participant-attention-card-{}",
+        description=(
+            "Participant card rendered in 'attention' form (misconfigured / disconnected entity, "
+            "e.g. a remote MCP without a session): it carries NO chat-participant-row-* testid, so "
+            "it is found as the parent of its warning row that contains the entity name. "
+            "Format arg: the entity name."
+        ),
+    )
+
+    @action("Close plus-menu popper via outside click on the blank-chat greeting")
+    def close_plus_menu_popper_on_blank_chat(self, timeout: int = 5000):
+        """Outside click for a brand-new unsent conversation, where ``messages_list``
+        is not rendered (``close_plus_menu_popper`` needs it). Clicks the greeting."""
+        self.new_conversation_greeting.click(position={"x": 5, "y": 5})
+        expect(self.toolkits_menuitem).to_be_hidden(timeout=timeout)
+
+    def get_participant_section_title(self, plural_name: str):
+        """Locator for a panel group header ('Agents'|'Pipelines'|'Toolkits'|'MCPs')."""
+        return self.PARTICIPANT_SECTION_TITLE.within(self.page, plural_name)
+
+    def get_participant_attention_card(self, name: str):
+        """The attention-form participant card (warning row inside) for entity *name*."""
+        return self.PARTICIPANT_ATTENTION_CARD.within(self.page, name)
+
+    def get_participant_warning_cards(self):
+        """All misconfiguration warning cards currently rendered in the panel."""
+        return self.page.locator(self.PARTICIPANT_WARNING_ICON)
+
+    def get_participant_icon_signature(self, participant_row) -> str:
+        """Concatenated ``d`` of every SVG path in *participant_row* (enumerates all, picks none).
+
+        Rows differ only by entity type in their icon set, so signatures are pairwise
+        distinct across agent / pipeline / toolkit / MCP."""
+        paths = self.PARTICIPANT_ICON_PATHS.within(participant_row)
+        return "|".join(paths.evaluate_all("els => els.map(e => e.getAttribute('d') || '')"))

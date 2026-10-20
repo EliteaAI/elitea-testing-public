@@ -1060,6 +1060,32 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.chat.test_chat_project_context_builder.TestChatProjectContextBuilder.test_create_and_update_project_context_via_chat_chip_canvas",
+      "markers": [
+        "chat",
+        "new",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3368"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.chat.test_chat_project_context_cross_project_isolation.TestChatProjectContextCrossProjectIsolation.test_project_context_isolated_to_current_project",
+      "markers": [
+        "chat",
+        "new",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3315"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[10k_tokens]",
       "markers": [
         "chat",
@@ -1103,6 +1129,18 @@
       ],
       "tms_case_ids": [
         "ELITEA-0679"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.chat.test_new_conversation_add_participants.TestNewConversationParticipants.test_new_conversation_add_four_participant_types",
+      "markers": [
+        "chat",
+        "p1",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2455"
       ]
     },
     {

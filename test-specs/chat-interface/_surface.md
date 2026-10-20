@@ -2,9 +2,238 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
+a time; last confirmed by: qa-engineer analyst, ELITEA-3315, 2026-10-17
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: ELITEA-3369, 2026-10-17).
+
+## Project Context — cross-project isolation + project switch (ELITEA-3315)
+
+- **`ProjectContextContent.jsx`'s `useProjectContextQuery` is keyed purely by
+  `useSelectedProjectId()`** — confirmed via source read: zero cross-project
+  awareness of any kind, no special-casing for "other projects". Switching
+  the active project (sidebar selector / `BasePage.switch_project()`)
+  reactively re-queries on the SAME page instance with **no explicit
+  page reload/re-navigate needed** — confirmed live: `/settings/project-context`
+  correctly flips from Project A's populated editor content to Project B's
+  empty-state ("Still no Project Context" + `project-context-create-button`)
+  immediately after `switch_project()` returns, no intervening `page.goto()`.
+- **A second project for isolation/cross-project tests is discovered at
+  runtime via `ProjectAPI.list_projects()`** (same pattern
+  `test_pipeline_fork_to_different_project.py`'s `_resolve_source_project_id()`
+  already established for a different case) — never hardcode a second
+  project id. This session resolved: `1` ("promptlib_public", public, always
+  excluded), `470` ("Elitea Automation"), `575` ("project_user_940", UI
+  label "Private", `${ELITEA_PROJECT_ID}`). `GET
+  /api/v2/projects/project/default/1?check_public_role=true` is the
+  underlying request.
+- **`ProjectContextAPI` already accepts an explicit `project_id` override**
+  in its constructor (`ProjectContextAPI(browser_cookies=..., project_id=str(other_id))`)
+  — use a SECOND instance scoped to the other project for cross-project API
+  verification; don't mutate the shared session-scoped `project_context_api`
+  fixture (stays pinned to `ELITEA_PROJECT_ID` for every other test that
+  uses it).
+- **The Settings → Project Context "enabled" toggle switch
+  (`EnableToggleCard.jsx`'s `Switch.BaseSwitch`, saved-view only — NOT the
+  empty-state or the editor) has ZERO testid/aria-label/name of any kind**
+  — confirmed via full source read, `role="switch"` only, nothing else.
+  Distinct from the chat Modules-panel toggles (which DO have
+  `modules-toggle-{tool_key}` testids) — don't confuse the two. No case so
+  far clicks or reads this control directly (ELITEA-3315 asserts "enabled"
+  via the API's own `enabled: true` field instead); flagged here for
+  whichever future case first needs it (`suggested_testid=
+  "project-context-enabled-toggle"` if that case arrives).
+- **Project selector trigger's visible text concatenates a leading
+  avatar-letter glyph with the project label** — confirmed live:
+  `"PProject:Private"` for Project A (575), `"EProject:Elitea Automation"`
+  for Project B (470). Assert via substring/contains on the label, never an
+  exact string match (the leading glyph is cosmetic, not confirmed stable
+  across every project name's first letter).
+
+## Ask User clarifying-question card (`ClarifyingQuestionControl`, ELITEA-3369)
+
+- **BOTH `project_context_builder` AND `ask_user` modules must be enabled
+  per-conversation to reach the clarifying-question card for an ambiguous
+  Project Context request.** `ask_user`'s default is OFF too
+  (`GET /api/v2/social/module_settings/{project_id}` →
+  `default_ask_user_enabled: false`), same per-conversation-toggle mechanism
+  already documented below for `project_context_builder`. Confirmed live:
+  `ChatPage.ensure_module_toggle_checked()` (existing, built for ELITEA-3368)
+  works UNCHANGED for the `ask_user` key too (no confirmation toast, same as
+  `project_context_builder`).
+- **Omitting `ask_user` causes SILENT degradation, not a visible failure.**
+  With only `project_context_builder` enabled, the identical ambiguous
+  message ("Set up project context for this.") gets a plain text follow-up
+  question in the chat response ("There is no project context configured
+  yet. Please provide the project background...") — no `ask_user` tool chip,
+  no clarifying-question card, no stepper. A test that forgets to enable
+  `ask_user` will NOT clearly fail on that precondition — it will just never
+  see the card and fail several steps later with a confusing symptom.
+- **`ClarifyingQuestionControl.jsx` (confirmed via full source read) renders
+  ZERO testids anywhere** — the whole card is a plain `<Box>` with no
+  `data-testid`, no `role`, no `aria-label`. Detect the card's
+  presence/absence via its custom-text input instead (next bullet).
+- **The card's custom-text input has a `placeholder="Your option"` but NO
+  `aria-label`/`<label>`** — confirmed live `get_by_label("Your option")`
+  returns 0 matches; use `css='input[placeholder="Your option"]'` (rung 4),
+  not `label=`.
+- **A stepper (`"1/2"`, `"2/2"`, ...) only renders when the question set has
+  MORE THAN ONE entry** (`total > 1` in source) — a single-question flow
+  (confirmed live reachable with a fuller Q1 answer, see below) shows no
+  stepper at all. Don't assert the stepper's mere presence as a flow
+  invariant; assert its text only within a test that has already confirmed
+  a multi-question run.
+- **The submit button's ACCESSIBLE NAME toggles `"Skip"` ⇄ `"Continue"`**
+  based on whether the current question has been answered (`answered`
+  boolean in source) — no `aria-pressed`/`data-*` state attribute exists, so
+  the name itself is the only differentiator. No testid on this button
+  either. Flagged as a `question` for the lead/testid-migrator (a genuine
+  state-dependent-NAME locator, not a state-dependent-handle violation with
+  a cleaner alternative available) — `suggested_testid=
+  "chat-clarifying-question-submit-button"` would retire the ambiguity.
+- **Selecting an option on a NON-last question auto-advances the stepper**
+  (`handleSelectSingle` calls `goNext()`); **selecting an option on the LAST
+  question does NOT auto-submit** — the submit button must still be clicked.
+  Confirmed live and in source (`if (!isLastStep) goNext()` — the final step
+  has no equivalent auto-submit branch). A test that assumes the last
+  radio-click alone completes the flow will hang waiting for the response.
+- **Option rows have no testid and the nested radio control itself has
+  `pointerEvents: 'none'`** — click the Typography/row text instead
+  (`get_by_text(exact_option_label)`), confirmed live this reliably hits the
+  row's own `onClick`.
+- **Live question content for the case's own Test Data message ("Set up
+  project context for this.") is a reproducible 2-question sequence**
+  (confirmed deterministic 3/3 with a SHORT single-sentence Q1 answer): Q1 —
+  open-ended project-background free text; Q2 — single-select "when should
+  the model load the full context", options `"Always"` / `"When relevant"`
+  (option LABELS stable verbatim across all 3 runs — safe to assert exactly;
+  the Q1 question's exact WORDING varies run to run, assert topically only).
+  **This is NOT a fixed invariant of the `ask_user` tool in general** — a
+  fuller Q1 answer (explicitly stating scope inline) was observed to collapse
+  the flow to a SINGLE question before completing. Scope any "N questions"
+  assertion to the specific test's own run, never assert it as a general
+  product fact.
+- **The case-text's named scope options ("current project only / all
+  conversations / specific Agent or Pipeline") do not exist anywhere in the
+  live card** — this is a case-text/product-intent gap, not a defect (the
+  feature's actual purpose — ask for missing info, use the answer — IS met);
+  see ELITEA-3369's AFS Known Defects for the full clarification writeup.
+
+## Project Context chip + in-chat Canvas (`generated-entity-chip`, ELITEA-3368)
+
+- **`project_context_builder` module toggle is OFF by default, per-conversation**
+  (`GET /api/v2/social/module_settings/{project_id}` → `default_project_context_builder_enabled:
+  false`, confirmed live for this project). Every new conversation starts
+  with it unchecked — enable via the `+` menu → Modules submenu's
+  `modules-toggle-project_context_builder` switch (already in
+  `ChatPage.MODULE_TOGGLE_ORDER`) before sending a creation message, same
+  mechanism every other module key uses.
+- **Submenu-interception gotcha, confirmed live**: after clicking a Modules
+  toggle, the submenu/tooltip stays open and its DOM intercepts pointer
+  events on the composer underneath (`subtree intercepts pointer events`
+  Playwright error on a subsequent `composer.click()`) unless explicitly
+  dismissed first (`close_modules_panel()`, or click elsewhere on the page
+  body — both confirmed to work live).
+- **`generated-entity-chip` is the SAME component used for every in-chat
+  create flow** (Agent/Pipeline/Toolkit/Skill/Project-Context "Build with
+  AI"/create-via-chat) — `GeneratedEntityChip.jsx`, testid
+  `data-testid="generated-entity-chip"`, label text = the entity's name
+  (literal `"Project Context"` for this entity type). **NOT YET** a declared
+  `ChatPage` field as of this session — only confirmed live via raw DOM
+  query, not yet added as a `LocatorDescriptor`. Only renders once
+  `!isStreaming && !isLoading` (same `ApplicationAnswer.jsx` gating as every
+  other entity-chip type) — wait for the chip, don't assume it's present
+  immediately after the response text appears.
+- **A bare click on the chip's own `Box` container is a no-op** — confirmed
+  live via full source read (`GeneratedEntityChip.jsx` has no `onClick` on
+  the main container). The chip must be HOVERED first to reveal two child
+  buttons: `role="button" name="Open entity"` (opens the Canvas,
+  `onEntityCreated?.(entity, true)`) and `role="button" name="Delete entity"`
+  (opens a confirm-delete modal). **Neither button carries a testid** —
+  `suggested_testid="generated-entity-chip-open-button"` /
+  `"generated-entity-chip-delete-button"`.
+- **The in-chat Project Context Canvas reuses `ProjectContextPage`'s
+  EXISTING testids verbatim** (`project-context-editor-content`,
+  `project-context-save-button`, `project-context-char-counter` — all from
+  ELITEA-2272, confirmed identical live inside the chat-hosted Canvas, same
+  `ProjectContextEditor.jsx` component the Settings page's "Create" flow
+  also renders). Compose `ProjectContextPage(page)` on the SAME `page`
+  rather than redeclaring these — same pattern as `AgentCanvasPage`+
+  `AgentFormPage`.
+- **Canvas heading has NO testid** — `ProjectContextEditor.jsx`'s
+  `<BaseEditor title="Project Context">` call never passes `titleTestId`
+  (prop exists, wired end-to-end in `EditorHeader.jsx`, same omitted-prop
+  gap `mcp-canvas-title`/`agent-canvas-title` had before their own fixes).
+  `suggested_testid="project-context-canvas-title"`. Confirmable live only
+  by exact text match (`"Project Context"`).
+- **Canvas close (X) button has NO testid either** — same `EditorHeader.jsx`
+  close `IconButton`, same omitted `closeButtonTestId` prop at
+  `ProjectContextEditor.jsx`'s `<BaseEditor>` call site.
+  `suggested_testid="project-context-canvas-close-button"`. Scope
+  non-positionally to a Canvas-container ancestor and pick the one
+  icon-button with no visible text inside that scope — do NOT pick by raw
+  page-wide coordinate (an exploration-only scratch-script expedient, never
+  a shipped locator shape).
+- **Project Context is a per-project SINGLETON, not a list** — the case-text
+  phrase "navigate to the Project Context list" does not map to any literal
+  UI element; `GET .../project-context` always returns one object (never a
+  collection) and the Settings sidebar has a single "Project Context" item,
+  not a list/table view. Verify "no duplicate was created" via the same
+  singleton GET endpoint (`id` stable before/after an update), not a UI list
+  navigation.
+- **Project Context is correctly NOT auto-added as a chat participant** —
+  confirmed live: immediately after chip/Canvas-open, the expanded
+  PARTICIPANTS panel (`expand_participants_panel_via_toggle()`) shows ZERO
+  rows (`PARTICIPANT_ROW_PREFIX` count == 0) and no badge of any kind,
+  unlike Agent/Pipeline/Toolkit/MCP/Skill creation, all of which DO add a
+  participant on completion. This is this entity type's own correct,
+  distinct behavior — not a regression of the participant-add pattern.
+- **Create path = one tool call that generates AND saves**: the create
+  message's tool-chip reads `"Elitea Project Context:
+  post_elitea_core_generate_project_context_draft"`, and the content is
+  already persisted (confirmed via API GET) with no separate manual Save
+  click — matching the sibling (unmerged) ELITEA-3254 test's own documented
+  drift note. The UPDATE path instead shows a read-then-write PAIR of chips:
+  `"...get_project_context_project-context"` then
+  `"...put_project_context_project-context"`.
+- **AI-generated content is non-deterministic** (same caveat as the
+  AI-generated-table family above) — six separate create-prompt runs this
+  session produced six differently-worded responses, all topically
+  faithful. Never assert exact generated text; assert non-empty + topical
+  keyword presence, and use the API-level `id` for the no-duplicate check.
+
+**Resolved/confirmed during ELITEA-3368 implementation (2026-10-17, extends
+the section above, does not supersede any of it):** every handle/quirk
+documented above held exactly as analyzed, across 2 independent live runs
+(project 575) — the create-message tool-chip's text contains BOTH
+`"Elitea Project Context"` and the substring `"generate_project_context_draft"`
+(asserted as a substring match, not the full literal string, so this does
+not independently re-confirm whether the live text has a `post_elitea_core_`
+prefix or any other wrapping — only that the documented substring is present).
+`ChatPage.generated_entity_chip`/`open_generated_entity_chip()`
+and `ProjectContextChatCanvasPage` (new page object, mirrors `McpCanvasPage`'s
+shape) now exist in `pages/chat_page.py` / `pages/project_context_chat_canvas_page.py`
+— reuse them rather than re-deriving the hover-then-click sequence or the
+canvas-chrome locators on any future case touching this same chip/canvas.
+`ChatPage.ensure_module_toggle_checked()` (toast-less toggle) and
+`close_modules_panel()`'s zero-message fallback also now exist — reuse
+directly. `api.client.ProjectContextAPI` + `project_context_api`/
+`clean_project_context` fixtures now exist in this branch's `api/client.py`/
+`fixtures/`.
+a time; last confirmed by: qa-engineer analyst, ELITEA-2875/2876/2877/2878,
+2026-10-16 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: ELITEA-2458, 2026-08-07).
 a time; last confirmed by: qa-engineer analyst, ELITEA-3366, 2026-10-19
 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: ELITEA-2875/2876/2877/2878, 2026-10-16).
+
+## New conversation + plus-menu participants + warning card (ELITEA-2455, 2026-10-20)
+
+- Submenus (Agents/Pipelines/Toolkits/MCPs) open on HOVER of `*-menuitem`; Agent/Pipeline pick closes the popper, Toolkit/MCP are `role=switch` toggles that keep it open. Menu also has `skills-menuitem`; no "Invite Users" in a private project. Create-new buttons: `agents-create-new-button` ("Create Agent") etc.; item testids `{agents|pipelines|toolkits|mcps}-menu-item-{type}-{project}-{id}`.
+- Participants panel collapsed by default (`chat-participants-panel-toggle-button`); group headers AGENTS/PIPELINES/TOOLKITS/MCPS are testid-less text; row ids re-key after first Send (entity id -> participant-link id).
+- `chat-participant-warning-icon` is a SIBLING card under the misconfigured row (disconnected MCP: "Server is disconnected! Reconnect it to use. Log in.", amber #F2994A).
+- Input "Type your message..." is not a placeholder attribute. Playwright MCP Chrome was missing on this host; repo python Playwright + storage state works for probing.
+- Full detail: `l1_new-conversation-add-agent-pipeline-toolkit-mcp-participants_ELITEA-2455.md`.
+- **Resolved/added during ELITEA-2455 implementation:** (a) the disconnected MCP participant renders as an *attention card* (no `chat-participant-row-*` testid, before AND after Send; name resolves only after Send) -> only 3 `chat-participant-row-*` exist; the MCP card is found via its `chat-participant-warning-icon` parent. (b) "Type your message..." is not in the DOM at all (placeholder="" and no text/pseudo-element) on DEV. (c) `messages_list` (`chat-message-list`) is not rendered in a blank chat, so `close_plus_menu_popper` times out there; use `close_plus_menu_popper_on_blank_chat` (clicks the greeting). (d) Fixtures `agent_id`/`pipeline_id` share an identical truncated name; spec creates distinctly named ones. (e) A pipeline participant makes the "Hi" send run the pipeline; leaving the chat prompts a "Response generation is still in progress" Switch dialog.
 
 ## In-chat Skill creation via the "Skills Builder" module + GeneratedEntityChip (ELITEA-3366, 2026-10-19)
 

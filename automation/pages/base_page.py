@@ -153,6 +153,11 @@ class BasePage:
         description="Sidebar project selector combobox trigger.",
     )
 
+    platform_banner_close = LocatorDescriptor(
+        testid="platform-banner-close",
+        description="'Got it' button of the platform announcement dialog (platform-banner-center).",
+    )
+
     # Dynamic testid for project-selector dropdown options
     SELECT_OPTION = '[data-testid="select-option-{}"]'
 
@@ -347,6 +352,40 @@ class BasePage:
             logger.info("Dismissed banner overlay")
         else:
             logger.debug("No banner overlay found to dismiss")
+
+    #: Max wait (ms) for the platform announcement dialog to show up. Short on
+    #: purpose: absence is the common case and must stay cheap.
+    ANNOUNCEMENT_APPEAR_TIMEOUT = 2500
+
+    def dismiss_announcement_dialog_if_present(self) -> None:
+        """Close the platform announcement dialog ("Got it") if it is showing.
+
+        DEV shows a MuiDialog (``platform-banner-center``) whose container
+        intercepts pointer events, so later clicks time out. Best-effort transit
+        machinery like :meth:`dismiss_banner_if_present`: absence is not an
+        error, and a navigation race is tolerated (skipped quietly); any other
+        Playwright error still raises.
+        """
+        try:
+            self.platform_banner_close.wait_for(state="visible", timeout=self.ANNOUNCEMENT_APPEAR_TIMEOUT)
+        except PlaywrightTimeoutError:
+            logger.debug("No platform announcement dialog found to dismiss")
+            return
+        except PlaywrightError as error:
+            if not is_navigation_race_error(error):
+                raise
+            logger.info("Skipping announcement dismissal — navigation race (%s)", error)
+            return
+        try:
+            self.platform_banner_close.click(timeout=self.ANNOUNCEMENT_APPEAR_TIMEOUT)
+            self.platform_banner_close.wait_for(state="hidden", timeout=self.ANNOUNCEMENT_APPEAR_TIMEOUT)
+            logger.info("Dismissed platform announcement dialog")
+        except PlaywrightTimeoutError:
+            logger.debug("Announcement dialog closed or vanished before the click completed")
+        except PlaywrightError as error:
+            if not is_navigation_race_error(error):
+                raise
+            logger.info("Skipping announcement dismissal — navigation race (%s)", error)
 
     def dismiss_nps_survey_if_present(self) -> None:
         """Dismiss NPS survey popup(s) if present.

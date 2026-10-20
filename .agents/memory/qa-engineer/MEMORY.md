@@ -52,3 +52,4 @@
 - [DEV password schema changed 2026-10-15](dev_password_schema_changed_2026_10_15.md) — login fails? check `.env.test` predates commit `13e68be3` before assuming a bug
 - [Pipeline attachment content needs toolkit wired](pipeline_attachment_content_needs_artifact_toolkit_wired.md) — Attachments toggle alone never lets an LLM read file bytes
 - [Ask-User card non-deterministic for builder prompts](ask_user_clarifying_card_nondeterministic_for_builder_modules.md) — never assert it always/never fires; branch and poll both outcomes
+- [Ask User toggle silently degrades, not fails](chat_ask_user_module_toggle_silent_degradation.md) — enable it explicitly or a HITL-card case fails downstream, confusingly

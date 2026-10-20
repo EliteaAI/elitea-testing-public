@@ -1,0 +1,99 @@
+{
+ "batch": "chat-new-conv-2455",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-chat-new-conv-2455",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   25.35,
+   23.01,
+   24.04
+  ],
+  "failures": [],
+  "note": "Lead's own gate (3 separate DEV invocations, APP_PREFIX=/app exported). Workflow's gate was a false red: automation/.env.test absent on host => APP_PREFIX unset => 404."
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2455",
+   "outcome": "automated",
+   "note": "reviewed APPROVED (round 2), merged to trunk; lead gate 3/3 green",
+   "findings": [
+    {
+     "kind": "note",
+     "note": "Sandbox gotcha: `automation/.env.test` is absent here, so `APP_PREFIX` defaults to empty and every page-object `navigate()` hits `dev.elitea.ai/chat` (404). Any run in this sandbox needs `APP_PREFIX=/app` exported, or a recreated `.env.test` symlink. The failure looks like a product or test fault but is not."
+    },
+    {
+     "kind": "note",
+     "note": "`.venv/bin/ruff` is not installed, so the CLAUDE.md lint step (`ruff check .`) could not run."
+    },
+    {
+     "kind": "defect",
+     "note": "Mechanical ladder grep over `git diff origin/main...tests/ELITEA-2455-new-conversation-participants -- automation` returned one non-compliant hit. It is `toolkit_item.get_by_role(\"switch\")` and `mcp_item.get_by_role(\"switch\")` in Step 5 of the spec. Every other hit passes an UPPER_CASE `[data-testid=` constant, or chains `.locator(<testid constant>)` off a row, so it is compliant on the one-hop ch\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_new_conversation_add_participants.py:Step 5"
+    },
+    {
+     "kind": "note",
+     "note": "Step 15 / AFS 7 (distinct type icons) is vacuous for MCP. `PARTICIPANT_ATTENTION_CARD` is the parent of the warning row. The MCP signature therefore includes the warning/info icon paths that the other three rows do not have. `len(set(icons))==4` would pass even if the MCP type icon equalled another type's. The agent, pipeline and toolkit comparison is real. The AFS declares the improvisation, so I\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/pages/chat_page.py:get_participant_icon_signature"
+    },
+    {
+     "kind": "note",
+     "note": "Coverage Map triangulation against the case snapshot: steps 1-17, 19 and 20 map to real assertions at the right step. Declared drifts: step 2 ('Type your message...' not rendered on DEV), step 5 ('Invite Users' absent in a private project, asserted count 0), step 6 ('Create Agent' label) and step 18 (owner icon not rendered in a private project). I found no hidden skip, xfail or weakened assertion\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "test-specs/chat-interface/l1_new-conversation-add-agent-pipeline-toolkit-mcp-participants_ELITEA-2455.md"
+    },
+    {
+     "kind": "note",
+     "note": "Cleanup leak risk. `conversation_api.delete_conversation(conv_id)` is called with the numeric URL id. The AFS says that numeric id returned 404 in the analyst probe and that the uuid is needed. The failure is swallowed to a warning, so each run (and each of the 3 gate runs) may leak a conversation on DEV. Other specs use the same numeric call, so I did not block. The implementer should confirm the\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_new_conversation_add_participants.py:finally"
+    },
+    {
+     "kind": "note",
+     "note": "Nits. (a) The spec has 9 lines over 120 characters and the page object has 1, so `ruff check` E501 will fail. Run it before landing. (b) `toolkits_create_new_button` is added in ChatPage but never used. Steps 10 and 12 ('submenu with toggle switches / create option') only assert the switch after the click, not its presence before. The Toolkits/MCPs create-new button and a switch-visible assertion \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "automation/.env.test is missing in this checkout (the symlink to ../../.env.test does not resolve), and APP_PREFIX is not exported. Without APP_PREFIX=/app every UI spec lands on a 404 page and fails at navigate_to_chat(). The lead's 3x DEV gate needs APP_PREFIX=/app (or the env file restored) or it will fail spuriously."
+    },
+    {
+     "kind": "note",
+     "note": "I did not run the lead's locator_inventory.py scan delta on base and branch. The lead re-runs it for the closure record anyway."
+    },
+    {
+     "kind": "note",
+     "note": "Round-2 fix verified. The spec's two raw get_by_role('switch') calls are gone. The switch is now a class-level ScopedLocator(role='switch', suggested_testid='chat-plus-menu-participant-switch', description=...). The spec calls it via .within(row) at Step 5, for both the toolkit and MCP rows. The name argument is documented as optional in locator_descriptor.py. Each row holds a single switch, so th\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "chat_page.py PARTICIPANT_MENU_ITEM_SWITCH"
+    },
+    {
+     "kind": "note",
+     "note": "Mechanical ladder grep over `git diff main...branch -- automation/tests` for get_by_*, query_selector, .nth(, locator=, fallback= returned 0 hits (no matches). In automation/pages the diff's raw `page.locator` calls take only UPPER_CASE data-testid constants or declared constants (PARTICIPANT_WARNING_ICON, PARTICIPANT_ROW_PREFIX). The spec's `page.locator(chat.X.format(...))` calls take `[data-tes\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation of the 20 case steps against the spec. Steps 1-3 (empty input, empty panel) map to spec Step 1. Step 5 menu items and '10 left' map to spec Step 2. Steps 6-13 map to spec Steps 3-5. Step 14 (section order) is asserted by comparing y-positions in spec Step 6. Step 15 (distinct icons) is spec Steps 7-8. Step 16 (no dupes, no error toast) is spec Step 6. Steps 17-19 are spec Step 8. Ste\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case text disagrees with live DEV. There is no 'Type your message...' placeholder, and the spec asserts an empty, editable input instead. 'Invite Users' is absent in a private project, and the spec asserts count 0. The owner icon is not rendered, so step 18 is not asserted. The warning is amber, not yellow. All four are documented in the spec docstring and the AFS. The case-text clarifications sho\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "case steps 2, 5, 18, 20"
+    },
+    {
+     "kind": "note",
+     "note": "Icon distinctness is compared by SVG path signature. This is a declared improvisation (documented in the PARTICIPANT_ICON_PATHS description) and the reasoning is sound. Recommend adding it to the canon.",
+     "ref": "spec Step 7"
+    }
+   ],
+   "afs": "test-specs/chat-interface/l1_new-conversation-add-agent-pipeline-toolkit-mcp-participants_ELITEA-2455.md",
+   "branch": "tests/ELITEA-2455-new-conversation-participants",
+   "pr": 2506
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": []
+}

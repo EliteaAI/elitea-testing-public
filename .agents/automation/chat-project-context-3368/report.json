@@ -1,0 +1,21 @@
+{
+ "batch": "chat-project-context-3368",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-chat-project-context-builder",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "by": "lead",
+  "note": "3 separate pytest invocations on the trunk, APP_PREFIX=/app HEADLESS=true --reruns 0: 3/3 passed (98.5s, 96.9s, 86.1s). Earlier gate attempts were red or rerun-masked on ELITEA-3369 (Ask User card nondeterministic, see #2497 pattern) and on LLM tool-name pins in 3368; 3369 reverted off the trunk, 3368 pin relaxed as a declared improvisation.",
+  "specs": [
+   "tests/ui/chat/test_chat_project_context_builder.py",
+   "tests/ui/chat/test_chat_project_context_cross_project_isolation.py"
+  ]
+ },
+ "cases": [
+  {"id": "ELITEA-3368", "outcome": "automated", "review": "APPROVED", "spec": "tests.ui.chat.test_chat_project_context_builder.TestChatProjectContextBuilder.test_create_and_update_project_context_via_chat_chip_canvas"},
+  {"id": "ELITEA-3315", "outcome": "automated", "review": "APPROVED", "note": "carried on the same trunk; card #2500", "spec": "tests.ui.chat.test_chat_project_context_cross_project_isolation.TestChatProjectContextCrossProjectIsolation.test_project_context_isolated_to_current_project"},
+  {"id": "ELITEA-3369", "outcome": "blocked", "note": "reverted off trunk: Ask User clarification card flaky (failed 2 of 3 reruns-disabled gate runs); card #2499"}
+ ]
+}
