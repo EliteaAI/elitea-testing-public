@@ -1154,6 +1154,7 @@ class ChatPage(BasePage):
     # per the testid=identity/state=data-* ruling.
     CONVERSATION_MENU_ITEM_KEYS = (
         "rename", "move-to", "playback", "make-public", "share", "pin", "delete",
+        "export",
     )
 
     # ------------------------------------------------------------------
@@ -1214,6 +1215,40 @@ class ChatPage(BasePage):
     # Severity-scoped toast alert selector — testid identity + data-severity
     # state filter, the compliant shape for a state-dependent assertion.
     TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
+    # ------------------------------------------------------------------
+    # Export-chat modal (ELITEA-3784) — ExportConversationModal.jsx.
+    # All testids observed on DEV by the analyst.
+    # ------------------------------------------------------------------
+    export_chat_modal = LocatorDescriptor(
+        testid="export-chat-modal",
+        description="'Export chat' modal opened from the conversation context menu's Export item.",
+    )
+    export_chat_modal_chat_name = LocatorDescriptor(
+        testid="export-chat-modal-chat-name",
+        description="Chat name shown inside the Export chat modal.",
+    )
+    export_chat_modal_export_button = LocatorDescriptor(
+        testid="export-chat-modal-export-button",
+        description="'Export' confirm button of the Export chat modal.",
+    )
+    export_chat_modal_option_without = LocatorDescriptor(
+        testid="export-chat-modal-option-without",
+        description="'Without attachments' option wrapper (default selected).",
+    )
+    export_chat_modal_option_with = LocatorDescriptor(
+        testid="export-chat-modal-option-with",
+        description="'With attachments' option wrapper (disabled when the chat has no attachments).",
+    )
+    export_chat_modal_option_radio = ScopedLocator(
+        css='input[type="radio"]',
+        suggested_testid="export-chat-modal-option-radio",
+        description="Radio input inside an export option wrapper; resolve via .within(option_wrapper).",
+    )
+    export_chat_modal_option_description = LocatorDescriptor(
+        testid="export-chat-modal-option-description",
+        description="Description line under the export options.",
+    )
 
     # Toast dismiss (X) icon button — ELITEA-2200 addition (Toast.jsx's
     # custom `action` IconButton, replacing MUI's unlabeled default close).
@@ -3618,6 +3653,13 @@ class ChatPage(BasePage):
         their items while closed, so this can't pick up a stale menu).
         """
         return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX).count()
+
+    @action("Export the open chat modal and capture the download")
+    def click_export_and_capture_download(self, timeout: int = 30000):
+        """Click the modal's Export button inside ``expect_download`` and return the Download."""
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_chat_modal_export_button.click()
+        return download_info.value
 
     @action("Click conversation context-menu item")
     def click_conversation_menu_item(self, item_key: str, timeout: int = 5000):
