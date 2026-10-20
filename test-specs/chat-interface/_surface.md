@@ -1202,3 +1202,9 @@ instead and is click-idempotent (no-ops if already checked).
 - Create conversation BEFORE enabling `modules-toggle-skill_builder`; otherwise the toggle is lost and the model replies in prose with no tool call.
 - `ensure_module_toggle_checked` works for skill_builder after hover on `internal-tools-menuitem`. Chip `generated-entity-chip` label = slugified name; canvas fields via `skill-*-input-field`; instructions/description are AI-rephrased.
 - Scripted headless probes work (Playwright MCP chrome missing); dismiss `platform-banner-center` first.
+
+
+## Ask User clarification card (ELITEA-3367, live 2026-10-20)
+- Trigger is model-discretionary: `Create a skill for onboarding` with skill_builder+ask_user on asks in only ~3/17 fresh conversations; otherwise creates the skill directly. Detect branch by waiting on `input[placeholder="Your option"]` vs `generated-entity-chip`.
+- Card: radio rows (title+description), `Your option` free text, `Skip`->`Continue` once answered, `Previous/Next question`, counter `1/2`. Click on option auto-advances; radio input is overlay-covered (click the visible row). Submit -> card gone, answer summary `1. q / answer` in the message, then `post_elitea_core_generate_skill_draft` + `post_elitea_core_skills` run and one chip appears. Full AFS: l1_skill-creation-ask-user-clarification_ELITEA-3367.md.
+- DEV chat answers again as of 2026-10-20 (earlier "no reply" notes are resolved).
