@@ -787,7 +787,7 @@ class ChatPage(BasePage):
     # specific message locator (``ScopedLocator.within(message)``), since
     # the chip only renders on the message whose tool call actually created
     # something, not on every AI message.
-    GENERATED_ENTITY_CHIP = ScopedLocator(
+    MESSAGE_GENERATED_ENTITY_CHIP = ScopedLocator(
         testid="generated-entity-chip",
         description=(
             "Renders inside an AI message only when a chat-builder module "
@@ -806,7 +806,7 @@ class ChatPage(BasePage):
             message_locator: the message ``<li>`` Locator to check, e.g.
                 ``self.messages_container.nth(ai_response_index)``.
         """
-        return self.GENERATED_ENTITY_CHIP.within(message_locator).count() > 0
+        return self.MESSAGE_GENERATED_ENTITY_CHIP.within(message_locator).count() > 0
 
     # Chat-area conversation-starter tile (NewConversationView.jsx's call site
     # onto the shared EllipsisTextWithTooltip, ELITEA-2369 — the new-
