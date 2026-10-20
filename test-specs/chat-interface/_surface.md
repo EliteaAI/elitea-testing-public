@@ -1438,3 +1438,12 @@ instead and is click-idempotent (no-ops if already checked).
 - Trigger is model-discretionary: `Create a skill for onboarding` with skill_builder+ask_user on asks in only ~3/17 fresh conversations; otherwise creates the skill directly. Detect branch by waiting on `input[placeholder="Your option"]` vs `generated-entity-chip`.
 - Card: radio rows (title+description), `Your option` free text, `Skip`->`Continue` once answered, `Previous/Next question`, counter `1/2`. Click on option auto-advances; radio input is overlay-covered (click the visible row). Submit -> card gone, answer summary `1. q / answer` in the message, then `post_elitea_core_generate_skill_draft` + `post_elitea_core_skills` run and one chip appears. Full AFS: l1_skill-creation-ask-user-clarification_ELITEA-3367.md.
 - DEV chat answers again as of 2026-10-20 (earlier "no reply" notes are resolved).
+
+## Export chat modal (ELITEA-3784, 2026-10-20)
+
+- Entry: conversation hover 3-dot menu -> `chat-conversation-menu-export-menuitem` (right-click opens nothing). Menu on a Private-project chat has 7 items incl. playback, share-external.
+- Modal testids all on DEV: `export-chat-modal`, `-chat-name`, `-option-without|with`, `-option-description`, `-cancel-button`, `-export-button`; `-progress`/`-browser-download-note`/`-large-warning` conditional (source only).
+- "With attachments" option disabled when chat has no attachments.
+- DEV export is ENCRYPTED: download name `<name>_<date>_<time>.json.enc`, body starts `ELITEA-CHAT-ENC/1`. Success toast "Chat exported successfully"; modal closes.
+- Platform announcement dialog on DEV intercepts hover/click: dismiss `platform-banner-close` first.
+- Playwright MCP browser binary missing in this environment (chrome not found); scripted pytest-playwright chromium probes work.
