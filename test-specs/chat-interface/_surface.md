@@ -1455,3 +1455,8 @@ instead and is click-idempotent (no-ops if already checked).
 - **Stop button without injection**: `chat-inject-button` is absent when mid-turn injection is off, so `ChatPage.STOP_BUTTON` (scoped under it) cannot resolve; the Stop is then the only `button` in the composer footer with no `data-testid` and no `aria-label`. Use `midturn_injection_enabled` fixture or declare a second anchor.
 - **Send click needs `force=True`** (MUI overlay intercepts); `platform-banner-close` toast/modal ("Announcing ELITEA 2.0.7") can cover the composer on a fresh session - dismiss it.
 - **Transit flag**: `ChatPage.navigate_to_chat(conversation_id=...)` timed out (15s `wait_for` in a pytest scratch run, 2 attempts) while a plain `page.goto('/app/chat/<id>')` + waiting for `chat-message-input` worked - possible regression/flake (#1847 networkidle class), worth watching.
+
+### ELITEA-2183 addendum (2026-10-20): send after Stop
+- After Stop (restored input), `fill("")` + `fill("hello")` + `send_message("hello")` works: user + assistant reply, no error toast, no `generate a poem` bubble remains. Reply completes ~12s (Copy button).
+- `ChatPage.wait_for_ai_response(initial_count=N)`: N = count BEFORE the send (AI at N+1); `n+1` hangs 60s.
+- `navigate_to_chat(conversation_id=...)` timed out again in scratch runs (3x); `page.goto('.../app/chat/<id>')` fine. Repeat of the 2182 transit flag.
