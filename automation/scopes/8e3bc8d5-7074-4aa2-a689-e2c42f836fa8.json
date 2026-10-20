@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "8e3bc8d5-7074-4aa2-a689-e2c42f836fa8",
+  "intent": "automation",
+  "batch": "chat-export-3784",
+  "cases": [
+    "ELITEA-3784"
+  ],
+  "declaredAt": "2026-10-20T19:38:31.199Z",
+  "updatedAt": "2026-10-20T19:54:27.478Z",
+  "outcomes": {
+    "ELITEA-3784": {
+      "outcome": "automated",
+      "at": "2026-10-20T19:54:07.689Z"
+    }
+  },
+  "closedAt": "2026-10-20T19:54:27.478Z"
+}
