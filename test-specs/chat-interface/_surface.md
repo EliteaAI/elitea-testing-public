@@ -1196,3 +1196,9 @@ instead and is click-idempotent (no-ops if already checked).
 - Projects in selector (`project-selector-trigger-combobox`; options `select-option-{id}`): Public=1, Private=575 (active), Elitea Automation=470.
 - First-load `platform-banner-center` dialog blocks clicks until `platform-banner-close` ("Got it"); after hovering Modules, a tooltip popper intercepts the composer click (click elsewhere/Escape first).
 - DEV chat produced no reply (only the model chip) for 120s on a Skills Builder message; same as ELITEA-3367. See AFS l1_skill-builder-runtime-context-current-project-only_ELITEA-3316.md.
+
+
+## Skills Builder happy path (ELITEA-3366, re-verified 2026-10-20)
+- Create conversation BEFORE enabling `modules-toggle-skill_builder`; otherwise the toggle is lost and the model replies in prose with no tool call.
+- `ensure_module_toggle_checked` works for skill_builder after hover on `internal-tools-menuitem`. Chip `generated-entity-chip` label = slugified name; canvas fields via `skill-*-input-field`; instructions/description are AI-rephrased.
+- Scripted headless probes work (Playwright MCP chrome missing); dismiss `platform-banner-center` first.
