@@ -87,6 +87,42 @@ class ProjectContextPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Saved (read-only) view — added ELITEA-3315. Confirmed live 2026-10-17:
+    # when content already exists, navigating/reloading this page renders a
+    # THIRD state neither `create_button` nor `editor_content` covers — a
+    # read-only saved view ("Edit with AI" / "Edit" buttons + the content as
+    # plain text), distinct from the ?view=create editor CodeMirror state
+    # (`editor_content`) that only renders after clicking "Edit" or "Create".
+    # Neither prior case (ELITEA-3368/3369) ever called `navigate()` on a
+    # project that already had content — both reach the editor only via the
+    # in-chat chip/Canvas — so this state had no test exercising it before.
+    # ------------------------------------------------------------------
+    edit_button = LocatorDescriptor(
+        role="button",
+        name="Edit",
+        exact=True,
+        suggested_testid="project-context-edit-button",
+        description="Saved-view 'Edit' button — opens the CodeMirror editor "
+        "on existing content (confirmed live unique via exact match; "
+        "'Edit with AI' is a separate button with a different accessible "
+        "name). No data-testid on DEV as of 2026-10-17.",
+    )
+    saved_content_text = LocatorDescriptor(
+        xpath='//button[normalize-space(.)="Edit"]/ancestor::main//p/parent::div',
+        suggested_testid="project-context-saved-content-text",
+        description="Saved-view read-only content container. Multi-paragraph "
+        "content renders as multiple sibling <p> tags (confirmed live with "
+        "2 paragraphs), so this targets their shared parent <div> rather than "
+        "a bare '//p' (which strict-mode-violates on >1 paragraph) — "
+        "non-positional: no numeric predicate, just a relative ancestor/"
+        "parent axis search, confirmed live unique (exactly one such parent "
+        "under the <main> reached via the saved-view's own 'Edit' button "
+        "text match). Rungs 1-4 don't apply: no data-testid on DEV as of "
+        "2026-10-17, and label/css have no stable handle for arbitrary "
+        "AI-generated prose.",
+    )
+
+    # ------------------------------------------------------------------
     # ELITEA-3252/3255 — Activation description (NEW field, required for Save)
     # ------------------------------------------------------------------
     activation_description = LocatorDescriptor(
@@ -198,12 +234,40 @@ class ProjectContextPage(BasePage):
         empty-vs-editor and hung for 15s on a populated saved view)."""
         try:
             self.create_button.wait_for(state="visible", timeout=timeout)
+            logger.info("Project Context page loaded (empty state)")
+            return
         except Exception:
-            try:
-                self.editor_content.wait_for(state="visible", timeout=timeout)
-            except Exception:
-                self.ai_edit_open_button.wait_for(state="visible", timeout=timeout)
-        logger.info("Project Context page loaded")
+            pass
+        try:
+            self.editor_content.wait_for(state="visible", timeout=timeout)
+            logger.info("Project Context page loaded (editor state)")
+            return
+        except Exception:
+            pass
+        try:
+            self.ai_edit_open_button.wait_for(state="visible", timeout=timeout)
+            logger.info("Project Context page loaded (saved view, Edit with AI)")
+            return
+        except Exception:
+            pass
+        self.edit_button.wait_for(state="visible", timeout=timeout)
+        logger.info("Project Context page loaded (saved/read-only state)")
+
+    def is_saved_view_showing(self) -> bool:
+        """Return True if the read-only saved view (content exists, not
+        currently editing) is the state currently rendered."""
+        return self.edit_button.count() > 0
+
+    def get_saved_content_text(self) -> str:
+        """Return the saved-view's read-only content text."""
+        return self.saved_content_text.text_content() or ""
+
+    def click_edit(self) -> None:
+        """Click the saved-view 'Edit' button and wait for the CodeMirror
+        editor to open with the existing content loaded."""
+        self.edit_button.click()
+        self.editor_content.wait_for(state="visible", timeout=10000)
+        logger.info("Clicked Edit — editor opened on existing content")
 
     def click_create(self) -> None:
         """Click the empty-state 'Create' button and wait for the editor to open.

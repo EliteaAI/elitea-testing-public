@@ -429,6 +429,7 @@ def dismiss_banner_after_navigation(request):
     def _dismiss_banner():
         base = BasePage(page)
         base.dismiss_banner_if_present()
+        base.dismiss_announcement_dialog_if_present()
 
     original_goto = page.goto
     original_reload = page.reload

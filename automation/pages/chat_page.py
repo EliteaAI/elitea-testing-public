@@ -802,6 +802,67 @@ class ChatPage(BasePage):
     CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
 
     # ------------------------------------------------------------------
+    # "Entity created via chat" chip (GeneratedEntityChip.jsx, ELITEA-3368) —
+    # ONE shared component across every in-chat "Build with AI"/create-via-
+    # chat flow (Agent/Pipeline/Toolkit/Skill/Project Context). Confirmed
+    # live: the chip's own container has NO onClick — only its two
+    # hover-revealed child buttons do (see open_generated_entity_chip()).
+    # ------------------------------------------------------------------
+
+    generated_entity_chip = LocatorDescriptor(
+        testid="generated-entity-chip",
+        description=(
+            "'Entity created' chip rendered below an assistant answer that "
+            "created an Agent/Pipeline/Toolkit/Skill/Project Context via "
+            "chat. Label text = the created entity's name. Only renders "
+            "once !isStreaming && !isLoading — wait for it, don't assume "
+            "it's present the instant the response text appears. Its own "
+            "container has NO onClick (confirmed live via source read) — "
+            "a bare .click() is a silent no-op; hover it first and use "
+            "GENERATED_ENTITY_CHIP_OPEN_BUTTON / "
+            "GENERATED_ENTITY_CHIP_DELETE_BUTTON."
+        ),
+    )
+
+    GENERATED_ENTITY_CHIP_OPEN_BUTTON = ScopedLocator(
+        role="button",
+        name="Open entity",
+        suggested_testid="generated-entity-chip-open-button",
+    )
+
+    GENERATED_ENTITY_CHIP_DELETE_BUTTON = ScopedLocator(
+        role="button",
+        name="Delete entity",
+        suggested_testid="generated-entity-chip-delete-button",
+    )
+
+    @action("Open a generated-entity chip's entity (hover then click Open entity)")
+    def open_generated_entity_chip(self, entity_label: str | None = None, timeout: int = 10000):
+        """Hover the 'entity created' chip and click its 'Open entity' button.
+
+        A bare click on the chip's own container does nothing (confirmed
+        live — the chip Box has no onClick, only its hover-revealed child
+        buttons do, ELITEA-3368). This method performs the required
+        hover-then-click sequence.
+
+        Args:
+            entity_label: When more than one chip could render in the same
+                answer, filter by the chip's visible label text (e.g.
+                "Project Context"). Not needed when exactly one chip is
+                expected (the common case).
+            timeout: Maximum wait time in milliseconds.
+        """
+        chip = self.generated_entity_chip
+        if entity_label:
+            chip = chip.filter(has_text=entity_label)
+        chip.first.wait_for(state="visible", timeout=timeout)
+        chip.first.hover()
+        open_btn = self.GENERATED_ENTITY_CHIP_OPEN_BUTTON.within(chip.first)
+        open_btn.wait_for(state="visible", timeout=timeout)
+        open_btn.click(timeout=timeout)
+        logger.info("Opened generated-entity chip (label filter=%r)", entity_label)
+
+    # ------------------------------------------------------------------
     # HITL sensitive-action authorization card — direct toolkit call, no
     # agent (ELITEA-2211..2214). Same underlying ChatHitlActions.jsx
     # component AgentDetailPage already has locators for; ChatPage had none
@@ -4365,6 +4426,15 @@ class ChatPage(BasePage):
         row.first.wait_for(state="visible", timeout=timeout)
         return row.first
 
+    def get_participant_row_count(self) -> int:
+        """Return the number of participant rows currently rendered in the
+        EXPANDED Participants panel (``PARTICIPANT_ROW_PREFIX``, ELITEA-3368).
+
+        Call after :meth:`expand_participants_panel_via_toggle`. Zero means
+        no entity (of any type) is currently a chat participant.
+        """
+        return self.page.locator(self.PARTICIPANT_ROW_PREFIX).count()
+
     def get_participant_avatar(self, participant_row, timeout: int = 10000):
         """Return the avatar ``<img>`` Locator scoped inside *participant_row*
         (an EXPANDED PARTICIPANTS panel row from
@@ -6511,17 +6581,6 @@ class ChatPage(BasePage):
     # the last message, so declared as a data-testid constant.
     GENERATED_ENTITY_CHIP = '[data-testid="generated-entity-chip"]'
 
-    GENERATED_ENTITY_OPEN_BUTTON = ScopedLocator(
-        role="button",
-        name="Open entity",
-        suggested_testid="chat-generated-entity-chip-open-button",
-        description=(
-            "Chip's 'Open entity' icon button; rendered visible only while the chip "
-            "is hovered (isHovering state) — hover the chip first. role+name: no "
-            "testid on DEV."
-        ),
-    )
-
     skill_canvas_save_button = LocatorDescriptor(
         role="button",
         name="Save",
@@ -6543,17 +6602,6 @@ class ChatPage(BasePage):
         """Return the visible labels of all generated-entity chips in the last message."""
         chips = self.messages_container.last.locator(self.GENERATED_ENTITY_CHIP)
         return [(chips.nth(i).inner_text() or "").strip() for i in range(chips.count())]
-
-    @action("Open the generated entity from the chip in the last message")
-    def open_generated_entity_chip(self, timeout: int = 10000):
-        """Hover the (single) generated-entity chip in the last message and click
-        its 'Open entity' button, which opens the entity editor as a Canvas."""
-        chip = self.messages_container.last.locator(self.GENERATED_ENTITY_CHIP).first
-        chip.wait_for(state="visible", timeout=timeout)
-        chip.hover()
-        open_btn = self.GENERATED_ENTITY_OPEN_BUTTON.within(chip)
-        open_btn.wait_for(state="visible", timeout=timeout)
-        open_btn.click()
 
     def get_current_conversation_id(self) -> int | None:
         """Return the numeric conversation id parsed from the current URL, or None."""
