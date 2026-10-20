@@ -1,0 +1,189 @@
+{
+ "batch": "skills-builder-chat",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-skills-builder-chat",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "by": "lead",
+  "note": "Workflow gate was red only because the sandbox lacks .env.test/APP_PREFIX (404). Lead re-ran 3 separate pytest invocations of both specs on the trunk with APP_PREFIX=/app HEADLESS=true: 3/3 passed (81.6s, 88.1s, 73.8s).",
+  "specs": [
+   "tests/ui/chat/test_skill_creation_from_chat_chip_canvas.py",
+   "tests/ui/chat/test_skill_builder_runtime_context_current_project.py"
+  ]
+ },
+ "cases": [
+  {
+   "id": "ELITEA-3366",
+   "outcome": "automated",
+   "note": "gate red: playwright TimeoutError: Locator.wait_for 15000ms waiting for get_by_test_id(\"chat-message-input\") to be visible (failed on all reruns, ~50s per attempt)",
+   "findings": [
+    {
+     "kind": "clarification",
+     "note": "Case step 2 expects a 'Skill: Daily Standup Summarizer' chip, but the live chip label is the slug daily-standup-summarizer. Step 4 implies the Description and Instructions match what was sent, but both come back AI-rephrased. The product is fine; the case text is imprecise, so assert topically.",
+     "ref": "ELITEA-3366"
+    },
+    {
+     "kind": "note",
+     "note": "Enabling the skill_builder module before the new conversation exists drops the setting. The model then answers in plain prose with no tool call and no chip, which looks like a product failure. In the automation, call click_create_conversation first, then enable the toggle."
+    },
+    {
+     "kind": "note",
+     "note": "The earlier 'DEV chat gives no reply' blocker did not recur; chat replied within about 10s. The memory entry is updated. The platform-banner-center 'Got it' dialog still intercepts clicks, so dismiss it in a loop after load."
+    },
+    {
+     "kind": "note",
+     "note": "The modal release-announcement dialog (testid platform-banner-center, 'Got it') blocks all clicks on DEV. BasePage.dismiss_banner_if_present does not close it because it only handles aria-label=close buttons. I added ChatPage.dismiss_platform_banner_dialog to handle it. Other cases may need it too."
+    },
+    {
+     "kind": "note",
+     "note": "The sandbox has no automation/.env.test and APP_PREFIX is not set in the environment, so runs hit https://dev.elitea.ai/chat (404). Gate runs need APP_PREFIX=/app exported or a .env.test."
+    },
+    {
+     "kind": "note",
+     "note": "The AFS 'Cleanup' section says to capture the skill id from the response; I matched by unique slug via SkillAPI.list_skills() instead. The per-run token in the skill name keeps the match unambiguous."
+    },
+    {
+     "kind": "clarification",
+     "note": "AFS Handles Reference says the Save and Discard canvas buttons are role+name. They are implemented that way with suggested_testid hints skill-canvas-save-button and skill-canvas-discard-button. Description and Instructions are asserted topically, as the 2026-10-20 re-verification states, not byte-exact as the original AFS step 4 text says.",
+     "ref": "ELITEA-3366"
+    },
+    {
+     "kind": "note",
+     "note": "Mechanical ladder grep on `git diff main...tests/ELITEA-3366-skill-creation-chip-canvas -- automation/pages automation/tests` for `get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=` gave 5 hits. Spec: `rows = page.locator(chat.PARTICIPANT_ROW_PREFIX)` and `rows.nth(i)` in a loop over `rows.count()`. chat_page.py: `.locator(self.GENERATED_ENTITY_CHIP)` x2, `chips.nth(i)` in a \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/pages/chat_page.py:6496-6581"
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation of case, AFS and diff is clean. Every Coverage-Map row is `asserted`; none is covered-by or extend, so there is nothing to verify against another spec. Step 1 asserts the Skills tool call text `Elitea Skills: post_elitea_core_skills` in tool chips plus the last message (structural no-clarifying-question check). Step 2 asserts exactly one chip whose label equals the slug. Step 3 asser\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_skill_creation_from_chat_chip_canvas.py"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case text expects a chip 'Skill: Daily Standup Summarizer', Name 'Daily Standup Summarizer' and Description/Instructions matching. Live, the chip and Name are the slugified name and the Description/Instructions are AI-rephrased. The test follows the live contract and asserts topically. This is documented in the AFS as a clarification under the reverse-masking guard, not a defect. The AFS also asse\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "test-specs/chat-interface/l1_skill-creation-happy-path-with-chip-and-canvas_ELITEA-3366.md"
+    },
+    {
+     "kind": "note",
+     "note": "Nit: step 5 is a negative assertion that passes vacuously if the panel has zero rows, and the AFS says zero rows is the expected state. It is acceptable because the AFS backs it with a source read. A stronger variant would be to also assert the row count is 0, or to use the existing `get_participant_row_by_name` helper instead of a raw `page.locator(chat.PARTICIPANT_ROW_PREFIX)` in the spec. The c\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_skill_creation_from_chat_chip_canvas.py:120-125"
+    },
+    {
+     "kind": "note",
+     "note": "Nit: the AFS says the tool is invoked twice per turn and lists a count of 2 as a Concrete Handle. The test only asserts the text is present (`in`). That is deliberately more robust and I judge it fine. Cleanup finds the skill by exact `name == slug` via `list_skills()`, which assumes the first page of results contains it. That is low risk for a unique token suffix. If `conv_id` is still None becau\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_skill_creation_from_chat_chip_canvas.py:129-142"
+    },
+    {
+     "kind": "note",
+     "note": "The case snapshot `.agents/automation/skills-builder-chat/cases/ELITEA-3366.md` is missing on disk. I triangulated against the TMS case file at ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3366_skill-creation-happy-path-with-chip-and-canvas.md instead. The branch also carries the AFS for ELITEA-3316 and ELITEA-3367 (both blocked) plus memory a\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "This was a static review. Per the contract I did not run the spec, so DEV behaviour is for the hardening gate to confirm. The gate should specifically watch the step-2 `label == slug` assertion, since the slug must survive the AI's naming with the uuid suffix. The AFS only observed slugification with ad hoc suffixes."
+    }
+   ],
+   "afs": "test-specs/chat-interface/l1_skill-creation-happy-path-with-chip-and-canvas_ELITEA-3366.md",
+   "branch": "tests/ELITEA-3366-skill-creation-chip-canvas"
+  },
+  {
+   "id": "ELITEA-3367",
+   "outcome": "blocked",
+   "note": "Ask User card appears ~3/17 fresh runs; non-deterministic. Question #2497. AFS on trunk, no code.",
+   "findings": [
+    {
+     "kind": "question",
+     "note": "ELITEA-3367 cannot gate 3/3 as written: the Ask User card appeared in about 3 of 17 fresh runs, and in the rest the model created the skill without asking. Decide between a bounded retry-until-card loop (fails if never asked), a case-text prompt change that forces clarification (needs author sign-off), or parking the case.",
+     "ref": "ELITEA-3367"
+    },
+    {
+     "kind": "clarification",
+     "note": "The case text omits that the Skills Builder and Ask User toggles default OFF per new conversation. It also omits that the conversation must be created BEFORE enabling the toggles, and that Ask User is model-discretionary.",
+     "ref": "ELITEA-3367"
+    },
+    {
+     "kind": "note",
+     "note": "Playwright gotchas on the card: the radio inputs are readonly and covered by an overlay, so a plain click on the input times out (click the visible row or label instead). The platform-banner-center dismissal is racy after load, so retry it once. The first MCP navigate_to_chat timed out in my script because the message input was not visible, so I navigated by URL and it worked."
+    }
+   ],
+   "afs": "test-specs/chat-interface/l1_skill-creation-ask-user-clarification_ELITEA-3367.md"
+  },
+  {
+   "id": "ELITEA-3316",
+   "outcome": "automated",
+   "note": "gate red: playwright TimeoutError: Locator.wait_for 15000ms waiting for get_by_test_id(\"chat-message-input\") to be visible (failed on all reruns, ~49s per attempt)",
+   "findings": [
+    {
+     "kind": "note",
+     "note": "automation/.env.test is missing in this sandbox, so APP_PREFIX is empty and every UI navigation goes to https://dev.elitea.ai/chat, which returns 404 Page Not Found. All UI specs fail at chat-message-input until APP_PREFIX=/app is exported. The implementer and the gate need this set."
+    },
+    {
+     "kind": "note",
+     "note": "The project selector text reads 'PProject:Private' because an avatar letter is prepended, so assert with a contains/endswith check, not equality. ChatPage.get_current_conversation_id() returns None until a message is sent. Calling delete_conversation(None) gives a 404."
+    },
+    {
+     "kind": "note",
+     "note": "The tool chip text varies between runs: this run showed post_elitea_core_generate_skill_draft, and ELITEA-3366 saw post_elitea_core_skills. Assert on the 'Elitea Skills:' substring plus the chip label, not a specific tool name."
+    },
+    {
+     "kind": "clarification",
+     "note": "The case says 'Skill chip/link'. The live chip label is the slugified skill name. 'Project B' is unspecified, so the AFS uses projects 470 and 1.",
+     "ref": "ELITEA-3316"
+    },
+    {
+     "kind": "note",
+     "note": "The case snapshot file .agents/automation/skills-builder-chat/cases/ELITEA-3316.md is missing from the tree, so the Phase 1 coverage cross-check used the AFS only."
+    },
+    {
+     "kind": "note",
+     "note": "automation/.env.test is absent in this sandbox. The run needs APP_PREFIX=/app exported in the shell, otherwise navigation hits a 404 page. This is an environment gap, not a product defect."
+    },
+    {
+     "kind": "note",
+     "note": "Ruff is not installed in .venv, so the lint step could not be run."
+    },
+    {
+     "kind": "note",
+     "note": "Mechanical locator grep, run on the full diff (automation/pages and automation/tests): git diff tests/batch-skills-builder-chat...tests/ELITEA-3316-skill-builder-runtime-context -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation, case to AFS to diff. Case step 1 maps to the project-selector assertion, with the project name matched by substring (\"Private\" in text). Step 2 maps to is_module_toggle_checked. Step 3 maps to the 'Elitea Skills:' prefix assertion. Step 4 maps to exactly one chip equal to the slug. Step 5 maps to the project A API list containing the slug. Step 6 maps to the project 470 and 1 API li\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_skill_builder_runtime_context_current_project.py"
+    },
+    {
+     "kind": "note",
+     "note": "Masking hunt is clean. There is no skip, soft-assert or weakened assertion. Step 6's negative assertions run against live lists fetched through _raise_for_status, so an auth failure raises instead of passing vacuously. The AFS expected 'no product defect' and the spec does not hide one."
+    },
+    {
+     "kind": "clarification",
+     "note": "Step 3 ('assistant proceeds without asking for project specification') is asserted only indirectly: a 'Elitea Skills:' tool chip is present, and later steps require the skill to exist. The AFS Automation Hints said to assert that no clarifying input card appears, and the spec does not assert that directly. It is effectively covered, because a blocked-on-question flow would fail the step 4 and 5 as\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_skill_builder_runtime_context_current_project.py:88"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case step 5 says 'Navigate to Project A's Skills list' and step 6 says 'Navigate to Project B'. The spec verifies both by API only. The AFS explicitly sanctions this as sufficient and cheaper, with the UI check optional. Non-blocking."
+    },
+    {
+     "kind": "note",
+     "note": "Env coupling: ACTIVE_PROJECT_NAME='Private' and OTHER_PROJECT_IDS=('470','1') are hard-coded to DEV. The skill_api fixture uses ELITEA_PROJECT_ID, so it is consistent only if that env var points at Private (575). Acceptable for DEV-only targeting. The Step 1 assertion will fail loudly if the env drifts, so it cannot mask anything. The AFS also records that APP_PREFIX=/app must be set in the shell \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_skill_builder_runtime_context_current_project.py:38"
+    },
+    {
+     "kind": "note",
+     "note": "Possible flake: the skill name 'Meeting Notes Summarizer <8hex>' slugifies to 33 characters, while the UI skill form caps names at 32. The sibling 3366 test uses the same length and landed, so the AI evidently does not truncate. If the chip or slug equality ever fails, check truncation first. Not blocking."
+    }
+   ],
+   "afs": "test-specs/chat-interface/l1_skill-builder-runtime-context-current-project-only_ELITEA-3316.md",
+   "branch": "tests/ELITEA-3316-skill-builder-runtime-context"
+  }
+ ],
+ "totals": {
+  "automated": 2,
+  "blocked": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": []
+}

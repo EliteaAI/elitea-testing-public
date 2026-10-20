@@ -6529,3 +6529,90 @@ class ChatPage(BasePage):
             return tooltip.text_content() or ""
         except PlaywrightTimeoutError:
             return ""
+
+    # ------------------------------------------------------------------
+    # In-chat entity creation chip -> Skill editor Canvas (ELITEA-3366)
+    # ------------------------------------------------------------------
+
+    # Shared chip for every chat-driven entity-creation flow (agent/pipeline/
+    # skill/toolkit); testid on DEV (GeneratedEntityChip.jsx). Resolved inside
+    # the last message, so declared as a data-testid constant.
+    GENERATED_ENTITY_CHIP = '[data-testid="generated-entity-chip"]'
+
+    GENERATED_ENTITY_OPEN_BUTTON = ScopedLocator(
+        role="button",
+        name="Open entity",
+        suggested_testid="chat-generated-entity-chip-open-button",
+        description=(
+            "Chip's 'Open entity' icon button; rendered visible only while the chip "
+            "is hovered (isHovering state) — hover the chip first. role+name: no "
+            "testid on DEV."
+        ),
+    )
+
+    skill_canvas_save_button = LocatorDescriptor(
+        role="button",
+        name="Save",
+        exact=True,
+        suggested_testid="skill-canvas-save-button",
+        description="Skill editor Canvas Save button (SkillEditorSaveButton.jsx, no testid on DEV).",
+    )
+
+    skill_canvas_discard_button = LocatorDescriptor(
+        role="button",
+        name="Discard",
+        exact=True,
+        suggested_testid="skill-canvas-discard-button",
+        description="Skill editor Canvas Discard button (EditorHeader.jsx, no testid on DEV).",
+    )
+
+    @action("Get generated-entity chip labels in the last message")
+    def get_generated_entity_chip_labels(self) -> list[str]:
+        """Return the visible labels of all generated-entity chips in the last message."""
+        chips = self.messages_container.last.locator(self.GENERATED_ENTITY_CHIP)
+        return [(chips.nth(i).inner_text() or "").strip() for i in range(chips.count())]
+
+    @action("Open the generated entity from the chip in the last message")
+    def open_generated_entity_chip(self, timeout: int = 10000):
+        """Hover the (single) generated-entity chip in the last message and click
+        its 'Open entity' button, which opens the entity editor as a Canvas."""
+        chip = self.messages_container.last.locator(self.GENERATED_ENTITY_CHIP).first
+        chip.wait_for(state="visible", timeout=timeout)
+        chip.hover()
+        open_btn = self.GENERATED_ENTITY_OPEN_BUTTON.within(chip)
+        open_btn.wait_for(state="visible", timeout=timeout)
+        open_btn.click()
+
+    def get_current_conversation_id(self) -> int | None:
+        """Return the numeric conversation id parsed from the current URL, or None."""
+        match = re.search(r"/chat/(\d+)", self.page.url)
+        return int(match.group(1)) if match else None
+
+    def get_tool_chip_and_message_text(self) -> str:
+        """Concatenate tool-call chip texts and the last message text (tool-call evidence)."""
+        chips = self.answer_tool_chip
+        parts = [(chips.nth(i).text_content() or "") for i in range(chips.count())]
+        parts.append(self.messages_container.last.inner_text() or "")
+        return "\n".join(parts)
+
+    platform_banner_dialog = OptionalLocatorDescriptor(
+        testid="platform-banner-center",
+        description="Modal release-announcement dialog shown on DEV load; intercepts all pointer events.",
+    )
+
+    platform_banner_got_it_button = ScopedLocator(
+        role="button",
+        name="Got it",
+        suggested_testid="platform-banner-got-it-button",
+        description="'Got it' dismiss button inside the platform announcement dialog (no testid on DEV).",
+    )
+
+    @action("Dismiss the platform announcement dialog if shown")
+    def dismiss_platform_banner_dialog(self, timeout: int = 5000):
+        """Click 'Got it' on the modal announcement dialog if it appears (best-effort)."""
+        try:
+            self.platform_banner_dialog.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return
+        self.platform_banner_got_it_button.within(self.platform_banner_dialog).click()
+        self.platform_banner_dialog.wait_for(state="hidden", timeout=timeout)
