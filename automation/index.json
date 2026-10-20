@@ -1106,6 +1106,18 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.chat.test_new_conversation_add_participants.TestNewConversationParticipants.test_new_conversation_add_four_participant_types",
+      "markers": [
+        "chat",
+        "p1",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2455"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.chat.test_open_existing_conversation_from_this_week_section.TestOpenExistingConversationFromThisWeekSection.test_open_existing_conversation_from_this_week_section",
       "markers": [
         "chat",
