@@ -813,10 +813,11 @@ class ChatPage(BasePage):
             "'Skip' to 'Continue' once the custom field is non-empty."
         ),
     )
-    # Copy button of a generated message, addressed inside a message. Same
-    # element/testid as ``copy_action_button`` (``chat-copy-button`` is what DEV
-    # serves; ``message-copy-button`` on ``copy_message_button`` does not exist).
-    MESSAGE_COPY_BUTTON = '[data-testid="chat-copy-button"]:not([disabled])'
+    MESSAGE_COPY_BUTTON = ScopedLocator(
+        css='button[aria-label="Copy to clipboard"]',
+        suggested_testid="chat-message-copy-button",
+        description="Copy button rendered inside a fully generated message (scope: a message item).",
+    )
 
     @action("Answer Ask-User clarifying card(s) until the AI response settles")
     def resolve_clarifying_cards_until_settled(
@@ -833,12 +834,11 @@ class ChatPage(BasePage):
         count reaches ``initial_count + 2``.
         """
         expect(self.messages_container).to_have_count(initial_count + 2, timeout=timeout)
-        settled = self.messages_container.last.locator(self.MESSAGE_COPY_BUTTON)
+        settled = self.MESSAGE_COPY_BUTTON.within(self.messages_container.last)
         answered = 0
         while True:
-            # settled: the toolbar is hover-revealed (CSS), so wait for it ATTACHED+enabled
-            # (disabled while processing); the card input must be visible.
-            expect(self.HITL_CUSTOM_OPTION_INPUT.first.or_(settled.first)).to_be_attached(timeout=timeout)
+            # settled = same signal wait_for_ai_response uses: the Copy button is visible.
+            expect(self.HITL_CUSTOM_OPTION_INPUT.first.or_(settled.first)).to_be_visible(timeout=timeout)
             if not self.HITL_CUSTOM_OPTION_INPUT.first.is_visible():
                 return answered
             answered += 1
