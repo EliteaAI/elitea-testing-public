@@ -1,0 +1,41 @@
+{
+  "batch": "sa-single-2425",
+  "base": "origin/automation/base",
+  "integration_branch": null,
+  "gate": null,
+  "cases": [
+    {
+      "id": "ELITEA-2425",
+      "outcome": "blocked",
+      "note": "Classified as 'blocked' (not 'defect-found' which isn't in the allowed enum) because a product defect prevents meaningful test completion. Core page-context feature is non-functional: Support Assistant only echoes user questions back without providing actual answers. Tested on three different contexts (Agents page, Pipelines page, Agent detail page) - all produced identical echo-only behavior. The… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Support Assistant only echoes questions instead of answering them. Tested on Agents page, Pipelines page, and Agent detail page with context questions like 'What page am I currently on?' and 'What entity am I currently viewing?' - all produced responses in the format 'Echo: [question]' with no actual answer. This makes the entire page-context feature non-functional.",
+          "ref": "test-results/screenshots/ELITEA-2425-step-08-full-response.png, step-11-pipelines-response.png, step-17-final-response.png"
+        },
+        {
+          "kind": "defect",
+          "note": "Agent detail page /agents/all/5 returns 404 'Page not found' error with console error: 'Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:5173/api/v2/elitea_core/public_application/prompt_lib/5:0'. This may be environmental (agent ID 5 doesn't exist) or a routing issue.",
+          "ref": "test-results/screenshots/ELITEA-2425-step-17-final-response.png"
+        },
+        {
+          "kind": "note",
+          "note": "Support Assistant widget (from elitea_assistant connected repo) uses fallback locators exclusively. All interactive elements need testids added in source repo per testid-only policy: launcher button, close button, title, message input, send button, message containers. Tracked tech debt similar to EliteaUI issues #25/#42."
+        },
+        {
+          "kind": "note",
+          "note": "MUI overlay interception on Support Assistant launcher button requires JavaScript evaluation click (el.click()) instead of normal Playwright click - documented pattern in project memory for MUI overlay-protected buttons."
+        }
+      ],
+      "afs": "test-specs/support_assistant/l2_assistant-receives-current-page-context_ELITEA-2425.md"
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

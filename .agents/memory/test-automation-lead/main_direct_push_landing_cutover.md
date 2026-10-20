@@ -1,6 +1,6 @@
 ---
 name: Base is main, the lead lands batches by direct push (cut-over 2026-10-16)
-description: Since 2026-10-16 every gated batch lands as ONE squash commit the lead pushes straight to main — no PR, no human merge; back-write, ledger sync and the closure record follow in the same session
+description: Since 2026-10-16 every gated batch lands as ONE squash commit the lead pushes straight to main — no PR, no human merge; ledger sync, records and memory ride IN that commit (trunk, pre-squash); only TMS back-write + closure record follow
 type: project
 ---
 
@@ -32,13 +32,18 @@ superseded.
 - Push rejected (`main` moved — the index bot, another landing) → `git reset --hard
   origin/main` on local `main` ONLY, merge `origin/main` into the trunk, re-gate if
   the change touches the batch's files, land again. **Never `--force`, never rebase.**
+- **The one commit is complete (ruling 2026-10-19).** After the gate, BEFORE the
+  squash, commit on the trunk: `scan` + `sync-ledger` (`ledger.json`), `report.json`
+  with the gate verdict + `gate-runs.jsonl`, `work-scope.mjs close` (`cost.json`,
+  batch report), your memory / daily log. `.agents/**` only — anything under
+  `automation/` after the gate means re-gate. No `chore(ledger)` / memory commit on
+  `main` afterwards — the control loop FAILs a batch that arrives as >1 commit.
 - Same session, right after landing: TMS back-write for every case
   (`automation_pr` = `https://github.com/EliteaAI/elitea-testing-public/commit/<sha>`),
-  rebuild `index.json`, `scan` + `sync-ledger` on the landed `main` (commit only the
-  ledger, push it to `main`), one **closure record** per card, card → `Ready`, issue
-  OPEN. `Done` is human-only.
-- A previous iteration pushed but died before the bookkeeping → finish it from the
-  landed commit; never re-land.
+  rebuild `index.json` (TMS repo), one **closure record** per card, card → `Ready`,
+  issue OPEN. `Done` is human-only.
+- A previous iteration pushed but died before the back-write / closure record →
+  finish them from the landed commit; never re-land, never add a commit to `main`.
 - A case needing ANOTHER batch that has not landed → park `Blocked`,
   `Waiting on #<card>`; never stack on its trunk.
 

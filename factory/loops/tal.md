@@ -130,16 +130,21 @@ Deltas:
    `env -u GITHUB_TOKEN git push origin main` (`.agents/role-overrides.md`
    § Orchestrator slot — *Landing a batch*; a rejected push = fetch, merge
    `origin/main` into the trunk, re-gate if it touches the batch, land again —
-   never `--force`) · **the post-landing work done in THIS session**
+   never `--force`) · **that one commit complete** (`.agents/workflow.md`
+   § Closing a batch): before the squash, on the trunk, `locator_inventory.py
+   scan` + `sync-ledger` (ledger), `report.json` with the gate verdict +
+   `gate-runs.jsonl`, `work-scope.mjs close` (`cost.json`, batch report), and
+   your memory / daily log — no ledger, memory or other bookkeeping commit on
+   `main` after it · **the post-landing work done in THIS session**
    (`.agents/workflow.md` § After landing): TMS back-write for every case
-   (`automation_pr` = the landed commit URL), `locator_inventory.py scan` +
-   `sync-ledger` on the landed `main` with any ledger change pushed to `main` ·
+   (`automation_pr` = the landed commit URL) ·
    **closure record posted** (`.agents/workflow.md` § Closure record) on every
    card: its Locators row is the scan delta that YOU re-ran (pre-landing
    `origin/main` vs the landed commit) and pasted — never copied from the Run
    Report. Then card → **`Ready`**, issue stays OPEN; that is your terminal
-   state. Pushed but the bookkeeping not done (a previous iteration died after
-   the push)? Finish it from the landed commit — never re-land. A case that
+   state. Pushed but the back-write / closure record not done (a previous
+   iteration died after the push)? Finish it from the landed commit — never
+   re-land, never add a commit to `main` for it. A case that
    needs another batch that has not landed parks `Blocked` — `Waiting on #<card>`
    — never stacked on its trunk. A case of the card that can't be made green is
    reverted off the trunk and reported on the card — the rest still land in the
