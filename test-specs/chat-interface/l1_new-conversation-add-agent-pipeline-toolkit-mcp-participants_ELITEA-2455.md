@@ -13,7 +13,7 @@
 - Entities created by fixtures, unique names, cleaned afterwards: `agent_id` (agent), `pipeline_id` (pipeline), `artifact_toolkit` (Artifact toolkit; fixture yields `id`, `name`, `project_id`), `mcp_toolkit_with_tools` (DeepWiki remote MCP; yields `id`, `name`, `project_id`). Do NOT hardcode "agent" / "ALL Pipeline Nodes" / "storage" / "Aha!" — case names are illustrative (DEV has none of the latter two verbatim).
 
 ## Observed flow (all executed live)
-1. Open `/app/chat`, click `sidebar-create-button` ("Chat") -> empty conversation, URL stays `/app/chat`. `chat-new-conversation-greeting` visible ("Hello, <user>! ..."). Message input is `chat-message-input` (textarea); the **"Type your message..." text is NOT a `placeholder` attribute** (attr is `""`) — it is rendered text; assert via visible text `Type your message...`, not `to_have_attribute("placeholder")`.
+1. Open `/app/chat`, click `sidebar-create-button` ("Chat") -> empty conversation, URL stays `/app/chat`. `chat-new-conversation-greeting` visible ("Hello, <user>! ..."). Message input is `chat-message-input` (textarea); **No "Type your message..." hint is rendered at all on DEV (neither placeholder attribute nor text) — observed at implementation time; assert the input is visible, editable and empty instead.**
 2. Participants panel is **collapsed by default**; `chat-participants-panel-toggle-button` expands it. Fresh chat: panel text is only `PARTICIPANTS` (no section, no row) — confirmed.
 3. `plus-menu-button` -> popper. Items: `chat-attach-menuitem-button` ("Attach Files / 10 left"), `internal-tools-menuitem` ("Modules"), `agents-menuitem`, `pipelines-menuitem`, **`skills-menuitem`**, `toolkits-menuitem`, `mcps-menuitem`. **No "Invite Users" item in a private project** (case step 5 drift, see Clarifications).
 4. Submenus open on **hover** of the menuitem (not click-required). Agents: `agents-search-input` (placeholder "Search agents..."), `agents-create-new-button` (text **"Create Agent"**, not "+ Create New Agent"), rows `agents-menu-item-agent-{project}-{id}`. Pipelines: `pipelines-search-input`, `pipelines-create-new-button` ("Create Pipeline"), `pipelines-menu-item-pipeline-{project}-{id}`. Toolkits: `toolkits-search-input`, `toolkits-create-new-button` ("Create Toolkit"), `toolkits-menu-item-toolkit-{project}-{id}`. MCPs: `mcps-search-input`, `mcps-create-new-button` ("Create MCP"), `mcps-menu-item-mcp-{project}-{id}`.
@@ -33,17 +33,17 @@
 | testid | `agents-search-input`, `agents-create-new-button`, `pipelines-search-input`, `pipelines-create-new-button`, `toolkits-create-new-button`, `mcps-create-new-button` | — | testid on DEV ✓ (new fields likely needed for the create-new buttons; others exist for toolkits/mcps search) |
 | testid | `agents-menu-item-agent-{p}-{id}` / `pipelines-menu-item-pipeline-{p}-{id}` / `toolkits-menu-item-toolkit-{p}-{id}` / `mcps-menu-item-mcp-{p}-{id}` | — | testid on DEV ✓ (toolkit/mcp templates exist in ChatPage; agent/pipeline templates new) |
 | testid | `chat-participant-row-{id}` (prefix enumerate), `chat-participant-warning-icon`, `chat-send-button`, `chat-message-input`, `chat-new-conversation-greeting` | — | testid on DEV ✓ |
-| ladder | section header text `AGENTS`/`PIPELINES`/`TOOLKITS`/`MCPS` (role-less text, exact match inside participants panel) | `chat-participants-section-title-{}` | ladder — no testid on DEV; unique per panel (verified one each) |
+| ladder (xpath: title span whose wrapper follows the accordion arrow svg; no MUI class) | section header text `AGENTS`/`PIPELINES`/`TOOLKITS`/`MCPS` (role-less text, exact match inside participants panel) | `chat-participants-section-title-{}` | ladder — no testid on DEV; unique per panel (verified one each) |
 | ladder | first `svg` in a participant row (type icon) — compare `path d` | `chat-participant-type-icon` | ladder — no testid on DEV; scope = within a `chat-participant-row-*`; NOTE `svg:first` is positional-ish: implementer should declare as ScopedLocator `css=svg` inside row and take `.first` only if lead rules acceptable, else raise `question` |
 | ladder | toggle switch `role=switch` inside menu row | — | role+name on DEV, unique within row |
 
 ## Steps (AFS)
-1. Fixtures create agent, pipeline, artifact toolkit, MCP. Open Chat, click `sidebar-create-button`, expand participants panel. **Verify** greeting visible, `Type your message...` text visible, panel has no `chat-participant-row-*` and none of the four section headers.
-2. Click `plus-menu-button`. **Verify** menu items: Attach Files (text contains "10 left"), Modules, Agents, Pipelines, Toolkits, MCPs present (Skills present too; Invite Users NOT asserted — private project).
+1. Fixtures create agent, pipeline, artifact toolkit, MCP. Open Chat, click `sidebar-create-button`, expand participants panel. **Verify** greeting visible, message input visible/editable/empty (no "Type your message..." text exists on DEV), panel has no `chat-participant-row-*` and none of the four section headers.
+2. Click `plus-menu-button`. **Verify** menu items: Attach Files (text contains "10 left"), Modules, Agents, Pipelines, Toolkits, MCPs present (Skills present too; **Invite Users asserted ABSENT** — `to_have_count(0)` — private project).
 3. Hover Agents. **Verify** `agents-search-input` + `agents-create-new-button` + the fixture agent row. Click the fixture agent row. **Verify** AGENTS section with a row containing the agent name and version text.
 4. Re-open plus -> hover Pipelines. **Verify** `pipelines-create-new-button` + fixture pipeline row; click. **Verify** PIPELINES section row with name.
 5. Re-open plus -> hover Toolkits. **Verify** rows render a switch; toggle fixture toolkit row (switch becomes checked). Without closing, hover MCPs -> toggle fixture MCP row. Close popper by outside click. **Verify** TOOLKITS and MCPS sections each contain their one row.
-6. **Verify** section order by vertical position AGENTS < PIPELINES < TOOLKITS < MCPS; exactly 4 rows, each name once (no duplicates); no error toast/alert.
+6. **Verify** section order by vertical position AGENTS < PIPELINES < TOOLKITS < MCPS; exactly **3** `chat-participant-row-*` rows (agent, pipeline, toolkit), each name once; the MCP renders as an **attention card** (no row testid, name unresolved pre-send) with exactly one warning; no error toast/alert.
 7. **Verify** four type icons pairwise distinct (compare first-SVG `path d`).
 8. Fill "Hi", click `chat-send-button`. **Verify** URL matches `/chat/\d+`, user message "Hi" shown, and the four sections + the same four names (match by text) still present, still no duplicates.
 9. **Verify** exactly one `chat-participant-warning-icon` containing "Server is disconnected", located under the MCP row (misconfigured entity); agent/pipeline/toolkit rows have none.
@@ -53,16 +53,16 @@
 | Case element | Expected | Covered by | Disposition |
 |---|---|---|---|
 | 1 Chats + "+ Chat" | new chat loads | AFS 1 | covered |
-| 2 placeholder | "Type your message..." | AFS 1 (visible text, not attribute) | covered w/ clarification |
+| 2 placeholder | "Type your message..." | AFS 1 (input visible/editable/empty) | **clarification**: hint text does not exist on DEV; not asserted |
 | 3 panel visible, empty | no participants | AFS 1 | covered |
-| 4-5 plus menu options | listed options | AFS 2 | covered; "Invite Users" **clarification** (absent in private project), "Skills" extra |
+| 4-5 plus menu options | listed options | AFS 2 | covered; "Invite Users" **clarification**: asserted ABSENT (private project), "Skills" extra |
 | 6 Agents submenu | search, create-new, list | AFS 3 | covered ("Create Agent" label) |
 | 7 select agent | in AGENTS w/ name, version, icon | AFS 3,7 | covered |
 | 8-9 Pipelines | same | AFS 4 | covered |
 | 10-11 Toolkits toggle | row in TOOLKITS | AFS 5 | covered |
 | 12-13 MCPs toggle | row in MCPS | AFS 5 | covered |
-| 14 order | AGENTS,PIPELINES,TOOLKITS,MCPS | AFS 6 | covered |
-| 15 distinct icons | 4 distinct | AFS 7 | covered |
+| 14 order | AGENTS,PIPELINES,TOOLKITS,MCPS | AFS 6 | covered (3 rows + MCP attention card) |
+| 15 distinct icons | 4 distinct | AFS 7 (3 pre-send), AFS 8 (4 post-send incl. MCP card) | covered via whole-row SVG path signature (declared improvisation: no unique type-icon handle) |
 | 16 no dupes/errors | | AFS 6,8 | covered |
 | 17 Hi + Send | | AFS 8 | covered |
 | 18 owner icon in panel | owner added | — | **clarification/out-of-scope**: USERS section not rendered in a private project; owner shown only as message-header avatar. Not asserted. |
@@ -73,7 +73,7 @@ Axis 2 extras: row count==4 and no duplicates (case step 16 intent); persistence
 ## Clarifications (case-text drift, NOT defects)
 - "+ Create New Agent/Pipeline" -> actual labels "Create Agent" / "Create Pipeline".
 - "Invite Users" absent in private project; "Skills" menu item exists but is not in the case.
-- Placeholder is rendered text, not the attribute.
+- No "Type your message..." placeholder/text exists on DEV (neither attribute nor text).
 - Owner icon in PARTICIPANTS panel (step 18) not applicable in private project.
 - Warning is amber, shown for a disconnected MCP; relies on DeepWiki MCP having no live session — deterministic here (3/3 observations incl. pre-send), but it is environment-dependent; if a future DEV MCP gets connected the assertion needs another misconfigured entity (e.g. toolkit with invalid settings).
 
