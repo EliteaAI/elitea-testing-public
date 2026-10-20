@@ -6,6 +6,14 @@ a time; last confirmed by: qa-engineer analyst, ELITEA-3366, 2026-10-19
 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: ELITEA-2875/2876/2877/2878, 2026-10-16).
 
+## New conversation + plus-menu participants + warning card (ELITEA-2455, 2026-10-20)
+
+- Submenus (Agents/Pipelines/Toolkits/MCPs) open on HOVER of `*-menuitem`; Agent/Pipeline pick closes the popper, Toolkit/MCP are `role=switch` toggles that keep it open. Menu also has `skills-menuitem`; no "Invite Users" in a private project. Create-new buttons: `agents-create-new-button` ("Create Agent") etc.; item testids `{agents|pipelines|toolkits|mcps}-menu-item-{type}-{project}-{id}`.
+- Participants panel collapsed by default (`chat-participants-panel-toggle-button`); group headers AGENTS/PIPELINES/TOOLKITS/MCPS are testid-less text; row ids re-key after first Send (entity id -> participant-link id).
+- `chat-participant-warning-icon` is a SIBLING card under the misconfigured row (disconnected MCP: "Server is disconnected! Reconnect it to use. Log in.", amber #F2994A).
+- Input "Type your message..." is not a placeholder attribute. Playwright MCP Chrome was missing on this host; repo python Playwright + storage state works for probing.
+- Full detail: `l1_new-conversation-add-agent-pipeline-toolkit-mcp-participants_ELITEA-2455.md`.
+
 ## In-chat Skill creation via the "Skills Builder" module + GeneratedEntityChip (ELITEA-3366, 2026-10-19)
 
 - **`modules-toggle-skill_builder` (listed in `ChatPage.MODULE_TOGGLE_ORDER`,
