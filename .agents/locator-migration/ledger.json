@@ -171,11 +171,59 @@
     },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_OPEN_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 6505,
+      "line": 6514,
       "kind": "role",
       "selector": "button[name='Open entity']",
       "suggested_testid": "chat-generated-entity-chip-open-button",
       "description": "Chip's 'Open entity' icon button; rendered visible only while the chip is hovered (isHovering state) — hover the chip first. role+name: no testid on DEV.",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
+      "file": "pages/chat_page.py",
+      "line": 6638,
+      "kind": "xpath",
+      "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
+      "suggested_testid": "chat-participant-attention-card-{}",
+      "description": "Participant card rendered in 'attention' form (misconfigured / disconnected entity, e.g. a remote MCP without a session): it carries NO chat-participant-row-* testid, so it is found as the parent of its warning row that contains the entity name. Format arg: the entity name.",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
+      "file": "pages/chat_page.py",
+      "line": 6627,
+      "kind": "css",
+      "selector": "svg path",
+      "suggested_testid": "chat-participant-icon-path",
+      "description": "Every SVG path inside a participant row/card (type icon + connection/info icons). The entity-type icon has no testid and no unique handle, so tests enumerate ALL paths (no positional pick) and compare the whole signature between rows. Declared improvisation: signature comparison instead of picking the type icon.",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.PARTICIPANT_MENU_ITEM_SWITCH": {
+      "file": "pages/chat_page.py",
+      "line": 198,
+      "kind": "role",
+      "selector": "switch",
+      "suggested_testid": "chat-plus-menu-participant-switch",
+      "description": "Toggle switch within a toolkit/MCP participant row of the plus menu.",
+      "state": "raw",
+      "added": "2026-10-20",
+      "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
+      "file": "pages/chat_page.py",
+      "line": 6616,
+      "kind": "xpath",
+      "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
+      "suggested_testid": "chat-participants-section-title-{}",
+      "description": "Participants-panel group header (AGENTS/PIPELINES/TOOLKITS/MCPS; text is 'Agents'... uppercased by CSS) -- ParticipantsAccordion title Typography, no testid on DEV; css classes are generated/structural so xpath is the declared last resort; anchored on structure (title span whose wrapper follows the accordion's arrow svg), not on MUI classes; excludes the sidebar nav / plus-menu list items (same text). Format arg: 'Agents' | 'Pipelines' | 'Toolkits' | 'MCPs'.",
       "state": "raw",
       "added": "2026-10-20",
       "updated": "2026-10-20",
@@ -195,7 +243,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 6566,
+      "line": 6575,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -207,7 +255,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 6524,
+      "line": 6533,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -219,7 +267,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 6516,
+      "line": 6525,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -580,20 +628,20 @@
   },
   "last_sync": "2026-10-20",
   "metric": {
-    "declared_total": 1263,
-    "declared_testid": 1215,
-    "declared_non_testid": 48,
-    "non_testid_with_hint": 27,
+    "declared_total": 1272,
+    "declared_testid": 1220,
+    "declared_non_testid": 52,
+    "non_testid_with_hint": 31,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 7,
+      "css": 8,
       "fallback": 20,
       "locator": 1,
-      "role": 15,
-      "testid": 1215,
-      "xpath": 5
+      "role": 16,
+      "testid": 1220,
+      "xpath": 7
     },
-    "locator_debt": 0.038,
+    "locator_debt": 0.0409,
     "unmanaged_handles": 351
   }
 }
