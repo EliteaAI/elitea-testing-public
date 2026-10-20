@@ -1447,3 +1447,11 @@ instead and is click-idempotent (no-ops if already checked).
 - DEV export is ENCRYPTED: download name `<name>_<date>_<time>.json.enc`, body starts `ELITEA-CHAT-ENC/1`. Success toast "Chat exported successfully"; modal closes.
 - Platform announcement dialog on DEV intercepts hover/click: dismiss `platform-banner-close` first.
 - Playwright MCP browser binary missing in this environment (chrome not found); scripted pytest-playwright chromium probes work.
+
+## Stop generation (ELITEA-2182, 2026-10-20)
+
+- **Timeline on DEV (Haiku 4.5), "generate a poem"**: Stop control renders ~0.5s after Send (bubble "Waking the agent..."), agent bubble shows `Thinking` ~2.3s, final text ~2.9s, Stop disappears the moment final text starts. Windows are short: poll <=100ms, never 500ms+.
+- **Stop in the thinking phase REMOVES the turn**: user bubble + partial agent bubble vanish from the timeline (new chat -> `li` count 0, sidebar keeps an empty "Generate poem" row, URL `/chat/<id>?name=Generate+poem`); composer returns to `chat-send-button` with the exact original prompt restored in `chat-message-input`, editable. Input is `disabled` ~100ms right after the click.
+- **Stop button without injection**: `chat-inject-button` is absent when mid-turn injection is off, so `ChatPage.STOP_BUTTON` (scoped under it) cannot resolve; the Stop is then the only `button` in the composer footer with no `data-testid` and no `aria-label`. Use `midturn_injection_enabled` fixture or declare a second anchor.
+- **Send click needs `force=True`** (MUI overlay intercepts); `platform-banner-close` toast/modal ("Announcing ELITEA 2.0.7") can cover the composer on a fresh session - dismiss it.
+- **Transit flag**: `ChatPage.navigate_to_chat(conversation_id=...)` timed out (15s `wait_for` in a pytest scratch run, 2 attempts) while a plain `page.goto('/app/chat/<id>')` + waiting for `chat-message-input` worked - possible regression/flake (#1847 networkidle class), worth watching.
