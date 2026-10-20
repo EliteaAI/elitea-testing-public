@@ -1132,6 +1132,32 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.chat.test_skill_builder_runtime_context_current_project.TestSkillBuilderRuntimeContext.test_skill_created_in_current_project_only",
+      "markers": [
+        "chat",
+        "p0",
+        "regression",
+        "skills",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3316"
+      ]
+    },
+    {
+      "automation_test_id": "tests.ui.chat.test_skill_creation_from_chat_chip_canvas.TestSkillCreationFromChat.test_skill_created_from_chat_chip_opens_canvas",
+      "markers": [
+        "chat",
+        "p0",
+        "regression",
+        "skills",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3366"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTour.test_sidebar_interactive_tour_completes_via_next",
       "markers": [
         "help_center",
