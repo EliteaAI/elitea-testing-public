@@ -56,8 +56,7 @@ class TestStreamingResponseDisplay:
             expect(chat.send_button).to_have_count(1)
             chat.send_message(_PROMPT)
             expect(chat.messages_container).to_have_count(initial_count + 2, timeout=30_000)
-            user_msg = chat.messages_container.nth(initial_count)
-            expect(user_msg).to_contain_text(_PROMPT)
+            expect(chat.messages_container.filter(has_text=_PROMPT)).to_have_count(1)
             assert chat.message_input.input_value() == "", "Input must be cleared after send"
 
         with allure.step("Step 2 — Loading placeholder shows, then model-name chip in the Thought accordion"):
