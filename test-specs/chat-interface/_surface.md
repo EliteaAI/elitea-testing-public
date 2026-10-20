@@ -1191,7 +1191,8 @@ a confirmation toast that `project_context_builder` never shows (confirmed
 live, 10s timeout), so the new method polls the switch's own checked state
 instead and is click-idempotent (no-ops if already checked).
 
-## ELITEA-3316 probe (2026-10-19): project scoping of Skills Builder - BLOCKED
+## ELITEA-3316 (2026-10-19 blocked; 2026-10-20 RE-EXECUTED OK): project scoping of Skills Builder
+- 2026-10-20: ran live, skill created only in project 575; absent in 470 and 1 (API lists). Needs `APP_PREFIX=/app` when `.env.test` is missing. See AFS.
 
 - Projects in selector (`project-selector-trigger-combobox`; options `select-option-{id}`): Public=1, Private=575 (active), Elitea Automation=470.
 - First-load `platform-banner-center` dialog blocks clicks until `platform-banner-close` ("Got it"); after hovering Modules, a tooltip popper intercepts the composer click (click elsewhere/Escape first).
