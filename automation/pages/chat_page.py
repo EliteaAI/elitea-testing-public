@@ -6605,22 +6605,24 @@ class ChatPage(BasePage):
     PIPELINE_PARTICIPANT_MENU_ITEM = '[data-testid="pipelines-menu-item-pipeline-{}-{}"]'
 
     PARTICIPANT_SECTION_TITLE = ScopedLocator(
-        xpath="//span[normalize-space(.)='{}' and contains(@class,'MuiTypography-labelSmall') and not(ancestor::li)]",
+        xpath="//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
         suggested_testid="chat-participants-section-title-{}",
         description=(
             "Participants-panel group header (AGENTS/PIPELINES/TOOLKITS/MCPS; text is "
             "'Agents'... uppercased by CSS) -- ParticipantsAccordion title Typography, no "
             "testid on DEV; css classes are generated/structural so xpath is the declared "
-            "last resort; excludes the sidebar nav / plus-menu list items (same text). Format arg: 'Agents' | 'Pipelines' | 'Toolkits' | 'MCPs'."
+            "last resort; anchored on structure (title span whose wrapper follows the accordion's arrow svg), not on MUI classes; excludes the sidebar nav / plus-menu list items (same text). Format arg: 'Agents' | 'Pipelines' | 'Toolkits' | 'MCPs'."
         ),
     )
 
-    PARTICIPANT_TYPE_ICON = ScopedLocator(
-        css="svg",
-        suggested_testid="chat-participant-type-icon",
+    PARTICIPANT_ICON_PATHS = ScopedLocator(
+        css="svg path",
+        suggested_testid="chat-participant-icon-path",
         description=(
-            "SVGs inside a participant row; the FIRST in DOM order is the entity-type icon "
-            "(EntityIcon), the rest are connection/info icons. Resolve within a row."
+            "Every SVG path inside a participant row/card (type icon + connection/info icons). "
+            "The entity-type icon has no testid and no unique handle, so tests enumerate ALL "
+            "paths (no positional pick) and compare the whole signature between rows. "
+            "Declared improvisation: signature comparison instead of picking the type icon."
         ),
     )
 
@@ -6650,15 +6652,14 @@ class ChatPage(BasePage):
         """The attention-form participant card (warning row inside) for entity *name*."""
         return self.PARTICIPANT_ATTENTION_CARD.within(self.page, name)
 
-    def get_participant_type_icon(self, participant_row):
-        """First SVG (entity-type icon) of *participant_row*."""
-        return self.PARTICIPANT_TYPE_ICON.within(participant_row).first
-
     def get_participant_warning_cards(self):
         """All misconfiguration warning cards currently rendered in the panel."""
         return self.page.locator(self.PARTICIPANT_WARNING_ICON)
 
-    def get_participant_type_icon_path(self, participant_row) -> str:
-        """``d`` attribute of the first path of the row's entity-type icon (distinct per type)."""
-        icon = self.get_participant_type_icon(participant_row)
-        return icon.evaluate("el => (el.querySelector('path') || {getAttribute: () => ''}).getAttribute('d')") or ""
+    def get_participant_icon_signature(self, participant_row) -> str:
+        """Concatenated ``d`` of every SVG path in *participant_row* (enumerates all, picks none).
+
+        Rows differ only by entity type in their icon set, so signatures are pairwise
+        distinct across agent / pipeline / toolkit / MCP."""
+        paths = self.PARTICIPANT_ICON_PATHS.within(participant_row)
+        return "|".join(paths.evaluate_all("els => els.map(e => e.getAttribute('d') || '')"))

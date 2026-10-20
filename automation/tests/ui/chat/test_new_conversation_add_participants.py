@@ -135,7 +135,7 @@ class TestNewConversationParticipants:
                 expect(page.locator(chat.TOAST_ALERT_SEVERITY.format("error"))).to_have_count(0)
 
             with allure.step("Step 7 — Participant type icons are pairwise distinct (agent, pipeline, toolkit; MCP checked after Send)"):
-                icons = [chat.get_participant_type_icon_path(row_for(n)) for n in (agent_name, pipeline_name, toolkit_name)]
+                icons = [chat.get_participant_icon_signature(row_for(n)) for n in (agent_name, pipeline_name, toolkit_name)]
                 assert all(icons), f"Missing type icon path in a row: {icons}"
                 assert len(set(icons)) == 3, "Participant type icons are not pairwise distinct"
 
@@ -154,8 +154,8 @@ class TestNewConversationParticipants:
                 expect(mcp_card).to_have_count(1, timeout=UI_ELEMENT_TIMEOUT)
                 expect(page.locator(chat.PARTICIPANT_ROW_PREFIX)).to_have_count(3)
                 expect(page.locator(chat.TOAST_ALERT_SEVERITY.format("error"))).to_have_count(0)
-                icons = [chat.get_participant_type_icon_path(row_for(n)) for n in (agent_name, pipeline_name, toolkit_name)]
-                icons.append(chat.get_participant_type_icon_path(mcp_card))
+                icons = [chat.get_participant_icon_signature(row_for(n)) for n in (agent_name, pipeline_name, toolkit_name)]
+                icons.append(chat.get_participant_icon_signature(mcp_card))
                 assert all(icons) and len(set(icons)) == 4, f"Four type icons must be pairwise distinct, got {icons}"
 
             with allure.step("Step 9 — Disconnected MCP shows exactly one warning below its row; others none"):
