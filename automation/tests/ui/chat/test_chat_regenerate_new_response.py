@@ -37,16 +37,28 @@ class TestChatRegenerateNewResponse:
     def test_regenerate_creates_new_response_same_user_input(self, page, conversation_id):
         chat = ChatPage(page)
 
+        def last_ai_item():
+            """Enumerate the timeline and return the last AI-authored item (no positional pick)."""
+            items = chat.messages_container
+            ai = [items.nth(i) for i in range(items.count()) if chat._is_ai_message(items.nth(i))]
+            assert ai, "no AI item in the timeline"
+            return ai[-1]
+
+        def user_items_text():
+            items = chat.messages_container
+            return [items.nth(i).inner_text() for i in range(items.count()) if not chat._is_ai_message(items.nth(i))]
+
         with allure.step("Precondition — fresh conversation with one user message and one LLM response"):
             chat.navigate_to_chat(conversation_id=conversation_id)
             count_before = chat.get_message_count()
             chat.send_message(_PROMPT, use_enter=True)
             chat.wait_for_ai_response(initial_count=count_before)
             expect(chat.messages_container).to_have_count(count_before + 2, timeout=UI_TIMEOUT)
-            items = chat.messages_container
-            ai_item = items.nth(count_before + 1)
-            user_item = items.nth(count_before)
-            assert chat._is_ai_message(ai_item), "last timeline item is not the AI response"
+            ai_item = last_ai_item()
+            ai_text_before = ai_item.inner_text()
+            assert ai_text_before.strip(), "initial AI response is empty"
+            user_texts_before = user_items_text()
+            assert len(user_texts_before) == count_before + 1
 
         with allure.step("Step 1 — Scroll to the last LLM response and hover: Regenerate is visible"):
             ai_item.scroll_into_view_if_needed()
@@ -55,28 +67,45 @@ class TestChatRegenerateNewResponse:
             expect(regenerate).to_have_count(1, timeout=UI_TIMEOUT)
             expect(regenerate).to_be_visible(timeout=UI_TIMEOUT)
 
-        with allure.step("Step 2 — Click Regenerate: response replaced in place, new generation begins"):
-            user_text_before = user_item.inner_text()
+        with allure.step("Step 2 — Click Regenerate: old response replaced in place, new generation begins"):
             regenerate.click()
+            ai_item = last_ai_item()
+            # Replacement: the completed-response actions are gone while the new one generates.
+            expect(ChatPage.copy_action_button.resolve(ai_item)).to_have_count(0, timeout=UI_TIMEOUT)
+            expect(ChatPage.regenerate_action_button.resolve(ai_item)).to_have_count(0, timeout=UI_TIMEOUT)
             expect(chat.messages_container).to_have_count(count_before + 2, timeout=UI_TIMEOUT)
 
-        with allure.step("Step 3 — In-progress state is shown on the AI item"):
+        with allure.step("Step 3 — In-progress state: loading/thought accordion with model label, Stop shown"):
+            # Discriminating: Stop control present and Regenerate/Copy absent => genuinely generating.
+            expect(chat.chat_inject_button).to_have_count(1, timeout=UI_TIMEOUT)
+            expect(ChatPage.copy_action_button.resolve(last_ai_item())).to_have_count(0)
+            ai_item = last_ai_item()
             placeholder = ChatPage.answer_loading_placeholder.resolve(ai_item)
             accordion = ChatPage.answer_thought_accordion.resolve(ai_item)
             expect(placeholder.or_(accordion).first).to_be_visible(timeout=UI_TIMEOUT)
+            model_chip = ChatPage.answer_model_chip.resolve(ai_item)
+            expect(model_chip.first).to_be_visible(timeout=UI_TIMEOUT)
+            assert model_chip.first.inner_text().strip(), "model label on the regenerating response is empty"
 
         with allure.step("Step 4 — The user's previous input is unchanged"):
-            assert user_item.inner_text() == user_text_before
+            assert user_items_text() == user_texts_before
             expect(chat.messages_container).to_have_count(count_before + 2)
 
-        with allure.step("Step 5 — The new response completes with content"):
+        with allure.step("Step 5 — The new response completes with content and the model label"):
+            ai_item = last_ai_item()
             copy_btn = ChatPage.copy_action_button.resolve(ai_item)
             ai_item.hover()
             expect(copy_btn).to_be_visible(timeout=60_000)
+            ai_item = last_ai_item()
             assert ai_item.inner_text().strip(), "regenerated response body is empty"
+            model_chip = ChatPage.answer_model_chip.resolve(ai_item)
+            expect(model_chip.first).to_be_visible(timeout=UI_TIMEOUT)
+            assert model_chip.first.inner_text().strip(), "model label missing on the completed response"
             expect(chat.messages_container).to_have_count(count_before + 2)
 
-        with allure.step("Step 6 — Regenerate and the action icons reappear"):
+        with allure.step("Step 6 — Stop is gone; Regenerate and the action icons reappear"):
+            expect(chat.chat_inject_button).to_have_count(0, timeout=UI_TIMEOUT)
+            ai_item = last_ai_item()
             ai_item.hover()
             for action in (
                 ChatPage.regenerate_action_button,
