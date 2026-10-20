@@ -13,6 +13,7 @@ previous confirmer: ELITEA-2875/2876/2877/2878, 2026-10-16).
 - `chat-participant-warning-icon` is a SIBLING card under the misconfigured row (disconnected MCP: "Server is disconnected! Reconnect it to use. Log in.", amber #F2994A).
 - Input "Type your message..." is not a placeholder attribute. Playwright MCP Chrome was missing on this host; repo python Playwright + storage state works for probing.
 - Full detail: `l1_new-conversation-add-agent-pipeline-toolkit-mcp-participants_ELITEA-2455.md`.
+- **Resolved/added during ELITEA-2455 implementation:** (a) the disconnected MCP participant renders as an *attention card* (no `chat-participant-row-*` testid, before AND after Send; name resolves only after Send) -> only 3 `chat-participant-row-*` exist; the MCP card is found via its `chat-participant-warning-icon` parent. (b) "Type your message..." is not in the DOM at all (placeholder="" and no text/pseudo-element) on DEV. (c) `messages_list` (`chat-message-list`) is not rendered in a blank chat, so `close_plus_menu_popper` times out there; use `close_plus_menu_popper_on_blank_chat` (clicks the greeting). (d) Fixtures `agent_id`/`pipeline_id` share an identical truncated name; spec creates distinctly named ones. (e) A pipeline participant makes the "Hi" send run the pipeline; leaving the chat prompts a "Response generation is still in progress" Switch dialog.
 
 ## In-chat Skill creation via the "Skills Builder" module + GeneratedEntityChip (ELITEA-3366, 2026-10-19)
 

@@ -6579,3 +6579,86 @@ class ChatPage(BasePage):
             return
         self.platform_banner_got_it_button.within(self.platform_banner_dialog).click()
         self.platform_banner_dialog.wait_for(state="hidden", timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # New conversation + four participant types via the plus menu (ELITEA-2455)
+    # ------------------------------------------------------------------
+
+    agents_search_input = LocatorDescriptor(
+        testid="agents-search-input",
+        description="Search field inside the plus-menu's Agents submenu (placeholder 'Search agents...').",
+    )
+
+    pipelines_search_input = LocatorDescriptor(
+        testid="pipelines-search-input",
+        description="Search field inside the plus-menu's Pipelines submenu.",
+    )
+
+    toolkits_create_new_button = LocatorDescriptor(
+        testid="toolkits-create-new-button",
+        description="'Create Toolkit' item inside the plus-menu's Toolkits submenu.",
+    )
+
+    # Dynamic menu-row testids (project id, entity id). Agent/Pipeline rows
+    # select-and-close the popper; Toolkit/MCP rows are toggles (see above).
+    AGENT_PARTICIPANT_MENU_ITEM = '[data-testid="agents-menu-item-agent-{}-{}"]'
+    PIPELINE_PARTICIPANT_MENU_ITEM = '[data-testid="pipelines-menu-item-pipeline-{}-{}"]'
+
+    PARTICIPANT_SECTION_TITLE = ScopedLocator(
+        xpath="//span[normalize-space(.)='{}' and contains(@class,'MuiTypography-labelSmall') and not(ancestor::li)]",
+        suggested_testid="chat-participants-section-title-{}",
+        description=(
+            "Participants-panel group header (AGENTS/PIPELINES/TOOLKITS/MCPS; text is "
+            "'Agents'... uppercased by CSS) -- ParticipantsAccordion title Typography, no "
+            "testid on DEV; css classes are generated/structural so xpath is the declared "
+            "last resort; excludes the sidebar nav / plus-menu list items (same text). Format arg: 'Agents' | 'Pipelines' | 'Toolkits' | 'MCPs'."
+        ),
+    )
+
+    PARTICIPANT_TYPE_ICON = ScopedLocator(
+        css="svg",
+        suggested_testid="chat-participant-type-icon",
+        description=(
+            "SVGs inside a participant row; the FIRST in DOM order is the entity-type icon "
+            "(EntityIcon), the rest are connection/info icons. Resolve within a row."
+        ),
+    )
+
+    PARTICIPANT_ATTENTION_CARD = ScopedLocator(
+        xpath="//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
+        suggested_testid="chat-participant-attention-card-{}",
+        description=(
+            "Participant card rendered in 'attention' form (misconfigured / disconnected entity, "
+            "e.g. a remote MCP without a session): it carries NO chat-participant-row-* testid, so "
+            "it is found as the parent of its warning row that contains the entity name. "
+            "Format arg: the entity name."
+        ),
+    )
+
+    @action("Close plus-menu popper via outside click on the blank-chat greeting")
+    def close_plus_menu_popper_on_blank_chat(self, timeout: int = 5000):
+        """Outside click for a brand-new unsent conversation, where ``messages_list``
+        is not rendered (``close_plus_menu_popper`` needs it). Clicks the greeting."""
+        self.new_conversation_greeting.click(position={"x": 5, "y": 5})
+        expect(self.toolkits_menuitem).to_be_hidden(timeout=timeout)
+
+    def get_participant_section_title(self, plural_name: str):
+        """Locator for a panel group header ('Agents'|'Pipelines'|'Toolkits'|'MCPs')."""
+        return self.PARTICIPANT_SECTION_TITLE.within(self.page, plural_name)
+
+    def get_participant_attention_card(self, name: str):
+        """The attention-form participant card (warning row inside) for entity *name*."""
+        return self.PARTICIPANT_ATTENTION_CARD.within(self.page, name)
+
+    def get_participant_type_icon(self, participant_row):
+        """First SVG (entity-type icon) of *participant_row*."""
+        return self.PARTICIPANT_TYPE_ICON.within(participant_row).first
+
+    def get_participant_warning_cards(self):
+        """All misconfiguration warning cards currently rendered in the panel."""
+        return self.page.locator(self.PARTICIPANT_WARNING_ICON)
+
+    def get_participant_type_icon_path(self, participant_row) -> str:
+        """``d`` attribute of the first path of the row's entity-type icon (distinct per type)."""
+        icon = self.get_participant_type_icon(participant_row)
+        return icon.evaluate("el => (el.querySelector('path') || {getAttribute: () => ''}).getAttribute('d')") or ""
