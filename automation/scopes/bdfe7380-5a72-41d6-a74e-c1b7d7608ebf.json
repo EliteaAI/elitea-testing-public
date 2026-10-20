@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "session": "bdfe7380-5a72-41d6-a74e-c1b7d7608ebf",
+  "intent": "automation",
+  "batch": "skills-builder-chat",
+  "cases": [
+    "ELITEA-3316",
+    "ELITEA-3366",
+    "ELITEA-3367"
+  ],
+  "declaredAt": "2026-10-20T09:10:07.696Z",
+  "updatedAt": "2026-10-20T09:10:23.940Z",
+  "outcomes": {
+    "ELITEA-3366": {
+      "outcome": "automated",
+      "at": "2026-10-20T09:10:07.737Z"
+    },
+    "ELITEA-3316": {
+      "outcome": "automated",
+      "at": "2026-10-20T09:10:07.737Z"
+    },
+    "ELITEA-3367": {
+      "outcome": "blocked",
+      "at": "2026-10-20T09:10:07.737Z"
+    }
+  },
+  "closedAt": "2026-10-20T09:10:23.940Z"
+}
