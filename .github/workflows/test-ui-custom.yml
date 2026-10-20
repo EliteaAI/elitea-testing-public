@@ -437,7 +437,9 @@ jobs:
     name: ${{ inputs.environment }} - ${{ matrix.suites }}
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # Fewer runners => each one carries more suites, so the 45m budget (sized for 9)
+    # would cancel them; reduced-runner runs get 180m instead
+    timeout-minutes: ${{ inputs.parallel_jobs && fromJSON(inputs.parallel_jobs) < 9 && 180 || 45 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
