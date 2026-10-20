@@ -797,6 +797,38 @@ class ChatPage(BasePage):
         ),
     )
 
+    # ELITEA-3372 — Ask-User clarifying card (ClarifyingQuestionControl.jsx) handles.
+    HITL_CUSTOM_OPTION_INPUT = LocatorDescriptor(
+        css='input[placeholder="Your option"]',
+        suggested_testid="chat-hitl-custom-option-input",
+        description="Always-visible custom-option text field on the Ask-User clarifying card.",
+    )
+    HITL_CONTINUE_BUTTON = LocatorDescriptor(
+        role="button",
+        name="Continue",
+        exact=True,
+        suggested_testid="chat-hitl-continue-button",
+        description=(
+            "Continue action of the clarifying card; its accessible name flips from "
+            "'Skip' to 'Continue' once the custom field is non-empty."
+        ),
+    )
+    MESSAGE_COPY_BUTTON = ScopedLocator(
+        css='button[aria-label="Copy to clipboard"]',
+        suggested_testid="chat-message-copy-button",
+        description="Copy button rendered inside a fully generated message (scope: a message item).",
+    )
+
+    def get_message_at(self, index: int):
+        """Return the message item at *index* (index derived from get_message_count(),
+        not a sibling pick) — used to address the AI reply after a send."""
+        return self.messages_container.nth(index)
+
+    def message_copy_button_visible(self, message_locator) -> bool:
+        """True when the Copy button inside *message_locator* is rendered and visible."""
+        buttons = self.MESSAGE_COPY_BUTTON.within(message_locator)
+        return buttons.count() > 0 and buttons.first.is_visible()
+
     def message_has_generated_entity_chip(self, message_locator) -> bool:
         """Return True if *message_locator* (a ``chat-message-item`` ``<li>``)
         renders a ``generated-entity-chip`` — i.e. the AI's tool call in that

@@ -90,7 +90,7 @@ def _send_and_resolve_builder_flow(
     The Ask-User clarifying card's trigger is genuinely non-deterministic
     for the same message across fresh conversations (AFS § Known Defects/
     Clarifications, confirmed live ~14 runs) — this helper polls for EITHER
-    outcome: the clarifying card (``get_by_placeholder("Your option")``) or
+    outcome: the clarifying card (the custom-option input) or
     a settled AI response, whichever appears first, and answers the card in
     a bounded loop (never assumes exactly one question) if it shows up.
 
@@ -107,10 +107,9 @@ def _send_and_resolve_builder_flow(
     initial_count = chat.get_message_count()
     chat.send_message(prompt, use_enter=True)
 
-    custom_option_input = chat.page.get_by_placeholder("Your option")
+    custom_option_input = chat.HITL_CUSTOM_OPTION_INPUT
     ai_response_index = initial_count + 1
-    ai_message = chat.messages_container.nth(ai_response_index)
-    copy_button = ai_message.locator('button[aria-label="Copy to clipboard"]')
+    ai_message = chat.get_message_at(ai_response_index)
 
     deadline_ms = timeout
     waited_ms = 0
@@ -139,12 +138,12 @@ def _send_and_resolve_builder_flow(
                 # "Continue" once the field is non-empty (same-element
                 # ternary, ClarifyingQuestionControl.jsx) — never cache this
                 # locator from before the fill.
-                continue_button = chat.page.get_by_role("button", name="Continue")
+                continue_button = chat.HITL_CONTINUE_BUTTON
                 continue_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
                 continue_button.click()
                 chat.page.wait_for_timeout(300)
             break
-        if copy_button.count() > 0 and copy_button.first.is_visible():
+        if chat.message_copy_button_visible(ai_message):
             logger.info("AI proceeded directly — no clarifying card this run")
             break
         chat.page.wait_for_timeout(CLARIFYING_CARD_POLL_INTERVAL_MS)
@@ -304,11 +303,11 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                 created_agent_name = matching_agents[0]["name"]
 
             with allure.step("Step 5 — Verify Agent chip appears in response"):
-                agent_message = chat.messages_container.nth(agent_response_index)
+                agent_message = chat.get_message_at(agent_response_index)
                 assert chat.message_has_generated_entity_chip(agent_message), (
                     "Expected a generated-entity-chip on the Agent-creation response"
                 )
-                chip_text = chat.GENERATED_ENTITY_CHIP.within(agent_message).first.text_content() or ""
+                chip_text = chat.MESSAGE_GENERATED_ENTITY_CHIP.within(agent_message).first.text_content() or ""
                 assert created_agent_name.lower() in chip_text.lower() or chip_text.strip() != "", (
                     f"Expected the generated-entity-chip text to relate to the created "
                     f"agent '{created_agent_name}', got chip text: {chip_text!r}"
@@ -336,11 +335,11 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                 created_pipeline_name = matching_pipelines[0]["name"]
 
             with allure.step("Step 8 — Verify Pipeline chip appears in response"):
-                pipeline_message = chat.messages_container.nth(pipeline_response_index)
+                pipeline_message = chat.get_message_at(pipeline_response_index)
                 assert chat.message_has_generated_entity_chip(pipeline_message), (
                     "Expected a generated-entity-chip on the Pipeline-creation response"
                 )
-                chip_text = chat.GENERATED_ENTITY_CHIP.within(pipeline_message).first.text_content() or ""
+                chip_text = chat.MESSAGE_GENERATED_ENTITY_CHIP.within(pipeline_message).first.text_content() or ""
                 assert created_pipeline_name.lower() in chip_text.lower() or chip_text.strip() != "", (
                     f"Expected the generated-entity-chip text to relate to the created "
                     f"pipeline '{created_pipeline_name}', got chip text: {chip_text!r}"
@@ -377,9 +376,11 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                 # force=True — a lingering Toolkits-submenu popper from Step 9's
                 # add_toolkit_participant() flow can still intercept pointer events
                 # here (mui-patterns.md § MUI Overlay Interception), confirmed live.
+                # Authorize/Block resumes the SAME AI message (no new message is added), so the
+                # AI message sits at count-1 and the preceding user message at count-2.
                 chat.sensitive_action_authorize_button.click(force=True)
                 chat.wait_for_ai_response(
-                    initial_count=chat.get_message_count() - 1, timeout=AI_RESPONSE_TIMEOUT
+                    initial_count=chat.get_message_count() - 2, timeout=AI_RESPONSE_TIMEOUT
                 )
 
                 remaining_files = artifact_api.list_bucket_files(bucket_name)
@@ -405,7 +406,7 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
             with allure.step("Step 12 — Reject the action; verify the file is preserved"):
                 chat.sensitive_action_block_button.click(force=True)
                 chat.wait_for_ai_response(
-                    initial_count=chat.get_message_count() - 1, timeout=AI_RESPONSE_TIMEOUT
+                    initial_count=chat.get_message_count() - 2, timeout=AI_RESPONSE_TIMEOUT
                 )
 
                 remaining_files_after_block = artifact_api.list_bucket_files(bucket_name)
@@ -418,12 +419,12 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                 "Side-channel check — earlier Agent/Pipeline-builder messages are "
                 "unaffected by the later HITL exchanges in the same conversation"
             ):
-                agent_message_now = chat.messages_container.nth(agent_response_index)
+                agent_message_now = chat.get_message_at(agent_response_index)
                 assert chat.message_has_generated_entity_chip(agent_message_now), (
                     "Expected the earlier Agent-creation response to still show its "
                     "generated-entity-chip after the later HITL exchanges"
                 )
-                pipeline_message_now = chat.messages_container.nth(pipeline_response_index)
+                pipeline_message_now = chat.get_message_at(pipeline_response_index)
                 assert chat.message_has_generated_entity_chip(pipeline_message_now), (
                     "Expected the earlier Pipeline-creation response to still show its "
                     "generated-entity-chip after the later HITL exchanges"
