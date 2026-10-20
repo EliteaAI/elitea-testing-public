@@ -2,9 +2,84 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2875/2876/2877/2878,
-2026-10-16 (supersedes nothing below — new section, other sections unchanged;
-previous confirmer: ELITEA-2458, 2026-08-07).
+a time; last confirmed by: qa-engineer analyst, ELITEA-3366, 2026-10-19
+(supersedes nothing below — new section, other sections unchanged;
+previous confirmer: ELITEA-2875/2876/2877/2878, 2026-10-16).
+
+## In-chat Skill creation via the "Skills Builder" module + GeneratedEntityChip (ELITEA-3366, 2026-10-19)
+
+- **`modules-toggle-skill_builder` (listed in `ChatPage.MODULE_TOGGLE_ORDER`,
+  chat_page.py:462) is OFF by default on every fresh conversation** —
+  confirmed live 6/6. Sending a fully-specified "create a skill..." chat
+  message WITHOUT first enabling this toggle was not independently tested
+  this pass (every run enabled it first) — don't assume the tool is
+  reachable without it; treat the toggle as a hard precondition for any
+  Skills-Builder-family case, same as ELITEA-3254/3315/3316's
+  `project_context_builder` precondition already documented below.
+- **The AI invokes the Skills-creation tool TWICE per turn** — the "Thought
+  for N secs" accordion shows 2 identical `chat-answer-model-chip` entries
+  reading `"Elitea Skills: post_elitea_core_skills"` (different underlying
+  model chips alongside them — `Bedrock-GPT-6-Luna` then
+  `Dial-GPT-5.6-Luna` in this environment) for ONE successful skill
+  creation. Not investigated further (not a case-relevant anomaly — the
+  skill WAS created correctly, confirmed via API, in all 6 runs) but worth
+  knowing before assuming "chip count == tool-call count" in a future case.
+- **`[data-testid="generated-entity-chip"]`** (`GeneratedEntityChip.jsx`,
+  `src/[fsd]/features/chat/ui/chat-created-entity/`) is the SHARED chip
+  component for every chat-driven entity-creation flow (agent/pipeline/
+  skill/toolkit/project_context) — `ApplicationAnswer.jsx:281`'s single
+  render call site, entity-type-parameterized via `entity.entity_type`. Its
+  **label text is the entity's raw `name` field** (`entity.entity_name`,
+  no prefix) — for a Skill this is the slugified name (e.g.
+  `daily-standup-summarizer`), NOT a `"Skill: {Display Name}"` string (case
+  authors across this family keep writing the latter in Expected Results —
+  confirmed case-text drift, not a defect, see ELITEA-3366's own AFS).
+  **The chip's "Open entity" button (`aria-label="Open entity"`, no
+  testid) only becomes visible on `:hover`** over the chip container — a
+  cold `.click()` without a preceding `.hover()` times out (element
+  present in DOM, `is_visible()` false). Clicking it opens the
+  entity-specific editor as a right-side Canvas — for Skills, this is
+  `SkillEditor.jsx`, which reuses the IDENTICAL `CreateSkillForm.jsx` field
+  testids the standalone `/skills/create` page uses
+  (`skill-name-input-field`/`skill-description-input-field`/
+  `skill-instructions-editor-content`) — zero new testids needed for the
+  form fields themselves.
+- **Same four-way canvas-chrome testid gap as Pipeline/MCP (documented
+  below under "In-chat Create New X canvas family"), now confirmed to
+  extend to Skill too**: `SkillEditor.jsx`'s `BaseEditor` call site
+  (source-read, `origin/main`) never supplies `titleTestId`/
+  `subtitleTestId`/`closeButtonTestId` despite `BaseEditor.jsx`/
+  `EditorHeader.jsx` already accepting all three as optional props (same
+  plumbing the Agent canvas, ELITEA-2166, already uses). Save/Discard
+  buttons (`SkillEditorSaveButton.jsx` / `EditorHeader.jsx`'s
+  `Button.DiscardButton`) also carry no testid — reachable via role+name
+  ("Save"/"Discard" text, unique within the open canvas) in the meantime.
+- **Skill is never auto-added as a chat participant on creation** —
+  confirmed BOTH live (no skill-participant UI anywhere, any of 6 runs)
+  AND via source trace: `GeneratedEntityChip`'s `onEntityCreated` → (for
+  `entity_type==='skill'`) `ChatBox.jsx`'s local `onShowSkillEditor` →
+  `useEditSkill.hooks.js`'s `setEditingSkill` — purely local React state,
+  no `addNewParticipants`/participant-mutation call anywhere in that
+  chain. Contrast with the Agent-creation flow (ELITEA-2166 section below),
+  which DOES auto-add + auto-activate the created agent as a participant
+  via a completely different hook (`useAgentCreation.js`) — don't assume
+  parity across entity types in this family.
+- **Description field is AI-rephrased, NOT a verbatim copy of the chat
+  message's stated description** — confirmed live, Instructions WAS a
+  byte-exact copy in all 6 runs, Description never was (e.g. supplied
+  `"Summarizes daily standup notes into action items"` →  stored
+  `"Summarizes daily standup notes by extracting blockers, decisions, and
+  action items."`). Assert topical content, not exact string, for
+  Description in this family — same non-determinism-handling precedent as
+  the AI-generated-table-content entry below.
+- **`SkillAPI.list_skills()`/`delete_skill()` (existing, `automation/api/
+  client.py:1784`/`1855`) is sufficient for this family's cleanup** — no
+  new API client work needed. Six throwaway skills (ids 459–471,
+  name pattern `daily-standup-summarizer*`) were created and deleted
+  live during this analysis session, confirmed zero leaked rows after
+  cleanup (`list_skills()` total dropped from 25 → 14 net of the two
+  pre-existing originals this session reused).
+  Full details: `test-specs/chat-interface/l1_skill-creation-happy-path-with-chip-and-canvas_ELITEA-3366.md`.
 
 ## Mid-turn interjection / message queuing (ELITEA-2875/2876/2877/2878, 2026-10-16)
 
@@ -1198,3 +1273,22 @@ on DEV.** Three load-bearing findings this pass:
    `add_toolkit_participant()` when it follows ANY other popper interaction
    in the same conversation — not previously documented because earlier
    HITL AFS (ELITEA-2211) never chained it after a Modules-panel sequence.
+
+## ELITEA-3316 (2026-10-19 blocked; 2026-10-20 RE-EXECUTED OK): project scoping of Skills Builder
+- 2026-10-20: ran live, skill created only in project 575; absent in 470 and 1 (API lists). Needs `APP_PREFIX=/app` when `.env.test` is missing. See AFS.
+
+- Projects in selector (`project-selector-trigger-combobox`; options `select-option-{id}`): Public=1, Private=575 (active), Elitea Automation=470.
+- First-load `platform-banner-center` dialog blocks clicks until `platform-banner-close` ("Got it"); after hovering Modules, a tooltip popper intercepts the composer click (click elsewhere/Escape first).
+- DEV chat produced no reply (only the model chip) for 120s on a Skills Builder message; same as ELITEA-3367. See AFS l1_skill-builder-runtime-context-current-project-only_ELITEA-3316.md.
+
+
+## Skills Builder happy path (ELITEA-3366, re-verified 2026-10-20)
+- Create conversation BEFORE enabling `modules-toggle-skill_builder`; otherwise the toggle is lost and the model replies in prose with no tool call.
+- `ensure_module_toggle_checked` works for skill_builder after hover on `internal-tools-menuitem`. Chip `generated-entity-chip` label = slugified name; canvas fields via `skill-*-input-field`; instructions/description are AI-rephrased.
+- Scripted headless probes work (Playwright MCP chrome missing); dismiss `platform-banner-center` first.
+
+
+## Ask User clarification card (ELITEA-3367, live 2026-10-20)
+- Trigger is model-discretionary: `Create a skill for onboarding` with skill_builder+ask_user on asks in only ~3/17 fresh conversations; otherwise creates the skill directly. Detect branch by waiting on `input[placeholder="Your option"]` vs `generated-entity-chip`.
+- Card: radio rows (title+description), `Your option` free text, `Skip`->`Continue` once answered, `Previous/Next question`, counter `1/2`. Click on option auto-advances; radio input is overlay-covered (click the visible row). Submit -> card gone, answer summary `1. q / answer` in the message, then `post_elitea_core_generate_skill_draft` + `post_elitea_core_skills` run and one chip appears. Full AFS: l1_skill-creation-ask-user-clarification_ELITEA-3367.md.
+- DEV chat answers again as of 2026-10-20 (earlier "no reply" notes are resolved).

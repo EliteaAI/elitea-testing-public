@@ -93,11 +93,12 @@ jobs:
       # A scheduled run uses the dispatch defaults: `inputs.*` are all empty on a
       # schedule event, so every fallback below applies — i.e. the nightly runs the
       # FULL suite ('all' -> every dir under automation/tests/ui), stable markers.
-      # The one thing the schedule still forces is results processing (see the
-      # `links` and `notify` jobs) so the maintenance report keeps being fed.
+      # The schedule still forces two things: results processing (see the `links`
+      # and `notify` jobs) so the maintenance report keeps being fed, and 3 parallel
+      # runners instead of the dispatch default of 9.
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
-      parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
+      parallel_jobs: ${{ github.event_name == 'schedule' && '3' || inputs.parallel_jobs || '9' }}
       markers: ${{ inputs.markers || 'not new and not blocked and not flaky' }}
       ref: ${{ inputs.ref || 'main' }}
       publish_to_tms: ${{ inputs.publish_to_tms || false }}
