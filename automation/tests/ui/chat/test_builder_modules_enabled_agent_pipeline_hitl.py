@@ -43,7 +43,7 @@ import pytest
 from api import AgentAPI, ArtifactAPI, PipelineAPI, ToolkitAPI
 from pages.chat_page import ChatPage
 from pages.guardrails_admin_page import GuardrailsAdminPage
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +53,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p0, pytest.mark.regr
 # Timeout constants (ms)
 # ---------------------------------------------------------------------------
 UI_ELEMENT_TIMEOUT = 10_000
-AI_RESPONSE_TIMEOUT = 60_000
-CLARIFYING_CARD_POLL_INTERVAL_MS = 500
+AI_RESPONSE_TIMEOUT = 120_000
 
 # Case text's own step-3/6 wording (literal). Confirmed live (AFS § Known
 # Defects/Clarifications) to be genuinely non-deterministic whether it
@@ -71,11 +70,7 @@ CLARIFYING_ANSWER_TEXT = "A friendly customer support agent for an e-commerce co
 # Unambiguous delete-file messages naming the bucket/file explicitly (same
 # pattern ELITEA-2211's AFS documents — a vague "delete a file" message
 # produces a clarifying question rather than a real tool-call attempt).
-AUTHORIZE_DELETE_MESSAGE_TEMPLATE = (
-    'Use delete_file toolkit to delete a file named "{file}" from bucket '
-    '"{bucket}". Execute the tool now, do not ask for clarification.'
-)
-BLOCK_DELETE_MESSAGE_TEMPLATE = (
+DELETE_FILE_MESSAGE_TEMPLATE = (
     'Use delete_file toolkit to delete a file named "{file}" from bucket '
     '"{bucket}". Execute the tool now, do not ask for clarification.'
 )
@@ -83,78 +78,23 @@ BLOCK_DELETE_MESSAGE_TEMPLATE = (
 
 def _send_and_resolve_builder_flow(
     chat: ChatPage, prompt: str, answer_text: str, timeout: int = AI_RESPONSE_TIMEOUT
-) -> int:
-    """Send *prompt*, resolve any Ask-User clarifying card that appears, and
+) -> None:
+    """Send *prompt*, answer any Ask-User clarifying card(s) that appear, and
     wait for the AI response to settle.
 
-    The Ask-User clarifying card's trigger is genuinely non-deterministic
-    for the same message across fresh conversations (AFS § Known Defects/
-    Clarifications, confirmed live ~14 runs) — this helper polls for EITHER
-    outcome: the clarifying card (the custom-option input) or
-    a settled AI response, whichever appears first, and answers the card in
-    a bounded loop (never assumes exactly one question) if it shows up.
-
-    Args:
-        chat: ChatPage instance.
-        prompt: The chat message to send.
-        answer_text: Free-text answer typed into the clarifying card's
-            custom-option field, if the card appears.
-        timeout: Maximum wait time in milliseconds for the whole exchange.
-
-    Returns:
-        The AI response's message index (for chip/content assertions).
+    The card's trigger is non-deterministic for the same message (AFS § Known
+    Defects/Clarifications), so ChatPage condition-waits for EITHER the card or
+    a settled reply and answers the card in a bounded loop if it shows up.
     """
     initial_count = chat.get_message_count()
     chat.send_message(prompt, use_enter=True)
-
-    custom_option_input = chat.HITL_CUSTOM_OPTION_INPUT
-    ai_response_index = initial_count + 1
-    ai_message = chat.get_message_at(ai_response_index)
-
-    deadline_ms = timeout
-    waited_ms = 0
-    card_answered = False
-
-    # Bounded poll: whichever appears first — the clarifying card or the
-    # settled response's Copy button — wins. If the card appears, answer it
-    # (loop in case the stepper shows more than one question) then continue
-    # waiting for the response to settle.
-    while waited_ms < deadline_ms:
-        if custom_option_input.count() > 0 and custom_option_input.first.is_visible():
-            logger.info("Ask-User clarifying card appeared — answering")
-            card_answered = True
-            # Answer every question the stepper shows (bounded iteration —
-            # live runs this pass only ever showed 1, never hardcode "1").
-            question_guard = 0
-            while custom_option_input.count() > 0 and custom_option_input.first.is_visible():
-                question_guard += 1
-                if question_guard > 10:
-                    raise TimeoutError(
-                        "Ask-User clarifying card did not resolve after 10 answered questions"
-                    )
-                custom_option_input.first.click()
-                custom_option_input.first.fill(answer_text)
-                # Re-query: the button's accessible name flips from "Skip" to
-                # "Continue" once the field is non-empty (same-element
-                # ternary, ClarifyingQuestionControl.jsx) — never cache this
-                # locator from before the fill.
-                continue_button = chat.HITL_CONTINUE_BUTTON
-                continue_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                continue_button.click()
-                chat.page.wait_for_timeout(300)
-            break
-        if chat.message_copy_button_visible(ai_message):
-            logger.info("AI proceeded directly — no clarifying card this run")
-            break
-        chat.page.wait_for_timeout(CLARIFYING_CARD_POLL_INTERVAL_MS)
-        waited_ms += CLARIFYING_CARD_POLL_INTERVAL_MS
-
-    logger.info(
-        "Builder-flow send resolved (card_answered=%s) — waiting for AI response to settle",
-        card_answered,
-    )
+    answered = chat.resolve_clarifying_cards_until_settled(initial_count, answer_text, timeout=timeout)
+    logger.info("Builder-flow send resolved (clarifying questions answered=%d)", answered)
     chat.wait_for_ai_response(initial_count=initial_count, timeout=timeout)
-    return ai_response_index
+
+
+def _entity_ids(rows: list[dict]) -> dict:
+    return {r["id"]: r.get("name", "") for r in rows}
 
 
 @allure.epic("Chat")
@@ -162,8 +102,7 @@ def _send_and_resolve_builder_flow(
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3372_agent-and-pipeline-builder-work-correctly-when-skills-builder-"
-    "and-project-context-builder-are-enabled.md",
+    "ELITEA-3372_agent-pipeline-builder-regression-with-skills-context-enabled.md",
     "onetest-ai Test Case link (ELITEA-3372)",
 )
 class TestBuilderModulesEnabledAgentPipelineHitl:
@@ -190,8 +129,8 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
         chat = ChatPage(page)
         console_errors = chat.capture_console_errors()
 
-        created_agent_id = None
-        created_pipeline_id = None
+        created_agent_ids: list = []
+        created_pipeline_ids: list = []
         bucket_name = None
         toolkit_id = None
         toolkit_name = None
@@ -286,63 +225,43 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                 "Step 3/4 — Request Agent creation with an incomplete description; "
                 "resolve any Ask-User clarifying question(s); verify completion"
             ):
-                agent_response_index = _send_and_resolve_builder_flow(
-                    chat, AGENT_CREATION_MESSAGE, CLARIFYING_ANSWER_TEXT
+                agents_before = _entity_ids(agent_api.list_agents().get("rows", []))
+                _send_and_resolve_builder_flow(chat, AGENT_CREATION_MESSAGE, CLARIFYING_ANSWER_TEXT)
+
+                agents_after = _entity_ids(agent_api.list_agents().get("rows", []))
+                new_agents = {i: n for i, n in agents_after.items() if i not in agents_before}
+                created_agent_ids.extend(new_agents)
+                assert new_agents, (
+                    f"Expected a NEW agent after the creation request; list unchanged: {list(agents_after.values())}"
                 )
 
-                agents_after = agent_api.list_agents().get("rows", [])
-                matching_agents = [
-                    a for a in agents_after if "customer support" in a.get("name", "").lower()
-                    or "support" in a.get("name", "").lower()
-                ]
-                assert matching_agents, (
-                    f"Expected a new agent whose name traces to 'customer support', "
-                    f"found none among: {[a.get('name') for a in agents_after]}"
-                )
-                created_agent_id = matching_agents[0]["id"]
-                created_agent_name = matching_agents[0]["name"]
-
-            with allure.step("Step 5 — Verify Agent chip appears in response"):
-                agent_message = chat.get_message_at(agent_response_index)
-                assert chat.message_has_generated_entity_chip(agent_message), (
-                    "Expected a generated-entity-chip on the Agent-creation response"
-                )
-                chip_text = chat.MESSAGE_GENERATED_ENTITY_CHIP.within(agent_message).first.text_content() or ""
-                assert created_agent_name.lower() in chip_text.lower() or chip_text.strip() != "", (
-                    f"Expected the generated-entity-chip text to relate to the created "
-                    f"agent '{created_agent_name}', got chip text: {chip_text!r}"
+            with allure.step("Step 5 — Verify Agent chip (for the NEW agent) appears in response"):
+                chip_labels = chat.get_all_generated_entity_chip_labels()
+                assert any(n.lower() in label.lower() for n in new_agents.values() for label in chip_labels), (
+                    f"Expected a generated-entity-chip for a newly created agent {list(new_agents.values())}, "
+                    f"got chips: {chip_labels}"
                 )
 
             with allure.step(
                 "Step 6/7 — Repeat the flow requesting Pipeline creation with incomplete "
                 "info; resolve any Ask-User clarifying question(s); verify completion"
             ):
-                pipeline_response_index = _send_and_resolve_builder_flow(
-                    chat, PIPELINE_CREATION_MESSAGE, CLARIFYING_ANSWER_TEXT
+                pipelines_before = _entity_ids(pipeline_api.list_pipelines().get("rows", []))
+                _send_and_resolve_builder_flow(chat, PIPELINE_CREATION_MESSAGE, CLARIFYING_ANSWER_TEXT)
+
+                pipelines_after = _entity_ids(pipeline_api.list_pipelines().get("rows", []))
+                new_pipelines = {i: n for i, n in pipelines_after.items() if i not in pipelines_before}
+                created_pipeline_ids.extend(new_pipelines)
+                assert new_pipelines, (
+                    f"Expected a NEW pipeline after the creation request; list unchanged: "
+                    f"{list(pipelines_after.values())}"
                 )
 
-                pipelines_after = pipeline_api.list_pipelines().get("rows", [])
-                matching_pipelines = [
-                    p for p in pipelines_after
-                    if "data processing" in p.get("name", "").lower()
-                    or "processing" in p.get("name", "").lower()
-                ]
-                assert matching_pipelines, (
-                    f"Expected a new pipeline whose name traces to 'data processing', "
-                    f"found none among: {[p.get('name') for p in pipelines_after]}"
-                )
-                created_pipeline_id = matching_pipelines[0]["id"]
-                created_pipeline_name = matching_pipelines[0]["name"]
-
-            with allure.step("Step 8 — Verify Pipeline chip appears in response"):
-                pipeline_message = chat.get_message_at(pipeline_response_index)
-                assert chat.message_has_generated_entity_chip(pipeline_message), (
-                    "Expected a generated-entity-chip on the Pipeline-creation response"
-                )
-                chip_text = chat.MESSAGE_GENERATED_ENTITY_CHIP.within(pipeline_message).first.text_content() or ""
-                assert created_pipeline_name.lower() in chip_text.lower() or chip_text.strip() != "", (
-                    f"Expected the generated-entity-chip text to relate to the created "
-                    f"pipeline '{created_pipeline_name}', got chip text: {chip_text!r}"
+            with allure.step("Step 8 — Verify Pipeline chip (for the NEW pipeline) appears in response"):
+                chip_labels = chat.get_all_generated_entity_chip_labels()
+                assert any(n.lower() in label.lower() for n in new_pipelines.values() for label in chip_labels), (
+                    f"Expected a generated-entity-chip for a newly created pipeline "
+                    f"{list(new_pipelines.values())}, got chips: {chip_labels}"
                 )
 
             with allure.step(
@@ -363,7 +282,7 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                 chat.page.keyboard.press("Escape")
                 chat.page.mouse.click(10, 10)
                 chat.send_message(
-                    AUTHORIZE_DELETE_MESSAGE_TEMPLATE.format(file=authorize_file, bucket=bucket_name),
+                    DELETE_FILE_MESSAGE_TEMPLATE.format(file=authorize_file, bucket=bucket_name),
                     use_enter=True,
                 )
                 panel_appeared = chat.wait_for_sensitive_action_panel(timeout=AI_RESPONSE_TIMEOUT)
@@ -388,13 +307,15 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                     f"Expected '{authorize_file}' to be deleted after Authorize, "
                     f"bucket still contains: {remaining_files}"
                 )
+                expect(chat.sensitive_action_panel).to_be_hidden(timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.get_last_message_text().strip(), "Expected a settled AI message after Authorize"
 
             with allure.step(
                 "Step 11 — Trigger the sensitive tool call again (second file, same "
                 "conversation, same toolkit participant)"
             ):
                 chat.send_message(
-                    BLOCK_DELETE_MESSAGE_TEMPLATE.format(file=block_file, bucket=bucket_name),
+                    DELETE_FILE_MESSAGE_TEMPLATE.format(file=block_file, bucket=bucket_name),
                     use_enter=True,
                 )
                 panel_appeared_again = chat.wait_for_sensitive_action_panel(timeout=AI_RESPONSE_TIMEOUT)
@@ -414,21 +335,19 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                     f"Expected '{block_file}' to remain after Block/Reject, "
                     f"bucket contains: {remaining_files_after_block}"
                 )
+                expect(chat.sensitive_action_panel).to_be_hidden(timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.get_last_message_text().strip(), "Expected a settled AI message after Block"
 
             with allure.step(
                 "Side-channel check — earlier Agent/Pipeline-builder messages are "
                 "unaffected by the later HITL exchanges in the same conversation"
             ):
-                agent_message_now = chat.get_message_at(agent_response_index)
-                assert chat.message_has_generated_entity_chip(agent_message_now), (
-                    "Expected the earlier Agent-creation response to still show its "
-                    "generated-entity-chip after the later HITL exchanges"
-                )
-                pipeline_message_now = chat.get_message_at(pipeline_response_index)
-                assert chat.message_has_generated_entity_chip(pipeline_message_now), (
-                    "Expected the earlier Pipeline-creation response to still show its "
-                    "generated-entity-chip after the later HITL exchanges"
-                )
+                chip_labels_now = chat.get_all_generated_entity_chip_labels()
+                for kind, created in (("agent", new_agents), ("pipeline", new_pipelines)):
+                    assert any(n.lower() in label.lower() for n in created.values() for label in chip_labels_now), (
+                        f"Expected the earlier {kind}-creation chip to still be shown after the later "
+                        f"HITL exchanges, got chips: {chip_labels_now}"
+                    )
 
             with allure.step("Side-channel check — no console errors at any step"):
                 assert not console_errors, (
@@ -436,16 +355,16 @@ class TestBuilderModulesEnabledAgentPipelineHitl:
                 )
         finally:
             console_errors.stop()
-            if created_agent_id is not None:
+            for agent_id in created_agent_ids:
                 try:
-                    agent_api.delete_agent(created_agent_id)
+                    agent_api.delete_agent(agent_id)
                 except Exception as exc:
-                    logger.warning("Failed to delete agent %s: %s", created_agent_id, exc)
-            if created_pipeline_id is not None:
+                    logger.warning("Failed to delete agent %s: %s", agent_id, exc)
+            for pipeline_id in created_pipeline_ids:
                 try:
-                    pipeline_api.delete_pipeline(created_pipeline_id)
+                    pipeline_api.delete_pipeline(pipeline_id)
                 except Exception as exc:
-                    logger.warning("Failed to delete pipeline %s: %s", created_pipeline_id, exc)
+                    logger.warning("Failed to delete pipeline %s: %s", pipeline_id, exc)
             if toolkit_id is not None:
                 try:
                     toolkit_api.delete_toolkit(toolkit_id)

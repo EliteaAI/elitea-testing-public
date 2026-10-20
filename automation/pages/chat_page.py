@@ -813,21 +813,51 @@ class ChatPage(BasePage):
             "'Skip' to 'Continue' once the custom field is non-empty."
         ),
     )
-    MESSAGE_COPY_BUTTON = ScopedLocator(
-        css='button[aria-label="Copy to clipboard"]',
-        suggested_testid="chat-message-copy-button",
-        description="Copy button rendered inside a fully generated message (scope: a message item).",
-    )
+    # Copy button of a generated message, addressed inside a message. Same
+    # element/testid as ``copy_action_button`` (``chat-copy-button`` is what DEV
+    # serves; ``message-copy-button`` on ``copy_message_button`` does not exist).
+    MESSAGE_COPY_BUTTON = '[data-testid="chat-copy-button"]:not([disabled])'
 
-    def get_message_at(self, index: int):
-        """Return the message item at *index* (index derived from get_message_count(),
-        not a sibling pick) — used to address the AI reply after a send."""
-        return self.messages_container.nth(index)
+    @action("Answer Ask-User clarifying card(s) until the AI response settles")
+    def resolve_clarifying_cards_until_settled(
+        self, initial_count: int, answer_text: str, timeout: int = 60000, max_questions: int = 10
+    ) -> int:
+        """Condition-wait for EITHER the Ask-User clarifying card or a settled reply.
 
-    def message_copy_button_visible(self, message_locator) -> bool:
-        """True when the Copy button inside *message_locator* is rendered and visible."""
-        buttons = self.MESSAGE_COPY_BUTTON.within(message_locator)
-        return buttons.count() > 0 and buttons.first.is_visible()
+        The card's trigger is non-deterministic (ELITEA-3372 AFS), so both outcomes
+        are legal. Answers every question the stepper shows (bounded) and returns
+        the number answered (0 = AI proceeded directly).
+
+        *initial_count* is ``get_message_count()`` captured before the send: the
+        reply layout is [user, AI] so the AI message is the last one once the
+        count reaches ``initial_count + 2``.
+        """
+        expect(self.messages_container).to_have_count(initial_count + 2, timeout=timeout)
+        settled = self.messages_container.last.locator(self.MESSAGE_COPY_BUTTON)
+        answered = 0
+        while True:
+            # settled: the toolbar is hover-revealed (CSS), so wait for it ATTACHED+enabled
+            # (disabled while processing); the card input must be visible.
+            expect(self.HITL_CUSTOM_OPTION_INPUT.first.or_(settled.first)).to_be_attached(timeout=timeout)
+            if not self.HITL_CUSTOM_OPTION_INPUT.first.is_visible():
+                return answered
+            answered += 1
+            if answered > max_questions:
+                raise TimeoutError(f"Ask-User card still present after {max_questions} answered questions")
+            field = self.HITL_CUSTOM_OPTION_INPUT.first
+            field.click()
+            field.fill(answer_text)
+            # Accessible name flips Skip -> Continue once the field is non-empty;
+            # resolve the button only after the fill.
+            self.HITL_CONTINUE_BUTTON.wait_for(state="visible", timeout=10000)
+            self.HITL_CONTINUE_BUTTON.click()
+            # Answered: the field resets (next question -> name "Skip") or the card closes.
+            expect(self.HITL_CONTINUE_BUTTON).to_be_hidden(timeout=10000)
+
+    def get_all_generated_entity_chip_labels(self) -> list[str]:
+        """Labels of every generated-entity chip across all messages in the chat."""
+        chips = self.messages_container.locator(self.GENERATED_ENTITY_CHIP)
+        return [(chips.nth(i).inner_text() or "").strip() for i in range(chips.count())]
 
     def message_has_generated_entity_chip(self, message_locator) -> bool:
         """Return True if *message_locator* (a ``chat-message-item`` ``<li>``)
