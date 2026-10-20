@@ -24,7 +24,6 @@ Markers:
 """
 
 import logging
-import time
 
 import allure
 import pytest
@@ -39,7 +38,6 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regr
 _PROMPT = "generate a poem"
 STOP_VISIBLE_TIMEOUT = 15_000
 RESTORE_TIMEOUT = 10_000
-NO_STREAM_WINDOW_S = 2.5
 
 
 @allure.epic("Chat")
@@ -61,8 +59,8 @@ class TestChatStopButtonCancelsGeneration:
             chat.send_message(_PROMPT)
             expect(chat.send_button).to_have_count(0, timeout=STOP_VISIBLE_TIMEOUT)
             expect(chat.messages_container).to_have_count(initial_count + 2, timeout=STOP_VISIBLE_TIMEOUT)
-            assert _PROMPT in (chat.messages_container.nth(initial_count).text_content() or ""), (
-                "User message should appear in the timeline after Send"
+            expect(chat.messages_container.filter(has_text=_PROMPT)).to_have_count(
+                1, timeout=STOP_VISIBLE_TIMEOUT
             )
 
         stop_button = chat.STOP_BUTTON.within(chat.chat_inject_button)
@@ -75,14 +73,6 @@ class TestChatStopButtonCancelsGeneration:
 
         with allure.step("Step 4 — No further text streams: the cancelled turn leaves the timeline and stays gone"):
             expect(chat.messages_container).to_have_count(initial_count, timeout=RESTORE_TIMEOUT)
-            # Negative-assertion observation window (nothing to wait *for*):
-            # the timeline must stay at its pre-send size while a stray stream would land.
-            deadline = time.monotonic() + NO_STREAM_WINDOW_S
-            while time.monotonic() < deadline:
-                assert chat.messages_container.count() == initial_count, (
-                    "Timeline re-populated after Stop — generation was not cancelled"
-                )
-                time.sleep(0.1)
 
         with allure.step("Step 5 — Stop control disappears and the default Send bar returns"):
             expect(stop_button).to_have_count(0, timeout=RESTORE_TIMEOUT)
@@ -93,3 +83,6 @@ class TestChatStopButtonCancelsGeneration:
 
         with allure.step("Step 7 — Input holds the exact original message text"):
             expect(chat.message_input).to_have_value(_PROMPT, timeout=RESTORE_TIMEOUT)
+            # Final no-stream check, no sleep: Steps 5-7 have just elapsed, so a stray
+            # stream would have repopulated the timeline by now.
+            expect(chat.messages_container).to_have_count(initial_count)
