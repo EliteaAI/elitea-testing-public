@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "5ad9ee01-827f-4908-aa88-dd14052e663d",
+  "intent": "automation",
+  "batch": "chat-streaming-2181",
+  "cases": [
+    "ELITEA-2181"
+  ],
+  "declaredAt": "2026-10-20T19:56:01.062Z",
+  "updatedAt": "2026-10-20T20:24:58.379Z",
+  "outcomes": {
+    "ELITEA-2181": {
+      "outcome": "blocked",
+      "at": "2026-10-20T20:24:58.379Z"
+    }
+  }
+}
