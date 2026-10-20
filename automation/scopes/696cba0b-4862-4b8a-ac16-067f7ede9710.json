@@ -7,5 +7,12 @@
     "ELITEA-2455"
   ],
   "declaredAt": "2026-10-20T13:48:37.742Z",
-  "updatedAt": "2026-10-20T13:48:37.742Z"
+  "updatedAt": "2026-10-20T15:41:33.251Z",
+  "outcomes": {
+    "ELITEA-2455": {
+      "outcome": "automated",
+      "at": "2026-10-20T15:41:13.561Z"
+    }
+  },
+  "closedAt": "2026-10-20T15:41:33.251Z"
 }
