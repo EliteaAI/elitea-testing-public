@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "2d1b32b6-aad6-438c-adcc-1f8f00516bf6",
+  "intent": "automation",
+  "batch": "chat-project-context-3315",
+  "cases": [
+    "ELITEA-3315"
+  ],
+  "declaredAt": "2026-10-20T13:05:35.038Z",
+  "updatedAt": "2026-10-20T13:11:57.211Z",
+  "outcomes": {
+    "ELITEA-3315": {
+      "outcome": "blocked",
+      "at": "2026-10-20T13:11:57.211Z"
+    }
+  }
+}
