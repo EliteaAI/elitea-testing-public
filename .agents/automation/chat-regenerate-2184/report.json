@@ -1,0 +1,41 @@
+{
+ "batch": "chat-regenerate-2184",
+ "base": "main",
+ "cases": [
+  {
+   "id": "ELITEA-2184",
+   "outcome": "automated",
+   "review": "APPROVED",
+   "afs": "test-specs/chat-interface/l2_regenerate-only-on-last-llm-response_ELITEA-2184.md",
+   "spec": "tests.ui.chat.test_chat_regenerate_last_response_only",
+   "branch": "tests/ELITEA-2184-regenerate-last-only",
+   "node": "automation/tests/ui/chat/test_chat_regenerate_last_response_only.py",
+   "findings": []
+  }
+ ],
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   16.53,
+   16.5,
+   16.22
+  ],
+  "failures": [],
+  "by": "lead",
+  "note": "3 separate invocations of the spec on trunk, APP_PREFIX=/app. Workflow triage/report agents failed on model 403; lead ran fix check, fresh review (APPROVED), merge and gate."
+ },
+ "locator_delta": {
+  "declared": "1286 -> 1286",
+  "unmanaged": "351 -> 351"
+ },
+ "note": "workflow triage/report agents failed (403 haiku model); review+gate completed by lead via dispatch",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-chat-regenerate-2184",
+ "totals": {
+  "automated": 1
+ },
+ "quality_flags": [],
+ "expected_red": [],
+ "parked": []
+}

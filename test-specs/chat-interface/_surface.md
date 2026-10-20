@@ -1460,3 +1460,8 @@ instead and is click-idempotent (no-ops if already checked).
 - After Stop (restored input), `fill("")` + `fill("hello")` + `send_message("hello")` works: user + assistant reply, no error toast, no `generate a poem` bubble remains. Reply completes ~12s (Copy button).
 - `ChatPage.wait_for_ai_response(initial_count=N)`: N = count BEFORE the send (AI at N+1); `n+1` hangs 60s.
 - `navigate_to_chat(conversation_id=...)` timed out again in scratch runs (3x); `page.goto('.../app/chat/<id>')` fine. Repeat of the 2182 transit flag.
+
+## Regenerate only on last AI response (ELITEA-2184, 2026-10-20)
+- DEV now serves `chat-regenerate-button` (no aria-label). Regenerate and Delete are rendered ONLY on the last message (`ChatMessageWrapper.jsx` isLastMessage gate); earlier AI items have read-out+copy (hover-gated) but regenerate/delete count 0 in DOM. Last item's Regenerate stayed visible with mouse parked at (0,0).
+- Two short exchanges ("Reply with the single word: one") finish in seconds. `ChatPage._is_ai_message(item)` filters AI rows.
+- `navigate_to_chat(conversation_id=)` timed out again (3rd analysis in a row); `page.goto(app_base_url + "/app/chat/<id>")` works (app_base_url lacks `/app`). Playwright MCP chrome was missing this session; scratch pytest used instead.
