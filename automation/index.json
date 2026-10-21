@@ -1264,6 +1264,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0498",
         "ELITEA-0501"
       ],
       "tms_case_links": [
@@ -1278,6 +1279,7 @@
         "ui"
       ],
       "tms_case_ids": [
+        "ELITEA-0498",
         "ELITEA-0501"
       ],
       "tms_case_links": [
@@ -3406,10 +3408,7 @@
         "ELITEA-3252"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3252_settings-generate-project-context-respects-2500-char-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3253_settings-generate-project-context-shows-error-when-exceeds-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3254_chat-context-builder-generates-content-under-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3255_settings-edit-with-ai-respects-limit.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3252_settings-generate-project-context-respects-2500-char-limit.md"
       ]
     },
     {
@@ -3426,10 +3425,7 @@
         "ELITEA-3253"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3252_settings-generate-project-context-respects-2500-char-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3253_settings-generate-project-context-shows-error-when-exceeds-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3254_chat-context-builder-generates-content-under-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3255_settings-edit-with-ai-respects-limit.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3253_settings-generate-project-context-shows-error-when-exceeds-limit.md"
       ]
     },
     {
@@ -3446,10 +3442,7 @@
         "ELITEA-3254"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3252_settings-generate-project-context-respects-2500-char-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3253_settings-generate-project-context-shows-error-when-exceeds-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3254_chat-context-builder-generates-content-under-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3255_settings-edit-with-ai-respects-limit.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3254_chat-context-builder-generates-content-under-limit.md"
       ]
     },
     {
@@ -3466,9 +3459,6 @@
         "ELITEA-3255"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3252_settings-generate-project-context-respects-2500-char-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3253_settings-generate-project-context-shows-error-when-exceeds-limit.md",
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3254_chat-context-builder-generates-content-under-limit.md",
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3255_settings-edit-with-ai-respects-limit.md"
       ]
     },
@@ -3969,7 +3959,9 @@
         "ui"
       ],
       "tms_case_ids": [
-        "ELITEA-1182"
+        "ELITEA-1180",
+        "ELITEA-1181",
+        "ELITEA-1183"
       ],
       "tms_case_links": [
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1180_open-in-new-tab-icon-is-present-for-all-credentials-regardless-of-stat.md",
