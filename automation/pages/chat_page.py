@@ -1254,6 +1254,15 @@ class ChatPage(BasePage):
         description="Transient progress block ('Exporting chat... N files') shown while a ZIP export runs (ELITEA-3764).",
     )
 
+    # Icon inside a conversation context-menu item (ELITEA-3779) — resolve via
+    # .within(chat.get_conversation_menu_item("export")). css=svg: the icon is an
+    # MUI SvgIcon with no testid of its own; exactly one per item scoped this way.
+    conversation_menu_item_icon = ScopedLocator(
+        css="svg",
+        suggested_testid="chat-conversation-menu-item-icon",
+        description="Leading icon svg of a conversation context-menu item; scope with .within(menu_item).",
+    )
+
     # CSS selectors for the in-page MutationObserver in click_export_capturing_progress
     # (JS cannot take a Playwright Locator). Derived from the declarations above so
     # each testid is written exactly once.
@@ -3671,6 +3680,24 @@ class ChatPage(BasePage):
         their items while closed, so this can't pick up a stale menu).
         """
         return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX).count()
+
+    def get_open_conversation_menu_items(self):
+        """Return the Locator matching every currently rendered context-menu item."""
+        return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX)
+
+    def get_open_conversation_menu_item_keys(self) -> list[str]:
+        """Return the open context menu's item keys in DOM (= visual) order.
+
+        Enumerates EVERY match of ``CONVERSATION_MENU_ITEM_PREFIX`` and strips the
+        ``chat-conversation-menu-`` / ``-menuitem`` affixes from each testid.
+        """
+        items = self.get_open_conversation_menu_items()
+        prefix, suffix = "chat-conversation-menu-", "-menuitem"
+        keys = []
+        for i in range(items.count()):
+            testid = items.nth(i).get_attribute("data-testid") or ""
+            keys.append(testid[len(prefix):-len(suffix)])
+        return keys
 
     @action("Export the open chat modal and capture the download")
     def click_export_and_capture_download(self, timeout: int = 30000):
