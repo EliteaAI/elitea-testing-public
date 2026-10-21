@@ -17,11 +17,13 @@ import allure
 import pytest
 from playwright.sync_api import expect
 
+from config import settings
 from pages.chat_page import ChatPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression]
 
 _PROMPTS = ("Reply with the single word: one", "Reply with the single word: two")
+_PROMPTS_THREE = (*_PROMPTS, "Reply with the single word: three")
 UI_TIMEOUT = 15_000
 
 
@@ -74,3 +76,58 @@ class TestChatRegenerateLastResponseOnly:
         with allure.step("Step 4 — Only one Regenerate on the page, and it is inside the last response"):
             expect(chat.regenerate_action_button).to_have_count(1)
             expect(last_item.filter(has=chat.regenerate_action_button)).to_have_count(1)
+
+    @pytest.mark.tms("ELITEA-2187")
+    @allure.title("Regenerate is offered only on the last of three LLM responses and still works")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_regenerate_only_on_last_of_three_responses(self, page, conversation_id):
+        """ELITEA-2187 — extends ELITEA-2184: three exchanges, every earlier item, click on last."""
+        chat = ChatPage(page)
+
+        def ai_items_now():
+            items = chat.messages_container
+            return [items.nth(i) for i in range(items.count()) if chat._is_ai_message(items.nth(i))]
+
+        with allure.step("Step 1 — Open a fresh conversation and get three LLM responses"):
+            # navigate_to_chat(conversation_id=) times out on DEV (SPA redirect); direct goto works.
+            page.goto(f"{settings.app_base_url}/app/chat/{conversation_id}")
+            expect(chat.message_input).to_be_visible(timeout=30_000)
+            for prompt in _PROMPTS_THREE:
+                count_before = chat.get_message_count()
+                chat.send_message(prompt, use_enter=True)
+                chat.wait_for_ai_response(initial_count=count_before)
+            expect(chat.messages_container).to_have_count(6, timeout=UI_TIMEOUT)
+            ai_items = ai_items_now()
+            assert len(ai_items) == 3, f"expected 3 AI responses, found {len(ai_items)}"
+            earlier_items, last_item = ai_items[:-1], ai_items[-1]
+
+        with allure.step("Step 2 — Hover every earlier response: no Regenerate (and no Delete)"):
+            for earlier in earlier_items:
+                page.mouse.move(0, 0)
+                earlier.scroll_into_view_if_needed()
+                earlier.hover()
+                expect(earlier).to_be_visible(timeout=UI_TIMEOUT)
+                expect(ChatPage.regenerate_action_button.resolve(earlier)).to_have_count(0)
+                expect(ChatPage.delete_action_button.resolve(earlier)).to_have_count(0)
+
+        with allure.step("Step 3 — Hover the last response: Regenerate and its icon are visible"):
+            page.mouse.move(0, 0)
+            last_item.scroll_into_view_if_needed()
+            last_item.hover()
+            regenerate = ChatPage.regenerate_action_button.resolve(last_item)
+            expect(regenerate).to_have_count(1, timeout=UI_TIMEOUT)
+            expect(regenerate).to_be_visible(timeout=UI_TIMEOUT)
+
+        with allure.step("Step 4 — Click Regenerate: a new generation runs and completes in place"):
+            regenerate.click()
+            expect(chat.chat_inject_button).to_have_count(1, timeout=UI_TIMEOUT)
+            expect(chat.chat_inject_button).to_have_count(0, timeout=60_000)
+            expect(chat.messages_container).to_have_count(6, timeout=UI_TIMEOUT)
+
+        with allure.step("Step 5 — Regenerate is still exclusive to the (new) last response"):
+            ai_items = ai_items_now()
+            assert len(ai_items) == 3, f"expected 3 AI responses after regenerate, found {len(ai_items)}"
+            expect(chat.regenerate_action_button).to_have_count(1, timeout=UI_TIMEOUT)
+            expect(ai_items[-1].filter(has=chat.regenerate_action_button)).to_have_count(1)
+            for earlier in ai_items[:-1]:
+                expect(earlier.filter(has=chat.regenerate_action_button)).to_have_count(0)
