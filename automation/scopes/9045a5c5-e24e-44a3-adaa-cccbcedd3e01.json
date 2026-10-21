@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "9045a5c5-e24e-44a3-adaa-cccbcedd3e01",
+  "intent": "automation",
+  "batch": "chat-json-export-3762",
+  "cases": [
+    "ELITEA-3762"
+  ],
+  "declaredAt": "2026-10-21T00:53:31.423Z",
+  "updatedAt": "2026-10-21T00:53:49.685Z",
+  "outcomes": {
+    "ELITEA-3762": {
+      "outcome": "blocked",
+      "at": "2026-10-21T00:53:49.685Z"
+    }
+  }
+}
