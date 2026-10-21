@@ -7,11 +7,12 @@
     "ELITEA-3316"
   ],
   "declaredAt": "2026-10-21T03:27:09.626Z",
-  "updatedAt": "2026-10-21T03:30:53.633Z",
+  "updatedAt": "2026-10-21T08:44:52.491Z",
   "outcomes": {
     "ELITEA-3316": {
-      "outcome": "blocked",
-      "at": "2026-10-21T03:30:53.633Z"
+      "outcome": "refuted-green-on-dev",
+      "at": "2026-10-21T08:44:38.385Z"
     }
-  }
+  },
+  "closedAt": "2026-10-21T08:44:52.491Z"
 }
