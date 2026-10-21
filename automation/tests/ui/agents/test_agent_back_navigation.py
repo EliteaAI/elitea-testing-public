@@ -40,6 +40,11 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 NAVIGATION_TIMEOUT = 15000
 
 
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+    "agents/ELITEA-1869_agent-listing-back-navigation-from-agent-detail-returns-to-agents.md",
+    "onetest-ai Test Case link",
+)
 @pytest.mark.tms("ELITEA-1869")
 @pytest.mark.p0
 @pytest.mark.regression

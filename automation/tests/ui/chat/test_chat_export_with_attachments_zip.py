@@ -37,6 +37,11 @@ ATTACHMENT_NAMES = ["note_alpha.txt", "data_beta.csv", "doc_gamma.md"]
 class TestChatExportWithAttachmentsZip:
     """ELITEA-3764: Export with attachments produces a ZIP archive (l1, high)."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-3764_export-with-attachments-zip-archive-generated.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3764")
     @pytest.mark.p1
     def test_export_with_attachments_produces_zip(self, page, conversation_api, tmp_path):

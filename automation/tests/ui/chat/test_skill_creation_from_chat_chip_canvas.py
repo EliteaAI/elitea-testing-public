@@ -54,7 +54,8 @@ class TestSkillCreationFromChat:
     @allure.title("Skill creation from chat with complete info creates skill; chip opens Canvas")
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/build-skills-project-context/ELITEA-3366_skill-creation-happy-path-with-chip-and-canvas.md",
         "onetest-ai Test Case link",
     )
     def test_skill_created_from_chat_chip_opens_canvas(self, page, conversation_api, skill_api):

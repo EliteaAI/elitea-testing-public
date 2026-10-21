@@ -137,7 +137,11 @@ Deltas:
    your memory / daily log — no ledger, memory or other bookkeeping commit on
    `main` after it · **the post-landing work done in THIS session**
    (`.agents/workflow.md` § After landing): TMS back-write for every case
-   (`automation_pr` = the landed commit URL) ·
+   (`automation_pr` = the landed commit URL) — for UI cases the
+   `build-test-index.yml` run on the landed commit writes it from the tests'
+   `@pytest.mark.tms` + `@allure.issue` pair; you wait for that run in-turn
+   (rule 5) and verify the case files; a red run = park `Blocked` with the run
+   URL, never hand-write around it ·
    **closure record posted** (`.agents/workflow.md` § Closure record) on every
    card: its Locators row is the scan delta that YOU re-ran (pre-landing
    `origin/main` vs the landed commit) and pasted — never copied from the Run

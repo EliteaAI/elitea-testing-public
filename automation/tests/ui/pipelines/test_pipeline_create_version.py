@@ -51,6 +51,11 @@ VERSION_NAME = "v1_test"
     "automated-full-regression-ui/pipelines/ELITEA-2002_create-pipeline-version.md",
     "onetest-ai Test Case link",
 )
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/ELITEA-2063_pipeline-version-dropdown-and-switch.md",
+    "onetest-ai Test Case link",
+)
 def test_create_pipeline_version_save_list_switch_preserves_canvas_state(page, pipeline_id):
     """Save As Version creates 'v1_test' with the LLM node preserved;
     switching to 'base' shows the original (node-less) topology; switching

@@ -32,6 +32,11 @@ UI_TIMEOUT = 15_000
 class TestChatRegenerateLastResponseOnly:
     """ELITEA-2184 — Regenerate is visible only on the last LLM response."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-2184_chat-regenerate-button-visible-on-last-llm-response.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2184")
     @allure.title("Regenerate and Delete appear only on the last LLM response")
     @allure.severity(allure.severity_level.NORMAL)
@@ -77,6 +82,11 @@ class TestChatRegenerateLastResponseOnly:
             expect(chat.regenerate_action_button).to_have_count(1)
             expect(last_item.filter(has=chat.regenerate_action_button)).to_have_count(1)
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-2187_chat-regenerate-is-only-available-on-the-last-response.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2187")
     @allure.title("Regenerate is offered only on the last of three LLM responses and still works")
     @allure.severity(allure.severity_level.NORMAL)

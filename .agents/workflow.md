@@ -157,9 +157,19 @@ The lead does this **in the same session** that pushed the batch, right after th
 push succeeds — there is no separate post-merge loop, and **nothing further is
 committed to `main`** for the batch. For every case of the batch:
 
-1. TMS back-write (`.agents/test-automation.yaml` § `backwrite_on_done`) + rebuild
-   `index.json` in the TMS repo — a different repo, with its own landing practice
-   (it needs the landed commit URL, so it can only follow the push).
+1. TMS back-write (`.agents/test-automation.yaml` § `backwrite_on_done`). **UI cases
+   are written by CI**: the push triggers `build-test-index.yml`, whose
+   `tms-backwrite` job derives the fields from the tests' `@pytest.mark.tms` +
+   `@allure.issue` pair and commits them to TMS `main`. Your job is to **verify** it:
+   `env -u GITHUB_TOKEN gh run list --repo EliteaAI/elitea-testing-public --workflow
+   build-test-index.yml --commit <landed sha> --json databaseId,status,conclusion`,
+   wait for `completed`, then confirm each case file on TMS `main` reads `automated` /
+   `ready` with this case's Form C ref and `automation_pr` = the landed commit. A
+   **red run** (`check` rejected a marker/link) means the cases were NOT written:
+   the fix is a test-code change, so it is the next batch's work — park the card
+   `Blocked` with the run URL, never hand-write around it. Non-UI cases (API), or a
+   run that could not push: back-write by hand per `backwrite_on_done` + rebuild
+   `index.json`.
 2. Post the **closure record** (below) on every card and move each to `Ready`. The
    card stays open until a human closes it (`Done` stays human-only).
 
@@ -242,7 +252,7 @@ The lead posts it on **every card the batch covers** once the batch is on `main`
 | Review | qa-engineer fresh session | ✅ APPROVED |
 | AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `main` |
 | Locators | declared <D> (testid <T> · ladder <L>) · unmanaged handles Δ <±U> · ledger: <L> new `raw` rows (in `<sha>`) | pre-landing `origin/main` vs `<sha>` |
-| TMS back-write | <case file> → `automation_test_id: <Form C ref>` | <TMS commit/PR> |
+| TMS back-write | <case file> → `automation_test_id: <Form C ref>` | `build-test-index` run <URL> ✅ · TMS commit <sha> (or the manual commit for non-UI) |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
 **Status:** on `main` · awaiting human acceptance (`Done`).

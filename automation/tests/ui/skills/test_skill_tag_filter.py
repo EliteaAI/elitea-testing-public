@@ -51,6 +51,11 @@ def cleanup_skill_ids(skill_api):
 class TestSkillTagFilter:
     """Filter the Skills grid by tag — shared tags, unique tags, and clear (ELITEA-3752)."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-3752_search-skills-by-tag.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3752")
     @allure.issue("ELITEA-3752", "onetest-ai Test Case link")
     @pytest.mark.p3

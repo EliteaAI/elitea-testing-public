@@ -88,6 +88,12 @@ class TestSupportAssistantLauncher:
 
     @pytest.mark.tms("ELITEA-1797", "ELITEA-0643")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-0643_conversation-is-retained-when-the-support-assistant-panel-is-closed-an.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/support-assistant/"
+        "ELITEA-1797_widget-conversation-state-persists-after-close-reopen.md",
+        "onetest-ai Test Case link",
+    )
     def test_widget_state_persists_after_close_reopen(self, page):
         """Conversation state persists when closing and reopening widget.
 

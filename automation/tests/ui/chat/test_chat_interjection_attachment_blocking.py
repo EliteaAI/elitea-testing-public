@@ -56,7 +56,7 @@ class TestInterjectionAttachmentBlockingDuringActiveRun:
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "chat-interface/ELITEA-2877_interjection-attachment-blocking-during-active-run.md",
+        "chat/ELITEA-2877_attachment-blocking-automated.md",
         "onetest-ai Test Case link",
     )
     def test_attachment_blocked_during_run_plain_text_interjection_still_queues(

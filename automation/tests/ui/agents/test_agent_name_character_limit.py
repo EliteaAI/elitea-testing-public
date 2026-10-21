@@ -50,6 +50,11 @@ def _is_known_554_toolkits_404(msg) -> bool:
     return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
 
 
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+    "agents/ELITEA-1900_agent-name-character-limit-enforced-at-32-characters.md",
+    "onetest-ai Test Case link",
+)
 @pytest.mark.tms("ELITEA-1900")
 @pytest.mark.p3
 @pytest.mark.regression

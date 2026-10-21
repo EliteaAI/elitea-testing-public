@@ -79,7 +79,7 @@ PROJECT_CONTEXT_ENTITY_LABEL = "Project Context"
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3368_chat-project-context-create-update-chip-canvas.md",
+    "ELITEA-3368_project-context-creation-update-with-chip-and-canvas.md",
     "onetest-ai Test Case link (ELITEA-3368)",
 )
 @pytest.mark.tms("ELITEA-3368")

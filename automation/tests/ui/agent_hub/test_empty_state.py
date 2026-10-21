@@ -21,6 +21,11 @@ FILTER_RAIL_TIMEOUT = 10_000
 class TestCatalogEmptyState:
     """Agent Hub empty state verification when search matches zero agents."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agent_hub/ELITEA-2367_agent-hub-empty-state-when-no-agents-match-filter-or-search.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2367")
     @pytest.mark.p2
     @pytest.mark.regression

@@ -24,6 +24,11 @@ from pages.agent_hub_page import AgentHubPage
 class TestAgentHubTrendingCategory:
     """Test suite for Agent Hub Trending category filter behavior (ELITEA-2366)."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agent_hub/ELITEA-2366_agent-hub-trending-category-displays-agents.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2366")
     def test_agent_hub_trending_category_displays_agents(self, page: Page):
         """Verify Trending category filter shows agents when selected.
