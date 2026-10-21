@@ -11,7 +11,7 @@
 
 ## Preconditions
 - Test creates its own conversation via `conversation_api.create_conversation(name)` (empty is enough), deletes it in `finally`.
-- Open the page with `page.goto(f"{app_base_url}/app/chat")` + `chat.dismiss_platform_banner_dialog()` (NOT `navigate_to_chat()`/`wait_for_page_load()` - they time out on DEV on the blank-chat landing, 15s `chat-message-input` wait; reproduced 3x this run, POSSIBLE REGRESSION in that helper on the blank landing - see findings). Wait on `get_conversation_item(id)` visible instead.
+- Open the page with `page.goto(f"{app_base_url}/chat")` + `chat.dismiss_platform_banner_dialog()` (NOT `navigate_to_chat()`/`wait_for_page_load()` - they time out on DEV on the blank-chat landing, 15s `chat-message-input` wait; reproduced 3x this run, POSSIBLE REGRESSION in that helper on the blank landing - see findings). Wait on `get_conversation_item(id)` visible instead.
 
 ## Steps (observed live)
 1. Chat list shows the created item `chat-conversation-item-{id}` (bg while hovered: `rgba(106, 232, 250, 0.1)`).

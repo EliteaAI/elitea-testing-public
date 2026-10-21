@@ -36,8 +36,8 @@ class TestChatExportMenuOption:
         try:
             with allure.step("Step 1-2 — Open Chats; the user's conversation is visible in the list"):
                 conv_id = conversation_api.create_conversation(chat_name)["id"]
-                # DEV serves the app under /app (AFS precondition: direct goto, not navigate_to_chat).
-                page.goto(f"{settings.app_base_url}/app/chat")
+                # app_base_url already includes APP_PREFIX (/app) - do not add it again.
+                page.goto(f"{settings.app_base_url}/chat")
                 chat.dismiss_platform_banner_dialog()
                 item = chat.get_conversation_item(conv_id)
                 expect(item).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
