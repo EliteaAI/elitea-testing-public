@@ -1254,6 +1254,12 @@ class ChatPage(BasePage):
         description="Transient progress block ('Exporting chat... N files') shown while a ZIP export runs (ELITEA-3764).",
     )
 
+    # CSS selectors for the in-page MutationObserver in click_export_capturing_progress
+    # (JS cannot take a Playwright Locator). Derived from the declarations above so
+    # each testid is written exactly once.
+    EXPORT_PROGRESS_SELECTOR = f'[data-testid="{export_chat_modal_progress.testid}"]'
+    EXPORT_MODAL_SELECTOR = f'[data-testid="{export_chat_modal.testid}"]'
+
     # Toast dismiss (X) icon button — ELITEA-2200 addition (Toast.jsx's
     # custom `action` IconButton, replacing MUI's unlabeled default close).
     toast_dismiss_button = LocatorDescriptor(
@@ -3684,10 +3690,8 @@ class ChatPage(BasePage):
         Returns ``{"download", "progress_seen", "modal_text"}``.
         """
         self.page.evaluate(
-            """() => {
+            """([sel, modalSel]) => {
                 window.__exportProgress = {seen: false, text: ''};
-                const sel = '[data-testid="export-chat-modal-progress"]';
-                const modalSel = '[data-testid="export-chat-modal"]';
                 const sample = () => {
                     if (document.querySelector(sel)) {
                         window.__exportProgress.seen = true;
@@ -3699,7 +3703,8 @@ class ChatPage(BasePage):
                 window.__exportObserver.observe(document.body,
                     {subtree: true, childList: true, characterData: true, attributes: true});
                 sample();
-            }"""
+            }""",
+            [self.EXPORT_PROGRESS_SELECTOR, self.EXPORT_MODAL_SELECTOR],
         )
         with self.page.expect_download(timeout=timeout) as download_info:
             self.export_chat_modal_export_button.click()
