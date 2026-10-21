@@ -1,0 +1,125 @@
+{
+  "batch": "chat-export-menu-3779",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-export-menu-3779",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      18,
+      18,
+      19
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-3779",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text drift: right-click on a conversation item opens no menu. The menu opens from the hover 3-dot button (conversation-menu-menu-button). Same drift as ELITEA-3784. Not a defect.",
+          "ref": "ELITEA-3779"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 7 lists 'Duplicate', which does not exist on DEV. The menu has 7 items: Rename, Move to, Playback, Export, Share externally, Pin on top, Delete. 'make-public' is not rendered in a private project.",
+          "ref": "ELITEA-3779"
+        },
+        {
+          "kind": "note",
+          "note": "Keyboard navigation is not supported. Focus stays on the menu container (a DIV with no role), ArrowDown and Tab do not move to items, and Enter does nothing. Not filed as a bug: the case says 'if supported', and this is arguably an accessibility gap.",
+          "ref": "ELITEA-3779"
+        },
+        {
+          "kind": "note",
+          "note": "Possible regression: navigate_to_chat() and wait_for_page_load() time out (15s wait for chat-message-input) on the blank-chat landing on DEV. The earlier run reproduced it 3x. Workaround: page.goto(f\"{app_base_url}/app/chat\") plus chat.dismiss_platform_banner_dialog(), then wait for the conversation item."
+        },
+        {
+          "kind": "note",
+          "note": "Playwright MCP Chrome was missing in the earlier analyst run, so it used scratch pytest. Use --reruns 0 to override the rerun addopts, because -p no:rerunfailures breaks the run."
+        },
+        {
+          "kind": "note",
+          "note": "The page object's CONVERSATION_MENU_ITEM_KEYS has 'share' but DEV renders 'share-external'. The tuple is documentation only, because get_conversation_menu_item formats any key."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says right-click opens the context menu, but on DEV it opens nothing. The menu opens from the hover 3-dot button, the same drift seen in ELITEA-3784. The test uses the 3-dot button.",
+          "ref": "ELITEA-3779 step 4"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case lists 'Duplicate' between Playback and Export, but DEV doesn't render it. The menu has 7 items: Rename, Move to, Playback, Export, Share externally, Pin on top, Delete. The test asserts that live order.",
+          "ref": "ELITEA-3779 step 7"
+        },
+        {
+          "kind": "note",
+          "note": "Keyboard navigation does not work on the menu: focus stays on the container and the items don't receive it. Steps 13-14 are conditional ('if supported') and not automated. This is arguably an accessibility gap, but no requirement backs it and it was not filed.",
+          "ref": "ELITEA-3779 steps 13-14"
+        },
+        {
+          "kind": "note",
+          "note": "`CONVERSATION_MENU_ITEM_KEYS` in chat_page.py lists `share`, but DEV renders `share-external`. The tuple is documentation only, so I left it unchanged."
+        },
+        {
+          "kind": "note",
+          "note": "`automation/.env.test` is missing in this checkout, so `APP_PREFIX` defaults to `''`. Gate runs must set `APP_PREFIX=/app`, or provide the `.env.test` symlink. Otherwise every spec that uses `settings.app_base_url` lands on a 404."
+        },
+        {
+          "kind": "note",
+          "note": "The AFS said `navigate_to_chat()`/`wait_for_page_load()` time out on the blank-chat landing. The spec avoids them with `page.goto` plus `dismiss_platform_banner_dialog`. This is a possible regression in that helper and was not investigated here."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep, run as: git diff main...tests/ELITEA-3779-export-menu-option -- automation/pages automation/tests, filtered for get_by_*/locator(/.nth(/locator=/fallback=. Hits: (1) chat_page.py `self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX)`. The constant is the UPPER_CASE `[data-testid^=\"chat-conversation-menu-\"][data-testid$=\"-menuitem\"]` (chat_page.py:1149), so it is compliant.… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Declaration check: `conversation_menu_item_icon = ScopedLocator(css=\"svg\", suggested_testid=\"chat-conversation-menu-item-icon\", description=...)`. The rung matches the AFS (ladder css under the testid'd menuitem). The hint is well-formed, it is class-level, and it is used via `.within(export_item)`. Locator debt rises by 1 non-testid declaration, as expected. Unmanaged handles do not grow, because… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:1257"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case to AFS to diff: every Coverage-Map row marked covered has a real assertion at its step. Step 3 asserts the 3-dot button visible. Steps 4-5 assert the item count equals 7. Step 6 asserts Export visible. Steps 7-8 assert key order equals EXPECTED_MENU_ORDER, with the Export index and its neighbours. Step 9 asserts to_be_enabled and no aria-disabled. Step 10 asserts to_have_text('E… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift is declared in the AFS and handled correctly as a clarification rather than a defect. Right-click opens no menu (the menu opens from the hover 3-dot button). 'Duplicate' is absent on DEV. Keyboard navigation (case steps 13-14) is conditional on 'if supported' and is observed unsupported, so it is not automated.",
+          "ref": "test-specs/chat-interface/l1_export-option-in-conversation-context-menu_ELITEA-3779.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: step 12 uses `page.mouse.click(1000, 500)`, a coordinate click that depends on viewport size. A click on a known neutral declared element, or pressing Escape, would be sturdier. It is not blocking, since the hardening gate will show any flake.",
+          "ref": "automation/tests/ui/chat/test_chat_export_menu_option.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the 'Step 7-8' allure.step title line is probably over the ruff 120-character limit. Run `ruff check` before landing. The 'Step 6' assertion duplicates the one in Steps 4-5, which is harmless.",
+          "ref": "automation/tests/ui/chat/test_chat_export_menu_option.py:63"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_export-option-in-conversation-context-menu_ELITEA-3779.md",
+      "branch": "tests/ELITEA-3779-export-menu-option",
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          18,
+          18,
+          19
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
