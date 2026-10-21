@@ -1664,7 +1664,8 @@
         "ELITEA-2461"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2149_chat-pin-a-conversation-via-pin-on-top-option.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2149_chat-pin-a-conversation-via-pin-on-top-option.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2461_chat-pin-a-conversation-and-verify-it-appears-above-folders.md"
       ]
     },
     {
@@ -1960,7 +1961,8 @@
         "ELITEA-2060"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2018_pipeline-canvas-delete-node.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2018_pipeline-canvas-delete-node.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2060_pipeline-node-deletion-via-node-menu.md"
       ]
     },
     {
@@ -2122,7 +2124,9 @@
         "ELITEA-2055"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2021_create-pipeline-full-details.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2021_create-pipeline-full-details.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2054_pipeline-advanced-settings-step-limit.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2055_pipeline-editor-notes.md"
       ]
     },
     {
@@ -2139,7 +2143,8 @@
         "ELITEA-2063"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2002_create-pipeline-version.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2002_create-pipeline-version.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2063_pipeline-version-dropdown-and-switch.md"
       ]
     },
     {
@@ -2988,7 +2993,8 @@
         "ELITEA-2453"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2452_run-details-state-beforeafter-per-node.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2452_run-details-state-beforeafter-per-node.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2453_run-details-multiple-state-variables-of-different-types.md"
       ]
     },
     {
@@ -3476,7 +3482,8 @@
         "ELITEA-2414"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/settings/ai-configuration/ELITEA-2397_set-a-llm-model-as-default-high-tier-low-tier.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/settings/ai-configuration/ELITEA-2397_set-a-llm-model-as-default-high-tier-low-tier.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/settings/ai-configuration/ELITEA-2414_default-tier-selection-persists-after-page-reload.md"
       ]
     },
     {
@@ -3840,7 +3847,8 @@
         "ELITEA-1797"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-0643_conversation-is-retained-when-the-support-assistant-panel-is-closed-an.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-0643_conversation-is-retained-when-the-support-assistant-panel-is-closed-an.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1797_widget-conversation-state-persists-after-close-reopen.md"
       ]
     },
     {
@@ -3981,7 +3989,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -3996,7 +4005,8 @@
         "ELITEA-1141"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4011,7 +4021,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4027,7 +4038,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4043,7 +4055,8 @@
         "ELITEA-1141"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4059,7 +4072,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4074,7 +4088,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4089,7 +4104,8 @@
         "ELITEA-1141"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4104,7 +4120,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4119,7 +4136,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4134,7 +4152,8 @@
         "ELITEA-1141"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
@@ -4149,7 +4168,8 @@
         "ELITEA-1140"
       ],
       "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md"
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md"
       ]
     },
     {
