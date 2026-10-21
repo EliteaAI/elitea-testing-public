@@ -109,6 +109,10 @@ class TestChatRegenerateLastResponseOnly:
                 earlier.scroll_into_view_if_needed()
                 earlier.hover()
                 expect(earlier).to_be_visible(timeout=UI_TIMEOUT)
+                # Positive control: the hover revealed this item's action bar (AFS Gap assertion 1),
+                # so the absence checks below cannot pass merely because nothing rendered.
+                for shown in (ChatPage.copy_action_button, ChatPage.read_out_button):
+                    expect(shown.resolve(earlier)).to_have_count(1, timeout=UI_TIMEOUT)
                 expect(ChatPage.regenerate_action_button.resolve(earlier)).to_have_count(0)
                 expect(ChatPage.delete_action_button.resolve(earlier)).to_have_count(0)
 
