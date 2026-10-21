@@ -15,6 +15,29 @@
   own history, not in a second file.
 - **surface_key**: `pipeline-entry-point-trigger`
 
+## Adjustment — 2026-10-21 (EL-3872)
+
+**Triage class A (UI drift).** CI failed with a `Locator.wait_for` timeout on
+`[data-testid="pipeline-node-interrupt-before-toggle-Code 1"]`. EliteaUI@d16f8caf (EL-3872, 2026-10-19, on `main`)
+removed the Interrupt before/after toggles from node cards (`CommonInterruptSettings` -> `CommonNodeSettings`,
+structured output only). `interrupt_before` remains a supported YAML key.
+
+| | Old route | New route |
+|---|---|---|
+| Set interrupt (Step 7) | click node-card interrupt-before toggle (`toggle_node_interrupt_before`) | YAML view: insert `interrupt_before: [<node>]` under `entry_point:` (`set_interrupt_before_via_yaml`), save |
+| Clear interrupt (Step 8) | click toggle off | YAML view: set `interrupt_before: []` (`clear_interrupt_before_via_yaml`), save |
+
+**Expected-result changes: none.** The observable is unchanged (a saved non-empty interrupt list restricts Trigger to
+Chat Message; clearing it re-enables the other triggers). No assertion was changed, deleted or weakened; only the route
+to set the state changed.
+
+**Handles Reference (new route)**
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `yaml_view_button` (existing page-object field) | n/a | testid on DEV ✓ |
+| css (third-party CodeMirror internals) | YAML editor `.cm-line`, via existing `edit_yaml_line` | none (third-party internals, terminal rung) | ladder - library-rendered, scoped under testid-bearing editor |
+
 ## AMENDMENT — 2026-08-26 (EL-6128 product drift) — READ THIS FIRST
 
 **Trigger.** GHA run [32931571484](https://github.com/EliteaAI/elitea-testing-public/actions/runs/32931571484)

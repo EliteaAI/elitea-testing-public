@@ -4156,42 +4156,34 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.keyboard.press("Escape")
         return states
 
-    def toggle_node_interrupt_before(self, node_id: str, timeout: int = 5000) -> None:
-        """Click a node's inline "Interrupt before" switch (CommonInterruptSettings.jsx).
+    def set_interrupt_before_via_yaml(self, node_id: str) -> None:
+        """Set the pipeline's top-level ``interrupt_before`` list to ``[node_id]`` via the YAML view.
 
-        Disabled by the source only when *node_id* IS the pipeline's saved
-        entry point (`yamlJsonObject.entry_point === id`) — callers must
-        target a node that is NOT the entry point.
-
-        The testid is wired via `slotProps.switch.slotProps.input` (added
-        EliteaAI/EliteaUI, ELITEA-2008 fix) so it lands directly on the
-        native ``<input type="checkbox">`` — NOT the `MuiSwitch-switchBase`
-        wrapper span MUI's `Switch` normally puts extra props on
-        (`.agents/memory/test-automation-engineer/
-        testid_lands_on_mui_wrapper_not_input.md`; MUI v7's `Switch` silently
-        drops a legacy `inputProps` testid entirely). Clicked via
-        ``element.click()`` (JS, `.claude/rules/mui-patterns.md` § MUI
-        Overlay Interception — same technique as :meth:`delete_node`), NOT a
-        coordinate-based Playwright click, even with ``force=True``.
-        Confirmed live (ELITEA-2008): after a node add/delete cycle earlier
-        on the canvas (e.g. Printer/HITL added then removed before this
-        node), some other canvas element ends up topmost at this switch's
-        on-screen coordinates. `force=True` only skips Playwright's
-        actionability *checks* — the underlying mouse event is still
-        dispatched at those coordinates and the browser still delivers it to
-        whatever's topmost there, so a coordinate click silently lands on
-        the intercepting element instead of the switch (no exception, no
-        `aria-disabled`, the switch's `checked` state simply never flips).
-        `element.click()` on the (now testid'd) native checkbox bypasses
-        on-screen z-order entirely and still fires React's `onChange`.
+        The per-node "Interrupt before" switch was removed from node cards
+        (EliteaAI/EliteaUI@d16f8caf, EL-3872 phase 1 of static-interrupt
+        deprecation); ``interrupt_before`` stays a supported YAML key, so the
+        YAML editor is the only UI route to a saved non-empty interrupt list.
+        Edits the first YAML line (``entry_point: ...``, unique in the doc) by
+        appending the key, then returns to the Flow view. Does NOT save.
 
         Args:
-            node_id: The data-id of the target node.
-            timeout: Maximum wait time in milliseconds.
+            node_id: The data-id of the node to interrupt before.
         """
-        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
-        toggle.wait_for(state="attached", timeout=timeout)
-        toggle.evaluate("el => el.click()")
+        self.switch_to_yaml_view()
+        entry_line = next(
+            line.strip() for line in self.get_yaml_content().splitlines() if line.startswith("entry_point:")
+        )
+        self.edit_yaml_line(entry_line, f"{entry_line}\ninterrupt_before: [{node_id}]")
+        self.switch_to_flow_view()
+
+    def clear_interrupt_before_via_yaml(self) -> None:
+        """Reset the pipeline's ``interrupt_before`` list to ``[]`` via the YAML view. Does NOT save."""
+        self.switch_to_yaml_view()
+        current = next(
+            line.strip() for line in self.get_yaml_content().splitlines() if line.startswith("interrupt_before:")
+        )
+        self.edit_yaml_line(current, "interrupt_before: []")
+        self.switch_to_flow_view()
 
     def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
         """Open the entry-point node's Trigger select and choose *value*.

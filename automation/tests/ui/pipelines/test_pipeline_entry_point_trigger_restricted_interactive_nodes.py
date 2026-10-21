@@ -166,16 +166,13 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         "'Interrupt before'; Save; verify the same restriction applies"
     ):
         pipeline_page.delete_node(hitl_node_id)
-        # CommonInterruptSettings.jsx's "Interrupt before" toggle disables
-        # only when the node IS the saved entry point (`entry_point === id`)
-        # — a freshly-added Code node never is, so it's enabled regardless of
-        # its own canvas connections. ("Interrupt after" was tried first but
-        # is unusable here: the pipeline builder auto-wires a new node's
-        # output to END, and that toggle disables whenever
-        # `transition === END` — confirmed live during this implementation.)
+        # The per-node "Interrupt before" switch was removed from node cards
+        # (EliteaUI@d16f8caf, EL-3872 phase 1 of static-interrupt deprecation);
+        # `interrupt_before` stays a supported YAML key, so the interrupt list
+        # is set through the YAML view — same saved state, different route.
         pipeline_page.add_node("Code")
         code_node_id = pipeline_page.wait_for_node_on_canvas("code", timeout=UI_ELEMENT_TIMEOUT)
-        pipeline_page.toggle_node_interrupt_before(code_node_id, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.set_interrupt_before_via_yaml(code_node_id)
 
         pipeline_page.save_and_wait_for_update(project_id, pipeline_with_llm_id, timeout=SAVE_RESPONSE_TIMEOUT)
         interrupt_states = pipeline_page.get_trigger_option_states(
@@ -190,7 +187,7 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         "Step 8 — Remove all HITL/Printer/interrupt configuration; Save; reload; "
         "verify all 3 trigger types are available AND ENABLED again"
     ):
-        pipeline_page.toggle_node_interrupt_before(code_node_id, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.clear_interrupt_before_via_yaml()
         pipeline_page.delete_node(code_node_id)
         assert llm_node_id in pipeline_page.get_node_ids(), (
             "The original entry-point LLM node should still be present after cleanup"
