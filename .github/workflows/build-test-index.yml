@@ -6,10 +6,18 @@ on:
     paths:
       - "automation/tests/ui/**"
       - "automation/scripts/build_test_index.py"
+      - "automation/scripts/tms_backwrite.py"
+      - ".github/workflows/build-test-index.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+# Both jobs push to a main branch (this repo's index, the TMS repo's case files);
+# back-to-back landings must not race each other's commits.
+concurrency:
+  group: build-test-index
+  cancel-in-progress: false
 
 jobs:
   build-index:
@@ -32,6 +40,13 @@ jobs:
           python scripts/build_test_index.py --path tests/ui --out index.json
           echo "Indexed $(jq '.tests | length' index.json) UI tests"
 
+      - name: Upload index for the TMS back-write
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-index
+          path: automation/index.json
+          retention-days: 7
+
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
@@ -39,3 +54,81 @@ jobs:
           git add automation/index.json
           git diff --cached --quiet || git commit -m "chore: rebuild automation/index.json"
           git push
+
+  # Every case-derived UI test declares its TMS case as @pytest.mark.tms + an
+  # @allure.issue link to the case file. This job fails the run when the two disagree
+  # or a link is broken; otherwise it sets each linked case to automated/ready with its
+  # automation_test_id refs and automation_pr = this commit (scripts/tms_backwrite.py).
+  tms-backwrite:
+    needs: build-index
+    # A rejected index push must not cost the back-write — the index was already built.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: automation/scripts
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ui-test-index
+          path: index
+
+      - name: Require the TMS token
+        env:
+          TMS_TOKEN: ${{ secrets.TMS_TOKEN }}
+        run: |
+          if [ -z "$TMS_TOKEN" ]; then
+            echo "::error::Repo secret TMS_TOKEN (the automation-factory account's token) is not set"
+            exit 1
+          fi
+
+      - name: Check out the TMS repo
+        uses: actions/checkout@v4
+        with:
+          repository: EliteaAI/onetest-ai-tm-Elitea
+          ref: main
+          token: ${{ secrets.TMS_TOKEN }}
+          path: tms
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check TMS links
+        run: |
+          python automation/scripts/tms_backwrite.py check --tms-root tms --index index/index.json
+
+      - name: Back-write TMS cases
+        run: |
+          python automation/scripts/tms_backwrite.py apply --tms-root tms --index index/index.json \
+            --commit-url "https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+
+      - name: Commit TMS back-write if changed
+        working-directory: tms
+        run: |
+          git config user.name "automation-factory"
+          git config user.email "automation-factory@users.noreply.github.com"
+          git add tests
+          if git diff --cached --quiet; then
+            echo "TMS cases already in sync"
+            exit 0
+          fi
+          n=$(git diff --cached --name-only | wc -l | tr -d ' ')
+          git commit -q -F - <<EOF
+          automation: back-write ${n} case(s) from elitea-testing-public@${GITHUB_SHA::7}
+
+          execution_type / status / automation_test_id / automation_pr synced from the
+          UI tests' @pytest.mark.tms + @allure.issue markers at
+          https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+
+          $(git diff --cached --name-only | sed 's/^/- /')
+          EOF
+          # TMS main also takes its own build-index bot commits; retry on a moved main.
+          for attempt in 1 2 3; do
+            git pull --rebase -q origin main && git push origin HEAD:main && exit 0
+            sleep $((attempt * 5))
+          done
+          echo "::error::Could not push the TMS back-write after 3 attempts"
+          exit 1
