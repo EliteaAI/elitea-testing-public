@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "7ddfacea-402d-4f65-ad7c-53de9e2c669e",
+  "intent": "automation",
+  "batch": "chat-regenerate-2186",
+  "cases": [
+    "ELITEA-2186"
+  ],
+  "declaredAt": "2026-10-20T23:41:54.173Z",
+  "updatedAt": "2026-10-21T00:01:30.443Z",
+  "outcomes": {
+    "ELITEA-2186": {
+      "outcome": "blocked",
+      "at": "2026-10-21T00:01:30.443Z"
+    }
+  }
+}
