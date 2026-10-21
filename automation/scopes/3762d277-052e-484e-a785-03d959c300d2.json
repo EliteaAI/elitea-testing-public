@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "session": "3762d277-052e-484e-a785-03d959c300d2",
+  "intent": "automation",
+  "batch": "adjust-flaky-chat-regen-2548",
+  "cases": [
+    "ELITEA-2185",
+    "ELITEA-2187"
+  ],
+  "declaredAt": "2026-10-21T19:21:41.075Z",
+  "updatedAt": "2026-10-21T19:21:41.075Z"
+}
