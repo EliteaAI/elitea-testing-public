@@ -179,12 +179,14 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **AFS location**: `test-specs/<feature>/` in this repo (analyst output, git-tracked)
 
 ### Status reporting
-- **TMS execution back-write**: yes — right after the batch lands on `main`, in the
-  same session (`.agents/workflow.md` § After landing), orchestrator edits the case file in
-  `onetest-ai-tm-Elitea`: `execution_type: automated`, `status: ready`,
-  `automation_test_id: <dotted tests.-rooted path>` — NOT the `.py::` node-id form and NOT
-  `automation.`-prefixed; both fail CI correlation (see `.agents/test-automation.yaml`
-  § backwrite_on_done)
+- **TMS execution back-write**: yes — the case file in `onetest-ai-tm-Elitea` gets
+  `execution_type: automated`, `status: ready`, `automation_test_id: <dotted
+  tests.-rooted path>` (NOT the `.py::` node-id form, NOT `automation.`-prefixed; both
+  fail CI correlation) and `automation_pr`. **UI cases: written by CI** — the
+  `build-test-index.yml` run on the landed commit, from the tests' `@pytest.mark.tms` +
+  `@allure.issue` pair; the orchestrator verifies it in the same session. Non-UI cases:
+  the orchestrator edits by hand (`.agents/workflow.md` § After landing,
+  `.agents/test-automation.yaml` § backwrite_on_done)
 - **Comment the landed commit on the originating issue**: yes — work-log comments
   (🔧 started / 📝 update / 🚫 blocked / ✅ landed) + the `main` commit link on the
   tracking card
@@ -192,8 +194,9 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   "Waiting on #N" when parked; `Ready` once the batch is landed on `main` and the
   closure record is posted (verified locator delta — see workflow.md § Closure record;
   never copy the implementer's claim); `Done` is human-only
-- **Gating**: no automated result reporters wired into pytest; back-writes are
-  explicit orchestrator actions, never per-local-run
+- **Gating**: no automated result reporters wired into pytest; back-writes are never
+  per-local-run — only the `main` push workflow (UI) or an explicit orchestrator
+  action (non-UI) writes the TMS
 
 ### Automation PR policy
 _(Heading kept for the many `§ Automation PR policy` references. Since 2026-10-16
