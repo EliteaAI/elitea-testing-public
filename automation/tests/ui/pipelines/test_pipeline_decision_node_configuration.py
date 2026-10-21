@@ -125,7 +125,7 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
 
     with allure.step(
         "Step 2 — Decision node config renders inline on the canvas card "
-        "(Input, Description, Decision outputs, Interrupt before/after all present, "
+        "(Input, Description, Decision outputs all present, "
         "no click-to-open action)"
     ):
         assert pipeline_page.decision_node_input_select.is_visible(), "Input select should be visible inline"
@@ -135,18 +135,9 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
         assert pipeline_page.decision_node_outputs_container.is_visible(), (
             "Decision outputs container should be visible inline"
         )
-        # Interrupt before/after — the AFS Coverage Map row 2 claims full
-        # ("Interrupt before/after switches") coverage but the first
-        # implementation only asserted "after" (fix-round finding). Both are
-        # unconditional on the Decision node (CommonInterruptSettings.jsx);
-        # "before" is node-id-keyed (ELITEA-2008), not testid-templated per
-        # node type — same pattern already used for the Toolkit/LLM node AFSes.
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(decision_node_id), (
-            "Interrupt before switch should be visible inline"
-        )
-        assert pipeline_page.decision_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after switch should be visible inline"
-        )
+        # Interrupt before/after toggles were removed from node cards
+        # (EliteaUI EL-3872); their expectations were dropped per human
+        # sign-off (#2541).
 
     with allure.step("Step 3 — Set Input to the two custom state variables"):
         pipeline_page.select_decision_node_input_variables(

@@ -408,3 +408,8 @@ shape difference documented above).
   Router AFS's `Condition` field — normal `.input_value()`-readable
   Playwright textarea, NOT a CodeMirror/Monaco editor, so it needs none of
   the `.agents/testing.md` #579 CodeMirror-line-scoping technique.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations (visible, and disabled-state where present) are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Page-object members for these toggles that no spec uses any longer were removed.

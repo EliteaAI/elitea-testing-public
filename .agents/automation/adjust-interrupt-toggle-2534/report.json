@@ -1,0 +1,12 @@
+{"slug":"adjust-interrupt-toggle-2534","card":2534,"followup":2541,"kind":"adjust","triage":"A (UI drift: EliteaUI@d16f8caf EL-3872 removed node-card Interrupt before/after toggles)",
+"signoff":"breilian on #2541 (toggle expectations dropped)",
+"cases":[
+{"id":"ELITEA-2038","outcome":"automated","review":"APPROVED","gate":"3/3"},
+{"id":"ELITEA-2009","outcome":"automated","review":"APPROVED","gate":"3/3"},
+{"id":"ELITEA-2034","outcome":"automated","review":"APPROVED","gate":"3/3"},
+{"id":"ELITEA-2037","outcome":"automated","review":"APPROVED","gate":"3/3"},
+{"id":"ELITEA-2004","outcome":"automated","review":"APPROVED","gate":"3/3"},
+{"id":"ELITEA-2036","outcome":"automated-unexecuted","review":"APPROVED","gate":"skipped (GIT_HUB_TOKEN unset); py_compile+collect only"},
+{"id":"ELITEA-2010","outcome":"automated-unexecuted","review":"APPROVED","gate":"skipped (GIT_HUB_TOKEN unset); py_compile+collect only"}],
+"gate":{"runs":3,"result":"green","note":"3 earlier gate attempts discarded: DEV 503/500 outage and save-response timeouts (infra, differing causes per run); final 3 consecutive runs 7 passed/2 skipped"},
+"locators":{"before":{"declared":1290,"non_testid":59,"unmanaged":351},"after":{"declared":1281,"non_testid":59,"unmanaged":351}}}

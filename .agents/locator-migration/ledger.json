@@ -333,7 +333,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1811,
+      "line": 1764,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -345,7 +345,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_cron_input": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1518,
+      "line": 1471,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('input[type=\"text\"]').first",
       "suggested_testid": null,
@@ -357,7 +357,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1498,
+      "line": 1451,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').first",
       "suggested_testid": null,
@@ -369,7 +369,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_apply_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1513,
+      "line": 1466,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Save\")').first",
       "suggested_testid": null,
@@ -381,7 +381,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_cancel_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1508,
+      "line": 1461,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cancel\")').first",
       "suggested_testid": null,
@@ -393,7 +393,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_advanced": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1532,
+      "line": 1485,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cron Expression\")').first",
       "suggested_testid": null,
@@ -405,7 +405,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_default": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1527,
+      "line": 1480,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Builder\")').first",
       "suggested_testid": null,
@@ -417,7 +417,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_summary_text": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1503,
+      "line": 1456,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('text=/At \\\\d+:\\\\d+|Every |Daily|Weekly|Monthly/').first",
       "suggested_testid": null,
@@ -730,8 +730,8 @@
   },
   "last_sync": "2026-10-21",
   "metric": {
-    "declared_total": 1290,
-    "declared_testid": 1231,
+    "declared_total": 1281,
+    "declared_testid": 1222,
     "declared_non_testid": 59,
     "non_testid_with_hint": 38,
     "non_testid_without_hint": 21,
@@ -740,10 +740,10 @@
       "fallback": 20,
       "locator": 1,
       "role": 18,
-      "testid": 1231,
+      "testid": 1222,
       "xpath": 10
     },
-    "locator_debt": 0.0457,
+    "locator_debt": 0.0461,
     "unmanaged_handles": 351
   }
 }
