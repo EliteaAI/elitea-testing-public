@@ -111,8 +111,8 @@ All testid-only. Three testids were a **confirmed live gap** and added via
 | Element | Testid | Page-object field/method | Provenance |
 |---|---|---|---|
 | Instructions editor content (Edit mode) | `skill-instructions-editor-content` | `SkillFormPage.instructions_editor_content` / `fill_instructions()` / `get_instructions()` | pre-existing, on `main` ✓ |
-| Edit-mode toggle button | `skill-instructions-edit-mode-button` | **NEW** `SkillDetailPage.instructions_edit_mode_button` / `click_edit_mode()` | added this run — `automation/testids` only (commit `b6e1c7c9`), awaiting human cherry-pick to `main` |
-| Preview-mode toggle button | `skill-instructions-preview-mode-button` | **NEW** `SkillDetailPage.instructions_preview_mode_button` / `click_preview_mode()` | added this run — `automation/testids` only (commit `b6e1c7c9`), awaiting human cherry-pick to `main` |
+| Edit-mode toggle button | `markdown-edit-mode-toggle` | **NEW** `SkillDetailPage.instructions_edit_mode_button` / `click_edit_mode()` | added this run — `automation/testids` only (commit `b6e1c7c9`), awaiting human cherry-pick to `main` |
+| Preview-mode toggle button | `markdown-preview-mode-toggle` | **NEW** `SkillDetailPage.instructions_preview_mode_button` / `click_preview_mode()` | added this run — `automation/testids` only (commit `b6e1c7c9`), awaiting human cherry-pick to `main` |
 | Preview-mode rendered content container | `skill-instructions-preview-content` | **NEW** `SkillDetailPage.instructions_preview_content` / `get_preview_content()` | added this run — `automation/testids` only (commit `b6e1c7c9`), awaiting human cherry-pick to `main` |
 | Save button | `skill-save-button` | `SkillFormPage.save_button` (`is_save_enabled()`); edit-flow save via `SkillDetailPage.save_edits()` | pre-existing, on `main` ✓ |
 | Confirmation toast | `toast-message` | `SkillDetailPage.version_toast_message` (reused) | pre-existing, on `main` ✓ |

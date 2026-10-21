@@ -1,0 +1,25 @@
+{
+ "slug": "adjust-3366-2545",
+ "card": 2545,
+ "triage": "A (UI drift)",
+ "cases": [
+  {
+   "id": "ELITEA-3366",
+   "outcome": "automated",
+   "spec": "tests.ui.chat.test_skill_creation_from_chat_chip_canvas.TestSkillCreationFromChat.test_skill_created_from_chat_chip_opens_canvas",
+   "review": "APPROVED",
+   "expectedResultChanges": "none"
+  }
+ ],
+ "gate": {
+  "n": 3,
+  "verdict": "green",
+  "reruns": 0,
+  "runs": [
+   "41.07s",
+   "39.05s",
+   "40.67s"
+  ]
+ },
+ "locatorDelta": "declared 1281 (testid 1222, non-testid 59) unchanged; unmanaged 351 unchanged; ledger sync 0 added"
+}

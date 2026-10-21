@@ -45,12 +45,12 @@ class SkillFormPage(BasePage):
     )
 
     instructions_edit_mode_button = LocatorDescriptor(
-        testid="skill-instructions-edit-mode-button",
+        testid="markdown-edit-mode-toggle",
         description="Instructions Edit/Preview toggle — Edit mode button (ELITEA-2432)"
     )
 
     instructions_preview_mode_button = LocatorDescriptor(
-        testid="skill-instructions-preview-mode-button",
+        testid="markdown-preview-mode-toggle",
         description="Instructions Edit/Preview toggle — Preview mode button (ELITEA-2432)"
     )
 

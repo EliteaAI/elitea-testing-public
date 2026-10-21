@@ -110,6 +110,10 @@ class TestSkillCreationFromChat:
                 assert "action items" in description or "blockers" in description, (
                     f"Description should be topically consistent, got {description!r}"
                 )
+                # Instructions section defaults to Preview (rendered Markdown); the CodeMirror
+                # editor only renders in Edit mode — switch before reading the raw instructions.
+                skill_form.click_edit_mode()
+                expect(skill_form.instructions_editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 instructions = skill_form.get_instructions_multiline().lower()
                 for term in ("standup", "blockers", "decisions", "action items"):
                     assert term in instructions, f"Instructions should contain {term!r}, got {instructions!r}"
