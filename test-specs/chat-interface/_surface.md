@@ -1471,3 +1471,7 @@ instead and is click-idempotent (no-ops if already checked).
 - User item text is untouched. Output is nondeterministic: never assert new text != old text hard.
 - "New Models are added" toast can cover the Send button on DEV: send with Enter.
 - `navigate_to_chat(conversation_id=...)` still times out on DEV (15s); goto `/app/chat/<id>` directly.
+
+## Regenerate on 3 exchanges (ELITEA-2187, 2026-10-21)
+- Verified live with 3 exchanges: earlier AI items regen 0 / delete 0 / copy 1 / read-out 1; last 1/1/1/1; page-wide regenerate count 1, and still 1 after a regenerate completes. Click -> `chat-inject-button` (Stop) appears then clears; message count unchanged. Classified extend-existing of the ELITEA-2184 spec.
+- `page.goto(app_base_url + "/app/chat/<id>")` + `chat-message-input` wait worked this run.
