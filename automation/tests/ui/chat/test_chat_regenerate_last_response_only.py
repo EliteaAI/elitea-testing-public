@@ -90,7 +90,9 @@ class TestChatRegenerateLastResponseOnly:
 
         with allure.step("Step 1 — Open a fresh conversation and get three LLM responses"):
             # navigate_to_chat(conversation_id=) times out on DEV (SPA redirect); direct goto works.
-            page.goto(f"{settings.app_base_url}/app/chat/{conversation_id}")
+            # settings.app_base_url already carries the /app prefix - do not add it again.
+            page.goto(f"{settings.app_base_url}/chat/{conversation_id}")
+            assert "/app/app/" not in page.url, f"doubled app prefix in URL: {page.url}"
             expect(chat.message_input).to_be_visible(timeout=30_000)
             for prompt in _PROMPTS_THREE:
                 count_before = chat.get_message_count()
