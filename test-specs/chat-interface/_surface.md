@@ -1448,6 +1448,11 @@ instead and is click-idempotent (no-ops if already checked).
 - Platform announcement dialog on DEV intercepts hover/click: dismiss `platform-banner-close` first.
 - Playwright MCP browser binary missing in this environment (chrome not found); scripted pytest-playwright chromium probes work.
 
+### ELITEA-3764 addendum (2026-10-21): export WITH attachments
+- Seed: `attach_files_via_menu([3 files])` + `send_message` on an API-created chat; modal option label becomes `With attachments (3 files · 36 Bytes)` (summary query, loads async - option disabled while loading).
+- Selecting it swaps description to the ZIP sentence; Export click shows `Exporting chat... 3 files` + `export-chat-modal-progress` + button "Exporting..." (transient; capture with a MutationObserver installed before click). Download `<name>_<date>_<time>.zip.enc`, encrypted (`ELITEA-CHAT-ENC/1`), toast "Chat exported successfully", modal closes.
+- Needs `APP_PREFIX=/app` exported if `.env.test` is absent, else all pages 404.
+
 ## Stop generation (ELITEA-2182, 2026-10-20)
 
 - **Timeline on DEV (Haiku 4.5), "generate a poem"**: Stop control renders ~0.5s after Send (bubble "Waking the agent..."), agent bubble shows `Thinking` ~2.3s, final text ~2.9s, Stop disappears the moment final text starts. Windows are short: poll <=100ms, never 500ms+.
