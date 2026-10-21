@@ -1480,3 +1480,9 @@ instead and is click-idempotent (no-ops if already checked).
 ## Regenerate on 3 exchanges (ELITEA-2187, 2026-10-21)
 - Verified live with 3 exchanges: earlier AI items regen 0 / delete 0 / copy 1 / read-out 1; last 1/1/1/1; page-wide regenerate count 1, and still 1 after a regenerate completes. Click -> `chat-inject-button` (Stop) appears then clears; message count unchanged. Classified extend-existing of the ELITEA-2184 spec.
 - `page.goto(app_base_url + "/app/chat/<id>")` + `chat-message-input` wait worked this run.
+
+## Conversation context menu contents (ELITEA-3779, 2026-10-21)
+- Right-click on a conversation item opens NOTHING; the menu is the hover 3-dot `conversation-menu-menu-button` (scope to `chat-conversation-item-{id}`).
+- DEV menu = 7 items in order: rename, move-to, playback, export, share-external, pin, delete (no "Duplicate", no make-public in a private project). Items are `role=menuitem tabindex=-1`, none `aria-disabled`; each has 1 svg (move-to 2). Export label "Export".
+- Keyboard: focus sits on the menu container (DIV, no role); ArrowDown/Tab do not move to items; Enter no-op. Click-away closes the menu (items 0).
+- `navigate_to_chat()` + `wait_for_page_load()` timed out (15s `chat-message-input`) on the blank-chat landing in this run even for the existing export spec (ELITEA-3784); `page.goto("https://dev.elitea.ai/app/chat")` + banner dismiss works. Playwright MCP chrome missing; scratch pytest used (`--reruns 0` overrides rerun addopts; `-p no:rerunfailures` breaks).
