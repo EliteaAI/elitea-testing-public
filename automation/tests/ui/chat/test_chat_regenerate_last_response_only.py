@@ -90,7 +90,9 @@ class TestChatRegenerateLastResponseOnly:
     @pytest.mark.tms("ELITEA-2187")
     @allure.title("Regenerate is offered only on the last of three LLM responses and still works")
     @allure.severity(allure.severity_level.NORMAL)
-    def test_regenerate_only_on_last_of_three_responses(self, page, conversation_id):
+    def test_regenerate_only_on_last_of_three_responses(
+        self, page, conversation_id, midturn_injection_enabled
+    ):
         """ELITEA-2187 — extends ELITEA-2184: three exchanges, every earlier item, click on last."""
         chat = ChatPage(page)
 

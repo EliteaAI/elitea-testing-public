@@ -39,7 +39,9 @@ class TestChatRegenerateNewResponse:
     @pytest.mark.tms("ELITEA-2185")
     @allure.title("Regenerate replaces the last response in place and keeps the user input unchanged")
     @allure.severity(allure.severity_level.NORMAL)
-    def test_regenerate_creates_new_response_same_user_input(self, page, conversation_id):
+    def test_regenerate_creates_new_response_same_user_input(
+        self, page, conversation_id, midturn_injection_enabled
+    ):
         chat = ChatPage(page)
 
         def last_ai_item():

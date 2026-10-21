@@ -1,0 +1,1 @@
+{"batch":"adjust-chat-regenerate-flaky-2548","card":2548,"class":"D","gate":"3/3 green on DEV (separate invocations)","review":"APPROVED","cases":[{"id":"ELITEA-2185","outcome":"automated"},{"id":"ELITEA-2187","outcome":"automated"}]}
