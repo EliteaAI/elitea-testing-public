@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "session": "d3a987ca-9bd2-4eca-a383-90aac95dc5b7",
+  "intent": "automation",
+  "batch": "agent-hub-modal-csp-2527",
+  "cases": [
+    "ELITEA-2356",
+    "ELITEA-2357"
+  ],
+  "declaredAt": "2026-10-21T02:30:35.613Z",
+  "updatedAt": "2026-10-21T02:33:20.727Z",
+  "outcomes": {
+    "ELITEA-2356": {
+      "outcome": "blocked",
+      "at": "2026-10-21T02:33:20.727Z"
+    },
+    "ELITEA-2357": {
+      "outcome": "blocked",
+      "at": "2026-10-21T02:33:20.727Z"
+    }
+  }
+}
