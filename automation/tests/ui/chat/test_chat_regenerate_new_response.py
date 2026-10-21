@@ -31,6 +31,11 @@ UI_TIMEOUT = 15_000
 class TestChatRegenerateNewResponse:
     """ELITEA-2185 — Regenerate produces a new response from the previous user input."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-2185_chat-clicking-regenerate-generates-new-response.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2185")
     @allure.title("Regenerate replaces the last response in place and keeps the user input unchanged")
     @allure.severity(allure.severity_level.NORMAL)

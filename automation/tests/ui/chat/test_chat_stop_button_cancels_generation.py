@@ -46,6 +46,11 @@ RESTORE_TIMEOUT = 10_000
 class TestChatStopButtonCancelsGeneration:
     """ELITEA-2182 — Stop cancels the generation and restores the exact prompt."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-2182_chat-stop-button-appears-during-response-generation.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2182")
     @allure.title("Stop button cancels generation during thinking and restores the original input")
     @allure.severity(allure.severity_level.NORMAL)
@@ -88,6 +93,11 @@ class TestChatStopButtonCancelsGeneration:
             # stream would have repopulated the timeline by now.
             expect(chat.messages_container).to_have_count(initial_count)
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-2183_chat-after-stopping-generation-new-message-can-be-sent-normally.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2183")
     @allure.title("After stopping a generation a new message can be sent and answered normally")
     @allure.severity(allure.severity_level.NORMAL)

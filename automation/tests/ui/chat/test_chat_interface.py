@@ -97,6 +97,7 @@ class TestSendingMessages:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
     @pytest.mark.p0
+    @pytest.mark.tms("ELITEA-0503")
     def test_send_text_message(self, page, conversation_id):
         """TC-CHAT-003, TC-CHAT-004: Send message and verify history."""
         with allure.step("Step 1 — Navigate to chat page"):
@@ -120,6 +121,7 @@ class TestSendingMessages:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0503_chat-message-input-methods.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
+    @pytest.mark.tms("ELITEA-0503")
     def test_cannot_send_empty_message(self, page, conversation_id):
         """TC-CHAT-007: Cannot send empty message."""
         with allure.step("Step 1 — Navigate to chat page"):
@@ -143,6 +145,7 @@ class TestMessageActions:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0502_chat-message-actions.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0502")
     def test_copy_message_to_clipboard(self, page, conversation_id):
         """TC-CHAT-008: Copy message to clipboard."""
         with allure.step("Step 1 — Navigate to chat page"):
@@ -423,6 +426,7 @@ class TestContextAndSettings:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p2
+    @pytest.mark.tms("ELITEA-0500")
     def test_edit_context_settings(self, page, conversation_id):
         """TC-CHAT-019: Edit context settings."""
         with allure.step("Step 1 — Navigate to chat page"):
@@ -463,6 +467,7 @@ class TestSidebarNavigation:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0500")
     def test_open_close_sidebar(self, page, conversation_id):
         """TC-CHAT-021: Open/close sidebar drawer."""
         with allure.step("Step 1 — Navigate to chat page"):
@@ -487,6 +492,7 @@ class TestSidebarNavigation:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0500")
     def test_navigate_to_agents_from_sidebar(self, page, conversation_id):
         """TC-CHAT-022: Navigate to Agents from sidebar."""
         with allure.step("Step 1 — Navigate to chat page"):
@@ -514,6 +520,7 @@ class TestSearchAndErrorHandling:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0500")
     def test_search_conversations_dialog(self, page, conversation_id):
         """TC-CHAT-023: Search conversations."""
         with allure.step("Step 1 — Navigate to chat page"):
@@ -535,6 +542,7 @@ class TestSearchAndErrorHandling:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0500")
     def test_handle_message_send_failure(self, page, conversation_id):
         """TC-CHAT-024: Handle message send failure gracefully."""
         with allure.step("Step 1 — Navigate to chat page"):

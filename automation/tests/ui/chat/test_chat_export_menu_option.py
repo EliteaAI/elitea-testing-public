@@ -27,6 +27,11 @@ EXPECTED_MENU_ORDER = ["rename", "move-to", "playback", "export", "share-externa
 class TestChatExportMenuOption:
     """ELITEA-3779: Export option in the conversation context menu (l1, high)."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-3779_export-option-in-context-menu.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3779")
     @pytest.mark.p1
     def test_export_option_in_conversation_context_menu(self, page, conversation_api):
