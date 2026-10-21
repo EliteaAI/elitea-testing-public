@@ -1,0 +1,52 @@
+{
+  "v": 1,
+  "session": "adb3daec-c560-4597-ae50-8cc3ff4f78aa",
+  "intent": "automation",
+  "batch": "adjust-interrupt-toggle-2534",
+  "cases": [
+    "ELITEA-2004",
+    "ELITEA-2008",
+    "ELITEA-2009",
+    "ELITEA-2010",
+    "ELITEA-2034",
+    "ELITEA-2036",
+    "ELITEA-2037",
+    "ELITEA-2038"
+  ],
+  "declaredAt": "2026-10-21T10:00:16.820Z",
+  "updatedAt": "2026-10-21T10:00:17.160Z",
+  "outcomes": {
+    "ELITEA-2008": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:16.862Z"
+    },
+    "ELITEA-2038": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:16.906Z"
+    },
+    "ELITEA-2009": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:16.949Z"
+    },
+    "ELITEA-2034": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:16.993Z"
+    },
+    "ELITEA-2037": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:17.038Z"
+    },
+    "ELITEA-2004": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:17.078Z"
+    },
+    "ELITEA-2036": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:17.119Z"
+    },
+    "ELITEA-2010": {
+      "outcome": "automated",
+      "at": "2026-10-21T10:00:17.160Z"
+    }
+  }
+}
