@@ -1,0 +1,34 @@
+{
+  "runs": {
+    "20261021132738": {
+      "total": 36,
+      "details": [
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.chat.test_chat_regenerate_last_response_only.TestChatRegenerateLastResponseOnly.test_regenerate_only_on_last_of_three_responses",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2544",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.chat.test_chat_regenerate_new_response.TestChatRegenerateNewResponse.test_regenerate_creates_new_response_same_user_input",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2544",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        },
+        {
+          "id": "ELITEA-3366",
+          "automation_test_id": "tests.ui.chat.test_skill_creation_from_chat_chip_canvas.TestSkillCreationFromChat.test_skill_created_from_chat_chip_opens_canvas",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2545",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for canvas dialog inner text (10000ms exceeded) - failed consistently across 3 retry attempts",
+          "reasoning": "Test failed with TimeoutError on Locator.inner_text and was retried 3 times with identical failure pattern, indicating this is not a random flake but a consistent issue. This suggests either the canvas dialog is not opening properly (product bug) or there's a performance/infrastructure issue causing consistent delays. The pattern of consistent failure across multiple retries warrants investigation rather than simple rerun."
+        }
+      ]
+    }
+  }
+}
