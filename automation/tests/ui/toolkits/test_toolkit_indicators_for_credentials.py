@@ -41,7 +41,7 @@ class TestToolkitCredentialIndicators:
     TC-1778, TC-1784, TC-1785
     """
 
-    @pytest.mark.tms("ELITEA-1182")
+    @pytest.mark.tms("ELITEA-1180", "ELITEA-1181", "ELITEA-1183")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1180_open-in-new-tab-icon-is-present-for-all-credentials-regardless-of-stat.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1181_verify-reload-applies-fixes-of-credentials-immediately.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1183_toolkit-displays-authentication-warning-and-disables-save-for-invalid.md", "onetest-ai Test Case link")

@@ -350,7 +350,7 @@ class TestConversationUIElements:
 class TestHashSearch:
     """TC-CHAT-017 to TC-CHAT-018: # search functionality tests."""
 
-    @pytest.mark.tms("ELITEA-0501")
+    @pytest.mark.tms("ELITEA-0501", "ELITEA-0498")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
@@ -373,7 +373,7 @@ class TestHashSearch:
                     "# mention feature may be disabled in this environment"
                 )
 
-    @pytest.mark.tms("ELITEA-0501")
+    @pytest.mark.tms("ELITEA-0501", "ELITEA-0498")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-0498_chat-participants-add-via-hash-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
