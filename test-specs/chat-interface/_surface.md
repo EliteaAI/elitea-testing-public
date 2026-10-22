@@ -6,6 +6,13 @@ a time; last confirmed by: qa-engineer analyst, ELITEA-3315, 2026-10-17
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: ELITEA-3369, 2026-10-17).
 
+## Composer send/speaking-mode swap (ELITEA-2466, 2026-10-22)
+
+- `SendButton.jsx`: empty input renders `button[aria-label="enter speaking mode"]` (no testid); non-empty renders `chat-send-button` (absent from DOM when empty). Bottom bar also: `plus-menu-button`, `chat-clear-button`, `model-selector-name`, `model-settings-button`, `button[aria-label="start voice input"]`, `context-budget-ring`.
+- After send the composer shows neither send nor speaking-mode for ~1.5-3s; speaking-mode returns when generation ends.
+- Platform banner dialog (`platform-banner-close`) and `platform-banner-corner` can intercept clicks on input/Send on a fresh DEV session.
+- Playwright MCP chrome binary was missing on the host; scripted python-playwright probes (chromium + dev-storage-state.json) worked.
+
 ## Project Context — cross-project isolation + project switch (ELITEA-3315)
 
 - **`ProjectContextContent.jsx`'s `useProjectContextQuery` is keyed purely by
