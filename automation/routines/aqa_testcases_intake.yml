@@ -1,0 +1,901 @@
+state:
+  input:
+    type: str
+  messages:
+    type: list
+  before_sha:
+    type: str
+    value: ''
+  after_sha:
+    type: str
+    value: ''
+  compare_url:
+    type: str
+    value: ''
+  pusher:
+    type: str
+    value: ''
+  files_json:
+    type: str
+    value: '[]'
+  total_files:
+    type: str
+    value: '0'
+  current_index:
+    type: str
+    value: '0'
+  cur_id:
+    type: str
+    value: ''
+  cur_title:
+    type: str
+    value: ''
+  cur_status:
+    type: str
+    value: ''
+  cur_path:
+    type: str
+    value: ''
+  before_path:
+    type: str
+    value: ''
+  after_path:
+    type: str
+    value: ''
+  before_text:
+    type: str
+    value: ''
+  after_text:
+    type: str
+    value: ''
+  triage_verdict:
+    type: str
+    value: ''
+  triage_reason:
+    type: str
+    value: ''
+  metadata_changes:
+    type: str
+    value: ''
+  automation_test_ids:
+    type: str
+    value: ''
+  change_digest:
+    type: str
+    value: ''
+  change_kind:
+    type: str
+    value: ''
+  confidence:
+    type: str
+    value: ''
+  summary:
+    type: str
+    value: ''
+  test_impact:
+    type: str
+    value: ''
+  issue_title:
+    type: str
+    value: ''
+  issue_body:
+    type: str
+    value: ''
+  issue_comment:
+    type: str
+    value: ''
+  search_query:
+    type: str
+    value: ''
+  existing_issues:
+    type: str
+    value: ''
+  existing_issue_number:
+    type: str
+    value: ''
+  issue_result:
+    type: str
+    value: ''
+  issue_number:
+    type: str
+    value: '0'
+  label_result:
+    type: str
+    value: ''
+  comment_result:
+    type: str
+    value: ''
+  results_json:
+    type: str
+    value: '[]'
+  final_report:
+    type: str
+    value: ''
+entry_point: ParseWebhook
+nodes:
+  # Webhook body from onetest-ai-tm-Elitea/.github/workflows/case-change-intake.yml:
+  # {event, repository, before, after, compare_url, pusher, files: [{path, previous_path, status, id, title}]}
+  # The workflow already kept only files whose before OR after front matter says execution_type: automated.
+  - id: ParseWebhook
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {
+            'before_sha': '', 'after_sha': '', 'compare_url': '', 'pusher': '',
+            'files_json': '[]', 'total_files': '0', 'current_index': '0', 'results_json': '[]'
+        }
+
+        try:
+            payload = json.loads(alita_state.get('input', '{}') or '{}', strict=False)
+            if isinstance(payload, dict) and payload.get('event') == 'tms_case_change':
+                files = [f for f in (payload.get('files') or []) if isinstance(f, dict)]
+                out.update({
+                    'before_sha': str(payload.get('before', '')),
+                    'after_sha': str(payload.get('after', '')),
+                    'compare_url': str(payload.get('compare_url', '')),
+                    'pusher': str(payload.get('pusher', '')),
+                    'files_json': json.dumps(files),
+                    'total_files': str(len(files)),
+                })
+        except:
+            pass
+
+        out
+    input:
+      - input
+    output:
+      - before_sha
+      - after_sha
+      - compare_url
+      - pusher
+      - files_json
+      - total_files
+      - current_index
+      - results_json
+    structured_output: true
+    transition: CheckMoreFiles
+  - id: CheckMoreFiles
+    type: router
+    condition: |
+      {% if before_sha and after_sha and current_index|int < total_files|int %}PrepareFile{% else %}BuildFinalOutput{% endif %}
+    default_output: BuildFinalOutput
+    input:
+      - before_sha
+      - after_sha
+      - current_index
+      - total_files
+    routes:
+      - PrepareFile
+      - BuildFinalOutput
+  # Lazy fetch: only the current file's two versions ever sit in state (deno ARG_MAX).
+  - id: PrepareFile
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        files = json.loads(alita_state.get('files_json', '[]') or '[]')
+        idx = int(alita_state.get('current_index', '0') or '0')
+        f = files[idx] if idx < len(files) else {}
+        status = str(f.get('status', 'M'))
+        path = str(f.get('path', '') or '')
+        prev = str(f.get('previous_path', '') or '')
+
+        out = {
+            'cur_id': str(f.get('id', '') or ''),
+            'cur_title': str(f.get('title', '') or ''),
+            'cur_status': status,
+            'cur_path': path or prev,
+            # Added files have no "before"; deleted files have no "after".
+            'before_path': '' if status == 'A' else (prev or path),
+            'after_path': '' if status == 'D' else path,
+            'before_text': '',
+            'after_text': '',
+            'change_kind': '',
+            'confidence': '',
+            'summary': '',
+            'test_impact': '',
+        }
+        out
+    input:
+      - files_json
+      - current_index
+    output:
+      - cur_id
+      - cur_title
+      - cur_status
+      - cur_path
+      - before_path
+      - after_path
+      - before_text
+      - after_text
+      - change_kind
+      - confidence
+      - summary
+      - test_impact
+    structured_output: true
+    transition: RouteReadBefore
+  - id: RouteReadBefore
+    type: router
+    condition: |
+      {% if before_path %}ReadBefore{% else %}RouteReadAfter{% endif %}
+    default_output: RouteReadAfter
+    input:
+      - before_path
+    routes:
+      - ReadBefore
+      - RouteReadAfter
+  - id: ReadBefore
+    type: toolkit
+    input:
+      - before_path
+      - before_sha
+    input_mapping:
+      file_path:
+        type: variable
+        value: before_path
+      branch:
+        type: variable
+        value: before_sha
+      repo_name:
+        type: fixed
+        value: EliteaAI/onetest-ai-tm-Elitea
+    output:
+      - before_text
+    structured_output: true
+    tool: read_file
+    toolkit_name: GHTMSTools
+    transition: RouteReadAfter
+  - id: RouteReadAfter
+    type: router
+    condition: |
+      {% if after_path %}ReadAfter{% else %}TriageDeterministic{% endif %}
+    default_output: TriageDeterministic
+    input:
+      - after_path
+    routes:
+      - ReadAfter
+      - TriageDeterministic
+  - id: ReadAfter
+    type: toolkit
+    input:
+      - after_path
+      - after_sha
+    input_mapping:
+      file_path:
+        type: variable
+        value: after_path
+      branch:
+        type: variable
+        value: after_sha
+      repo_name:
+        type: fixed
+        value: EliteaAI/onetest-ai-tm-Elitea
+    output:
+      - after_text
+    structured_output: true
+    tool: read_file
+    toolkit_name: GHTMSTools
+    transition: TriageDeterministic
+  # Deterministic triage. Verdicts:
+  #   skip   — metadata-only change in fields the test does not depend on, or a body change
+  #            that disappears after normalisation (whitespace, table padding, emphasis, case)
+  #   ticket — a change that breaks the test↔case link or retires the test, whatever the body says
+  #   llm    — the body really differs; SemanticTriage decides cosmetic vs behavioral
+  - id: TriageDeterministic
+    type: code
+    code:
+      type: fixed
+      value: |
+        import re, difflib
+
+        def split_doc(text):
+            text = text if isinstance(text, str) else ''
+            text = text.replace('\r\n', '\n')
+            m = re.match(r'^---\s*\n(.*?)\n---\s*\n?(.*)$', text, re.S)
+            return (m.group(1), m.group(2)) if m else ('', text)
+
+        def parse_fm(raw):
+            fm, key = {}, None
+            for line in raw.splitlines():
+                if not line.strip() or line.lstrip().startswith('#'):
+                    continue
+                km = re.match(r'^([A-Za-z_][\w-]*):\s*(.*)$', line)
+                if km:
+                    key, val = km.group(1), km.group(2).strip()
+                    if val.startswith('[') and val.endswith(']'):
+                        fm[key] = [v.strip().strip('\'"') for v in val[1:-1].split(',') if v.strip()]
+                    elif val:
+                        fm[key] = val.strip('\'"')
+                    else:
+                        fm[key] = []
+                    continue
+                lm = re.match(r'^\s*-\s*(.*)$', line)
+                if lm and key is not None:
+                    if not isinstance(fm.get(key), list):
+                        fm[key] = [fm[key]] if fm.get(key) else []
+                    fm[key].append(lm.group(1).strip().strip('\'"'))
+            return fm
+
+        def body_lines(body):
+            lines = []
+            for line in body.splitlines():
+                s = line.strip()
+                if not s or re.match(r'^#\s+ELITEA-\d+', s):
+                    continue  # blank lines and the "# ELITEA-<id>: <title>" heading (mirrors front matter)
+                if s.startswith('|'):
+                    cells = [c.strip() for c in s.strip('|').split('|')]
+                    if all(re.fullmatch(r':?-{2,}:?', c) for c in cells if c):
+                        continue  # table separator row
+                    s = '|'.join(cells)
+                s = re.sub(r'[*_`]+', '', s)
+                s = re.sub(r'\s+', ' ', s).strip().rstrip('.:;').lower()
+                if s:
+                    lines.append(s)
+            return lines
+
+        def is_error(text):
+            return (not isinstance(text, str)) or text.startswith('Error') or 'content_too_large' in text
+
+        status = alita_state.get('cur_status', 'M') or 'M'
+        before_raw = alita_state.get('before_text', '') or ''
+        after_raw = alita_state.get('after_text', '') or ''
+        need_before = bool(alita_state.get('before_path', ''))
+        need_after = bool(alita_state.get('after_path', ''))
+
+        verdict, reasons, meta, digest = 'skip', [], [], ''
+        fm_b_raw, body_b = split_doc(before_raw)
+        fm_a_raw, body_a = split_doc(after_raw)
+        fm_b, fm_a = parse_fm(fm_b_raw), parse_fm(fm_a_raw)
+
+        if (need_before and is_error(before_raw)) or (need_after and is_error(after_raw)):
+            verdict = 'ticket'
+            reasons.append('could not read one version of the file — needs triage')
+        else:
+            def g(fm, k):
+                v = fm.get(k, '')
+                return ', '.join(v) if isinstance(v, list) else str(v)
+
+            for k in sorted(set(fm_b) | set(fm_a)):
+                if g(fm_b, k) != g(fm_a, k):
+                    meta.append(f"`{k}`: `{g(fm_b, k) or '∅'}` → `{g(fm_a, k) or '∅'}`")
+
+            was_auto = g(fm_b, 'execution_type') == 'automated'
+            is_auto = g(fm_a, 'execution_type') == 'automated'
+            if status == 'D':
+                reasons.append('case file removed — the test points at a case that no longer exists')
+            elif status == 'A':
+                reasons.append('new automated case file (possibly moved in from another folder) — verify the test link')
+            if status == 'R':
+                reasons.append(f"case file renamed: `{alita_state.get('before_path', '')}` → `{alita_state.get('after_path', '')}` — the @allure.issue link breaks")
+            if fm_b.get('id') and fm_a.get('id') and g(fm_b, 'id') != g(fm_a, 'id'):
+                reasons.append(f"case id changed `{g(fm_b, 'id')}` → `{g(fm_a, 'id')}` — the @pytest.mark.tms marker breaks")
+            if was_auto and fm_a and not is_auto:
+                reasons.append(f"execution_type changed `automated` → `{g(fm_a, 'execution_type') or '∅'}` — the test may need retiring")
+            if g(fm_a, 'status') == 'deprecated' and g(fm_b, 'status') != 'deprecated':
+                reasons.append('case deprecated — the test needs retiring')
+
+            lb, la = body_lines(body_b), body_lines(body_a)
+            if reasons:
+                verdict = 'ticket'
+            elif lb != la:
+                verdict = 'llm'
+                reasons.append('case body changed beyond formatting')
+            else:
+                reasons.append('metadata-only or formatting-only change' if meta else 'no effective change')
+
+            if lb != la:
+                raw_b = [l.rstrip() for l in body_b.splitlines() if l.strip()]
+                raw_a = [l.rstrip() for l in body_a.splitlines() if l.strip()]
+                digest = '\n'.join(difflib.unified_diff(raw_b, raw_a, 'before', 'after', n=2, lineterm=''))[:12000]
+
+        ids = fm_a.get('automation_test_id') or fm_b.get('automation_test_id') or []
+        ids = ids if isinstance(ids, list) else [ids]
+
+        out = {
+            'triage_verdict': verdict,
+            'triage_reason': '; '.join(reasons),
+            'metadata_changes': '\n'.join(meta)[:3000],
+            'automation_test_ids': '\n'.join(i for i in ids if i),
+            'change_digest': digest,
+            'cur_title': alita_state.get('cur_title', '') or str(fm_a.get('title') or fm_b.get('title') or ''),
+            # Drop the full texts as soon as they are triaged — keeps state small.
+            'before_text': '',
+            'after_text': '',
+        }
+        out
+    input:
+      - cur_status
+      - cur_title
+      - before_path
+      - after_path
+      - before_text
+      - after_text
+    output:
+      - triage_verdict
+      - triage_reason
+      - metadata_changes
+      - automation_test_ids
+      - change_digest
+      - cur_title
+      - before_text
+      - after_text
+    structured_output: true
+    transition: RouteByVerdict
+  - id: RouteByVerdict
+    type: router
+    condition: |
+      {% if triage_verdict == 'llm' %}SemanticTriage{% elif triage_verdict == 'ticket' %}BuildIssue{% else %}RecordSkip{% endif %}
+    default_output: RecordSkip
+    input:
+      - triage_verdict
+    routes:
+      - SemanticTriage
+      - BuildIssue
+      - RecordSkip
+  - id: SemanticTriage
+    type: llm
+    input:
+      - cur_id
+      - cur_title
+      - change_digest
+      - automation_test_ids
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: |-
+          You review edits to manual test cases that already have an automated test built from them.
+          Decide whether the automated test may need to change because of the edit.
+
+          change_kind:
+          - "cosmetic": wording, typos, grammar, rephrasing with the same meaning, reordered sentences
+            with the same meaning, formatting, renumbering steps without changing what they do.
+            The automated test can stay exactly as it is.
+          - "behavioral": anything the test would have to do or check differently — an added, removed
+            or reordered step; a changed action, UI element, input value, test data, precondition,
+            navigation path or expected result; a changed or removed assertion; a changed scope.
+
+          When in doubt, choose "behavioral". confidence is how sure you are: "high", "medium" or "low".
+
+          Output rules: return ONLY a raw JSON object — no markdown code fences, no commentary, no extra keys:
+          {"change_kind": "cosmetic|behavioral", "confidence": "high|medium|low", "summary": "<=40 words: what changed in the case", "test_impact": "<=60 words: which steps/assertions of the automated test are affected and how; 'none' if cosmetic"}
+      task:
+        type: fstring
+        value: |-
+          Case: {cur_id} — {cur_title}
+          Automated test(s): {automation_test_ids}
+
+          Unified diff of the case body (before → after):
+          {change_digest}
+    output:
+      - change_kind
+      - confidence
+      - summary
+      - test_impact
+    structured_output: true
+    transition: ApplySemanticVerdict
+  # Only a confident "cosmetic" is skipped; a low-confidence answer still files a ticket, flagged for triage.
+  - id: ApplySemanticVerdict
+    type: code
+    code:
+      type: fixed
+      value: |
+        kind = (alita_state.get('change_kind', '') or '').strip().lower()
+        conf = (alita_state.get('confidence', '') or '').strip().lower()
+        reason = alita_state.get('triage_reason', '') or ''
+
+        if kind == 'cosmetic' and conf in ('high', 'medium'):
+            verdict, reason = 'skip', f"{reason}; LLM: cosmetic ({conf})"
+        elif kind == 'behavioral' and conf in ('high', 'medium'):
+            verdict, reason = 'ticket', f"{reason}; LLM: behavioral ({conf})"
+        else:
+            verdict, reason = 'ticket', f"{reason}; LLM: {kind or 'no answer'} ({conf or 'n/a'}) — needs triage"
+
+        out = {'triage_verdict': verdict, 'triage_reason': reason}
+        out
+    input:
+      - change_kind
+      - confidence
+      - triage_reason
+    output:
+      - triage_verdict
+      - triage_reason
+    structured_output: true
+    transition: RouteByVerdict
+  - id: BuildIssue
+    type: code
+    code:
+      type: fixed
+      value: |
+        cid = alita_state.get('cur_id', '') or 'ELITEA-unknown'
+        title = alita_state.get('cur_title', '') or ''
+        path = alita_state.get('cur_path', '') or ''
+        after_sha = alita_state.get('after_sha', '') or ''
+        compare_url = alita_state.get('compare_url', '') or ''
+        reason = alita_state.get('triage_reason', '') or ''
+        meta = alita_state.get('metadata_changes', '') or ''
+        tests = alita_state.get('automation_test_ids', '') or ''
+        digest = alita_state.get('change_digest', '') or ''
+        summary = alita_state.get('summary', '') or ''
+        impact = alita_state.get('test_impact', '') or ''
+        status = alita_state.get('cur_status', '') or ''
+
+        ref = after_sha if status != 'D' else (alita_state.get('before_sha', '') or after_sha)
+        case_url = f"https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/{ref}/{path}" if path else ''
+
+        def section(head, text):
+            return [f"### {head}", text, ""] if text else []
+
+        diff_block = ''
+        if digest:
+            d = digest if len(digest) <= 5000 else digest[:5000] + '\n… (truncated — see the compare link)'
+            diff_block = f"```diff\n{d}\n```"
+
+        change = [
+            f"**Case:** [{cid}]({case_url})" if case_url else f"**Case:** {cid}",
+            f"**Push:** {compare_url}" if compare_url else f"**Commit:** `{after_sha[:12]}`",
+            f"**Why flagged:** {reason}",
+            "",
+        ]
+        change += section('What changed', summary)
+        change += section('Likely test impact', impact)
+        change += section('Automated test(s)', '\n'.join(f"- `{t}`" for t in tests.splitlines() if t.strip()))
+        change += section('Front-matter changes', '\n'.join(f"- {m}" for m in meta.splitlines() if m.strip()))
+        change += section('Body diff', diff_block)
+
+        body = [
+            "The text of an automated TMS case changed on `onetest-ai-tm-Elitea` main. "
+            "Re-check the automated test against the new case text and adjust the test and/or the case if needed "
+            "(`adjust-automated-test` skill). If the test already matches, say so here — no code change needed.",
+            "",
+            *change,
+            "---",
+            "Filed by the `tms_case_change_intake` pipeline. Factory: put `[skip-intake]` in the title of any "
+            "case-text PR you raise for this ticket, so its merge does not file another one.",
+        ]
+        comment = [f"🔁 **Case text changed again** — `{after_sha[:12]}`", "", *change]
+
+        out = {
+            'issue_title': f"[Adjust][{cid}] {title} — case text changed",
+            'issue_body': '\n'.join(body),
+            'issue_comment': '\n'.join(comment),
+            'search_query': f'is:issue is:open in:title "{cid}"',
+            'existing_issues': '',
+            'existing_issue_number': '',
+        }
+        out
+    input:
+      - cur_id
+      - cur_title
+      - cur_path
+      - cur_status
+      - before_sha
+      - after_sha
+      - compare_url
+      - triage_reason
+      - metadata_changes
+      - automation_test_ids
+      - change_digest
+      - summary
+      - test_impact
+    output:
+      - issue_title
+      - issue_body
+      - issue_comment
+      - search_query
+      - existing_issues
+      - existing_issue_number
+    structured_output: true
+    transition: SearchExistingIssue
+  - id: SearchExistingIssue
+    type: toolkit
+    input:
+      - search_query
+    input_mapping:
+      search_query:
+        type: variable
+        value: search_query
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      max_count:
+        type: fixed
+        value: 10
+    output:
+      - existing_issues
+    structured_output: true
+    tool: search_issues
+    toolkit_name: GHAutotestsTools
+    transition: PickExistingIssue
+  # The search index lags minutes, so tickets this run already created for the same case
+  # (results_json) are checked too.
+  - id: PickExistingIssue
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json, ast
+
+        cid = alita_state.get('cur_id', '') or ''
+        marker = f"[{cid}]"
+        number = ''
+
+        for r in json.loads(alita_state.get('results_json', '[]') or '[]'):
+            if r.get('id') == cid and r.get('issue'):
+                number = str(r['issue'])
+
+        raw = alita_state.get('existing_issues', '') or ''
+        found = raw
+        if isinstance(raw, str):
+            for loader in (json.loads, ast.literal_eval):
+                try:
+                    found = loader(raw)
+                    break
+                except:
+                    found = []
+        if not number and isinstance(found, list):
+            for it in found:
+                if not isinstance(it, dict):
+                    continue
+                t = str(it.get('title', ''))
+                if it.get('status', 'open') == 'open' and it.get('entity_type', 'Issue') == 'Issue' \
+                        and t.startswith('[Adjust]') and marker in t:
+                    number = str(it.get('id', ''))
+                    break
+
+        out = {'existing_issue_number': number, 'existing_issues': ''}
+        out
+    input:
+      - cur_id
+      - existing_issues
+      - results_json
+    output:
+      - existing_issue_number
+      - existing_issues
+    structured_output: true
+    transition: RouteCreateOrComment
+  - id: RouteCreateOrComment
+    type: router
+    condition: |
+      {% if existing_issue_number %}CommentOnIssue{% else %}CreateIssue{% endif %}
+    default_output: CreateIssue
+    input:
+      - existing_issue_number
+    routes:
+      - CommentOnIssue
+      - CreateIssue
+  - id: CommentOnIssue
+    type: toolkit
+    input:
+      - existing_issue_number
+      - issue_comment
+    input_mapping:
+      issue_number:
+        type: variable
+        value: existing_issue_number
+      comment:
+        type: variable
+        value: issue_comment
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+    output:
+      - comment_result
+    structured_output: true
+    tool: comment_on_issue
+    toolkit_name: GHAutotestsTools
+    transition: RecordResult
+  # No `fields` → the card lands on board #9 with no Status; a human approves it.
+  - id: CreateIssue
+    type: toolkit
+    input:
+      - issue_title
+      - issue_body
+    input_mapping:
+      board_repo:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      issue_repo:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      project_title:
+        type: fixed
+        value: Test Automation Factory
+      title:
+        type: variable
+        value: issue_title
+      body:
+        type: variable
+        value: issue_body
+    output:
+      - issue_result
+    structured_output: true
+    tool: create_issue_on_project
+    toolkit_name: GHAutotestsTools
+    transition: ExtractIssueNumber
+  - id: ExtractIssueNumber
+    type: code
+    code:
+      type: fixed
+      value: |
+        import re
+
+        out = {'issue_number': '0'}
+        match = re.search(r"issue with number ['\"]?(\d+)['\"]?", str(alita_state.get('issue_result', '') or ''), re.IGNORECASE)
+        if match:
+            out = {'issue_number': match.group(1)}
+        out
+    input:
+      - issue_result
+    output:
+      - issue_number
+    structured_output: true
+    transition: RouteAddLabels
+  - id: RouteAddLabels
+    type: router
+    condition: |
+      {% if issue_number and issue_number != '0' %}AddLabels{% else %}RecordResult{% endif %}
+    default_output: RecordResult
+    input:
+      - issue_number
+    routes:
+      - AddLabels
+      - RecordResult
+  - id: AddLabels
+    type: toolkit
+    input:
+      - issue_number
+    input_mapping:
+      issue_id:
+        type: variable
+        value: issue_number
+      labels:
+        type: fixed
+        value:
+          - aqa:maintenance
+          - case-update
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+    output:
+      - label_result
+    structured_output: true
+    tool: update_issue
+    toolkit_name: GHAutotestsTools
+    transition: RecordResult
+  - id: RecordResult
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        results = json.loads(alita_state.get('results_json', '[]') or '[]')
+        existing = alita_state.get('existing_issue_number', '') or ''
+        created = alita_state.get('issue_number', '0') or '0'
+        if existing:
+            action, number = 'commented', existing
+        elif created != '0':
+            action, number = 'created', created
+        else:
+            action, number = 'failed', ''
+            # Keep the tool's error text — it is the only diagnosis the run report will carry.
+        results.append({
+            'id': alita_state.get('cur_id', ''),
+            'path': alita_state.get('cur_path', ''),
+            'action': action,
+            'issue': number,
+            'reason': (alita_state.get('triage_reason', '') or '')[:300],
+            'error': '' if number else str(alita_state.get('issue_result', '') or '')[:300],
+        })
+
+        out = {
+            'results_json': json.dumps(results),
+            'current_index': str(int(alita_state.get('current_index', '0') or '0') + 1),
+            'issue_number': '0',
+            'issue_result': '',
+            'existing_issue_number': '',
+            'change_digest': '',
+            'issue_body': '',
+            'issue_comment': '',
+        }
+        out
+    input:
+      - results_json
+      - current_index
+      - cur_id
+      - cur_path
+      - triage_reason
+      - existing_issue_number
+      - issue_number
+      - issue_result
+    output:
+      - results_json
+      - current_index
+      - issue_number
+      - issue_result
+      - existing_issue_number
+      - change_digest
+      - issue_body
+      - issue_comment
+    structured_output: true
+    transition: CheckMoreFiles
+  - id: RecordSkip
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        results = json.loads(alita_state.get('results_json', '[]') or '[]')
+        results.append({
+            'id': alita_state.get('cur_id', ''),
+            'path': alita_state.get('cur_path', ''),
+            'action': 'skipped',
+            'issue': '',
+            'reason': (alita_state.get('triage_reason', '') or '')[:300],
+            'error': '',
+        })
+        out = {
+            'results_json': json.dumps(results),
+            'current_index': str(int(alita_state.get('current_index', '0') or '0') + 1),
+            'change_digest': '',
+        }
+        out
+    input:
+      - results_json
+      - current_index
+      - cur_id
+      - cur_path
+      - triage_reason
+    output:
+      - results_json
+      - current_index
+      - change_digest
+    structured_output: true
+    transition: CheckMoreFiles
+  - id: BuildFinalOutput
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        results = json.loads(alita_state.get('results_json', '[]') or '[]')
+        after = alita_state.get('after_sha', '') or ''
+        lines = ["## TMS case change intake", ""]
+        if not after:
+            lines.append("No valid `tms_case_change` payload received — nothing processed.")
+        else:
+            counts = {}
+            for r in results:
+                counts[r['action']] = counts.get(r['action'], 0) + 1
+            lines.append(f"Push `{after[:12]}` by `{alita_state.get('pusher', '')}` — {alita_state.get('compare_url', '')}")
+            lines.append("")
+            lines.append(', '.join(f"{k}: {v}" for k, v in sorted(counts.items())) or 'no files')
+            lines.append("")
+            lines.append("| Case | Action | Issue | Reason |")
+            lines.append("|---|---|---|---|")
+            for r in results:
+                issue = f"[#{r['issue']}](https://github.com/EliteaAI/elitea-testing-public/issues/{r['issue']})" if r['issue'] else ''
+                why = (r['reason'] + (f" — ERROR: {r['error']}" if r.get('error') else '')).replace('|', '\\|')
+                lines.append(f"| {r['id']} | {r['action']} | {issue} | {why} |")
+
+        out = {'final_report': '\n'.join(lines)}
+        out
+    input:
+      - results_json
+      - after_sha
+      - pusher
+      - compare_url
+    output:
+      - final_report
+    structured_output: true
+    transition: END
