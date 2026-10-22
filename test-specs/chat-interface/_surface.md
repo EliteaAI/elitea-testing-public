@@ -1491,3 +1491,9 @@ instead and is click-idempotent (no-ops if already checked).
 - DEV menu = 7 items in order: rename, move-to, playback, export, share-external, pin, delete (no "Duplicate", no make-public in a private project). Items are `role=menuitem tabindex=-1`, none `aria-disabled`; each has 1 svg (move-to 2). Export label "Export".
 - Keyboard: focus sits on the menu container (DIV, no role); ArrowDown/Tab do not move to items; Enter no-op. Click-away closes the menu (items 0).
 - `navigate_to_chat()` + `wait_for_page_load()` timed out (15s `chat-message-input`) on the blank-chat landing in this run even for the existing export spec (ELITEA-3784); `page.goto("https://dev.elitea.ai/app/chat")` + banner dismiss works. Playwright MCP chrome missing; scratch pytest used (`--reruns 0` overrides rerun addopts; `-p no:rerunfailures` breaks).
+
+## Folder context menu "New chat" (ELITEA-2757, 2026-10-22)
+- Folder 3-dot menu (hover row; button hidden until hover): New chat, Rename, Pin on top, Delete. Right-click on folder opens nothing. Menuitems showed no data-testid in this run (incl. Delete/Rename) - re-verify.
+- "New chat" opens a blank composer at `/app/chat` (no id); folder does NOT expand until first message sent; then POST conversation 201 + PUT folder_id, URL `/chat/<id>?name=...`, folder `data-expanded=true`, entry present with AI-shortened name immediately ("Naming" label not observed). Reload keeps conversation in folder.
+- Live default model: `Anthropic Claude Haiku 4.5` (case text says Sonnet 5 - example only). Platform banner dialog blocks pointer events on first load.
+- Playwright MCP chrome missing on this host; used scripted Python Playwright with the storage state.
