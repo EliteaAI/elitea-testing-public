@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "session": "8070ec95-5a1c-4229-aaa3-3678204ef1bc",
+  "intent": "automation",
+  "batch": "adjust-regenerate-2552",
+  "cases": [
+    "ELITEA-2185",
+    "ELITEA-2187"
+  ],
+  "declaredAt": "2026-10-22T08:40:17.721Z",
+  "updatedAt": "2026-10-22T08:52:55.276Z",
+  "outcomes": {
+    "ELITEA-2185": {
+      "outcome": "already-fixed",
+      "at": "2026-10-22T08:52:55.276Z"
+    },
+    "ELITEA-2187": {
+      "outcome": "already-fixed",
+      "at": "2026-10-22T08:52:55.276Z"
+    }
+  }
+}
