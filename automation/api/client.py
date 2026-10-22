@@ -438,6 +438,27 @@ class ConversationAPI:
         logger.debug("GET conversation (raw) %s", url)
         return self._session.get(url)
 
+    def get_message_groups(self, conversation_id: int) -> list[dict]:
+        """Return the conversation's ``message_groups`` list (ELITEA-3775).
+
+        Each group carries ``id``, ``created_at``, ``author_participant_id`` and
+        ``message_items[{item_type, item_details.content}]``.
+        """
+        resp = self.get_conversation_raw(conversation_id)
+        _raise_for_status(resp)
+        return resp.json().get("message_groups", [])
+
+    def get_export_summary(self, conversation_id: int) -> dict:
+        """Return the server-side export summary (``messages_count``, ``attachments_count``, ``total_size``)."""
+        url = (
+            f"{self.base_url}/elitea_core/conversation_export/prompt_lib"
+            f"/{self.project_id}/{conversation_id}"
+        )
+        logger.debug("GET export summary %s", url)
+        resp = self._session.get(url, params={"summary": "true"})
+        _raise_for_status(resp)
+        return resp.json()
+
     def delete_conversation(self, conversation_id: int) -> None:
         """Delete a conversation.  Returns ``None`` on success (HTTP 204).
 
