@@ -49,9 +49,9 @@ class TestStreamingResponse:
             chat.dismiss_banner_if_present()
             # Baseline: send button is absent while the input is empty (general rule).
             expect(chat.send_button).to_have_count(0)
-            initial_count = chat.get_message_count()
             chat.send_message(_PROMPT)
-            expect(chat.messages_container.nth(initial_count)).to_contain_text(_PROMPT)
+            # Fresh conversation: the just-sent user prompt is the last message item.
+            expect(chat.messages_container.last).to_contain_text(_PROMPT)
             assert chat.message_input.input_value() == "", "Input must be cleared after send"
 
         with allure.step("Step 2 — Loading placeholder, then Thought accordion with the model chip"):
