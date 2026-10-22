@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "session": "81df849c-5508-4db4-ab43-05af54c81286",
+  "intent": "automation",
+  "batch": "chat-2559",
+  "cases": [
+    "ELITEA-3775",
+    "ELITEA-3786"
+  ],
+  "declaredAt": "2026-10-22T20:45:33.653Z",
+  "updatedAt": "2026-10-22T21:43:06.347Z",
+  "outcomes": {
+    "ELITEA-3775": {
+      "outcome": "automated",
+      "at": "2026-10-22T21:42:51.136Z"
+    },
+    "ELITEA-3786": {
+      "outcome": "blocked",
+      "at": "2026-10-22T21:42:51.136Z"
+    }
+  },
+  "closedAt": "2026-10-22T21:43:06.347Z"
+}
