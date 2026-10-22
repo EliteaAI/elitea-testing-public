@@ -1454,6 +1454,10 @@ instead and is click-idempotent (no-ops if already checked).
 - Selecting it swaps description to the ZIP sentence; Export click shows `Exporting chat... 3 files` + `export-chat-modal-progress` + button "Exporting..." (transient; capture with a MutationObserver installed before click). Download `<name>_<date>_<time>.zip.enc`, encrypted (`ELITEA-CHAT-ENC/1`), toast "Chat exported successfully", modal closes.
 - Needs `APP_PREFIX=/app` exported if `.env.test` is absent, else all pages 404.
 
+### ELITEA-3762 addendum (2026-10-22): export chat WITH text messages, no attachments
+- Chat with 2 AI exchanges: modal identical (title, desc "Only chat messages will be exported as a JSON file."); download `<name>_<date>_<time>.json.enc`, 3055 B, `ELITEA-CHAT-ENC/1` header (encrypted; content unverifiable). Toast already gone when read after `save_as` - assert it right after the click.
+- `ConversationAPI` has only list/create/delete: messages must be seeded via UI send_message.
+
 ## Stop generation (ELITEA-2182, 2026-10-20)
 
 - **Timeline on DEV (Haiku 4.5), "generate a poem"**: Stop control renders ~0.5s after Send (bubble "Waking the agent..."), agent bubble shows `Thinking` ~2.3s, final text ~2.9s, Stop disappears the moment final text starts. Windows are short: poll <=100ms, never 500ms+.
