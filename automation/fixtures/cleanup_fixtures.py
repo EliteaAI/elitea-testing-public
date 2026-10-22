@@ -12,7 +12,8 @@ All cleanup fixtures follow the pattern:
 
 Fixtures:
 - cleanup_autotest_pipelines_at_end: Delete autotest_ pipelines
-- cleanup_leaked_credentials: Delete ALL credentials (aggressive cleanup)
+- cleanup_leaked_credentials: Delete ALL credentials except aqa_-prefixed ones
+- cleanup_leaked_toolkits_at_end: Delete ALL toolkits except aqa_-prefixed ones
 - cleanup_autotest_agents_at_end: Delete autotest_ agents
 - cleanup_all_conversations_at_end: Delete ALL conversations (aggressive cleanup)
 
@@ -31,6 +32,15 @@ from api import AgentAPI, ConversationAPI, CredentialAPI, PipelineAPI, ToolkitAP
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.cleanup")
+
+# Credentials/toolkits whose name starts with this prefix (case-insensitive) are
+# kept by the aggressive session cleanup — reserved for manually maintained data.
+PRESERVED_PREFIX = "aqa_"
+
+
+def _is_preserved(*names: str | None) -> bool:
+    """Return True if any of the given names starts with PRESERVED_PREFIX (case-insensitive)."""
+    return any((n or "").lower().startswith(PRESERVED_PREFIX) for n in names)
 
 
 def _is_localhost() -> bool:
@@ -91,7 +101,8 @@ def cleanup_leaked_credentials(_browser_cookies):
     """Session-level safety net: delete ALL credentials after test run.
 
     AGGRESSIVE CLEANUP: Deletes every credential in the test environment,
-    not just autotest_ prefixed ones. This is appropriate because:
+    not just autotest_ prefixed ones — except credentials whose label or
+    elitea_title starts with ``aqa_`` (case-insensitive), which are kept. This is appropriate because:
     - Test environment is ephemeral
     - Credentials shouldn't persist across sessions
     - UI can auto-create credentials during navigation
@@ -127,6 +138,11 @@ def cleanup_leaked_credentials(_browser_cookies):
             logger.warning("Credential cleanup: skipped (no access to project): %s", e)
             return
 
+        kept = [c for c in items if _is_preserved(c.get("label"), c.get("elitea_title"))]
+        items = [c for c in items if c not in kept]
+        if kept:
+            logger.info("Credential cleanup: keeping %d %s-prefixed credential(s)", len(kept), PRESERVED_PREFIX)
+
         if items:
             logger.warning(
                 "Session cleanup: Found %d leaked credentials, deleting all...",
@@ -147,7 +163,8 @@ def cleanup_leaked_credentials(_browser_cookies):
 def cleanup_leaked_toolkits_at_end(_browser_cookies):
     """Session-level safety net: delete ALL toolkits after test run.
 
-    AGGRESSIVE CLEANUP: Deletes every toolkit in the test environment.
+    AGGRESSIVE CLEANUP: Deletes every toolkit in the test environment,
+    except toolkits whose name starts with ``aqa_`` (case-insensitive).
     Toolkit tests create many toolkits that can outlive their per-test fixtures
     on failure or interruption.
 
@@ -171,6 +188,11 @@ def cleanup_leaked_toolkits_at_end(_browser_cookies):
         except Exception as e:
             logger.warning("Toolkit cleanup: skipped (no access to project): %s", e)
             return
+
+        kept = [t for t in items if _is_preserved(t.get("name"))]
+        items = [t for t in items if t not in kept]
+        if kept:
+            logger.info("Toolkit cleanup: keeping %d %s-prefixed toolkit(s)", len(kept), PRESERVED_PREFIX)
 
         if items:
             logger.warning(
