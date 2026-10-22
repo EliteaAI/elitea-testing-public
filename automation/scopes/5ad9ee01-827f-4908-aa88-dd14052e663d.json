@@ -7,11 +7,12 @@
     "ELITEA-2181"
   ],
   "declaredAt": "2026-10-20T19:56:01.062Z",
-  "updatedAt": "2026-10-20T20:24:58.379Z",
+  "updatedAt": "2026-10-22T04:58:45.443Z",
   "outcomes": {
     "ELITEA-2181": {
-      "outcome": "blocked",
-      "at": "2026-10-20T20:24:58.379Z"
+      "outcome": "automated",
+      "at": "2026-10-22T04:58:16.101Z"
     }
-  }
+  },
+  "closedAt": "2026-10-22T04:58:45.443Z"
 }
