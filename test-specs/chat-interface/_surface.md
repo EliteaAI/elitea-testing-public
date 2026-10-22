@@ -1504,3 +1504,8 @@ instead and is click-idempotent (no-ops if already checked).
 - "New chat" opens a blank composer at `/app/chat` (no id); folder does NOT expand until first message sent; then POST conversation 201 + PUT folder_id, URL `/chat/<id>?name=...`, folder `data-expanded=true`, entry present with AI-shortened name immediately ("Naming" label not observed). Reload keeps conversation in folder.
 - Live default model: `Anthropic Claude Haiku 4.5` (case text says Sonnet 5 - example only). Platform banner dialog blocks pointer events on first load.
 - Playwright MCP chrome missing on this host; used scripted Python Playwright with the storage state.
+
+### ELITEA-3775 / 3786 addendum (2026-10-22): export content & permissions
+- Export is encrypted server-side (`GET /elitea_core/conversation_export/prompt_lib/{P}/{cid}` -> `application/octet-stream`, `ELITEA-CHAT-ENC/1`); `?summary=true` returns JSON `{messages_count, attachments_count, total_size}` - usable as server-side count oracle. Chat messages: `GET .../conversation/prompt_lib/{P}/{cid}` -> `message_groups[]` (`created_at`, `message_items[].item_details.content`).
+- Sending: `send_message(text, use_enter=True)`; Send-button click sent nothing in a headless probe (platform-banner overlay). `get_message_count()` counts user+AI (2 per exchange). Row testid `chat-conversation-item-{id}`.
+- Export menu item has NO author gating in `ConversationItem.jsx`; only Rename/Delete (disabled), Restrict access, Share externally (hidden) are creator-gated. User B creds absent in sandbox (`TEST_USER_B_*` unset). Non-author API export returned 200 (chat 385, project 470).
