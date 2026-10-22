@@ -1486,3 +1486,9 @@ instead and is click-idempotent (no-ops if already checked).
 - DEV menu = 7 items in order: rename, move-to, playback, export, share-external, pin, delete (no "Duplicate", no make-public in a private project). Items are `role=menuitem tabindex=-1`, none `aria-disabled`; each has 1 svg (move-to 2). Export label "Export".
 - Keyboard: focus sits on the menu container (DIV, no role); ArrowDown/Tab do not move to items; Enter no-op. Click-away closes the menu (items 0).
 - `navigate_to_chat()` + `wait_for_page_load()` timed out (15s `chat-message-input`) on the blank-chat landing in this run even for the existing export spec (ELITEA-3784); `page.goto("https://dev.elitea.ai/app/chat")` + banner dismiss works. Playwright MCP chrome missing; scratch pytest used (`--reruns 0` overrides rerun addopts; `-p no:rerunfailures` breaks).
+
+## Agent & Pipeline Builder + 4 modules + HITL (ELITEA-3372, live 2026-10-22)
+- `internal_mcp` = "Agent & Pipeline Builder" toggle. All four (internal_mcp, skill_builder, project_context_builder, ask_user) coexist; enable AFTER creating the conversation.
+- "Create an agent for customer support": Ask User never asked (0/5), direct `post_elitea_core_applications` creates draft agent + `generated-entity-chip`. "Create a pipeline for data processing": card in 4/5 fresh conversations (2 questions), 0 when sent after the agent request in the same conversation. Nondeterministic -> case blocked.
+- HITL in main chat works with modules on: add toolkit participant AFTER the modules step (`add_toolkit_participant` fails if Modules menu was opened after, and the plus-menu competes); `wait_for_sensitive_action_panel`, authorize runs tool, block gives graceful reply; panel re-appears for the same tool call in the same conversation.
+- Probe leftovers: delete agents/pipelines by name via `AgentAPI.delete_agent` / `PipelineAPI.delete_pipeline` (list `.rows`).
