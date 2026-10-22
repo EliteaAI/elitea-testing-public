@@ -121,7 +121,7 @@ nodes:
     code:
       type: fixed
       value: |
-        import json
+        import json, re
 
         out = {
             'before_sha': '', 'after_sha': '', 'compare_url': '', 'pusher': '',
@@ -132,10 +132,14 @@ nodes:
             payload = json.loads(alita_state.get('input', '{}') or '{}', strict=False)
             if isinstance(payload, dict) and payload.get('event') == 'tms_case_change':
                 files = [f for f in (payload.get('files') or []) if isinstance(f, dict)]
+                for f in files:
+                    for k in ('path', 'previous_path', 'id', 'status'):
+                        f[k] = re.sub(r'\s+', '', str(f.get(k) or ''))
+                    f['title'] = re.sub(r'\s+', ' ', str(f.get('title') or '')).strip()
                 out.update({
-                    'before_sha': str(payload.get('before', '')),
-                    'after_sha': str(payload.get('after', '')),
-                    'compare_url': str(payload.get('compare_url', '')),
+                    'before_sha': str(payload.get('before', '')).strip(),
+                    'after_sha': str(payload.get('after', '')).strip(),
+                    'compare_url': re.sub(r'\s+', '', str(payload.get('compare_url', ''))),
                     'pusher': str(payload.get('pusher', '')),
                     'files_json': json.dumps(files),
                     'total_files': str(len(files)),
@@ -160,7 +164,7 @@ nodes:
   - id: CheckMoreFiles
     type: router
     condition: |
-      {% if before_sha and after_sha and current_index|int < total_files|int %}PrepareFile{% else %}BuildFinalOutput{% endif %}
+      {% if before_sha and after_sha and current_index|int(9999) < total_files|int(0) %}PrepareFile{% else %}BuildFinalOutput{% endif %}
     default_output: BuildFinalOutput
     input:
       - before_sha
@@ -178,8 +182,8 @@ nodes:
       value: |
         import json
 
-        files = json.loads(alita_state.get('files_json', '[]') or '[]')
-        idx = int(alita_state.get('current_index', '0') or '0')
+        files = json.loads(alita_state.get('files_json', '[]') or '[]', strict=False)
+        idx = int(alita_state.get('current_index', '0')) if str(alita_state.get('current_index', '0')).isdigit() else 9999
         f = files[idx] if idx < len(files) else {}
         status = str(f.get('status', 'M'))
         path = str(f.get('path', '') or '')
@@ -627,14 +631,14 @@ nodes:
         marker = f"[{cid}]"
         number = ''
 
-        for r in json.loads(alita_state.get('results_json', '[]') or '[]'):
+        for r in json.loads(alita_state.get('results_json', '[]') or '[]', strict=False):
             if r.get('id') == cid and r.get('issue'):
                 number = str(r['issue'])
 
         raw = alita_state.get('existing_issues', '') or ''
         found = raw
         if isinstance(raw, str):
-            for loader in (json.loads, ast.literal_eval):
+            for loader in (lambda t: json.loads(t, strict=False), ast.literal_eval):
                 try:
                     found = loader(raw)
                     break
@@ -692,13 +696,17 @@ nodes:
     tool: comment_on_issue
     toolkit_name: GHAutotestsTools
     transition: RecordResult
-  # No `fields` → the card lands on board #9 with no Status; a human approves it.
+  # Lands on board #9 as Pre-Approved; a human still moves it to Approved.
   - id: CreateIssue
     type: toolkit
     input:
       - issue_title
       - issue_body
     input_mapping:
+      fields:
+        type: fixed
+        value:
+          Status: Pre-Approved
       board_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
@@ -777,7 +785,7 @@ nodes:
       value: |
         import json
 
-        results = json.loads(alita_state.get('results_json', '[]') or '[]')
+        results = json.loads(alita_state.get('results_json', '[]') or '[]', strict=False)
         existing = alita_state.get('existing_issue_number', '') or ''
         created = alita_state.get('issue_number', '0') or '0'
         if existing:
@@ -798,7 +806,7 @@ nodes:
 
         out = {
             'results_json': json.dumps(results),
-            'current_index': str(int(alita_state.get('current_index', '0') or '0') + 1),
+            'current_index': str(int(alita_state.get('current_index', '0')) + 1) if str(alita_state.get('current_index', '0')).isdigit() else '9999',
             'issue_number': '0',
             'issue_result': '',
             'existing_issue_number': '',
@@ -834,7 +842,7 @@ nodes:
       value: |
         import json
 
-        results = json.loads(alita_state.get('results_json', '[]') or '[]')
+        results = json.loads(alita_state.get('results_json', '[]') or '[]', strict=False)
         results.append({
             'id': alita_state.get('cur_id', ''),
             'path': alita_state.get('cur_path', ''),
@@ -845,7 +853,7 @@ nodes:
         })
         out = {
             'results_json': json.dumps(results),
-            'current_index': str(int(alita_state.get('current_index', '0') or '0') + 1),
+            'current_index': str(int(alita_state.get('current_index', '0')) + 1) if str(alita_state.get('current_index', '0')).isdigit() else '9999',
             'change_digest': '',
         }
         out
@@ -868,7 +876,7 @@ nodes:
       value: |
         import json
 
-        results = json.loads(alita_state.get('results_json', '[]') or '[]')
+        results = json.loads(alita_state.get('results_json', '[]') or '[]', strict=False)
         after = alita_state.get('after_sha', '') or ''
         lines = ["## TMS case change intake", ""]
         if not after:

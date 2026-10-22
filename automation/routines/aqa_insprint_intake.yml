@@ -91,7 +91,7 @@ nodes:
         value: EliteaAI/elitea_issues
       search_query:
         type: fixed
-        value: milestone:"R-2.0.7" state:open
+        value: milestone:"R-2.0.8" state:open
     output:
       - project_items
     structured_output: true
@@ -356,12 +356,12 @@ nodes:
                 medium = [c for c in cases if c.get('priority') == 'medium']
                 low = [c for c in cases if c.get('priority') == 'low']
 
-                title = f"[Automate][{module}] {len(cases)} test cases from R-2.0.7 tickets"
+                title = f"[Automate][{module}] {len(cases)} test cases from R-2.0.8 tickets"
 
                 lines = [
                     "## What this covers",
                     "",
-                    f"Automate **{len(cases)} test cases** in the `{module}` area from R-2.0.7 milestone tickets.",
+                    f"Automate **{len(cases)} test cases** in the `{module}` area from R-2.0.8 milestone tickets.",
                     "",
                     "| | |",
                     "|---|---:|",
@@ -708,7 +708,7 @@ nodes:
                 "",
                 "| Metric | Count |",
                 "|---|---:|",
-                f"| Total R-2.0.7 issues | {len(all_tickets)} |",
+                f"| Total R-2.0.8 issues | {len(all_tickets)} |",
                 f"| Issues with linked test cases | {len(tickets_with_cases)} |",
                 f"| Already have automation task | {len(tickets_already_tracked)} |",
                 f"| New issues to process | {len(tickets_to_process)} |",
@@ -783,7 +783,7 @@ nodes:
                     "",
                     f"### No Test Cases Linked ({len(no_cases)} tickets)",
                     "",
-                    "These R-2.0.7 issues don't have ELITEA-XXXX test case references:",
+                    "These R-2.0.8 issues don't have ELITEA-XXXX test case references:",
                     "",
                 ])
                 for t in no_cases[:15]:
