@@ -620,29 +620,27 @@ class ChatPage(BasePage):
     # untouched here). These use the real, confirmed-live testids added for
     # this case (`chat-copy-button`, `chat-regenerate-button`) with no
     # fallback, per the testid-only locator policy.
-    # Resolved inside ONE AI message item via ``.within(ai_msg)`` — the testids
-    # repeat on every message, so they are scoped, never picked by position.
-    COPY_ACTION_BUTTON = ScopedLocator(
+    copy_action_button = LocatorDescriptor(
         testid="chat-copy-button",
-        description="Copy-to-clipboard icon on a completed AI message (hover-revealed).",
+        description="Copy-to-clipboard icon on a completed AI message (hover-revealed)."
     )
 
-    REGENERATE_ACTION_BUTTON = ScopedLocator(
+    regenerate_action_button = LocatorDescriptor(
         testid="chat-regenerate-button",
         description=(
             "Regenerate icon on a completed AI message (hover-revealed). Prior to "
             "ELITEA-2181 this element had neither a testid nor an aria-label."
-        ),
+        )
     )
 
-    DELETE_ACTION_BUTTON = ScopedLocator(
+    delete_action_button = LocatorDescriptor(
         testid="chat-delete-button",
-        description="Delete icon on a completed AI message (hover-revealed).",
-    )
-
-    READ_OUT_ACTION_BUTTON = ScopedLocator(
-        testid="chat-read-out-button",
-        description="Read-out (speaker) icon on a completed AI message (hover-revealed).",
+        description=(
+            "Delete icon on a completed AI message (hover-revealed). The existing "
+            "testid was on-main already; ``delete_message()`` locates it "
+            "positionally (tech debt, untouched) — this field lets new assertions "
+            "use the testid directly."
+        )
     )
 
     # ------------------------------------------------------------------
