@@ -16,9 +16,9 @@ import time
 
 import allure
 import pytest
-from playwright.sync_api import expect
-
 from pages.chat_page import ChatPage
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regr
 _PROMPT = "Write a long poem about the city"
 GENERATION_TIMEOUT = 120_000  # AFS: 12-54s observed on DEV; size generously
 STREAM_START_TIMEOUT = 30_000
+
 
 @allure.epic("Chat")
 @allure.feature("Streaming Response")
@@ -56,19 +57,20 @@ class TestStreamingResponse:
             expect(chat.messages_container.filter(has_text=_PROMPT)).to_have_count(1)
             assert chat.message_input.input_value() == "", "Input must be cleared after send"
 
+        # AI answer item: lazy locator, resolves once the Thought accordion renders.
+        ai_msg = chat.messages_container.filter(has=chat.answer_thought_accordion)
+
         with allure.step("Step 2 — Loading placeholder, then Thought accordion with the model chip"):
             # Placeholder lives ~0-2s. If missed, the response must provably still be in flight
             # (no completion action yet) so the accordion/chip below are streaming-state evidence.
             try:
                 chat.answer_loading_placeholder.wait_for(state="visible", timeout=5_000)
-            except Exception:
+            except PlaywrightTimeoutError:
                 logger.info("Placeholder already gone; verifying generation still in flight")
-                expect(chat.regenerate_action_button).to_have_count(0)
+                expect(chat.REGENERATE_ACTION_BUTTON.within(ai_msg)).to_have_count(0)
             expect(chat.answer_thought_accordion).to_be_visible(timeout=STREAM_START_TIMEOUT)
             expect(chat.answer_model_chip).to_be_visible(timeout=STREAM_START_TIMEOUT)
             expect(chat.answer_model_chip).not_to_be_empty()
-
-        ai_msg = chat.messages_container.filter(has=chat.answer_thought_accordion)
 
         # Streaming lasts only ~4-8s on DEV: sample growth immediately, while the Pause-scroll
         # toggle (live-streaming indicator) is still on screen, before the Step 4-6 checks.
@@ -81,7 +83,8 @@ class TestStreamingResponse:
                 samples.append(len(chat._extract_message_body(ai_msg)))
             assert samples == sorted(samples), f"Streamed text shrank: {samples}"
             assert len(set(samples)) >= 3, f"Text did not grow progressively while streaming: {samples}"
-            expect(chat.regenerate_action_button).to_have_count(0)  # still streaming when growth was seen
+            # still streaming when growth was seen
+            expect(chat.REGENERATE_ACTION_BUTTON.within(ai_msg)).to_have_count(0)
 
         with allure.step("Step 4 — 'Pause scroll' control is visible during streaming"):
             expect(chat.answer_pause_scroll_toggle).to_have_text("Pause scroll")
@@ -98,16 +101,16 @@ class TestStreamingResponse:
         with allure.step("Step 7 — Streaming completes: Pause/Resume toggle gone, Copy visible"):
             expect(chat.answer_pause_scroll_toggle).to_have_count(0, timeout=GENERATION_TIMEOUT)
             expect(chat.answer_loading_placeholder).to_have_count(0)
-            expect(chat.regenerate_action_button).to_be_attached(timeout=GENERATION_TIMEOUT)
+            expect(chat.REGENERATE_ACTION_BUTTON.within(ai_msg)).to_be_attached(timeout=GENERATION_TIMEOUT)
             ai_msg.hover()
-            expect(chat.copy_action_button.last).to_be_visible()
+            expect(chat.COPY_ACTION_BUTTON.within(ai_msg)).to_be_visible()
 
         with allure.step("Step 8 — Read-out, Copy, Regenerate and Delete icons appear on hover"):
             ai_msg.hover()
-            expect(chat.read_out_button.last).to_be_visible()
-            expect(chat.copy_action_button.last).to_be_visible()
-            expect(chat.regenerate_action_button).to_be_visible()
-            expect(chat.delete_action_button.last).to_be_visible()
+            expect(chat.READ_OUT_ACTION_BUTTON.within(ai_msg)).to_be_visible()
+            expect(chat.COPY_ACTION_BUTTON.within(ai_msg)).to_be_visible()
+            expect(chat.REGENERATE_ACTION_BUTTON.within(ai_msg)).to_be_visible()
+            expect(chat.DELETE_ACTION_BUTTON.within(ai_msg)).to_be_visible()
 
         with allure.step("Step 9 — Input field is active again"):
             assert chat.message_input.is_editable(), "Input must be editable after streaming completes"
