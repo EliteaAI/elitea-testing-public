@@ -1487,3 +1487,8 @@ instead and is click-idempotent (no-ops if already checked).
 - DEV menu = 7 items in order: rename, move-to, playback, export, share-external, pin, delete (no "Duplicate", no make-public in a private project). Items are `role=menuitem tabindex=-1`, none `aria-disabled`; each has 1 svg (move-to 2). Export label "Export".
 - Keyboard: focus sits on the menu container (DIV, no role); ArrowDown/Tab do not move to items; Enter no-op. Click-away closes the menu (items 0).
 - `navigate_to_chat()` + `wait_for_page_load()` timed out (15s `chat-message-input`) on the blank-chat landing in this run even for the existing export spec (ELITEA-3784); `page.goto("https://dev.elitea.ai/app/chat")` + banner dismiss works. Playwright MCP chrome missing; scratch pytest used (`--reruns 0` overrides rerun addopts; `-p no:rerunfailures` breaks).
+
+## Stop mid-stream then Regenerate (ELITEA-2186, 2026-10-22)
+- Stop clicked with partial poem text visible (~450 to ~4600 chars, 5/5 runs) REMOVES the whole turn (user + agent bubble, count 2 -> 0), persisted across reload; input restored with the prompt; no Regenerate target. Bug #2524 (open). Same outcome as the thinking-phase stop, so case premise (partial preserved, #5196) is not what DEV ships; steps 2-6 unreachable.
+- `ChatBox.jsx handleStopStreaming` = `stopRequestedRef=true; stopStreamingRef?.(); onStopRun?.()`; no client-side message delete.
+- Streaming of "generate a long detailed poem about the seasons": text from ~2.4s, ~4600 chars at ~14s. `navigate_to_chat(conversation_id=)` still times out; use direct `page.goto`.
