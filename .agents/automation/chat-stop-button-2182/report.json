@@ -1,0 +1,91 @@
+{
+  "batch": "chat-stop-button-2182",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-stop-button-2182",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      13.13,
+      12.73,
+      12.39
+    ],
+    "failures": [],
+    "by": "lead",
+    "note": "3 separate invocations on trunk, APP_PREFIX=/app"
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2182",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The trunk's AFS (9901d124) and the case-branch AFS (43bfc797) disagree on whether Stop is gated on the Thinking phase. The case-branch version is the reconciled one and matches the implementation. Merge the case branch rather than keeping the trunk's AFS.",
+          "ref": "ELITEA-2182"
+        },
+        {
+          "kind": "note",
+          "note": "The earlier analysis flagged that the chat-inject-button anchor used for STOP_BUTTON.within is absent when mid-turn injection is off. The implementation commit 92265334 dropped the positional nth pick, so this appears resolved. The reviewer should confirm it.",
+          "ref": "ELITEA-2182"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says to click Stop while 'thinking'. The implementation clicks at first Stop visibility, either 'Waking the agent\u2026' or 'Thinking', and relies on the step 4 assertions to prove the cancel happened. The AFS was amended to match.",
+          "ref": "test-specs/chat-interface/l2_stop-button-cancels-generation-restores-input_ELITEA-2182.md"
+        },
+        {
+          "kind": "note",
+          "note": "STOP_BUTTON can only be resolved when mid-turn injection is enabled, because its anchor chat-inject-button is absent otherwise. Stop is the same button either way. A testid 'chat-stop-button' on the Stop BaseBtn would remove this coupling. It is a migrator hint and was not worked here."
+        },
+        {
+          "kind": "note",
+          "note": "A fresh container has no automation/.env.test, so APP_PREFIX has to be exported or all navigation 404s. This is already recorded in memory."
+        },
+        {
+          "kind": "note",
+          "note": "Ladder grep run on `git diff main...tests/ELITEA-2182-stop-button-cancels-generation -- automation/tests` with pattern `get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=|sleep|skip|xfail|.fail`. The only hit is a code comment containing the word 'sleep' (spec line 92). There are no raw locators, positional picks, skips or fail-masks. The diff changes no files in automation/pa\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_stop_button_cancels_generation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case, AFS and diff is faithful, one row per step, 7/7:\n- Step 1: user bubble present once, plus the Send button gone and count = initial + 2.\n- Step 2: Stop visible.\n- Step 3: Stop clicked.\n- Step 4: timeline count returns to initial, which proves cancel and no streamed answer.\n- Step 5: Stop count 0 and Send visible.\n- Step 6: `to_be_editable`.\n- Step 7: `to_have_value('generate \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l2_stop-button-cancels-generation-restores-input_ELITEA-2182.md"
+        },
+        {
+          "kind": "note",
+          "note": "The spec uses the `midturn_injection_enabled` fixture so that `chat_inject_button`, the anchor for `STOP_BUTTON`, exists. This is a declared improvisation that follows the AFS Question 1 recommendation. It is sound: Stop is the same button either way. The case does not name mid-turn injection, so the composer under test differs slightly from the plain case. Recommend adding a canon note for this p\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_stop_button_cancels_generation.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Weak spots, not blocking. (a) The final `expect(messages_container).to_have_count(initial_count)` after Step 7 passes immediately and is not a real 'no stream over time' proof. The real proof is the Step 4 timeline-removal assertion. (b) The Step 5 `expect(stop_button).to_have_count(0)` could pass vacuously if `chat_inject_button` is absent when idle. The `send_button` visible assertion on the nex\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_stop_button_cancels_generation.py"
+        },
+        {
+          "kind": "note",
+          "note": "The branch is memory-only beyond the AFS, spec and `_surface.md` digest. It adds one daily-log line and the entry `env_test_missing_app_prefix_gives_404.md`. Nothing outside this repo is touched. I did not execute the spec; the hardening gate does that."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l2_stop-button-cancels-generation-restores-input_ELITEA-2182.md",
+      "branch": "tests/ELITEA-2182-stop-button-cancels-generation",
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          15,
+          14,
+          16
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

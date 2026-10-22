@@ -137,3 +137,8 @@ None. All 10 case steps were executed to completion against the live local envir
 - Test-data fixture: none needed beyond the existing `pipeline_id` fixture — this case builds its LLM node entirely through the UI starting from an empty pipeline (unlike ELITEA-2010's sibling case, which needs a pre-existing toolkit attached).
 - Wait strategy: wait for the `PUT .../application/prompt_lib/{project}/{pipeline_id}` response (`201`) before reloading/asserting persistence — not a fixed timeout.
 - Suggested pytest markers: `@pytest.mark.p1` (case priority `high` → project convention, see Metadata), `@pytest.mark.pipelines`, `@pytest.mark.regression`.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations (visible, and disabled-state where present) are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Page-object members for these toggles that no spec uses any longer were removed.

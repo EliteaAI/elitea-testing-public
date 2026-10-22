@@ -19,7 +19,7 @@ Distinct from the sibling MCP-node cases already automated on this suite:
   node BEFORE any MCP is attached to TOOLS (inverse ordering).
 This case is the "happy path from scratch": attach-to-Tools, then add-node,
 in the case's own step order, with full static-field-presence assertions
-(Interrupt before/after, Structured output) that neither sibling covers.
+(Structured output) that neither sibling covers.
 """
 
 import logging
@@ -149,26 +149,12 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         )
         assert pipeline_page.mcp_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.mcp_node_output_select.is_visible(), "Output select should be visible inline"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(mcp_node_id), (
-            "Interrupt before toggle should be visible inline"
-        )
-        assert pipeline_page.mcp_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after toggle should be visible inline"
-        )
         assert pipeline_page.mcp_node_structured_output_toggle.is_visible(), (
             "Structured output toggle should be visible inline"
         )
-        # Disabled-state assertions (AFS step 6 — confirmed live): Interrupt
-        # before is disabled because this node is the entry point
-        # (CommonInterruptSettings.jsx entry_point === id gating); Interrupt
-        # after is disabled because the node's default transition is END;
-        # Structured output has no such gating and stays enabled.
-        assert pipeline_page.is_node_interrupt_before_toggle_disabled(mcp_node_id), (
-            "Interrupt before should be disabled — this node is the pipeline's entry point"
-        )
-        assert pipeline_page.mcp_node_interrupt_after_toggle.is_disabled(), (
-            "Interrupt after should be disabled — the node's default transition is END"
-        )
+        # Disabled-state assertion (AFS step 6): Structured output has no
+        # entry/transition gating and stays enabled. (Interrupt before/after
+        # toggles were removed from node cards — EL-3872, sign-off #2541.)
         assert not pipeline_page.mcp_node_structured_output_toggle.is_disabled(), (
             "Structured output should be enabled (no entry/transition gating)"
         )

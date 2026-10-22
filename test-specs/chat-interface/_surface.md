@@ -1448,3 +1448,42 @@ instead and is click-idempotent (no-ops if already checked).
 - DEV export is ENCRYPTED: download name `<name>_<date>_<time>.json.enc`, body starts `ELITEA-CHAT-ENC/1`. Success toast "Chat exported successfully"; modal closes.
 - Platform announcement dialog on DEV intercepts hover/click: dismiss `platform-banner-close` first.
 - Playwright MCP browser binary missing in this environment (chrome not found); scripted pytest-playwright chromium probes work.
+
+### ELITEA-3764 addendum (2026-10-21): export WITH attachments
+- Seed: `attach_files_via_menu([3 files])` + `send_message` on an API-created chat; modal option label becomes `With attachments (3 files · 36 Bytes)` (summary query, loads async - option disabled while loading).
+- Selecting it swaps description to the ZIP sentence; Export click shows `Exporting chat... 3 files` + `export-chat-modal-progress` + button "Exporting..." (transient; capture with a MutationObserver installed before click). Download `<name>_<date>_<time>.zip.enc`, encrypted (`ELITEA-CHAT-ENC/1`), toast "Chat exported successfully", modal closes.
+- Needs `APP_PREFIX=/app` exported if `.env.test` is absent, else all pages 404.
+
+## Stop generation (ELITEA-2182, 2026-10-20)
+
+- **Timeline on DEV (Haiku 4.5), "generate a poem"**: Stop control renders ~0.5s after Send (bubble "Waking the agent..."), agent bubble shows `Thinking` ~2.3s, final text ~2.9s, Stop disappears the moment final text starts. Windows are short: poll <=100ms, never 500ms+.
+- **Stop in the thinking phase REMOVES the turn**: user bubble + partial agent bubble vanish from the timeline (new chat -> `li` count 0, sidebar keeps an empty "Generate poem" row, URL `/chat/<id>?name=Generate+poem`); composer returns to `chat-send-button` with the exact original prompt restored in `chat-message-input`, editable. Input is `disabled` ~100ms right after the click.
+- **Stop button without injection**: `chat-inject-button` is absent when mid-turn injection is off, so `ChatPage.STOP_BUTTON` (scoped under it) cannot resolve; the Stop is then the only `button` in the composer footer with no `data-testid` and no `aria-label`. Use `midturn_injection_enabled` fixture or declare a second anchor.
+- **Send click needs `force=True`** (MUI overlay intercepts); `platform-banner-close` toast/modal ("Announcing ELITEA 2.0.7") can cover the composer on a fresh session - dismiss it.
+- **Transit flag**: `ChatPage.navigate_to_chat(conversation_id=...)` timed out (15s `wait_for` in a pytest scratch run, 2 attempts) while a plain `page.goto('/app/chat/<id>')` + waiting for `chat-message-input` worked - possible regression/flake (#1847 networkidle class), worth watching.
+
+### ELITEA-2183 addendum (2026-10-20): send after Stop
+- After Stop (restored input), `fill("")` + `fill("hello")` + `send_message("hello")` works: user + assistant reply, no error toast, no `generate a poem` bubble remains. Reply completes ~12s (Copy button).
+- `ChatPage.wait_for_ai_response(initial_count=N)`: N = count BEFORE the send (AI at N+1); `n+1` hangs 60s.
+- `navigate_to_chat(conversation_id=...)` timed out again in scratch runs (3x); `page.goto('.../app/chat/<id>')` fine. Repeat of the 2182 transit flag.
+
+## Regenerate only on last AI response (ELITEA-2184, 2026-10-20)
+- DEV now serves `chat-regenerate-button` (no aria-label). Regenerate and Delete are rendered ONLY on the last message (`ChatMessageWrapper.jsx` isLastMessage gate); earlier AI items have read-out+copy (hover-gated) but regenerate/delete count 0 in DOM. Last item's Regenerate stayed visible with mouse parked at (0,0).
+- Two short exchanges ("Reply with the single word: one") finish in seconds. `ChatPage._is_ai_message(item)` filters AI rows.
+- `navigate_to_chat(conversation_id=)` timed out again (3rd analysis in a row); `page.goto(app_base_url + "/app/chat/<id>")` works (app_base_url lacks `/app`). Playwright MCP chrome was missing this session; scratch pytest used instead.
+
+## Regenerate flow (ELITEA-2185, 2026-10-20)
+- Clicking `chat-regenerate-button` replaces the last AI item IN PLACE (count unchanged; `onRegenerateAnswer` re-sends the stored question with `message_id` = the AI id). During regeneration: `chat-answer-loading-placeholder` (t~0-0.6s) -> `chat-answer-thought-accordion` + model chip + `chat-inject-button` (Stop) -> Copy/Regenerate/Delete/Read-out back (~2s with Haiku 4.5 for a short prompt). Regenerate/Copy absent while generating.
+- User item text is untouched. Output is nondeterministic: never assert new text != old text hard.
+- "New Models are added" toast can cover the Send button on DEV: send with Enter.
+- `navigate_to_chat(conversation_id=...)` still times out on DEV (15s); goto `/app/chat/<id>` directly.
+
+## Regenerate on 3 exchanges (ELITEA-2187, 2026-10-21)
+- Verified live with 3 exchanges: earlier AI items regen 0 / delete 0 / copy 1 / read-out 1; last 1/1/1/1; page-wide regenerate count 1, and still 1 after a regenerate completes. Click -> `chat-inject-button` (Stop) appears then clears; message count unchanged. Classified extend-existing of the ELITEA-2184 spec.
+- `page.goto(app_base_url + "/app/chat/<id>")` + `chat-message-input` wait worked this run.
+
+## Conversation context menu contents (ELITEA-3779, 2026-10-21)
+- Right-click on a conversation item opens NOTHING; the menu is the hover 3-dot `conversation-menu-menu-button` (scope to `chat-conversation-item-{id}`).
+- DEV menu = 7 items in order: rename, move-to, playback, export, share-external, pin, delete (no "Duplicate", no make-public in a private project). Items are `role=menuitem tabindex=-1`, none `aria-disabled`; each has 1 svg (move-to 2). Export label "Export".
+- Keyboard: focus sits on the menu container (DIV, no role); ArrowDown/Tab do not move to items; Enter no-op. Click-away closes the menu (items 0).
+- `navigate_to_chat()` + `wait_for_page_load()` timed out (15s `chat-message-input`) on the blank-chat landing in this run even for the existing export spec (ELITEA-3784); `page.goto("https://dev.elitea.ai/app/chat")` + banner dismiss works. Playwright MCP chrome missing; scratch pytest used (`--reruns 0` overrides rerun addopts; `-p no:rerunfailures` breaks).

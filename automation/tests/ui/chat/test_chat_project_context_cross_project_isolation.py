@@ -140,7 +140,7 @@ def _resolve_second_project_id(browser_cookies: list[dict]) -> int:
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3315_project-context-isolated-to-current-project.md",
+    "ELITEA-3315_project-context-builder-receives-runtime-context-automatically.md",
     "onetest-ai Test Case link (ELITEA-3315)",
 )
 @pytest.mark.tms("ELITEA-3315")

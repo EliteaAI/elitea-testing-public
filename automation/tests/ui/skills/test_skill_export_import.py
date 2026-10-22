@@ -62,6 +62,11 @@ def cleanup_skill_ids(skill_api):
 class TestSkillExportImport:
     """Export a skill's base version and import it as a new skill (ELITEA-3749)."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-3749_import-skill-base-version.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3749")
     @allure.issue("ELITEA-3749", "onetest-ai Test Case link")
     @pytest.mark.p2
@@ -301,6 +306,11 @@ class TestSkillExportImportNonBaseVersion:
     the source skill's original base-version content.
     """
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-3750_import-skill-non-base-version.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3750")
     @allure.issue("ELITEA-3750", "onetest-ai Test Case link")
     @pytest.mark.p3
@@ -581,6 +591,11 @@ class TestSkillImportMissingFrontmatter:
     See test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md
     """
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-2438_import-skill-with-missing-required-frontmatter-shows-validat.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2438")
     @allure.issue("ELITEA-2438", "onetest-ai Test Case link")
     @pytest.mark.p2

@@ -71,6 +71,11 @@ class TestPinConversationViaPinOnTop:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2149_chat-pin-a-conversation-via-pin-on-top-option.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/chat/ELITEA-2461_chat-pin-a-conversation-and-verify-it-appears-above-folders.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.p2
     def test_pin_conversation_via_pin_on_top(self, page, conversation_api):
         """Pin a conversation via the context menu's "Pin on top" item.

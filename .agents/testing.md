@@ -126,18 +126,28 @@ case id reaches the report** — the run shows which TMS case each result belong
 to without anyone cross-referencing a spreadsheet. The implementer writes it
 while building the test; it is not a back-write.
 
-On this project the declaration is `@pytest.mark.tms("ELITEA-2003")`. Forms,
-multi-case and per-parameter usage, and what it renders:
-`.claude/rules/ui-tests.md` / `.claude/rules/api-tests.md` § Markers; mechanism:
-`automation/utils/tms_case_ids.py` (its module docstring).
+On this project the declaration is a pair: `@pytest.mark.tms("ELITEA-2003")`
+**plus** `@allure.issue(<the case file's blob/main URL>, "onetest-ai Test Case link")`.
+Forms, multi-case and per-parameter usage (the toolkit pattern), and what it
+renders: `.claude/rules/ui-tests.md` / `.claude/rules/api-tests.md` § Markers;
+mechanism: `automation/utils/tms_case_ids.py` (its module docstring).
+
+**The pair drives the TMS back-write (UI tests, since 2026-10-21).** On every push
+to `main` touching `automation/tests/ui/**`, `.github/workflows/build-test-index.yml`
+runs `automation/scripts/tms_backwrite.py`: `check` fails the run on any
+marker/link disagreement, broken or moved link, file-name ≠ front-matter id, or a
+deprecated case; `apply` then sets every linked case `execution_type: automated`,
+`status: ready`, `automation_test_id` (Form C) and `automation_pr` (the pushed
+commit) and commits to TMS `main` as `automation-factory`. Run the same `check`
+locally before review — command in `ui-tests.md` § Markers.
 
 A test with no TMS case behind it (framework unit tests, helper tests written
-outside any case) names no case id — there is none to name. That is the only
-exemption, not a loophole for a case-derived test.
+outside any case) names no case id and no link — there is none to name. That is
+the only exemption, not a loophole for a case-derived test.
 
-Distinct from the `automation_test_id` back-write below: that one is written by
-the orchestrator after landing and is a machine correlation key. Both name the same
-case; neither substitutes for the other.
+Distinct from the `automation_test_id` field below: that one is the machine
+correlation key in the TMS case, derived from these markers by the workflow. Both
+name the same case; neither substitutes for the other.
 
 ## Coverage tagging (TMS traceability)
 
@@ -151,8 +161,10 @@ It must be the **dotted, `tests.`-rooted "Form C"**:
 why Form C is the only shape that correlates, the mechanical derivation from a
 node-id, the self-check one-liner against `reports/junit.xml`, the list-of-1..N
 semantics, the non-pytest (Xray) exception, and the "rebuild `index.json`" caveat.
-Canon set by ELITEA-1794 / issue #598, 2026-07-23. **Back-writing is the
-orchestrator's job** — implementers and analysts never write this field.
+Canon set by ELITEA-1794 / issue #598, 2026-07-23. **Nobody hand-writes this field
+for UI tests any more** — the workflow derives it from the markers above; the lead
+verifies the run (`workflow.md` § After landing). API / non-UI cases are still
+back-written by the orchestrator by hand; implementers and analysts never write it.
 
 ## Locator policy (AUTHORITATIVE — overrides any skill's example ladder)
 

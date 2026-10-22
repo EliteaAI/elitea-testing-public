@@ -86,18 +86,12 @@ def test_code_node_configuration_and_persistence(page, pipeline_id):
 
     with allure.step(
         "Step 3 — Verify panel shows: CODE (Type+Value), Input, Output, "
-        "Interrupt before/after, Structured output"
+        "Structured output (Interrupt before/after toggles removed from node cards, EL-3872)"
     ):
         assert pipeline_page.code_node_type_select.is_visible(), "CODE Type select should be present"
         assert pipeline_page.code_node_value.is_visible(), "CODE Value field should be present"
         assert pipeline_page.code_node_input_select.is_visible(), "Input select should be present"
         assert pipeline_page.code_node_output_select.is_visible(), "Output select should be present"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(code_node_id), (
-            "Interrupt before switch should be present"
-        )
-        assert pipeline_page.code_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after switch should be present"
-        )
         assert pipeline_page.code_node_structured_output_toggle.is_visible(), (
             "Structured output switch should be present"
         )

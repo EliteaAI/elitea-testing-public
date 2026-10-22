@@ -213,7 +213,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
-      "line": 6728,
+      "line": 6808,
       "kind": "xpath",
       "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
       "suggested_testid": "chat-participant-attention-card-{}",
@@ -225,7 +225,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
       "file": "pages/chat_page.py",
-      "line": 6717,
+      "line": 6797,
       "kind": "css",
       "selector": "svg path",
       "suggested_testid": "chat-participant-icon-path",
@@ -249,7 +249,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
       "file": "pages/chat_page.py",
-      "line": 6706,
+      "line": 6786,
       "kind": "xpath",
       "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
       "suggested_testid": "chat-participants-section-title-{}",
@@ -271,6 +271,18 @@
       "updated": "2026-10-19",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.conversation_menu_item_icon": {
+      "file": "pages/chat_page.py",
+      "line": 1260,
+      "kind": "css",
+      "selector": "svg",
+      "suggested_testid": "chat-conversation-menu-item-icon",
+      "description": "Leading icon svg of a conversation context-menu item; scope with .within(menu_item).",
+      "state": "raw",
+      "added": "2026-10-21",
+      "updated": "2026-10-21",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.export_chat_modal_option_radio": {
       "file": "pages/chat_page.py",
       "line": 1243,
@@ -285,7 +297,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 6665,
+      "line": 6745,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -297,7 +309,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 6634,
+      "line": 6714,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -309,7 +321,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 6626,
+      "line": 6706,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -321,7 +333,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1811,
+      "line": 1764,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -333,7 +345,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_cron_input": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1518,
+      "line": 1471,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('input[type=\"text\"]').first",
       "suggested_testid": null,
@@ -345,7 +357,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1498,
+      "line": 1451,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').first",
       "suggested_testid": null,
@@ -357,7 +369,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_apply_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1513,
+      "line": 1466,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Save\")').first",
       "suggested_testid": null,
@@ -369,7 +381,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_cancel_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1508,
+      "line": 1461,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cancel\")').first",
       "suggested_testid": null,
@@ -381,7 +393,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_advanced": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1532,
+      "line": 1485,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cron Expression\")').first",
       "suggested_testid": null,
@@ -393,7 +405,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_default": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1527,
+      "line": 1480,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Builder\")').first",
       "suggested_testid": null,
@@ -405,7 +417,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_summary_text": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1503,
+      "line": 1456,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('text=/At \\\\d+:\\\\d+|Every |Daily|Weekly|Monthly/').first",
       "suggested_testid": null,
@@ -716,22 +728,22 @@
       "history": []
     }
   },
-  "last_sync": "2026-10-20",
+  "last_sync": "2026-10-21",
   "metric": {
-    "declared_total": 1286,
-    "declared_testid": 1228,
-    "declared_non_testid": 58,
-    "non_testid_with_hint": 37,
+    "declared_total": 1281,
+    "declared_testid": 1222,
+    "declared_non_testid": 59,
+    "non_testid_with_hint": 38,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 9,
+      "css": 10,
       "fallback": 20,
       "locator": 1,
       "role": 18,
-      "testid": 1228,
+      "testid": 1222,
       "xpath": 10
     },
-    "locator_debt": 0.0451,
+    "locator_debt": 0.0461,
     "unmanaged_handles": 351
   }
 }

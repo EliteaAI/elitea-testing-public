@@ -5,15 +5,20 @@ Collects all tests under a given path using pytest's collection hooks,
 extracts their markers (including module-level pytestmark), and outputs
 a JSON index compatible with the TMS correlation format.
 
+Each entry also records the TMS case links the test declares with
+``@allure.issue(<TMS case file URL>, ...)`` as ``tms_case_links`` — the input
+``scripts/tms_backwrite.py`` validates against ``tms_case_ids`` and uses to
+back-write the TMS case files.
+
 Usage:
     python scripts/build_test_index.py --path tests/ui --out index.json
 """
 import argparse
 import json
 import sys
+from urllib.parse import unquote
 
 import pytest
-
 
 # Markers to exclude from the index (internal/infrastructure markers)
 EXCLUDED_MARKERS = frozenset({
@@ -30,6 +35,10 @@ EXCLUDED_MARKERS = frozenset({
     'skip',
     'xfail',
 })
+
+# @allure.issue links into the TMS repo are case-file links; any other issue
+# link (a bug, a product ticket) is not.
+TMS_REPO_URL = 'https://github.com/EliteaAI/onetest-ai-tm-Elitea/'
 
 
 class TestCollector:
@@ -74,7 +83,51 @@ class TestCollector:
             if case_ids:
                 entry['tms_case_ids'] = case_ids
 
+            # @allure.issue is collected as allure_link(url, link_type='issue').
+            # The tms_case_ids plugin adds link_type='tms' search links of its
+            # own — those are derived from the marker, so they are skipped here.
+            case_links = sorted(dict.fromkeys(
+                unquote(str(marker.args[0]))
+                for marker in item.iter_markers(name='allure_link')
+                if marker.kwargs.get('link_type') == 'issue'
+                and marker.args and str(marker.args[0]).startswith(TMS_REPO_URL)
+            ))
+            if case_links:
+                entry['tms_case_links'] = case_links
+
             self.tests.append(entry)
+
+
+def collect(path):
+    """Collect the tests under ``path`` and return their sorted index entries.
+
+    Must run with cwd = automation/ (pytest.ini, conftest.py). Exits on a
+    collection error — an index built from a partial collection is wrong.
+    """
+    collector = TestCollector()
+
+    # Run pytest in collection-only mode with our plugin
+    # -q for quiet output, --collect-only to skip execution
+    # -p no:rerunfailures disables the rerun plugin to avoid missing dependency errors
+    # --override-ini clears addopts to avoid picking up rerun options from pytest.ini
+    exit_code = pytest.main(
+        [
+            '--collect-only', '-q',
+            '--ignore=tests/unit',
+            '-p', 'no:rerunfailures',
+            '-o', 'addopts=',
+            path
+        ],
+        plugins=[collector]
+    )
+
+    if exit_code not in (pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED):
+        print(f'pytest collection failed with exit code {exit_code}', file=sys.stderr)
+        sys.exit(1)
+
+    # Sort tests by automation_test_id for stable output
+    collector.tests.sort(key=lambda t: t['automation_test_id'])
+    return collector.tests
 
 
 def main():
@@ -93,37 +146,14 @@ def main():
     )
     args = parser.parse_args()
 
-    collector = TestCollector()
-
-    # Run pytest in collection-only mode with our plugin
-    # -q for quiet output, --collect-only to skip execution
-    # -p no:rerunfailures disables the rerun plugin to avoid missing dependency errors
-    # --override-ini clears addopts to avoid picking up rerun options from pytest.ini
-    exit_code = pytest.main(
-        [
-            '--collect-only', '-q',
-            '--ignore=tests/unit',
-            '-p', 'no:rerunfailures',
-            '-o', 'addopts=',
-            args.path
-        ],
-        plugins=[collector]
-    )
-
-    if exit_code not in (pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED):
-        print(f'pytest collection failed with exit code {exit_code}', file=sys.stderr)
-        sys.exit(1)
-
-    # Sort tests by automation_test_id for stable output
-    collector.tests.sort(key=lambda t: t['automation_test_id'])
-
-    output = {'tests': collector.tests}
+    tests = collect(args.path)
+    output = {'tests': tests}
 
     with open(args.out, 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
         f.write('\n')
 
-    print(f'Indexed {len(collector.tests)} tests to {args.out}', file=sys.stderr)
+    print(f'Indexed {len(tests)} tests to {args.out}', file=sys.stderr)
 
 
 if __name__ == '__main__':

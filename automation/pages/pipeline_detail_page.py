@@ -796,10 +796,6 @@ class PipelineDetailPage(PipelineFormPage):
     # Added via add-data-testid for ELITEA-2037 (widened BaseToolNode.jsx's
     # interruptAfterTestId/structuredOutputTestId from Toolkit-only to every
     # node type in TEST_ID_PREFIX_BY_NODE_TYPE — EliteaAI/EliteaUI@00768a44).
-    mcp_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-mcp-node-interrupt-after-toggle",
-        description="MCP node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
-    )
     mcp_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-mcp-node-structured-output-toggle",
         description="MCP node's 'Structured output' switch (CommonInterruptSettings.jsx)"
@@ -832,10 +828,6 @@ class PipelineDetailPage(PipelineFormPage):
     agent_node_input_mapping_required_heading = LocatorDescriptor(
         testid="pipeline-agent-node-input-mapping-heading",
         description="Agent node's 'Input mapping (required 1)' accordion heading (always TASK)"
-    )
-    agent_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-agent-node-interrupt-after-toggle",
-        description="Agent node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
     )
 
     # LLM node inline config (ELITEA-2004). Testid-only, added via
@@ -880,10 +872,6 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-llm-node-toolkits-select",
         description="LLM node's Toolkits multi-select (ToolkitsSelect.jsx, LLM-only call site)"
     )
-    llm_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-llm-node-interrupt-after-toggle",
-        description="LLM node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
-    )
     llm_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-llm-node-structured-output-toggle",
         description="LLM node's 'Structured output' switch (CommonInterruptSettings.jsx)"
@@ -910,10 +898,6 @@ class PipelineDetailPage(PipelineFormPage):
     code_node_output_select = LocatorDescriptor(
         testid="pipeline-code-node-output-select",
         description="Code node's tool-agnostic Output state-variable select"
-    )
-    code_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-code-node-interrupt-after-toggle",
-        description="Code node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
     )
     code_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-code-node-structured-output-toggle",
@@ -1032,13 +1016,6 @@ class PipelineDetailPage(PipelineFormPage):
         description="Entry-point node's Trigger type select (Chat Message/Schedule/Webhook)"
     )
 
-    # Dynamic (runtime-parameterized) testid — CommonInterruptSettings.jsx's
-    # "Interrupt before" toggle is keyed by node id, not node type (ELITEA-2008,
-    # unconditional for every node type sharing the component). Class-level
-    # template constant per .agents/testing.md § Locator policy, formatted
-    # with the node's own `data-id` (as returned by wait_for_node_on_canvas).
-    NODE_INTERRUPT_BEFORE_TOGGLE = '[data-testid="pipeline-node-interrupt-before-toggle-{}"]'
-
     # Toolkit node inline config (ELITEA-2010). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx's node-type -> testid-prefix map now
     # covers both "mcp" (unchanged, pipeline-mcp-node-*) and "toolkit" (new,
@@ -1071,10 +1048,6 @@ class PipelineDetailPage(PipelineFormPage):
     toolkit_node_input_mapping_optional_heading = LocatorDescriptor(
         testid="pipeline-toolkit-node-input-mapping-optional-heading",
         description="Toolkit node's 'Input mapping (optional N)' accordion heading"
-    )
-    toolkit_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-toolkit-node-interrupt-after-toggle",
-        description="Toolkit node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
     )
     toolkit_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-toolkit-node-structured-output-toggle",
@@ -1114,10 +1087,6 @@ class PipelineDetailPage(PipelineFormPage):
     custom_node_input_mapping_optional_heading = LocatorDescriptor(
         testid="pipeline-custom-node-input-mapping-optional-heading",
         description="Custom node's 'Input mapping (optional N)' accordion heading"
-    )
-    custom_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-custom-node-interrupt-after-toggle",
-        description="Custom node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
     )
     custom_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-custom-node-structured-output-toggle",
@@ -1208,10 +1177,6 @@ class PipelineDetailPage(PipelineFormPage):
         description="Decision node's DECISION OUTPUTS chip-list container"
     )
 
-    decision_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-decision-node-interrupt-after-toggle",
-        description="Decision node's Interrupt after switch"
-    )
 
     decision_node_output_handle = LocatorDescriptor(
         testid="pipeline-decision-node-output-handle",
@@ -1282,18 +1247,6 @@ class PipelineDetailPage(PipelineFormPage):
     # on THIS inner element, not on the outer `pipeline-hitl-node-route-
     # select-{action}` testid (which lands on MUI's MuiInputBase-root wrapper).
     HITL_NODE_ROUTE_SELECT_COMBOBOX = '[data-testid="pipeline-hitl-node-route-select-{}-combobox"]'
-
-    # Dynamic (runtime-parameterized) testid — one "Interrupt before" toggle
-    # per node (CommonInterruptSettings.jsx, rendered inline on every node
-    # type). Class-level template constant per .agents/testing.md § Locator
-    # policy, formatted with the target node's id at the call site. Added via
-    # add-data-testid, EliteaAI/EliteaUI@a2ce4732 (ELITEA-2008). "Before" was
-    # chosen over "after": `disabled={yamlNode?.transition === End || ...}`
-    # makes "after" unusable on a freshly-added, unconnected node (pipeline
-    # auto-wires new nodes to END, confirmed live) — "before" only disables
-    # for the SAVED entry point (`entry_point === id`), which a non-entry-point
-    # node never is.
-    NODE_INTERRUPT_BEFORE_TOGGLE = '[data-testid="pipeline-node-interrupt-before-toggle-{}"]'
 
     # Chat HITL runtime actions (ELITEA-2015). Testid-only, added via
     # add-data-testid — ChatHitlActions.jsx's non-sensitive-tool branch +
@@ -4156,42 +4109,34 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.keyboard.press("Escape")
         return states
 
-    def toggle_node_interrupt_before(self, node_id: str, timeout: int = 5000) -> None:
-        """Click a node's inline "Interrupt before" switch (CommonInterruptSettings.jsx).
+    def set_interrupt_before_via_yaml(self, node_id: str) -> None:
+        """Set the pipeline's top-level ``interrupt_before`` list to ``[node_id]`` via the YAML view.
 
-        Disabled by the source only when *node_id* IS the pipeline's saved
-        entry point (`yamlJsonObject.entry_point === id`) — callers must
-        target a node that is NOT the entry point.
-
-        The testid is wired via `slotProps.switch.slotProps.input` (added
-        EliteaAI/EliteaUI, ELITEA-2008 fix) so it lands directly on the
-        native ``<input type="checkbox">`` — NOT the `MuiSwitch-switchBase`
-        wrapper span MUI's `Switch` normally puts extra props on
-        (`.agents/memory/test-automation-engineer/
-        testid_lands_on_mui_wrapper_not_input.md`; MUI v7's `Switch` silently
-        drops a legacy `inputProps` testid entirely). Clicked via
-        ``element.click()`` (JS, `.claude/rules/mui-patterns.md` § MUI
-        Overlay Interception — same technique as :meth:`delete_node`), NOT a
-        coordinate-based Playwright click, even with ``force=True``.
-        Confirmed live (ELITEA-2008): after a node add/delete cycle earlier
-        on the canvas (e.g. Printer/HITL added then removed before this
-        node), some other canvas element ends up topmost at this switch's
-        on-screen coordinates. `force=True` only skips Playwright's
-        actionability *checks* — the underlying mouse event is still
-        dispatched at those coordinates and the browser still delivers it to
-        whatever's topmost there, so a coordinate click silently lands on
-        the intercepting element instead of the switch (no exception, no
-        `aria-disabled`, the switch's `checked` state simply never flips).
-        `element.click()` on the (now testid'd) native checkbox bypasses
-        on-screen z-order entirely and still fires React's `onChange`.
+        The per-node "Interrupt before" switch was removed from node cards
+        (EliteaAI/EliteaUI@d16f8caf, EL-3872 phase 1 of static-interrupt
+        deprecation); ``interrupt_before`` stays a supported YAML key, so the
+        YAML editor is the only UI route to a saved non-empty interrupt list.
+        Edits the first YAML line (``entry_point: ...``, unique in the doc) by
+        appending the key, then returns to the Flow view. Does NOT save.
 
         Args:
-            node_id: The data-id of the target node.
-            timeout: Maximum wait time in milliseconds.
+            node_id: The data-id of the node to interrupt before.
         """
-        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
-        toggle.wait_for(state="attached", timeout=timeout)
-        toggle.evaluate("el => el.click()")
+        self.switch_to_yaml_view()
+        entry_line = next(
+            line.strip() for line in self.get_yaml_content().splitlines() if line.startswith("entry_point:")
+        )
+        self.edit_yaml_line(entry_line, f"{entry_line}\ninterrupt_before: [{node_id}]")
+        self.switch_to_flow_view()
+
+    def clear_interrupt_before_via_yaml(self) -> None:
+        """Reset the pipeline's ``interrupt_before`` list to ``[]`` via the YAML view. Does NOT save."""
+        self.switch_to_yaml_view()
+        current = next(
+            line.strip() for line in self.get_yaml_content().splitlines() if line.startswith("interrupt_before:")
+        )
+        self.edit_yaml_line(current, "interrupt_before: []")
+        self.switch_to_flow_view()
 
     def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
         """Open the entry-point node's Trigger select and choose *value*.
@@ -5581,31 +5526,6 @@ class PipelineDetailPage(PipelineFormPage):
         """Read the State modifier node's currently-selected Output display text."""
         text = (self.state_modifier_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
-
-    def is_node_interrupt_before_toggle_visible(self, node_id: str, timeout: int = 5000) -> bool:
-        """Return whether *node_id*'s 'Interrupt before' switch is visible.
-
-        Node-id-keyed, not node-type-keyed (ELITEA-2008) — works for any node
-        type sharing CommonInterruptSettings.jsx, e.g. the value returned by
-        ``wait_for_node_on_canvas()``.
-        """
-        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
-        try:
-            toggle.wait_for(state="visible", timeout=timeout)
-            return True
-        except Exception:
-            return False
-
-    def is_node_interrupt_before_toggle_disabled(self, node_id: str, timeout: int = 5000) -> bool:
-        """Return whether *node_id*'s 'Interrupt before' switch is disabled.
-
-        Sibling of :meth:`is_node_interrupt_before_toggle_visible` (ELITEA-2037)
-        — CommonInterruptSettings.jsx disables this toggle when the node is the
-        pipeline's entry point (``entry_point === id`` gating).
-        """
-        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
-        toggle.wait_for(state="visible", timeout=timeout)
-        return toggle.is_disabled()
 
     # ------------------------------------------------------------------
     # Toolkit node inline config (ELITEA-2010)

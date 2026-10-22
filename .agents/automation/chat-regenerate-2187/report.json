@@ -1,0 +1,82 @@
+{
+  "batch": "chat-regenerate-2187",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-regenerate-2187",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "note": "workflow gate red was env-only (no automation/.env.test in sandbox, APP_PREFIX unset); lead re-ran 3 separate invocations with APP_PREFIX=/app: 2 passed x3 (30.4s/32.4s/30.8s), includes 2184 spec",
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2187",
+      "outcome": "automated",
+      "note": "gate green 3/3 (lead re-run, APP_PREFIX=/app)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "automation/.env.test is missing in this sandbox (no symlink target). With APP_PREFIX unset, any test that builds a URL from settings.app_base_url hits the DEV 404 page. I supplied APP_PREFIX=/app via the shell. The lead's gate environment needs the file, or the same variable set, or the gate will go red for an environmental reason."
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.navigate_to_chat(conversation_id=) did not work on DEV in this spec, so the 2187 test navigates with page.goto(settings.app_base_url + '/chat/<id>'). The doubled /app prefix was fixed in ad9af60b and a guard assertion was added. Worth a look at navigate_to_chat's retry path, which builds the URL from elitea_url + app_prefix."
+        },
+        {
+          "kind": "note",
+          "note": "Ladder grep on the diff (`git diff origin/main...tests/ELITEA-2187-regenerate-last-of-three -- automation/pages automation/tests | grep -E get_by_*|page.locator|.nth(|locator=|fallback=`): the only added hit is `items.nth(i)` inside `ai_items_now()`. It enumerates every match of the declared `messages_container` and mirrors the existing 2184 pattern, so it is compliant. automation/pages is untouch\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_regenerate_last_response_only.py:83"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation, case to AFS to diff. Case step 2 (last response shows Regenerate and its icon) is covered. The AFS cites 2184:55-64 for it, and that spec does assert Regenerate visible on the last item. The new test also asserts visible at Step 3. Case step 3 (click starts a new generation) is asserted at Step 4 as Stop count 1, then 0, with message count still 6. The final-state row is asserted at\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Step 4 expects `chat_inject_button` count 1 within 15s after the click, then count 0. With a one-word prompt the generation may finish between Playwright poll ticks, so the count==1 expectation could flake. The analyst saw it live, so I am not blocking. The gate's 3x runs will show whether it holds. If it flakes, replace it with a condition that survives a fast finish, for example waiting for the \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_regenerate_last_response_only.py:130"
+        },
+        {
+          "kind": "note",
+          "note": "The extension is written as a separate test in the same file, not by editing 2184's test. The AFS allowed this (\"or a parametrization\"), and 2184's two-exchange semantics are preserved. The hover helper steps and the `\"/app/app/\"` URL assertion are sensible guards, since goto uses settings.app_base_url, which already carries the prefix."
+        },
+        {
+          "kind": "note",
+          "note": "automation/.env.test is missing in this checkout, so settings.app_prefix defaults to ''. Runs need APP_PREFIX=/app exported in the shell (ELITEA_URL is already in the environment). The 2187 goto uses settings.app_base_url, so the lead's 3x gate will hit a 404 on Step 1 unless that variable is set."
+        },
+        {
+          "kind": "note",
+          "note": "The prior blocker is fixed. Step 2 now asserts Copy and Read-out count == 1 on each earlier AI item before asserting Regenerate and Delete count == 0. This is AFS Gap assertion 1, and it makes the absence checks meaningful.",
+          "ref": "automation/tests/ui/chat/test_chat_regenerate_last_response_only.py:96-103"
+        },
+        {
+          "kind": "note",
+          "note": "The Coverage Map holds against the diff. Case step 1 (any earlier response, no Regenerate) is asserted per earlier item at Step 2. Case step 2 (Regenerate visible on the last response) is asserted at Step 3. Case step 3 (click triggers a new generation) is asserted at Step 4: Stop count 1, then 0, with the message count held at 6. The final-state exclusivity is asserted at Step 5. The 'regenerate \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep found no violations. I read the diff for the added hits instead of running the grep. The only `.nth(i)` is in `ai_items_now`, which loops over `range(items.count())` and so enumerates every match. The other hits resolve declared class-level descriptors (`ChatPage.*_button.resolve(item)`, `chat.regenerate_action_button`). There are no `locator=`/`fallback=` params, no raw se\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No masking found: there are no skips and no weakened assertions. The `/app/app/` guard and the `app_base_url` goto are sound. TMS marker `ELITEA-2187` and `allure.step` wrapping are present for Steps 1-5."
+        },
+        {
+          "kind": "note",
+          "note": "The positive control relies on Copy and Read-out being countable (not necessarily visible) after hover. This matches the live observation recorded in the AFS (copy 1, read-out 1 on earlier items). It is slightly weaker than a visibility check, but it is acceptable and consistent with the AFS."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_regenerate-only-on-last-of-three-responses_ELITEA-2187.md",
+      "branch": "tests/ELITEA-2187-regenerate-last-of-three",
+      "pr": 2526
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

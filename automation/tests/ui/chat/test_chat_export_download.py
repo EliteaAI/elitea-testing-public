@@ -32,6 +32,11 @@ FILENAME_RE = re.compile(r"^(?P<name>.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.js
 class TestChatExportDownload:
     """ELITEA-3784: Export button triggers a download (l1, critical)."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-3784_export-button-triggers-download.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3784")
     @pytest.mark.p0
     def test_export_button_triggers_download(self, page, conversation_api, tmp_path):

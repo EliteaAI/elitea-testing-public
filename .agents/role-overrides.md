@@ -271,6 +271,13 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   your own diff, plus `cd automation && ../.venv/bin/python scripts/locator_inventory.py scan`
   on the base and on your branch, and PASTE both in the Run Report (declared-total,
   non-testid and unmanaged-handles deltas). Unmanaged handles must not increase.
+- **Every case-derived UI test carries the TMS pair** — `@pytest.mark.tms("ELITEA-<id>")`
+  AND `@allure.issue(<case file blob/main URL>, "onetest-ai Test Case link")`
+  (`.claude/rules/ui-tests.md` § Markers; per-param cases: the toolkit pattern). The
+  pair is what marks the case automated in the TMS after landing — a wrong one turns
+  `main`'s `build-test-index` run red. Self-check:
+  `git -C ../../onetest-ai-tm-Elitea pull --ff-only && ../.venv/bin/python scripts/tms_backwrite.py check --tms-root ../../onetest-ai-tm-Elitea`
+  from `automation/` — paste its last line (`TMS links OK`) in the Run Report.
 - **`locator_descriptor.py`'s `locator=`/`fallback=` params are LEGACY** — kept so
   old code imports; never valid in new code, whatever any docstring example shows.
 
@@ -293,6 +300,13 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 - **This repo only.** A unit that reaches outside it, or whose locators depend on a
   testid DEV does not serve yet, is `CHANGES_REQUESTED` — the correct shape is a
   lower rung plus a `suggested_testid=` hint.
+- **TMS pair check:** every case-derived test in the diff has BOTH `@pytest.mark.tms`
+  and an `@allure.issue` link to its case file, the link's file name carries the
+  same id, every id has its link at the same scope (a module-level link reaches
+  every test in the module), and per-param ids follow the toolkit pattern. A
+  missing, extra or mismatched link is `CHANGES_REQUESTED` (`.claude/rules/ui-tests.md`
+  § Markers) — static review; the implementer's pasted `tms_backwrite.py check`
+  line is their evidence, not yours.
 - **Show your grep to the orchestrator.** Include the mechanical grep's actual
   command + output in the verdict you return to Tal — command (so scope/pattern
   is auditable) + result (hits verbatim, or explicit "0 hits / (no matches)" for
@@ -336,7 +350,10 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
      AFS on the trunk; that is fine — their AFS records the verdict. Their **code**
      must not be on the trunk: a unit that never merged back left none. If
      `origin/main` moved since the gate and the incoming change touches the batch's
-     files, merge `origin/main` into the trunk and re-gate first.
+     files, merge `origin/main` into the trunk and re-gate first. Then run
+     `scripts/tms_backwrite.py check` on the trunk (command in § Implementer slot) —
+     it is exactly what `main`'s `build-test-index` run enforces, so red here means
+     the trunk does not land yet (fixing it touches `automation/` ⇒ re-gate).
   2. Commit the batch's bookkeeping **on the trunk** (`.agents/workflow.md` § Closing
      a batch): `scan` + `sync-ledger` → `ledger.json`; `report.json` with the gate
      verdict, `gate-runs.jsonl`, then `work-scope.mjs close` → `cost.json` +
@@ -361,7 +378,8 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
      into the trunk, re-gate if the incoming change touches the batch's files, and
      land again. Never `--force`.
   4. Do the post-landing work in the same session (`.agents/workflow.md` § After
-     landing — the TMS back-write, in the TMS repo; nothing more on `main`), then
+     landing — verify the `build-test-index` run wrote the TMS back-write for the UI
+     cases, hand-write only non-UI ones; nothing more on `main`), then
      post the closure record on **every** card the batch covers (same commit, same
      gate, the card's own case row) and move each to `Ready`.
   **A batch of one degenerates cleanly** — no trunk, the case branch is squash-landed

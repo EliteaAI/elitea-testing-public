@@ -68,7 +68,7 @@ class TestInterjectionStopPreservesQueuedMessages:
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "chat-interface/ELITEA-2878_interjection-stop-preserves-queued-messages.md",
+        "chat/ELITEA-2878_stop-preserves-queue-automated.md",
         "onetest-ai Test Case link",
     )
     def test_stop_rescues_and_auto_drains_queue_without_loss(

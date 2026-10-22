@@ -185,3 +185,8 @@ None. All 12 case steps were executed to completion against the live local envir
 - Test-data fixture: reuse `mcp_toolkit_with_tools` (real MCP, auto torn down) + `PipelineAPI.create_pipeline()` (empty pipeline) — do NOT use `create_pipeline_with_mcp_node()` (that's for the ALREADY-CONFIGURED precondition case, ELITEA-1954).
 - Wait strategy: wait for `PUT .../application/prompt_lib/{project}/{pipeline_id}` (`201`) before reloading/asserting persistence — not a fixed timeout. Also wait for `[data-testid="toolkit-menu-item"]`/`select-option-{name}` to appear in the MCP-attach popper (can take several seconds per the digest's documented popper-loading timing) rather than a fixed sleep.
 - Console-error capture: register `page.on("console", ...)` BEFORE step 2 (not just before Save) — this session's assertion covers the whole flow, matching ELITEA-1954's precedent.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations (visible, and disabled-state where present) are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Page-object members for these toggles that no spec uses any longer were removed.

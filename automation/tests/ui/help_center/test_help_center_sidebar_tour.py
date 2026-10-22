@@ -65,6 +65,11 @@ TOUR_TOTAL_STEPS = len(TOUR_STEP_TITLES)
 class TestHelpCenterSidebarTour:
     """ELITEA-3754: Sidebar Interactive Tour completes via Next through all steps."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "help_center/ELITEA-3754_help-center-sidebar-interactive-tour-completes-successfully.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3754")
     def test_sidebar_interactive_tour_completes_via_next(self, page):
         with allure.step('Step 1 — Navigate to Help Center and click "Sidebar Interactive Tour"'):

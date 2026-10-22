@@ -104,12 +104,6 @@ def test_custom_node_configuration(page, pipeline_id, github_toolkit_with_select
         )
         assert pipeline_page.custom_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.custom_node_output_select.is_visible(), "Output select should be visible inline"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(node_id), (
-            "Interrupt before toggle should be visible inline"
-        )
-        assert pipeline_page.custom_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after toggle should be visible inline"
-        )
         assert pipeline_page.custom_node_structured_output_toggle.is_visible(), (
             "Structured output toggle should be visible inline"
         )

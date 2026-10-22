@@ -258,3 +258,8 @@ None. All 12 case steps were executed to completion against the live local envir
   — not fixed timeouts.
 - Console-error capture: register `page.on("console", ...)` BEFORE Step 0 (matches the sibling AFSes'
   precedent) — this session's assertion covers the whole flow.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations (visible, and disabled-state where present) are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Page-object members for these toggles that no spec uses any longer were removed.

@@ -1251,6 +1251,25 @@ class ChatPage(BasePage):
         testid="export-chat-modal-option-description",
         description="Description line under the export options.",
     )
+    export_chat_modal_progress = LocatorDescriptor(
+        testid="export-chat-modal-progress",
+        description="Transient progress block ('Exporting chat... N files') shown while a ZIP export runs (ELITEA-3764).",
+    )
+
+    # Icon inside a conversation context-menu item (ELITEA-3779) — resolve via
+    # .within(chat.get_conversation_menu_item("export")). css=svg: the icon is an
+    # MUI SvgIcon with no testid of its own; exactly one per item scoped this way.
+    conversation_menu_item_icon = ScopedLocator(
+        css="svg",
+        suggested_testid="chat-conversation-menu-item-icon",
+        description="Leading icon svg of a conversation context-menu item; scope with .within(menu_item).",
+    )
+
+    # CSS selectors for the in-page MutationObserver in click_export_capturing_progress
+    # (JS cannot take a Playwright Locator). Derived from the declarations above so
+    # each testid is written exactly once.
+    EXPORT_PROGRESS_SELECTOR = f'[data-testid="{export_chat_modal_progress.testid}"]'
+    EXPORT_MODAL_SELECTOR = f'[data-testid="{export_chat_modal.testid}"]'
 
     # Toast dismiss (X) icon button — ELITEA-2200 addition (Toast.jsx's
     # custom `action` IconButton, replacing MUI's unlabeled default close).
@@ -2506,6 +2525,14 @@ class ChatPage(BasePage):
         """Count of currently visible attachment chips (FileList.jsx, excludes overflow)."""
         return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
 
+    def wait_for_attachment_chip_count(self, expected: int, timeout: int = 10000):
+        """Wait until exactly *expected* attachment chips are rendered."""
+        self.page.wait_for_function(
+            "([sel, n]) => document.querySelectorAll(sel).length === n",
+            arg=[self.CHAT_ATTACHMENT_CHIP_PREFIX, expected],
+            timeout=timeout,
+        )
+
     def get_attachment_overflow_count(self) -> int:
         """Parse the '+N' overflow count from the overflow button's text.
 
@@ -3656,12 +3683,65 @@ class ChatPage(BasePage):
         """
         return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX).count()
 
+    def get_open_conversation_menu_items(self):
+        """Return the Locator matching every currently rendered context-menu item."""
+        return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX)
+
+    def get_open_conversation_menu_item_keys(self) -> list[str]:
+        """Return the open context menu's item keys in DOM (= visual) order.
+
+        Enumerates EVERY match of ``CONVERSATION_MENU_ITEM_PREFIX`` and strips the
+        ``chat-conversation-menu-`` / ``-menuitem`` affixes from each testid.
+        """
+        items = self.get_open_conversation_menu_items()
+        prefix, suffix = "chat-conversation-menu-", "-menuitem"
+        keys = []
+        for i in range(items.count()):
+            testid = items.nth(i).get_attribute("data-testid") or ""
+            keys.append(testid[len(prefix):-len(suffix)])
+        return keys
+
     @action("Export the open chat modal and capture the download")
     def click_export_and_capture_download(self, timeout: int = 30000):
         """Click the modal's Export button inside ``expect_download`` and return the Download."""
         with self.page.expect_download(timeout=timeout) as download_info:
             self.export_chat_modal_export_button.click()
         return download_info.value
+
+    @action("Export with attachments, capturing the transient progress UI and the download")
+    def click_export_capturing_progress(self, timeout: int = 60000) -> dict:
+        """Click Export while a MutationObserver records the transient progress state.
+
+        The progress block (``export-chat-modal-progress``) and the 'Exporting...'
+        button label only exist for the duration of the fetch, so they are
+        sampled by an observer installed BEFORE the click (ELITEA-3764).
+
+        Returns ``{"download", "progress_seen", "modal_text"}``.
+        """
+        self.page.evaluate(
+            """([sel, modalSel]) => {
+                window.__exportProgress = {seen: false, text: ''};
+                const sample = () => {
+                    if (document.querySelector(sel)) {
+                        window.__exportProgress.seen = true;
+                        const m = document.querySelector(modalSel);
+                        window.__exportProgress.text = m ? m.innerText : '';
+                    }
+                };
+                window.__exportObserver = new MutationObserver(sample);
+                window.__exportObserver.observe(document.body,
+                    {subtree: true, childList: true, characterData: true, attributes: true});
+                sample();
+            }""",
+            [self.EXPORT_PROGRESS_SELECTOR, self.EXPORT_MODAL_SELECTOR],
+        )
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_chat_modal_export_button.click()
+        download = download_info.value
+        info = self.page.evaluate(
+            "() => { window.__exportObserver && window.__exportObserver.disconnect(); return window.__exportProgress; }"
+        )
+        return {"download": download, "progress_seen": info["seen"], "modal_text": info["text"]}
 
     @action("Click conversation context-menu item")
     def click_conversation_menu_item(self, item_key: str, timeout: int = 5000):

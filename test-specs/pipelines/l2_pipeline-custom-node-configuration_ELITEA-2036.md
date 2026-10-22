@@ -282,3 +282,8 @@ twice consecutively (`HEADLESS=true pytest tests/ui/pipelines/test_pipeline_cust
 - The toolkit-attach popper's list can take several seconds to resolve past
   "Loading..." on this environment — reused the existing 20s timeout
   constant/pattern from the Toolkit-node test rather than a short fixed wait.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Not executed locally (requires GIT_HUB_TOKEN).

@@ -89,6 +89,12 @@ class TestSetLLMModelTiers:
         "settings/ai-configuration/ELITEA-2397_set-a-llm-model-as-default-high-tier-low-tier.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/settings/ai-configuration/"
+        "ELITEA-2414_default-tier-selection-persists-after-page-reload.md",
+        "onetest-ai Test Case link",
+    )
     def test_set_llm_model_default_high_low_tier(self, page):
         """Selecting a different model for the LLMs section's Default tier
         updates the selector text immediately (no Save action), swaps the

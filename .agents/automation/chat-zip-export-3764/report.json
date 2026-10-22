@@ -1,0 +1,114 @@
+{
+  "batch": "chat-zip-export-3764",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-zip-export-3764",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "note": "Workflow gate agent red = env gap (no automation/.env.test, APP_PREFIX unset -> 404). Lead re-gated 3 separate invocations with APP_PREFIX=/app: 3/3 pass (28s/27s/26s); blast radius test_chat_export_download.py pass."
+  },
+  "cases": [
+    {
+      "id": "ELITEA-3764",
+      "outcome": "automated",
+      "note": "reviewed APPROVED, merged, lead gate 3/3 green",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text drifts from DEV in three places. The filename is <name>_<date>_<time>.zip.enc, not Conversation_[Name]_YYYY-MM-DD.zip. The archive is AES-256-GCM encrypted, so steps 11-15 cannot be verified. The size label reads 'Bytes' for tiny files, not 'X.XX MB'. The context menu opens by hover and 3-dot button, not right-click. The TMS case text should be updated.",
+          "ref": "ELITEA-3764"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer: the progress indicator (step 7-8) is transient. Install a MutationObserver or poll before clicking Export, and add export-chat-modal-progress as a class-level LocatorDescriptor on ChatPage. Do not navigate with page.goto('/chat/<id>') (404). Open the chat via get_conversation_item."
+        },
+        {
+          "kind": "note",
+          "note": "Possible environment gap: this sandbox had no automation/.env.test and APP_PREFIX was unset, so every page returned 404, including the existing ELITEA-3784 test. Exporting APP_PREFIX=/app fixed it. ChatPage.navigate_to_chat(conversation_id=...) also timed out, possibly the same cause. Re-check once the prefix is set."
+        },
+        {
+          "kind": "note",
+          "note": "Sandbox has no automation/.env.test and APP_PREFIX is unset in the shell. Without exporting APP_PREFIX=/app every page 404s. Gate runs must set APP_PREFIX=/app (or provide .env.test)."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text drifts from DEV: the menu opens via hover 3-dot rather than right-click, and the option label shows '36 Bytes', not 'X.XX MB'. The filename is <chat>_<date>_<time>.zip.enc, not Conversation_[Name]_date.zip. The export is encrypted, so steps 11-15 are not verifiable. Already declared in the AFS.",
+          "ref": "test-specs/chat-interface/l1_export-with-attachments-zip-archive_ELITEA-3764.md"
+        },
+        {
+          "kind": "note",
+          "note": "The venv lacks ruff, so the lint step could not run. Locator_inventory scan was also not run. The reviewer should run both."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep, run on 'git diff main...tests/ELITEA-3764-export-attachments-zip -- automation/pages automation/tests' with the role-overrides pattern: 0 hits (no matches). The grep is Python-only. It cannot see the JS-string selectors in click_export_capturing_progress, which are the blocker below."
+        },
+        {
+          "kind": "note",
+          "note": "Case-to-AFS-to-diff triangulation. Steps 1-3 (list, menu, dialog), 4 (label regex), 5 (radio checked), 6 (exact help text), 7-9 (progress text and element via observer, download), 10 (filename regex, name == chat_name) and 16 (modal hidden, success toast, no error toast) each have a real assertion at their own step. Each AFS Coverage-Map row marked 'covered' matches an actual assertion in the spec\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_export_with_attachments_zip.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 11-15 (extract the ZIP, check JSON plus attachments folder, original filenames, JSON references) are only checked as a header and non-empty-size check on DEV. The export is AES-encrypted ('.zip.enc'), so the contents cannot be inspected. This is declared in the AFS as a clarification and in the spec docstring, and is not masking. The plain-ZIP branch (is_zipfile, .json entry, three file\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_export_with_attachments_zip.py:112"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the 'Step 7-9' assert 'Exporting chat... 3 files' in modal_text depends on the transient progress block being sampled. The AFS says the download resolved quickly for tiny files, so the progress block could be missed if the fetch is faster than the DOM render. The 3x gate will show this. If it flakes, the fix is a route delay on the export request, not a weaker assert.",
+          "ref": "automation/pages/chat_page.py:3677"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: wait_for_attachment_chip_count uses page.wait_for_function with the CHAT_ATTACHMENT_CHIP_PREFIX constant. This is compliant (UPPER_CASE testid constant) and adds no unmanaged-handle debt.",
+          "ref": "automation/pages/chat_page.py:2511"
+        },
+        {
+          "kind": "note",
+          "note": "automation/.env.test is absent in this working tree (only .env.test.example exists, and nothing exists at ../../.env.test). APP_PREFIX is therefore unset, DEV serves its 404 page, and every chat spec fails at navigate_to_chat waiting for chat-message-input (confirmed with an unrelated spec, test_chat_interface.py -k send). It is an environment gap, not a product defect. Running with APP_PREFIX=/ap\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The dispatch text was truncated after the first blocking finding, so a second finding about duplicated testids may exist that I could not see. I addressed the duplication aspect only for this method's body. Please re-dispatch if more findings remain."
+        },
+        {
+          "kind": "note",
+          "note": "ruff is not available in .venv (../.venv/bin/ruff: No such file or directory), so the lint step from the conventions could not be run."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker is fixed. The two testid literals are gone from click_export_capturing_progress. EXPORT_PROGRESS_SELECTOR and EXPORT_MODAL_SELECTOR are class-level constants built from the declared descriptors' .testid. Reading the attribute off the class body object works because LocatorDescriptor.__get__ returns self when instance is None. The new export_chat_modal_progress declaration is rung 1 (\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:1252-1261, 3682-3715"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep, run on the full diff: git diff origin/main...tests/ELITEA-3764-export-attachments-zip -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. Result: (no matches), 0 hits. wait_for_attachment_chip_count re\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation, every case row. Steps 1-3: context-menu and modal-visible helpers, plus the chat-name assertion. Step 4: regex on the option label. Step 5: radio checked. Step 6: exact help text, matching case step 6. Steps 7-8: progress_seen is a real assertion and the 'Exporting chat... 3 files' text is asserted from the observer capture. Step 9-10: filename regex plus the chat-name prefix. Step \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_export_with_attachments_zip.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 11-15 (extract the ZIP, check the attachments folder, original names, JSON references) cannot be observed on DEV because the export is encrypted. The AFS and the spec docstring declare this as a clarification. The test falls back to a non-empty file plus an ELITEA-CHAT-ENC/1 header assertion. The conditional ZIP-contents branch runs only if an environment serves a plain .zip, and the DE\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l1_export-with-attachments-zip-archive_ELITEA-3764.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the step 10 name assertion (match.group('name') == chat_name) is stricter than the AFS wording 'starts with the chat name'. That is fine, since the observed DEV filename satisfies it."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_export-with-attachments-zip-archive_ELITEA-3764.md",
+      "branch": "tests/ELITEA-3764-export-attachments-zip"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

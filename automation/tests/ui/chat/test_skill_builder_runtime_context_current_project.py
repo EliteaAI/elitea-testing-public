@@ -54,6 +54,11 @@ def _skill_names(api: SkillAPI) -> list[str]:
 class TestSkillBuilderRuntimeContext:
     """ELITEA-3316 — skill created in the current project only."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/build-skills-project-context/ELITEA-3316_skill-builder-receives-runtime-context-automatically.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3316")
     @allure.title("Skill Builder creates the skill in the current project only")
     @allure.severity(allure.severity_level.CRITICAL)

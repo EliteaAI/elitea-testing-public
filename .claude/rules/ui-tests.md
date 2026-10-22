@@ -375,9 +375,14 @@ def test_something(page):
 - `p2` - Medium priority
 - `p3` - Low priority
 
-**TMS case marker — mandatory on every case-derived test:**
+**TMS case marker + case-file link — both mandatory on every case-derived test:**
 
 ```python
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+    "chat/ELITEA-0679_image-creation-internal-tool-happy-path.md",
+    "onetest-ai Test Case link",
+)
 @pytest.mark.tms("ELITEA-0679")   # the TMS case this test automates
 @pytest.mark.p1
 @pytest.mark.ui
@@ -387,33 +392,66 @@ def test_something(page):
 
 A new test that automates a TMS case declares the case id with
 `@pytest.mark.tms(...)`, so the id reaches the Allure report — as a test-name
-prefix (`[ELITEA-0679] test_something`), a filterable tag, and a link.
+prefix (`[ELITEA-0679] test_something`), a filterable tag, and a link — **and**
+links the case **file** with `@allure.issue(<blob/main URL of the case .md>,
+"onetest-ai Test Case link")`. The pair is machine-read: on every push to `main`
+touching `tests/ui/**`, `build-test-index.yml` runs `scripts/tms_backwrite.py`,
+which **fails the run** when they disagree or the link is broken, and otherwise
+writes the case's `execution_type`/`status`/`automation_test_id`/`automation_pr`
+in the TMS repo. A wrong link means the case is never marked automated.
+
+The link must be the case file's exact path on TMS `main`
+(`…/blob/main/tests/automated-full-regression-ui/<folder>/<ID>_<slug>.md`), the
+file's name and front-matter `id:` must match the marker's id, and every id in
+`tms` must have its link (and vice versa). Find the path with
+`ls ../../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/*/<ID>_*.md`.
 
 Forms — pick the one that matches the test:
 
 ```python
-@pytest.mark.tms("ELITEA-2003")                        # one case
-@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")         # one test, several cases
+# {TMS} below = shorthand for the case folder's blob/main URL — write the full literal URL.
+@allure.issue(f"{TMS}/ELITEA-2003_….md", "onetest-ai Test Case link")   # one case
+@pytest.mark.tms("ELITEA-2003")
 
-@pytest.mark.parametrize("prompt", [                   # a case per parameter
+@allure.issue(f"{TMS}/ELITEA-2149_….md", "onetest-ai Test Case link")   # one test, several
+@allure.issue(f"{TMS}/ELITEA-2461_….md", "onetest-ai Test Case link")   # cases: a link each
+@pytest.mark.tms("ELITEA-2149", "ELITEA-2461")
+
+# A case per parameter (the toolkit pattern, tests/ui/toolkits/test_toolkit_parameterized.py):
+# one @allure.issue per case on the function, the tms id on each param.
+@allure.issue(f"{TMS}/ELITEA-1111_….md", "onetest-ai Test Case link")
+@allure.issue(f"{TMS}/ELITEA-2222_….md", "onetest-ai Test Case link")
+@pytest.mark.parametrize("prompt", [
     pytest.param("minimal", marks=pytest.mark.tms("ELITEA-1111")),
     pytest.param("detailed", marks=pytest.mark.tms("ELITEA-2222")),
 ])
+# A link that must ride on ONE param only goes in its marks — `allure.issue` is not a
+# mark there, use the mark it expands to:
+#   marks=[pytest.mark.tms("ELITEA-1111"),
+#          pytest.mark.allure_link(url, link_type="issue", name="onetest-ai Test Case link")]
 ```
 
 Function-, class- and module-level (`pytestmark`) declarations all work — use
-the scope that matches which case(s) the tests in scope cover. An explicit
-`@allure.title(...)` always wins and is never prefixed.
+the scope that matches which case(s) the tests in scope cover. **Links follow
+the same scope as the ids:** a module-level link applies to every test in the
+module, so four methods each with their own `tms` id need four method-level
+links, not four module-level ones. An explicit `@allure.title(...)` always wins
+and is never prefixed.
 
 Canonical example: `automation/tests/ui/chat/test_image_creation.py` —
-`@pytest.mark.tms("ELITEA-0679")` directly above `@pytest.mark.parametrize`.
-Mechanism: `automation/utils/tms_case_ids.py` (module docstring). Policy:
-`.agents/testing.md` § TMS case id in the test.
+`@allure.issue(...)` + `@pytest.mark.tms("ELITEA-0679")` directly above
+`@pytest.mark.parametrize`. Mechanism: `automation/utils/tms_case_ids.py` (module
+docstring); validation: `automation/scripts/tms_backwrite.py` (module docstring).
+Self-check before review (from `automation/`):
+`../.venv/bin/python scripts/tms_backwrite.py check --tms-root ../../onetest-ai-tm-Elitea`
+(`git -C ../../onetest-ai-tm-Elitea pull --ff-only` first — it validates against
+the checkout). Policy: `.agents/testing.md` § TMS case id in the test.
 
 No TMS case backs the test (framework unit tests, helper/smoke tests written
-outside a case) → no marker; that's the only exemption, never a loophole for a
-test that does trace to a case. A case-derived test merged without it is
-`CHANGES_REQUESTED`, same as a missing `allure.step` wrap.
+outside a case) → no marker and no link; that's the only exemption, never a
+loophole for a test that does trace to a case. A case-derived test merged
+without either, or with a link the check rejects, is `CHANGES_REQUESTED`, same
+as a missing `allure.step` wrap.
 
 ## UI Test Coverage Requirements
 

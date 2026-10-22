@@ -127,8 +127,13 @@ subagent under Tal's identity; never treat the absence of one as a finding). Tal
    1; that is the real check). A landing on a standing CHANGES_REQUESTED without
    the documented orchestrator disposition is still FAIL.
 7. **AFS + traceability.** AFS file exists in `test-specs/…` on `main` at the
-   landed sha; the test carries `@pytest.mark.tms("ELITEA-<id>")`. The TMS
-   back-write runs right after landing, in the lead's same session — at `Ready`
+   landed sha; the test carries `@pytest.mark.tms("ELITEA-<id>")` AND an
+   `@allure.issue` link to its case file (`.claude/rules/ui-tests.md` § Markers).
+   For UI cases the TMS back-write is written by the `build-test-index.yml` run
+   on the landed commit (its `tms-backwrite` job, committing as
+   `automation-factory`); a red run on the landed sha with the card at `Ready` =
+   FAIL (the lead should have parked it). Non-UI cases are back-written by hand in
+   the lead's same session. Either way, at `Ready`
    the TMS case must carry ALL FOUR: `execution_type: automated`,
    `status: ready`, `automation_test_id` in **Form C** — dotted, `tests.`-rooted
    per `.agents/test-automation.yaml` § `backwrite_on_done`: BOTH the `.py::`

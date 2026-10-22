@@ -143,22 +143,8 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         )
         assert pipeline_page.agent_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.agent_node_output_select.is_visible(), "Output select should be visible inline"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(agent_node_id), (
-            "Interrupt before toggle should be visible inline"
-        )
-        assert pipeline_page.agent_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after toggle should be visible inline"
-        )
-        # Disabled-state assertions (AFS step 6 — confirmed live): Interrupt
-        # before is disabled because this node is the entry point
-        # (CommonInterruptSettings.jsx entry_point === id gating); Interrupt
-        # after is disabled because the node's default transition is END.
-        assert pipeline_page.is_node_interrupt_before_toggle_disabled(agent_node_id), (
-            "Interrupt before should be disabled — this node is the pipeline's entry point"
-        )
-        assert pipeline_page.agent_node_interrupt_after_toggle.is_disabled(), (
-            "Interrupt after should be disabled — the node's default transition is END"
-        )
+        # Interrupt before/after toggles (and their disabled-state checks)
+        # were removed from node cards (EliteaUI EL-3872; human sign-off #2541).
         # Negative/absence assertions (AFS Axis 2) — a naive implementation
         # might only assert presence-after-configuration and silently skip
         # the pre-Agent-select empty state.

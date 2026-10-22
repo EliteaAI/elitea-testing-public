@@ -33,6 +33,11 @@ UI_ELEMENT_TIMEOUT = 10_000
     "automated-full-regression-ui/pipelines/ELITEA-2018_pipeline-canvas-delete-node.md",
     "onetest-ai Test Case link",
 )
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/ELITEA-2060_pipeline-node-deletion-via-node-menu.md",
+    "onetest-ai Test Case link",
+)
 def test_delete_middle_node_removes_its_edges_and_persists(page, pipeline_llm_code_end):
     """Deleting the middle node (Code 1) removes it + both its edges; LLM 1
     and END remain; the deletion persists after Save + reload."""

@@ -68,7 +68,7 @@ class TestInterjectionQueuingSequentialProcessing:
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "chat-interface/ELITEA-2875_interjection-queuing-sequential-processing.md",
+        "chat/ELITEA-2875_interjection-queuing-automated.md",
         "onetest-ai Test Case link",
     )
     def test_interjection_queues_and_processes_in_fifo_order(

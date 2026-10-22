@@ -26,6 +26,7 @@ class TestHomePage:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1049_ui-smoke-test-platform-loads.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-1049", "ELITEA-1143")
     def test_page_loads(self, page):
         """The home page should load without errors."""
         with allure.step("Step 1 — Navigate to home page"):
@@ -37,6 +38,7 @@ class TestHomePage:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-1049_ui-smoke-test-platform-loads.md", "onetest-ai Test Case link")
+    @pytest.mark.tms("ELITEA-1049", "ELITEA-1143")
     def test_main_content_visible(self, page):
         """The main content area should render after navigation."""
         with allure.step("Step 1 — Navigate to home page"):

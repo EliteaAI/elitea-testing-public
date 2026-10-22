@@ -1,74 +1,72 @@
-entry_point: START
-
 state:
-  input:
-    type: str
-  messages:
-    type: list
-  start:
-    type: str
-    value: ''
-  project_items:
-    type: str
-    value: '[]'
-  tms_test_cases:
-    type: str
-    value: '[]'
-  existing_board_issues:
-    type: str
-    value: '[]'
   all_tickets:
     type: str
     value: '[]'
-  tickets_with_cases:
-    type: str
-    value: '[]'
-  tickets_already_tracked:
-    type: str
-    value: '[]'
-  tickets_to_process:
-    type: str
-    value: '[]'
-  grouped_issues:
-    type: str
-    value: '[]'
-  current_group_index:
-    type: str
-    value: '0'
-  total_groups:
-    type: str
-    value: '0'
-  issue_title:
-    type: str
-    value: ''
-  issue_body:
-    type: str
-    value: ''
-  issue_fields:
-    type: dict
-    value: {}
-  issue_result:
-    type: str
-    value: ''
-  issue_number:
-    type: str
-    value: '0'
-  current_source_issues:
-    type: str
-    value: '[]'
-  current_source_index:
-    type: str
-    value: '0'
-  total_source_issues:
-    type: str
-    value: '0'
   comment_result:
     type: str
     value: ''
   created_issues:
     type: str
     value: '[]'
-
+  current_group_index:
+    type: str
+    value: '0'
+  current_source_index:
+    type: str
+    value: '0'
+  current_source_issues:
+    type: str
+    value: '[]'
+  existing_board_issues:
+    type: str
+    value: '[]'
+  grouped_issues:
+    type: str
+    value: '[]'
+  input:
+    type: str
+  issue_body:
+    type: str
+    value: ''
+  issue_fields:
+    type: dict
+    value: {}
+  issue_number:
+    type: str
+    value: '0'
+  issue_result:
+    type: str
+    value: ''
+  issue_title:
+    type: str
+    value: ''
+  messages:
+    type: list
+  project_items:
+    type: str
+    value: '[]'
+  start:
+    type: str
+    value: ''
+  tickets_already_tracked:
+    type: str
+    value: '[]'
+  tickets_to_process:
+    type: str
+    value: '[]'
+  tickets_with_cases:
+    type: str
+    value: '[]'
+  tms_test_cases:
+    type: str
+    value: '[]'
+  total_groups:
+    type: str
+    value: '0'
+  total_source_issues:
+    type: str
+    value: '0'
+entry_point: START
 nodes:
   - id: START
     type: code
@@ -81,33 +79,27 @@ nodes:
       - start
     structured_output: true
     transition: FetchProjectItems
-
-  # Fetch all open issues with milestone R-2.0.7
   - id: FetchProjectItems
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: search_issues
     input: []
     input_mapping:
-      search_query:
-        type: fixed
-        value: 'milestone:"R-2.0.7" state:open'
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea_issues
       max_count:
         type: fixed
         value: 200
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea_issues
+      search_query:
+        type: fixed
+        value: milestone:"R-2.0.7" state:open
     output:
       - project_items
     structured_output: true
+    tool: search_issues
+    toolkit_name: GHAutotestsTools
     transition: FetchTMSTestCases
-
-  # Fetch TMS index
   - id: FetchTMSTestCases
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: read_file
     input: []
     input_mapping:
       file_path:
@@ -119,30 +111,28 @@ nodes:
     output:
       - tms_test_cases
     structured_output: true
+    tool: read_file
+    toolkit_name: GHAutotestsTools
     transition: FetchExistingBoardIssues
-
-  # Fetch existing aqa:intake issues to detect already-tracked tickets
   - id: FetchExistingBoardIssues
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: search_issues
     input: []
     input_mapping:
-      search_query:
-        type: fixed
-        value: 'is:issue repo:EliteaAI/elitea-testing-public label:aqa:intake'
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
       max_count:
         type: fixed
         value: 200
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      search_query:
+        type: fixed
+        value: is:issue repo:EliteaAI/elitea-testing-public label:aqa:intake
     output:
       - existing_board_issues
     structured_output: true
+    tool: search_issues
+    toolkit_name: GHAutotestsTools
     transition: ClassifyTickets
-
-  # Classify all tickets: with test cases, already tracked, to process
   - id: ClassifyTickets
     type: code
     code:
@@ -321,13 +311,8 @@ nodes:
       - total_groups
     structured_output: true
     transition: CheckMoreGroups
-
-  # Loop through groups
   - id: CheckMoreGroups
     type: router
-    input:
-      - current_group_index
-      - total_groups
     condition: |
       {% set idx = current_group_index | int %}
       {% set total = total_groups | int %}
@@ -336,12 +321,13 @@ nodes:
       {% else %}
       BuildFinalOutput
       {% endif %}
+    default_output: BuildFinalOutput
+    input:
+      - current_group_index
+      - total_groups
     routes:
       - PrepareGroupIssue
       - BuildFinalOutput
-    default_output: BuildFinalOutput
-
-  # Prepare issue for current group
   - id: PrepareGroupIssue
     type: code
     code:
@@ -447,12 +433,8 @@ nodes:
       - current_source_issues
     structured_output: true
     transition: CreateIssue
-
-  # Create issue on board #9
   - id: CreateIssue
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: create_issue_on_project
     input:
       - issue_title
       - issue_body
@@ -461,31 +443,27 @@ nodes:
       board_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
-      project_title:
-        type: fixed
-        value: Test Automation Factory
-      title:
-        type: variable
-        value: issue_title
       body:
         type: variable
         value: issue_body
-      labels:
-        type: fixed
-        value:
-          - aqa:intake
       fields:
         type: variable
         value: issue_fields
       issue_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
+      project_title:
+        type: fixed
+        value: Test Automation Factory
+      title:
+        type: variable
+        value: issue_title
     output:
       - issue_result
     structured_output: true
+    tool: create_issue_on_project
+    toolkit_name: GHAutotestsTools
     transition: ExtractIssueNumber
-
-  # Extract issue number
   - id: ExtractIssueNumber
     type: code
     code:
@@ -511,8 +489,6 @@ nodes:
       - issue_number
     structured_output: true
     transition: PrepareSourceComments
-
-  # Prepare to comment on source issues
   - id: PrepareSourceComments
     type: code
     code:
@@ -536,13 +512,8 @@ nodes:
       - total_source_issues
     structured_output: true
     transition: CheckMoreSourceIssues
-
-  # Loop through source issues
   - id: CheckMoreSourceIssues
     type: router
-    input:
-      - current_source_index
-      - total_source_issues
     condition: |
       {% set idx = current_source_index | int %}
       {% set total = total_source_issues | int %}
@@ -551,12 +522,13 @@ nodes:
       {% else %}
       StoreAndNextGroup
       {% endif %}
+    default_output: StoreAndNextGroup
+    input:
+      - current_source_index
+      - total_source_issues
     routes:
       - CommentOnSourceIssue
       - StoreAndNextGroup
-    default_output: StoreAndNextGroup
-
-  # Prepare comment for source issue
   - id: CommentOnSourceIssue
     type: code
     code:
@@ -596,31 +568,39 @@ nodes:
       - source_issue_id
     structured_output: true
     transition: PostCommentToSource
-
-  # Post comment
   - id: PostCommentToSource
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: update_issue
     input:
       - source_issue_id
       - comment_body
     input_mapping:
-      repo_name:
+      state:
         type: fixed
-        value: EliteaAI/elitea_issues
+        value: null
+      assignees:
+        type: fixed
+        value: null
+      body:
+        type: fixed
+        value: null
       issue_id:
         type: variable
         value: source_issue_id
-      comment:
-        type: variable
-        value: comment_body
+      labels:
+        type: fixed
+        value: null
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea_issues
+      title:
+        type: fixed
+        value: null
     output:
       - comment_result
     structured_output: true
+    tool: update_issue
+    toolkit_name: GHAutotestsTools
     transition: NextSourceIssue
-
-  # Next source
   - id: NextSourceIssue
     type: code
     code:
@@ -634,8 +614,6 @@ nodes:
       - current_source_index
     structured_output: true
     transition: CheckMoreSourceIssues
-
-  # Store and next group
   - id: StoreAndNextGroup
     type: code
     code:
@@ -695,8 +673,6 @@ nodes:
       - current_group_index
     structured_output: true
     transition: CheckMoreGroups
-
-  # Final output like test_failure_intake.yml BuildFinalOutput
   - id: BuildFinalOutput
     type: code
     code:
