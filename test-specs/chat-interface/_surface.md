@@ -1129,6 +1129,7 @@ spec merges, both should very likely resolve `already-covered` /
 `extend-existing` against it — sequence their analysis after this one lands.
 
 ## Streaming / in-progress response widget (ELITEA-2181)
+- **DEV re-verified 2026-10-20:** every handle below now has a testid on DEV (`chat-answer-loading-placeholder`, `-thought-accordion`, `-model-chip`, `-pause-scroll-toggle`, `chat-copy-button`, `chat-regenerate-button`) and is declared in ChatPage. `/app/chat` reopens the previous conversation -> scope counts to `chat-message-item` last. Platform banners (`platform-banner-center` dialog / `-corner`) block composer clicks. Generation ~12-15s today.
 - The "loading indicator" shown between Send and content-arrival is
   `RotatingMessages.jsx` — text-cycling placeholder ("Waking the agent…", …),
   NOT a `CircularProgress` spinner. No testid.

@@ -1,0 +1,141 @@
+{
+ "batch": "chat-streaming-2181",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-chat-streaming-2181",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   30.06,
+   30.12,
+   28.94
+  ],
+  "failures": [],
+  "note": "lead gate: 3 separate pytest invocations on trunk head d8fdd6d5 (APP_PREFIX=/app, HEADLESS=true) against DEV; earlier red (Step 1 .last) fixed in d7ca6488"
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2181",
+   "outcome": "automated",
+   "note": "reviewer APPROVED (fresh re-review at d8fdd6d5); lead gate 3/3 green",
+   "findings": [
+    {
+     "kind": "note",
+     "note": "Intake case snapshot .agents/automation/chat-streaming-2181/cases/ELITEA-2181.md was missing, so I read the case from ../onetest-ai-tm-Elitea instead."
+    },
+    {
+     "kind": "note",
+     "note": "Playwright MCP chrome binary is missing at /opt/google/chrome/chrome. I substituted a scripted sync_playwright probe."
+    },
+    {
+     "kind": "note",
+     "note": "On DEV the pause-scroll toggle is visible only about 4s (4.2-7.9s), so the implementer must click it as soon as it appears."
+    },
+    {
+     "kind": "clarification",
+     "note": "Case text says 'spinning loading circle' and a bubble-level 'Pause scroll'. The live product shows a text placeholder, then a thought accordion with a model chip, and the toggle is scoped to that accordion. This is already filed as clarification #1100.",
+     "ref": "#1100"
+    },
+    {
+     "kind": "note",
+     "note": "Commits 3c0c11bd and 2d604b10 (the ELITEA-2181 spec) sit on branch tests/ELITEA-2181-streaming-response and are not merged into the batch trunk or main. The implementer should check that branch before building so the work is not duplicated."
+    },
+    {
+     "kind": "note",
+     "note": "The worktree has no automation/.env.test and APP_PREFIX is not exported, so config.py defaults app_prefix to ''. Every UI test then navigates to dev.elitea.ai/chat (404 'Page Not Found'). Gate and run agents need APP_PREFIX=/app. The ELITEA-3784 send-message test fails the same way without it."
+    },
+    {
+     "kind": "note",
+     "note": "automation/scripts/tms_backwrite.py and .venv/bin/ruff are absent in this checkout, so the TMS-pair self-check and lint could not run. The lead should run tms_backwrite.py check on the trunk before landing, if the script exists on origin/main."
+    },
+    {
+     "kind": "clarification",
+     "note": "AFS text still says 'testid needed' for several handles in its Concrete Handles table. The DEV re-verification section already retires those rows, and ChatPage already declares every one. This is stale AFS wording, not a blocker. I did not amend it.",
+     "ref": "#1100"
+    },
+    {
+     "kind": "note",
+     "note": "The case snapshot path given in the dispatch (.agents/automation/chat-streaming-2181/cases/ELITEA-2181.md) does not exist. The TMS case file path is ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/ELITEA-2181_chat-streaming-response-displayed-while-llm-generates-output.md."
+    },
+    {
+     "kind": "defect",
+     "note": "The mechanical ladder grep returned 1 hit. Command: git diff main...tests/ELITEA-2181-chat-streaming -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. Output: 60:+            expect(chat.messages_container.nth(initial_count)).to_contain_text(_PROMPT). The .nth(initia\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_chat_streaming_response.py (Step 1)"
+    },
+    {
+     "kind": "note",
+     "note": "The progressive-growth assertion is conditional. If generation finishes before the sample (the DEV window is about 8s total, and Pause scroll is visible for only about 4 to 8s), the wait_for_function exits on the copy button. Then only the monotonic len(second) >= len(first) check runs, so progressive streaming is never observed. The test still passes, which is a soft under-assertion on the case's\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "Step 3"
+    },
+    {
+     "kind": "note",
+     "note": "Step 5 clicks Pause scroll only after the Step 4 and Step 6 assertions. The toggle window on DEV can be short (the AFS records 4.2 to 7.9s), so this is a possible flake source for the hardening gate to watch. Allure steps also appear out of order (4, 6, 5, 3), which is cosmetic.",
+     "ref": "Step 5 / Step 6 ordering"
+    },
+    {
+     "kind": "note",
+     "note": "The send_button count==0 assertion is vacuous, because the button is absent whenever the input is empty. The AFS Axis 2 says a baseline proves the button reappears (count 1 and visible) once text is typed. The spec only asserts count 0 before sending and never asserts the typed-text state, so that Axis-2 claim is not delivered.",
+     "ref": "Step 6"
+    },
+    {
+     "kind": "clarification",
+     "note": "The AFS body still carries the old Concrete Handles rows ('NO TESTID / needs-adding', 'testid-only') beneath the DEV re-verification header. The header says these are superseded, so there is no blocker, but a stale-row cleanup would be tidy. Case-text drift (no spinning circle, Pause scroll scoped to the Thought accordion) is the filed CLARIFICATION #1100, so asserting the live contract is correct\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "AFS"
+    },
+    {
+     "kind": "note",
+     "note": "@pytest.mark.tms('ELITEA-2181') and @allure.issue are both present. The URL file name carries ELITEA-2181 and matches the case file under tests/automated-full-regression-ui/chat/. I did not run tms_backwrite.py check because the review is static. There is no skip, xfail or weakened assertion. All 9 case steps map to an allure.step with real assertions: Steps 1, 2, 4, 5, 7, 8, 9 are asserted, and S\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "TMS pair / masking"
+    },
+    {
+     "kind": "note",
+     "note": "DEV chat navigation returns a 404 Page Not Found page. Both the ELITEA-2181 spec and the existing test_chat_interface.py fail at 'Navigate to chat' (chat-message-input never appears), while the smoke tests pass 2/2. The cause could be DEV downtime on the chat route or a problem with the conversation_id fixture; I did not investigate either."
+    },
+    {
+     "kind": "note",
+     "note": "The first spec run used the project's default 2 reruns and took 169s to fail. For debugging, `--reruns 0` is the way to get a fast failure."
+    },
+    {
+     "kind": "note",
+     "note": "The prior blocker is fixed. Step 1 now uses `chat.messages_container.last` with `to_contain_text(_PROMPT)`, and the diff has no `.nth()` anywhere. Mechanical grep, run on the full diff against `main` for `automation/pages` and `automation/tests`: `git diff main...tests/ELITEA-2181-chat-streaming -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_pla\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "Coverage triangulation: all 9 case steps map to `allure.step` blocks. Step 1: send, user prompt visible, input cleared, send-button baseline. Step 2: placeholder then accordion and model chip. Step 3: text grows and never shrinks. Step 4: Pause scroll text. Step 5: flips to Resume scroll. Step 6: send button count is 0. Step 7: toggle and placeholder gone, Copy visible. Step 8: the four action ico\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "The `@pytest.mark.tms('ELITEA-2181')` and `@allure.issue` pair are present at test scope, and the link file name carries the same id. The case file exists in the sibling TMS clone at that path. I did not run `tms_backwrite.py check`; I relied on the file-existence check and left the implementer's pasted check line unverified."
+    },
+    {
+     "kind": "note",
+     "note": "The case snapshot `.agents/automation/chat-streaming-2181/cases/ELITEA-2181.md` is missing. I triangulated against the AFS, which embeds the case steps, and the TMS case file path exists."
+    },
+    {
+     "kind": "note",
+     "note": "Minor, non-blocking: the AFS says 'Step 7 two-signal completion', and the spec covers it with toggle-gone plus Copy-visible. Steps run in the order 2, 4, 6, 5, 3, 7 to fit the short ~10s toggle window on DEV. That is reasonable and the step labels keep the original numbers."
+    },
+    {
+     "kind": "note",
+     "note": "Minor, non-blocking: in Step 3 the `copy_action_button.count()==0` guard before `assert second != first` can race. If generation finishes between the wait and the check, the guard just skips the assertion, which is a safe direction. The monotonic-growth assert still holds."
+    },
+    {
+     "kind": "clarification",
+     "note": "The case-text drift (no spinning circle; Pause scroll scoped to the Thought accordion) is already filed as #1100. The spec asserts the live contract, as the reverse-masking guard requires.",
+     "ref": "#1100"
+    }
+   ],
+   "afs": "test-specs/chat-interface/l2_streaming-response-progressive-display_ELITEA-2181.md",
+   "branch": "tests/ELITEA-2181-chat-streaming",
+   "spec": "tests.ui.chat.test_chat_streaming_response.TestStreamingResponse.test_streaming_response_displayed_progressively"
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": []
+}

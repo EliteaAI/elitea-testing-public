@@ -4,10 +4,28 @@
 - **TMS ID**: ELITEA-2181
 - **Linked Story**: none (case `requirements: []`)
 - **Priority**: l2 (case priority: high)
-- **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`, DEV backend)
+- **Environment Explored**: DEV as deployed (`https://dev.elitea.ai/app`), re-verified 2026-10-20 (original run 2026-08 on localhost — superseded where § DEV re-verification says so)
 - **User set**: `${TEST_USER}` — on localhost, `auth_state`/`VITE_DEV_TOKEN` skips explicit Keycloak login (dev-token user renders as "Test Bot"/"TB")
 - **Analyst**: qa-engineer (agent)
 - **Status**: **ready-for-automation** — case executed end-to-end live, four times (via a from-scratch `sync_playwright` scratch script reusing the project's own `page`/`conversation_id`/`auth_state` fixtures — no Playwright MCP server was wired in this session, see § Automation Hints), across all 9 steps. One CLARIFICATION filed (issue #1100): the case's literal "spinning loading circle" / bubble-level "Pause scroll" wording does not match the live widget shape (see step 2/4 notes below) — treated as case-text drift (reverse-masking guard), not a defect; this AFS specs the ACTUAL live contract. Several interactive elements this case touches have **no testid today** (model-name chip, Pause/Resume-scroll toggle, pre-content loading placeholder, Copy button, Regenerate button) — flagged `testid needed` in § Concrete Handles, per `.agents/role-overrides.md` (missing testid is implementer work, not a reason to downgrade or soften to a MINOR defect).
+
+## DEV re-verification (2026-10-20, supersedes the testid/handle notes below)
+
+Re-executed live on `https://dev.elitea.ai/app/chat` (scripted Playwright probe, storage state; Playwright MCP chrome binary absent on this host — substitution noted). Message sent via `chat-message-input` + `chat-send-button`.
+
+**All handles now carry a testid on DEV (rung 1) — "NO TESTID / needs-adding" rows in § Concrete Handles are RETIRED; nothing is blocked on a frontend change.** Already declared in `ChatPage` (`pages/chat_page.py`): `answer_loading_placeholder` (`chat-answer-loading-placeholder`), `answer_thought_accordion`, `answer_model_chip`, `answer_pause_scroll_toggle`, `copy_action_button` (`chat-copy-button`), `regenerate_action_button` (`chat-regenerate-button`), `delete_action_button`, `read_out_button`, `message_input`, `send_button`. No new page-object fields needed; no spec exists on main for this case (grep `2181` in automation/tests = 0).
+
+Observed timeline (DEV, 1 run after dismissing the platform banner): t=0 `chat-answer-loading-placeholder` present (text "Waking the agent…"); t≈2s accordion + `chat-answer-model-chip` (text "Anthropic …"); t≈4s `chat-answer-pause-scroll-toggle` text "Pause scroll"; click -> same element text "Resume scroll" (Pause count 1->0); t≈14s completion: toggle gone, placeholder gone, `chat-regenerate-button` appears (only on the LAST message), copy/read-out/delete present; `chat-send-button` count 0 throughout (input empty); `message_input.is_editable()` True. Generation ~12-15s on DEV today (was 34-54s) — keep wait >=90s anyway.
+
+Re-verified again 2026-10-22 (fresh conversation, scripted probe): placeholder t=0.5-2.1s, model chip 2.1s, pause-scroll toggle 4.2-7.9s (very short window on DEV, click immediately), regenerate button 8.0s, send button count 0 throughout, input editable after. Handles unchanged.
+
+Gotchas for the implementer:
+- `/app/chat` reopens the PREVIOUS conversation, so earlier messages exist: `chat-answer-thought-accordion` count is 2 and `chat-copy-button`/`chat-read-out-button` counts include old messages. ALWAYS scope to `chat-message-item` `.last` (or use a fresh conversation via the `conversation_id` fixture). `chat-regenerate-button` exists only on the last message.
+- DEV shows a platform announcement dialog (`platform-banner-center`, close `platform-banner-close`) and a corner banner (`platform-banner-corner`) that intercept pointer events on the composer/send button — use the existing BasePage banner-dismiss helper before typing/sending; do not `force=True` blindly.
+- Step 2: the loading placeholder is visible only ~0-2s; assert it right after send with a short wait, tolerate it already being gone only if the accordion+chip are visible (fast DEV).
+- Step 5: `chat-answer-pause-scroll-toggle` flips text in place; assert via text (`Pause scroll` -> `Resume scroll`) on the same testid. Toggle window is ~10s on DEV; click as soon as visible.
+- Step 8: all action icons are hover-revealed; hover last message then assert visible.
+- Case-text drift (no spinning circle; Pause scroll scoped to Thought accordion) is the already-filed CLARIFICATION #1100 — assert the live contract.
 
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
