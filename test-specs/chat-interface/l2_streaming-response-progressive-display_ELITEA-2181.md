@@ -17,6 +17,8 @@ Re-executed live on `https://dev.elitea.ai/app/chat` (scripted Playwright probe,
 
 Observed timeline (DEV, 1 run after dismissing the platform banner): t=0 `chat-answer-loading-placeholder` present (text "Waking the agent…"); t≈2s accordion + `chat-answer-model-chip` (text "Anthropic …"); t≈4s `chat-answer-pause-scroll-toggle` text "Pause scroll"; click -> same element text "Resume scroll" (Pause count 1->0); t≈14s completion: toggle gone, placeholder gone, `chat-regenerate-button` appears (only on the LAST message), copy/read-out/delete present; `chat-send-button` count 0 throughout (input empty); `message_input.is_editable()` True. Generation ~12-15s on DEV today (was 34-54s) — keep wait >=90s anyway.
 
+Re-verified again 2026-10-22 (fresh conversation, scripted probe): placeholder t=0.5-2.1s, model chip 2.1s, pause-scroll toggle 4.2-7.9s (very short window on DEV, click immediately), regenerate button 8.0s, send button count 0 throughout, input editable after. Handles unchanged.
+
 Gotchas for the implementer:
 - `/app/chat` reopens the PREVIOUS conversation, so earlier messages exist: `chat-answer-thought-accordion` count is 2 and `chat-copy-button`/`chat-read-out-button` counts include old messages. ALWAYS scope to `chat-message-item` `.last` (or use a fresh conversation via the `conversation_id` fixture). `chat-regenerate-button` exists only on the last message.
 - DEV shows a platform announcement dialog (`platform-banner-center`, close `platform-banner-close`) and a corner banner (`platform-banner-corner`) that intercept pointer events on the composer/send button — use the existing BasePage banner-dismiss helper before typing/sending; do not `force=True` blindly.
