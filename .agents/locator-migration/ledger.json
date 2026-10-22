@@ -213,7 +213,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
-      "line": 6903,
+      "line": 6934,
       "kind": "xpath",
       "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
       "suggested_testid": "chat-participant-attention-card-{}",
@@ -225,7 +225,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
       "file": "pages/chat_page.py",
-      "line": 6892,
+      "line": 6923,
       "kind": "css",
       "selector": "svg path",
       "suggested_testid": "chat-participant-icon-path",
@@ -249,7 +249,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
       "file": "pages/chat_page.py",
-      "line": 6881,
+      "line": 6912,
       "kind": "xpath",
       "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
       "suggested_testid": "chat-participants-section-title-{}",
@@ -269,6 +269,18 @@
       "state": "raw",
       "added": "2026-10-19",
       "updated": "2026-10-19",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.USER_MESSAGE_AVATAR": {
+      "file": "pages/chat_page.py",
+      "line": 1487,
+      "kind": "xpath",
+      "selector": ".//*[contains(@class, 'MuiAvatar-root')]",
+      "suggested_testid": "chat-message-user-avatar",
+      "description": "UserAvatar.jsx renders an MUI <Avatar> (initials or <img>) with no testid (testId prop unset in the message header); no role/label/id exists on it, so rungs 1-4 fail. Scoped inside a chat-message-item <li>.",
+      "state": "raw",
+      "added": "2026-10-22",
+      "updated": "2026-10-22",
       "history": []
     },
     "pages/chat_page.py::ChatPage.conversation_menu_item_icon": {
@@ -333,7 +345,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 6840,
+      "line": 6871,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -345,7 +357,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 6809,
+      "line": 6840,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -357,7 +369,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 6801,
+      "line": 6832,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -365,6 +377,30 @@
       "state": "raw",
       "added": "2026-10-20",
       "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.speaking_mode_button": {
+      "file": "pages/chat_page.py",
+      "line": 1480,
+      "kind": "role",
+      "selector": "button[name='enter speaking mode']",
+      "suggested_testid": "chat-speaking-mode-button",
+      "description": "Waveform button shown instead of Send while the input is empty.",
+      "state": "raw",
+      "added": "2026-10-22",
+      "updated": "2026-10-22",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.voice_input_button": {
+      "file": "pages/chat_page.py",
+      "line": 1497,
+      "kind": "role",
+      "selector": "button[name='start voice input']",
+      "suggested_testid": "chat-voice-input-button",
+      "description": "Microphone button in the composer bottom bar.",
+      "state": "raw",
+      "added": "2026-10-22",
+      "updated": "2026-10-22",
       "history": []
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
@@ -766,20 +802,20 @@
   },
   "last_sync": "2026-10-22",
   "metric": {
-    "declared_total": 1285,
-    "declared_testid": 1223,
-    "declared_non_testid": 62,
-    "non_testid_with_hint": 41,
+    "declared_total": 1289,
+    "declared_testid": 1224,
+    "declared_non_testid": 65,
+    "non_testid_with_hint": 44,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 10,
       "fallback": 20,
       "locator": 1,
-      "role": 20,
-      "testid": 1223,
-      "xpath": 11
+      "role": 22,
+      "testid": 1224,
+      "xpath": 12
     },
-    "locator_debt": 0.0482,
+    "locator_debt": 0.0504,
     "unmanaged_handles": 351
   }
 }

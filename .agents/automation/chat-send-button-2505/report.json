@@ -1,0 +1,21 @@
+{
+ "batch": "chat-send-button-2505",
+ "cases": [
+  {
+   "id": "ELITEA-2466",
+   "outcome": "automated",
+   "spec": "tests.ui.chat.test_chat_send_button_visibility_toggle",
+   "review": "APPROVED",
+   "note": "merge agent failed on infra 403; lead merged manually"
+  }
+ ],
+ "gate": {
+  "verdict": "green",
+  "n": 3,
+  "passed": 3,
+  "runs": 3
+ },
+ "totals": {
+  "automated": 1
+ }
+}

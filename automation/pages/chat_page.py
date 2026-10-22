@@ -1475,6 +1475,37 @@ class ChatPage(BasePage):
         description="Selected model name text in the model selector.",
     )
 
+    # Composer bottom-bar controls (ELITEA-2466). The speaking-mode button
+    # (SendButton.jsx) replaces the send button while the input is empty.
+    speaking_mode_button = LocatorDescriptor(
+        role="button",
+        name="enter speaking mode",
+        suggested_testid="chat-speaking-mode-button",
+        description="Waveform button shown instead of Send while the input is empty.",
+    )
+
+    USER_MESSAGE_AVATAR = ScopedLocator(
+        xpath=".//*[contains(@class, 'MuiAvatar-root')]",
+        suggested_testid="chat-message-user-avatar",
+        description=(
+            "UserAvatar.jsx renders an MUI <Avatar> (initials or <img>) with no testid "
+            "(testId prop unset in the message header); no role/label/id exists on it, "
+            "so rungs 1-4 fail. Scoped inside a chat-message-item <li>."
+        ),
+    )
+
+    voice_input_button = LocatorDescriptor(
+        role="button",
+        name="start voice input",
+        suggested_testid="chat-voice-input-button",
+        description="Microphone button in the composer bottom bar.",
+    )
+
+    model_settings_button = LocatorDescriptor(
+        testid="model-settings-button",
+        description="Gear button opening model settings in the composer bottom bar.",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
         
