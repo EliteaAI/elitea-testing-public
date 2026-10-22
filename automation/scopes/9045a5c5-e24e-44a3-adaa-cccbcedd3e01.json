@@ -7,11 +7,12 @@
     "ELITEA-3762"
   ],
   "declaredAt": "2026-10-21T00:53:31.423Z",
-  "updatedAt": "2026-10-21T00:53:49.685Z",
+  "updatedAt": "2026-10-22T05:46:42.524Z",
   "outcomes": {
     "ELITEA-3762": {
-      "outcome": "blocked",
-      "at": "2026-10-21T00:53:49.685Z"
+      "outcome": "automated",
+      "at": "2026-10-22T05:46:42.489Z"
     }
-  }
+  },
+  "closedAt": "2026-10-22T05:46:42.524Z"
 }
