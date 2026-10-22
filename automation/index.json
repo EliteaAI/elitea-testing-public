@@ -1175,6 +1175,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.chat.test_chat_export_download.TestChatExportDownload.test_export_chat_with_messages_without_attachments",
+      "markers": [
+        "chat",
+        "p1",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3762"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-3762_export-conversation-without-attachments-json-download.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.chat.test_chat_export_menu_option.TestChatExportMenuOption.test_export_option_in_conversation_context_menu",
       "markers": [
         "chat",
