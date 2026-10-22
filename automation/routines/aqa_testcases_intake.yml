@@ -252,7 +252,7 @@ nodes:
       - before_text
     structured_output: true
     tool: read_file
-    toolkit_name: GHTMSTools
+    toolkit_name: AQA_GHTMSTools
     transition: RouteReadAfter
   - id: RouteReadAfter
     type: router
@@ -283,7 +283,7 @@ nodes:
       - after_text
     structured_output: true
     tool: read_file
-    toolkit_name: GHTMSTools
+    toolkit_name: AQA_GHTMSTools
     transition: TriageDeterministic
   # Deterministic triage. Verdicts:
   #   skip   — metadata-only change in fields the test does not depend on, or a body change
@@ -616,7 +616,7 @@ nodes:
       - existing_issues
     structured_output: true
     tool: search_issues
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: PickExistingIssue
   # The search index lags minutes, so tickets this run already created for the same case
   # (results_json) are checked too.
@@ -694,7 +694,7 @@ nodes:
       - comment_result
     structured_output: true
     tool: comment_on_issue
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: RecordResult
   # Lands on board #9 as Pre-Approved; a human still moves it to Approved.
   - id: CreateIssue
@@ -726,7 +726,7 @@ nodes:
       - issue_result
     structured_output: true
     tool: create_issue_on_project
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: ExtractIssueNumber
   - id: ExtractIssueNumber
     type: code
@@ -776,7 +776,7 @@ nodes:
       - label_result
     structured_output: true
     tool: update_issue
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: RecordResult
   - id: RecordResult
     type: code

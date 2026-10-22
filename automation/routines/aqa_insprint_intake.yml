@@ -96,7 +96,7 @@ nodes:
       - project_items
     structured_output: true
     tool: search_issues
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: FetchTMSTestCases
   - id: FetchTMSTestCases
     type: toolkit
@@ -112,7 +112,7 @@ nodes:
       - tms_test_cases
     structured_output: true
     tool: read_file
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: FetchExistingBoardIssues
   - id: FetchExistingBoardIssues
     type: toolkit
@@ -131,7 +131,7 @@ nodes:
       - existing_board_issues
     structured_output: true
     tool: search_issues
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: ClassifyTickets
   - id: ClassifyTickets
     type: code
@@ -462,7 +462,7 @@ nodes:
       - issue_result
     structured_output: true
     tool: create_issue_on_project
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: ExtractIssueNumber
   - id: ExtractIssueNumber
     type: code
@@ -599,7 +599,7 @@ nodes:
       - comment_result
     structured_output: true
     tool: update_issue
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: NextSourceIssue
   - id: NextSourceIssue
     type: code

@@ -239,7 +239,7 @@ nodes:
       - workflow_details
     structured_output: true
     tool: get_workflow_status
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: FetchWorkflowLogs
   - id: FetchWorkflowLogs
     type: toolkit
@@ -259,7 +259,7 @@ nodes:
       - workflow_logs
     structured_output: true
     tool: get_workflow_logs
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: ParseFailedTests
   - id: ParseFailedTests
     type: code
@@ -421,7 +421,7 @@ nodes:
       - tms_index
     structured_output: true
     tool: read_file
-    toolkit_name: GHTMSTools
+    toolkit_name: AQA_GHTMSTools
     transition: MapTestsToIds
   - id: MapTestsToIds
     type: code
@@ -502,7 +502,7 @@ nodes:
       - existing_issues
     structured_output: true
     tool: search_issues
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: BuildFullFilePath
   - id: BuildFullFilePath
     type: code
@@ -548,7 +548,7 @@ nodes:
       - previous_run_content
     structured_output: true
     tool: read_file
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: ClassifyTests
   - id: ClassifyTests
     type: code
@@ -1249,7 +1249,7 @@ nodes:
       - issue_result
     structured_output: true
     tool: create_issue_on_project
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: ExtractIssueNumber
   - id: ExtractIssueNumber
     type: code
@@ -1335,7 +1335,7 @@ nodes:
       - label_result
     structured_output: true
     tool: update_issue
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: StoreIssueAndNext
   - id: AddLabelMapping
     type: toolkit
@@ -1356,7 +1356,7 @@ nodes:
       - label_result
     structured_output: true
     tool: update_issue
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: StoreIssueAndNext
   - id: StoreIssueAndNext
     type: code
@@ -1494,7 +1494,7 @@ nodes:
       - existing_file_content
     structured_output: true
     tool: read_file
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: MergeRunData
   - id: MergeRunData
     type: code
@@ -1612,7 +1612,7 @@ nodes:
       - delete_result
     structured_output: true
     tool: delete_file
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: CreateMaintenanceFile
   - id: CreateMaintenanceFile
     type: toolkit
@@ -1639,7 +1639,7 @@ nodes:
       - commit_result
     structured_output: true
     tool: create_file
-    toolkit_name: GHAutotestsTools
+    toolkit_name: AQA_GHAutotestsTools
     transition: BuildFinalOutput
   - id: BuildFinalOutput
     type: code
