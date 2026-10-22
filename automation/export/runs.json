@@ -912,6 +912,61 @@
       "scenarios_automated": 1,
       "scenarios_executed": 1,
       "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/chat-json-export-3762/cost.json (v1); batch slug 'chat-json-export-3762'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-chat-new-conv-folder-2504",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 2,
+      "turns": 72,
+      "subagent_dispatches": 22,
+      "orchestrator_cost_pct": 42.1,
+      "tokens": {
+        "input": 200278,
+        "output": 185139,
+        "cache_read": 39974013,
+        "cache_create": 4743068
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "1_eu.anthropic.claude-sonnet-5",
+        "1_eu.anthropic.claude-sonnet-5-5",
+        "<synthetic>"
+      ],
+      "tokens_by_model": {
+        "<synthetic>": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_create": 0
+        },
+        "1_eu.anthropic.claude-sonnet-5": {
+          "input": 15281,
+          "output": 14873,
+          "cache_read": 3979541,
+          "cache_create": 419695
+        },
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 184975,
+          "output": 168199,
+          "cache_read": 35836822,
+          "cache_create": 4215006
+        },
+        "1_eu.anthropic.claude-haiku-4-5-20251001-v1:0": {
+          "input": 22,
+          "output": 2068,
+          "cache_read": 157650,
+          "cache_create": 108367
+        }
+      },
+      "cost_api_equivalent_usd": 20.2,
+      "cache_read_share_pct": 36.2,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/chat-new-conv-folder-2504/cost.json (v1); batch slug 'chat-new-conv-folder-2504'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }

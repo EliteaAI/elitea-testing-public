@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "da3aea66-cdba-4e08-a774-68a87dbde3a3",
+  "intent": "automation",
+  "batch": "chat-new-conv-folder-2504",
+  "cases": [
+    "ELITEA-2757"
+  ],
+  "declaredAt": "2026-10-22T10:39:04.133Z",
+  "updatedAt": "2026-10-22T11:09:53.445Z",
+  "outcomes": {
+    "ELITEA-2757": {
+      "outcome": "automated",
+      "at": "2026-10-22T11:09:38.203Z"
+    }
+  },
+  "closedAt": "2026-10-22T11:09:53.445Z"
+}
