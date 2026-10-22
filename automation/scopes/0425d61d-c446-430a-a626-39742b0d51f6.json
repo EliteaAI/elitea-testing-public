@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "0425d61d-c446-430a-a626-39742b0d51f6",
+  "intent": "automation",
+  "batch": "chat-send-button-2505",
+  "cases": [
+    "ELITEA-2466"
+  ],
+  "declaredAt": "2026-10-22T11:11:55.572Z",
+  "updatedAt": "2026-10-22T11:32:30.151Z",
+  "outcomes": {
+    "ELITEA-2466": {
+      "outcome": "automated",
+      "at": "2026-10-22T11:32:07.163Z"
+    }
+  },
+  "closedAt": "2026-10-22T11:32:30.151Z"
+}
