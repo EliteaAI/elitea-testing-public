@@ -183,6 +183,12 @@
         "p2",
         "regression",
         "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-2358"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agent_hub/ELITEA-2358_agent-hub-like-an-agent-from-the-expanded-detail-modal.md"
       ]
     },
     {
