@@ -1,0 +1,3 @@
+{"at":"2026-10-23T12:00:00Z","branch":"tests/fix-2641-agent-hub-modal","base":"main","n":3,"run":1,"verdict":"sanctioned-red","detail":"2356,2357 RED #2537 identical; 2358 PASS"}
+{"at":"2026-10-23T12:00:00Z","branch":"tests/fix-2641-agent-hub-modal","base":"main","n":3,"run":2,"verdict":"sanctioned-red","detail":"2356,2357 RED #2537 identical; 2358 PASS"}
+{"at":"2026-10-23T12:00:00Z","branch":"tests/fix-2641-agent-hub-modal","base":"main","n":3,"run":3,"verdict":"sanctioned-red","detail":"2356,2357 RED #2537 identical; 2358 PASS"}

@@ -120,3 +120,8 @@ None — all 7 case steps were reached and observed live.
 - Selector policy: testid-only, no fallback (`.agents/testing.md` § Locator policy). The like button's `data-liked` state attribute follows the exact precedent already established for the card-list like button (ELITEA-2354) and the category filter chip (ELITEA-2352) — state via `data-*`, never a state-switched testid.
 - Assert the CHAT STARTERS / Welcome Message empty-state copy against the LIVE strings ("No predefined chat starters – just type your request to begin." / "No welcome message set – the agent will start without a greeting.") for this specific 0-starter/0-welcome-message agent — do not assert the case's literal "CONVERSATION STARTERS"/"WELCOME MESSAGE" header text (drift, see § Known Defects).
 - Marker suggestion: `@pytest.mark.p2` (medium priority → l3), `@pytest.mark.regression`, `@pytest.mark.agents` (matches the rest of this family's marker set, e.g. ELITEA-2350/ELITEA-2352).
+
+## Adjustment — 2026-10-23 (card #2641, triage class C: known defect #2537)
+
+- **Symptom:** the "zero console errors" assertions fail deterministically on DEV: CSP violation on dev-vm.elitea.ai default_entity_icons/image_14.png plus 404s on application_icon/*.png (open defect EliteaAI/elitea-testing-public#2537).
+- **Handling:** assertions kept strict and unfiltered; `# Known defect: #2537` comments and an `@allure.issue` link added. Sanctioned RED until the product fix ships.

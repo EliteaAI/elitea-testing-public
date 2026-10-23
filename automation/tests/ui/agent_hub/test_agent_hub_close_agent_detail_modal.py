@@ -40,12 +40,17 @@ class TestAgentHubCloseAgentDetailModal:
         "agent_hub/ELITEA-2357_agent-hub-close-agent-detail-modal-with-x-button.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/elitea-testing-public/issues/2537",
+        "Known defect — dev-vm.elitea.ai default-icon CSP violation + application_icon 404s (console errors)",
+    )
     @pytest.mark.p2
     def test_agent_hub_close_agent_detail_modal(self, page: Page):
         """Clicking the X button in the agent detail modal closes the modal,
         and the user remains on the Catalog list view — read-only, zero
         console errors, zero 4xx/5xx."""
         agent_hub = AgentHubPage(page)
+        soft_failures: list[str] = []
 
         # Registered before navigation so console errors / failed network
         # responses from every step (navigate, open, close) are captured —
@@ -67,7 +72,9 @@ class TestAgentHubCloseAgentDetailModal:
 
         with allure.step("Step 3 — Verify the agent detail modal is displayed as an overlay"):
             expect(agent_hub.modal_dialog).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            assert not console_errors, f"Unexpected console errors while opening the modal: {console_errors}"
+            # Known defect: #2537 — recorded here, asserted strictly in the side-channel step below.
+            if console_errors:
+                soft_failures.append(f"Unexpected console errors while opening the modal: {console_errors}")
 
         with allure.step("Step 4 — Click the X button in the top-right corner of the modal"):
             assert agent_hub.modal_close_button.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
@@ -79,7 +86,9 @@ class TestAgentHubCloseAgentDetailModal:
             # After close_modal() returns, the modal should already be in
             # hidden state (the method waits for it). Verify by double-checking.
             expect(agent_hub.modal_dialog).not_to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            assert not console_errors, f"Unexpected console errors during modal close: {console_errors}"
+            # Known defect: #2537 — recorded here, asserted strictly in the side-channel step below.
+            if console_errors:
+                soft_failures.append(f"Unexpected console errors during modal close: {console_errors}")
 
         with allure.step("Step 6 — Verify the user remains on the Agent Hub list view"):
             # URL should still be /elitea-catalog
@@ -95,6 +104,7 @@ class TestAgentHubCloseAgentDetailModal:
             assert initial_card_count > 0, "Agent cards should remain visible in the Catalog after modal close"
 
         with allure.step("Side-channel check — zero console errors, zero 4xx/5xx"):
-            assert not console_errors, f"Unexpected console errors: {console_errors}"
+            # Known defect: #2537 — stays red (sanctioned RED); assertions strict, errors not filtered.
+            assert not console_errors, f"Unexpected console errors: {console_errors} (earlier: {soft_failures})"
             assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
             console_errors.stop()

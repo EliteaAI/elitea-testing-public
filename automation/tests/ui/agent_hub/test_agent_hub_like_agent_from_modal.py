@@ -61,6 +61,17 @@ def _is_known_defect_1215(text: str) -> bool:
 class TestAgentHubLikeAgentFromModal:
     """ELITEA-2358: Agent Hub — like an agent from the expanded detail modal (l2, medium)."""
 
+    @pytest.mark.tms("ELITEA-2358")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agent_hub/ELITEA-2358_agent-hub-like-an-agent-from-the-expanded-detail-modal.md",
+        "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/elitea-testing-public/issues/1215",
+        "Known defect — non-serializable console error on like/unlike click",
+    )
+    @pytest.mark.p2
     def test_agent_hub_like_agent_from_modal(self, page: Page):
         """Like an agent from the expanded detail modal: toggle state, increment
         count, and verify persistence across modal close/reopen and in the
