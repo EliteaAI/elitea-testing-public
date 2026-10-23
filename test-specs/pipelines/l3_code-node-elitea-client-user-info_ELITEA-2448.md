@@ -261,3 +261,13 @@ ELITEA-2446/2447's multi-probe discovery process.
   here contradicts or extends the existing Code-node-execution gotchas already
   documented against ELITEA-2446/2447 (which this AFS cites directly instead of
   duplicating).
+
+## Adjustment (2026-10-23, card #2577) — class A (UI drift)
+
+Pipelines 2.0 moved the embedded chat into a "Test Pipeline" side panel
+(EL-7155), hidden until the toolbar button is clicked. Step 4's
+`send_message_in_embedded_chat` hit a hidden `chat-message-input` and timed out
+(the earlier "404 page" report was a run missing `APP_PREFIX=/app`; the
+detail page loads fine). Fix: `send_message_in_embedded_chat` now calls the
+idempotent `open_test_pipeline_panel()` when the chat input is not visible.
+No assertion changed.

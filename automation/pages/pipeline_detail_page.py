@@ -7361,6 +7361,10 @@ class PipelineDetailPage(PipelineFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
+        # Pipelines 2.0 hosts the embedded chat in the 'Test Pipeline' side panel (EL-7155),
+        # hidden until opened. open_test_pipeline_panel is idempotent; skip when chat is already shown.
+        if not self.chat_input.is_visible():
+            self.open_test_pipeline_panel(timeout=timeout)
         self.chat_input.wait_for(state="visible", timeout=timeout)
         self.chat_input.fill(message)
         self.page.wait_for_timeout(300)
