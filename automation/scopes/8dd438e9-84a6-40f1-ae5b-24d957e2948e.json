@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "session": "8dd438e9-84a6-40f1-ae5b-24d957e2948e",
+  "intent": "automation",
+  "batch": "fix-2598",
+  "cases": [
+    "ELITEA-2443",
+    "ELITEA-2444",
+    "ELITEA-2450",
+    "ELITEA-2451",
+    "ELITEA-2453",
+    "ELITEA-2454"
+  ],
+  "declaredAt": "2026-10-23T08:34:41.701Z",
+  "updatedAt": "2026-10-23T08:35:33.319Z",
+  "outcomes": {
+    "ELITEA-2454": {
+      "outcome": "blocked",
+      "at": "2026-10-23T08:35:33.319Z"
+    },
+    "ELITEA-2453": {
+      "outcome": "blocked",
+      "at": "2026-10-23T08:35:33.319Z"
+    },
+    "ELITEA-2450": {
+      "outcome": "blocked",
+      "at": "2026-10-23T08:35:33.319Z"
+    },
+    "ELITEA-2451": {
+      "outcome": "blocked",
+      "at": "2026-10-23T08:35:33.319Z"
+    },
+    "ELITEA-2444": {
+      "outcome": "blocked",
+      "at": "2026-10-23T08:35:33.319Z"
+    },
+    "ELITEA-2443": {
+      "outcome": "blocked",
+      "at": "2026-10-23T08:35:33.319Z"
+    }
+  }
+}
