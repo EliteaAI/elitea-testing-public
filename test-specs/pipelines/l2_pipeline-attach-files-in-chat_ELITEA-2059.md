@@ -200,3 +200,19 @@ artifacts (4 pipelines, 2 toolkits) were deleted after verification; the implici
 `ArtifactAPI.delete_bucket("attachments")` was never called — only the throwaway
 `autotest2059bucket` from an earlier abandoned approach needed cleanup, and its
 delete 404'd harmlessly since the bucket was never actually written to).
+
+## Adjustment — #2574 (triage class A: UI drift, EL-7155 "Pipelines 2.0 Test Pipeline panel")
+
+**Old -> new.** The pipeline's embedded chat moved into a side `TestPanel` (`pipeline-test-panel`, mounted but `display:none` until opened). It is opened by the toolbar button `pipeline-test-button` ("Test Pipeline"). `chat-attach-button` is therefore not visible until the panel is open.
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| 1 testid | `pipeline-test-button` (`PipelineDetailPage.test_pipeline_button`) | n/a | testid on DEV ✓ (served, verified by passing run) |
+| 1 testid | `pipeline-test-panel` (`PipelineDetailPage.test_pipeline_panel`) | n/a | testid on DEV ✓ |
+
+Changes:
+- `open_test_pipeline_panel()` (idempotent; waits for the button to be enabled) called in ELITEA-2059 Step 3 (before the attach-button assertions) and in every state check of ELITEA-2066 (after each navigate/reload).
+- The button is **disabled while the pipeline has no node connected to End** (`getTestBlockReason`), so the ELITEA-2066 test now uses `pipeline_with_llm_id` instead of the empty `pipeline_id`.
+- The Test panel blocks Send while the pipeline has unsaved edits (`sendBlockedReason`, `useIsPipelineYamlCodeDirty`); ELITEA-2059 now Saves (after the Attachments toggle) before sending in Step 7.
+
+Expected-result changes: none. All assertions and step titles unchanged.

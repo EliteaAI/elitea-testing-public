@@ -17,7 +17,7 @@ import time
 from contextlib import contextmanager
 
 from components.mui import Dialog, Popper
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from utils.actions import action
 
@@ -611,6 +611,19 @@ class PipelineDetailPage(PipelineFormPage):
     chat_clear_button = LocatorDescriptor(
         testid="chat-clear-button",
         description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
+    )
+
+    # Pipelines 2.0 "Test Pipeline" side panel (EliteaUI EL-7155, ELITEA-2059
+    # adjust #2574): the pipeline's embedded chat lives in this panel, which
+    # stays mounted but display:none until the toolbar button opens it.
+    test_pipeline_button = LocatorDescriptor(
+        testid="pipeline-test-button",
+        description="Toolbar 'Test Pipeline' button (TestPipelineButton.jsx) — opens the embedded-chat TestPanel"
+    )
+
+    test_pipeline_panel = LocatorDescriptor(
+        testid="pipeline-test-panel",
+        description="Test Pipeline side panel (TestPanel) hosting the embedded chat; hidden until opened"
     )
 
     # File attachments (ELITEA-2059). Bare icon-only `AttachmentButton`
@@ -7284,6 +7297,20 @@ class PipelineDetailPage(PipelineFormPage):
         toggle = self.get_tools_module_toggle("attachments")
         toggle.wait_for(state="attached", timeout=timeout)
         toggle.click()
+
+    @action("Open the Test Pipeline panel")
+    def open_test_pipeline_panel(self, timeout: int = 10000):
+        """Open the embedded-chat side panel via the toolbar 'Test Pipeline' button.
+
+        Idempotent: no-op when the panel is already visible. Waits for the button
+        to become enabled (it is disabled while the pipeline is not ready).
+        """
+        if self.test_pipeline_panel.is_visible():
+            return
+        self.test_pipeline_button.wait_for(state="visible", timeout=timeout)
+        expect(self.test_pipeline_button).to_be_enabled(timeout=timeout)
+        self.test_pipeline_button.click()
+        self.test_pipeline_panel.wait_for(state="visible", timeout=timeout)
 
     def open_embedded_chat_file_chooser(self, timeout: int = 10000):
         """Click the bare attach button and return the native FileChooser dialog.

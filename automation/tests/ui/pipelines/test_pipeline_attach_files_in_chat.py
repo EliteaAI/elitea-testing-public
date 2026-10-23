@@ -101,6 +101,7 @@ def test_attach_files_in_chat(page, pipeline_with_artifact_toolkit_llm_id, tmp_p
         'Step 3 — Turn on the "Attachments" MODULES switch; attach button flips '
         "disabled -> enabled instantly, no Save required"
     ):
+        pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.chat_attach_button.is_disabled(), (
             "Attach button should be disabled before the Attachments module is enabled"
         )
@@ -158,6 +159,12 @@ def test_attach_files_in_chat(page, pipeline_with_artifact_toolkit_llm_id, tmp_p
         "content (NOT a generic summarize request); message bubble shows text+chip, "
         "composer's chip count resets to 0"
     ):
+        # Pipelines 2.0 Test panel (EL-7155) blocks Send while the pipeline has
+        # unsaved edits (the Attachments toggle from Step 3) — persist first.
+        save_response = pipeline_page.save_and_wait_for_update(
+            str(settings.elitea_project_id), pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
+        )
+        assert save_response is not None, "Save should return the persisted pipeline version"
         initial_count = pipeline_page.get_embedded_chat_message_count()
         pipeline_page.send_message_in_embedded_chat(_MESSAGE_TEXT, timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.wait_for_embedded_chat_message_count(initial_count + 1, timeout=UI_ELEMENT_TIMEOUT)
@@ -213,7 +220,7 @@ def test_attach_files_in_chat(page, pipeline_with_artifact_toolkit_llm_id, tmp_p
     "ELITEA-2066_pipeline-modules-section.md",
     "onetest-ai Test Case link",
 )
-def test_attachments_toggle_persists_across_save_and_reload(page, pipeline_id):
+def test_attachments_toggle_persists_across_save_and_reload(page, pipeline_with_llm_id):
     """Attachments MODULES toggle + attach-button state survive Save + reload, both directions.
 
     ELITEA-2059's own test proves the ON-direction, live/unsaved causal link
@@ -222,6 +229,10 @@ def test_attachments_toggle_persists_across_save_and_reload(page, pipeline_id):
     hard page reload, the toggle AND the attach button still reflect the
     persisted state — in both the enable and disable direction.
     """
+    pipeline_id = pipeline_with_llm_id
+    # EL-7155: the Test Pipeline button is disabled on an empty pipeline (no nodes
+    # connected to End), so this test uses a runnable LLM pipeline; the embedded chat
+    # (and its attach button) lives in the Test panel, reopened after every reload.
     pipeline_page = PipelineDetailPage(page)
     project_id = str(settings.elitea_project_id)
 
@@ -235,11 +246,13 @@ def test_attachments_toggle_persists_across_save_and_reload(page, pipeline_id):
         pipeline_page.navigate(pipeline_id)
         pipeline_page.dismiss_banner_if_present()
         pipeline_page.wait_for_canvas()
+        pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
         toggle = pipeline_page.get_tools_module_toggle("attachments")
         expect(toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
         assert not pipeline_page.is_tools_module_toggle_checked("attachments"), (
             "Attachments MODULES toggle should start unchecked on a fresh pipeline"
         )
+        pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.chat_attach_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.chat_attach_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
 
@@ -263,6 +276,7 @@ def test_attachments_toggle_persists_across_save_and_reload(page, pipeline_id):
     ):
         pipeline_page.navigate(pipeline_id)
         pipeline_page.wait_for_canvas()
+        pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
         reloaded_toggle = pipeline_page.get_tools_module_toggle("attachments")
         expect(reloaded_toggle).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
         # Auto-retrying assertion: the button's `disabled` attribute can lag a couple
@@ -289,6 +303,7 @@ def test_attachments_toggle_persists_across_save_and_reload(page, pipeline_id):
     ):
         pipeline_page.navigate(pipeline_id)
         pipeline_page.wait_for_canvas()
+        pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
         reloaded_toggle_off = pipeline_page.get_tools_module_toggle("attachments")
         expect(reloaded_toggle_off).not_to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.chat_attach_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)

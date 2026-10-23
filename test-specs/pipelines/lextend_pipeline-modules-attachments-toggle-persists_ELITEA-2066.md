@@ -31,18 +31,16 @@
   / `.to_be_disabled()`) absorbs this correctly; a bare `.is_disabled()` snapshot read taken and
   asserted without retry does not.
 - **Extension shape**: add a **new test function** to the same file
-  (`test_pipeline_attach_files_in_chat.py`), using the plain `pipeline_id` fixture (fresh EMPTY
-  pipeline via `PipelineAPI.create_pipeline` — no LLM node execution needed here, since this
+  (`test_pipeline_attach_files_in_chat.py`), using the `pipeline_with_llm_id` fixture (runnable LLM pipeline; adjusted from the plain empty `pipeline_id` — see § Adjustment — no LLM node execution happens here, since this
   extension only exercises the toggle/Save/reload cycle, never sends a chat message), reusing
   `PipelineDetailPage.toggle_attachments_module()`, `is_tools_module_toggle_checked()`,
   `chat_attach_button`, `save_and_wait_for_update()` — all already proven working by ELITEA-2059/
-  ELITEA-2043/ELITEA-1954 — plus the existing `navigate()` for the reload. No new page-object
-  method and no new testid required. Does not modify ELITEA-2059's existing test body.
+  ELITEA-2043/ELITEA-1954 — plus the existing `navigate()` for the reload. Adjusted: uses the new `PipelineDetailPage.open_test_pipeline_panel()` (see § Adjustment). Does not modify ELITEA-2059's existing test body.
 
 ## Preconditions
 - User is authenticated (localhost: automatic via `VITE_DEV_TOKEN`; deployed envs: Keycloak via `${TEST_USER}`).
-- A pipeline is open for editing — satisfied in-test via the `pipeline_id` fixture (fresh empty
-  pipeline, no nodes needed since this case never executes the pipeline).
+- A pipeline is open for editing — satisfied in-test via the `pipeline_with_llm_id` fixture (LLM node connected to End,
+  required so the Test Pipeline button is enabled; the pipeline is never executed).
 
 ## Test Data
 - (none required, per the source case's own Test Data table) — the `pipeline_id` fixture's
@@ -155,8 +153,8 @@ All handles are pre-existing — reused verbatim, zero new testid work.
 
 ## Automation Hints
 - Framework: Playwright + pytest, per `.agents/testing.md`.
-- Fixture: plain `pipeline_id` (fresh empty pipeline via `PipelineAPI.create_pipeline`) — no LLM
-  node needed, this extension never sends a chat message or executes the pipeline.
+- Fixture: `pipeline_with_llm_id` (adjusted from plain `pipeline_id`, see § Adjustment) — the
+  extension never sends a chat message or executes the pipeline; the node only enables the Test Pipeline button.
 - **Critical: use Playwright's auto-retrying `expect()` assertions for the post-reload checks**
   (`expect(pipeline_page.chat_attach_button).to_be_disabled(timeout=...)` /
   `.not_to_be_disabled(timeout=...)`), NOT a bare `.is_disabled()` snapshot compared with a plain
@@ -171,3 +169,12 @@ All handles are pre-existing — reused verbatim, zero new testid work.
 - `project_id` — reuse whatever fixture/settings value the file's existing test already resolves
   it from (`test_attach_files_in_chat.py`'s own `save_and_wait_for_update` call site is the
   pattern to copy).
+
+## Adjustment — #2574 (triage class A: UI drift, EL-7155 Test Pipeline panel, frontend 9a94b136)
+
+The embedded chat and its attach button now live in the `pipeline-test-panel` side panel, hidden until the toolbar button `pipeline-test-button` is clicked.
+- Fixture switched from empty `pipeline_id` to `pipeline_with_llm_id`: the Test Pipeline button is disabled when no node is connected to End.
+- `PipelineDetailPage.open_test_pipeline_panel()` (new, idempotent) is called after every navigate/reload, before the attach-button assertions.
+- Superseded statements: "plain `pipeline_id` fixture" and "no new page-object method" no longer hold.
+
+Expected-result changes: none.
