@@ -1694,6 +1694,12 @@ class PipelineDetailPage(PipelineFormPage):
     # known up front.
     ADD_NODE_MENU_ITEM_PREFIX = '[data-testid^="pipeline-add-node-menu-item-"]'
 
+    # Display label (as ``add_node()`` callers pass it) -> internal type key.
+    ADD_NODE_TYPE_BY_LABEL = {
+        "Human-in-the-loop": "hitl",
+        "State modifier": "state_modifier",
+    }
+
     # The item's label <span>, resolved inside one menu item. DEV items render
     # the label plus a one-line description <span> (bodySmall) beneath it, so
     # an item's whole text_content() is "<label><description>" — read the label
@@ -3406,13 +3412,12 @@ class PipelineDetailPage(PipelineFormPage):
             timeout: Maximum wait time for menu to appear.
         """
         logger.info("Adding node: %s", node_type)
-        # The green + button is the MuiIconButton-colorPrimary in the
-        # canvas area (not the header three-dot button).
-        add_btn = self.page.locator("button.MuiIconButton-colorPrimary").first
-        add_btn.click()
+        self.add_node_button.click()
         self.page.wait_for_timeout(300)
 
-        menu_item = self.page.get_by_role("menuitem", name=node_type, exact=True)
+        # Display label -> internal type key rendered in the item's testid.
+        type_key = self.ADD_NODE_TYPE_BY_LABEL.get(node_type, node_type.lower())
+        menu_item = self.page.locator(self.ADD_NODE_MENU_ITEM_BY_TYPE.format(type_key))
         menu_item.wait_for(state="visible", timeout=timeout)
         menu_item.click()
         self.page.wait_for_timeout(1000)
