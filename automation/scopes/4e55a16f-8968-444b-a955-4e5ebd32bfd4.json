@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "4e55a16f-8968-444b-a955-4e5ebd32bfd4",
+  "intent": "automation",
+  "batch": "adjust-2353",
+  "cases": [
+    "ELITEA-2353"
+  ],
+  "declaredAt": "2026-10-23T03:29:35.711Z",
+  "updatedAt": "2026-10-23T03:29:35.747Z",
+  "outcomes": {
+    "ELITEA-2353": {
+      "outcome": "merged-sanctioned-red",
+      "at": "2026-10-23T03:29:35.747Z"
+    }
+  }
+}
