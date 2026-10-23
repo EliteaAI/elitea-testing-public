@@ -1,0 +1,1 @@
+{"slug":"adjust-2353","card":2565,"cases":[{"id":"ELITEA-2353","outcome":"merged-sanctioned-red","triage":"A (dataset drift: Elitea category 1->3 agents) + C (Step 7 = open #2537)","review":"APPROVED","commit_unit":"a807b38a"}],"gate":{"n":3,"verdict":"sanctioned-red","detail":"3/3 identical Step 7 console-error failure, signature of #2537; Steps 1-6 green"}}
