@@ -303,3 +303,25 @@ accurate.)
 - Step 3(b) absence check: `ADD_NODE_MENU_ITEM_BY_TYPE.format("custom")` +
   `expect(...).to_have_count(0)`, asserted after the positive list check
   (see § Adjustment → Implementer guidance).
+
+## Adjustment 2 — #2568 (2026-10-23) — triage class **A (UI drift)**
+
+CI run #313 failure ("Timeout on locator click") did not reproduce as a timeout locally; the
+real, deterministic (3/3 on DEV) drifts were:
+
+1. **Menu items now carry a description.** DEV renders each `pipeline-add-node-menu-item-{type}`
+   as `<span bodyMedium>label</span><span bodySmall>description</span>`, so the item's whole
+   `text_content()` is `"AgentExecutes tasks using…"`. The test now reads the **label span only**
+   (`ADD_NODE_MENU_ITEM_LABEL`, `ScopedLocator` css rung, `suggested_testid=pipeline-add-node-menu-item-label`;
+   `MuiTypography-bodyMedium` is the design-system variant class, not a `css-*` hash).
+   The list assertion is still exact `==` over the 10 labels in DOM order.
+2. **First node on an empty canvas now also creates the END node (EL-7154,
+   EliteaUI@70072659).** Canvas goes `0 -> ['END', 'LLM 1']`; the old `count + 1` could no
+   longer hold. Replaced with: the LLM node is newly added AND the only new non-END node.
+   Same strength (exactly one new user node), not a weakening.
+
+**Expected-result changes:** none to what the case verifies (menu lists 10 types, Custom absent,
+LLM node added, Escape dismisses without adding). Step 4/6 *counts* now account for the END node.
+
+Handles: `ADD_NODE_MENU_ITEM_LABEL` | `css=span.MuiTypography-bodyMedium` scoped in item |
+`pipeline-add-node-menu-item-label` | ladder — no testid on DEV.

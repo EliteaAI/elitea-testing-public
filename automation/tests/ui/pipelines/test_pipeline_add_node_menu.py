@@ -95,7 +95,7 @@ def test_add_node_menu_lists_types_adds_node_and_dismisses(page, pipeline_id):
         pipeline_page.wait_for_popup_menu_hidden(timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 4 — Click 'LLM' to add an LLM node"):
-        node_count_before = pipeline_page.get_node_count()
+        node_ids_before = set(pipeline_page.get_node_ids())
         # Testid-based open+select pair (not the legacy raw-handle add_node()):
         # get_add_node_menu_items() opens the menu and leaves it open for the
         # companion select_add_node_menu_item() to click the "llm" item by its
@@ -104,8 +104,14 @@ def test_add_node_menu_lists_types_adds_node_and_dismisses(page, pipeline_id):
         pipeline_page.select_add_node_menu_item("llm", timeout=UI_ELEMENT_TIMEOUT)
         llm_node_id = pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
         assert llm_node_id, "LLM node should have a non-empty data-id after being added"
-        assert pipeline_page.get_node_count() == node_count_before + 1, (
-            "Node count should increase by exactly 1 after adding the LLM node"
+        # Adjusted (#2568, EL-7154): on an empty canvas DEV now also creates the
+        # terminal END node together with the first node added (0 -> LLM 1 + END).
+        # Same strength as the old "+1": exactly ONE new non-END node (the LLM
+        # one) and nothing beyond the END terminal appeared.
+        added_ids = set(pipeline_page.get_node_ids()) - node_ids_before
+        assert llm_node_id in added_ids, f"LLM node '{llm_node_id}' should be newly added, got {added_ids}"
+        assert added_ids - {"END"} == {llm_node_id}, (
+            f"Exactly one new non-END node (the LLM node) should appear, got new nodes: {added_ids}"
         )
 
     with allure.step(
