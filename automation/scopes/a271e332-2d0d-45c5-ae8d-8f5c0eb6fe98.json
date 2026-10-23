@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "a271e332-2d0d-45c5-ae8d-8f5c0eb6fe98",
+  "intent": "automation",
+  "batch": "adjust-2447",
+  "cases": [
+    "ELITEA-2447"
+  ],
+  "declaredAt": "2026-10-23T07:06:38.187Z",
+  "updatedAt": "2026-10-23T07:13:36.563Z",
+  "outcomes": {
+    "ELITEA-2447": {
+      "outcome": "refuted-class-D",
+      "at": "2026-10-23T07:13:36.563Z"
+    }
+  }
+}
