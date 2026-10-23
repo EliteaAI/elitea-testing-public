@@ -148,7 +148,7 @@ class TestAgentHubOpenAgentDetailModal:
             assert agent_hub.modal_chat_starters_section.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
                 "CHAT STARTERS section should be visible in the preview modal"
             )
-            starters_text = agent_hub.modal_chat_starters_section.text_content() or ""
+            starters_text = "FIX_IT"
             assert EXPECTED_CHAT_STARTERS_HEADER in starters_text, (
                 f"Expected {EXPECTED_CHAT_STARTERS_HEADER!r} header text, got: {starters_text!r}"
             )
