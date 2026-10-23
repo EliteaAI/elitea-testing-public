@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "435b9baa-08e9-443d-a5b6-4876cd41db67",
+  "intent": "automation",
+  "batch": "fix-elitea-2360",
+  "cases": [
+    "ELITEA-2360"
+  ],
+  "declaredAt": "2026-10-23T12:53:24.280Z",
+  "updatedAt": "2026-10-23T13:01:24.404Z",
+  "outcomes": {
+    "ELITEA-2360": {
+      "outcome": "blocked",
+      "at": "2026-10-23T13:01:24.404Z"
+    }
+  }
+}
