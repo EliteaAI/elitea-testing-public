@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "edd44dad-01f4-4e25-a6a3-27ff1a1c1133",
+  "intent": "automation",
+  "batch": "adjust-0862",
+  "cases": [
+    "ELITEA-0862"
+  ],
+  "declaredAt": "2026-10-23T07:47:33.185Z",
+  "updatedAt": "2026-10-23T07:52:20.974Z",
+  "outcomes": {
+    "ELITEA-0862": {
+      "outcome": "not-started",
+      "at": "2026-10-23T07:52:20.933Z"
+    }
+  },
+  "closedAt": "2026-10-23T07:52:20.974Z"
+}
