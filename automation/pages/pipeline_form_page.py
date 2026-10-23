@@ -224,6 +224,25 @@ class PipelineFormPage(BasePage):
     # Getters
     # ------------------------------------------------------------------
 
+    def replace_name(self, name: str) -> None:
+        """Replace the (default-prefilled) Name field content with *name*.
+
+        The create form pre-fills Name with a default ("Pipeline N",
+        ``useDefaultPipelineName``), so typing alone appends to it. Uses
+        ``select_text()`` + ``Backspace`` (``Control+a`` is unreliable on
+        MUI fields) then real key events so React onChange fires.
+        """
+        self.name_input.click()
+        self.name_input.select_text()
+        self.page.wait_for_function(
+            """(el) => el.value.length === 0 ||
+               (el.selectionStart === 0 && el.selectionEnd === el.value.length)""",
+            arg=self.name_input.element_handle(),
+            timeout=5000,
+        )
+        self.name_input.press("Backspace")
+        self.name_input.press_sequentially(name, delay=20)
+
     def get_name(self) -> str:
         """Read the current value of the Name field.
 
