@@ -1,0 +1,27 @@
+{
+  "v": 1,
+  "session": "a05fd024-ef97-475b-a89d-41e34a336fa5",
+  "intent": "automation",
+  "batch": "fix-2591",
+  "cases": [
+    "ELITEA-0853",
+    "ELITEA-1955",
+    "ELITEA-2004",
+    "ELITEA-2010",
+    "ELITEA-2027",
+    "ELITEA-2028",
+    "ELITEA-2035",
+    "ELITEA-2039",
+    "ELITEA-2040",
+    "ELITEA-2045",
+    "ELITEA-2046"
+  ],
+  "declaredAt": "2026-10-23T08:22:54.839Z",
+  "updatedAt": "2026-10-23T08:23:38.695Z",
+  "outcomes": {
+    "ELITEA-2004": {
+      "outcome": "blocked",
+      "at": "2026-10-23T08:23:38.695Z"
+    }
+  }
+}
