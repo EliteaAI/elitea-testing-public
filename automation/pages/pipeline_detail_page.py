@@ -21,7 +21,7 @@ from playwright.sync_api import Locator, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from utils.actions import action
 
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from .pipeline_form_page import PipelineFormPage
 
 logger = logging.getLogger("elitea.pages.pipeline_detail")
@@ -1693,6 +1693,18 @@ class PipelineDetailPage(PipelineFormPage):
     # an open Add Node menu, in DOM order — same testid family, no type
     # known up front.
     ADD_NODE_MENU_ITEM_PREFIX = '[data-testid^="pipeline-add-node-menu-item-"]'
+
+    # The item's label <span>, resolved inside one menu item. DEV items render
+    # the label plus a one-line description <span> (bodySmall) beneath it, so
+    # an item's whole text_content() is "<label><description>" — read the label
+    # span only (ELITEA-2030 / #2568). `MuiTypography-bodyMedium` is the design
+    # system's typography VARIANT class (the description uses bodySmall), not a
+    # generated `css-*` hash or a `Mui*-root` structural class.
+    ADD_NODE_MENU_ITEM_LABEL = ScopedLocator(
+        css="span.MuiTypography-bodyMedium",
+        suggested_testid="pipeline-add-node-menu-item-label",
+        description="Label span inside an Add Node menu item; sibling bodySmall span holds the description",
+    )
 
     # Generic "any canvas popup menu" check — shared DOM shape across two
     # distinct app components, each with its own real testid (not a raw
@@ -3439,7 +3451,9 @@ class PipelineDetailPage(PipelineFormPage):
         items = self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
         items.first.wait_for(state="visible", timeout=timeout)
         count = items.count()
-        return [(items.nth(i).text_content() or "").strip() for i in range(count)]
+        return [
+            (self.ADD_NODE_MENU_ITEM_LABEL.within(items.nth(i)).text_content() or "").strip() for i in range(count)
+        ]
 
     def select_add_node_menu_item(self, node_type: str, timeout: int = 5000) -> None:
         """Click a node type in an ALREADY-OPEN Add Node menu.
