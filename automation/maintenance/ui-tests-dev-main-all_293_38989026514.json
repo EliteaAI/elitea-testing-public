@@ -1,0 +1,156 @@
+{
+  "runs": {
+    "20261017014337": {
+      "total": 251,
+      "details": [
+        {
+          "id": "ELITEA-2357",
+          "automation_test_id": "tests.ui.agent_hub.test_agent_hub_close_agent_detail_modal.TestAgentHubCloseAgentDetailModal.test_agent_hub_close_agent_detail_modal",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2464",
+          "failure_type": "assertion-failure",
+          "failure_summary": "CSP violation blocking default entity icon image_14.png + 404 resource errors on agent hub modal open",
+          "reasoning": "Failed all 3 retries with identical error: image 'https://dev-vm.elitea.ai/app/default_entity_icons/image_14.png' blocked by CSP img-src directive, plus 404 resource failures. The CSP policy does not include the app's own default_entity_icons path, indicating a real product misconfiguration or missing resource."
+        },
+        {
+          "id": "ELITEA-2353",
+          "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_multiple_categories.TestAgentHubFilterMultipleCategories.test_agent_hub_filter_by_multiple_categories",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2465",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Multi-category filter returns wrong card count (got 7, expected 5)",
+          "reasoning": "Clear functional assertion failure: 'Expected exactly 5 agent cards total (4 Business Analyst + 1 Elitea, no cards from other categories), got 7'. The filter is leaking cards from other categories, indicating a real product bug in multi-category filtering logic."
+        },
+        {
+          "id": "ELITEA-2352",
+          "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_single_category.TestAgentHubFilterSingleCategory.test_agent_hub_filter_by_single_category",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2466",
+          "failure_type": "assertion-failure",
+          "failure_summary": "CSP violation blocking default entity icon image_14.png + 404 resource errors on single category filter",
+          "reasoning": "Failed all 3 retries with identical CSP violation for image_14.png + 404 errors, same root cause as close_agent_detail_modal. This is a consistent product-level issue across all agent hub tests that load agent cards."
+        },
+        {
+          "id": "ELITEA-2356",
+          "automation_test_id": "tests.ui.agent_hub.test_agent_hub_open_agent_detail_modal.TestAgentHubOpenAgentDetailModal.test_agent_hub_open_agent_detail_modal",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2464",
+          "failure_type": "assertion-failure",
+          "failure_summary": "CSP violation blocking default entity icon image_14.png + 404 resource errors on agent hub modal open",
+          "reasoning": "Failed all 3 retries with identical CSP + 404 errors (same pattern as other agent hub modal tests). The error is deterministic and product-level, not infrastructure."
+        },
+        {
+          "id": "ELITEA-2350",
+          "automation_test_id": "tests.ui.agent_hub.test_agent_hub_page_loads_private_project.TestAgentHubPageLoadsPrivateProject.test_agent_hub_page_loads_private_project",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2467",
+          "failure_type": "assertion-failure",
+          "failure_summary": "CSP violation blocking default entity icon image_14.png + 404 resource errors on private project agent hub page load",
+          "reasoning": "Failed all 3 retries with identical CSP + 404 errors. Same root cause as other agent hub tests \u2014 CSP policy missing the app's own default_entity_icons path and/or 404 on those resources."
+        },
+        {
+          "id": "ELITEA-2363",
+          "automation_test_id": "tests.ui.agent_hub.test_agent_hub_search_bar_filters_in_real_time.TestAgentHubSearchBarFiltersInRealTime.test_agent_hub_search_bar_filters_in_real_time",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2468",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Search bar returned non-matching card 'QA Test Case GeneratorNew0' when filtering for 'story'",
+          "reasoning": "Clear functional assertion failure: 'Every visible card should contain story (case-insensitive), but found non-matching card(s): [QA Test Case GeneratorNew0]'. The real-time search filter is not filtering correctly \u2014 a real product bug. Failed on first attempt without retry."
+        },
+        {
+          "id": "ELITEA-2360",
+          "automation_test_id": "tests.ui.agent_hub.test_agent_hub_start_conversation_creates_new_chat.TestAgentHubStartConversationCreatesNewChat.test_agent_hub_start_conversation_creates_new_chat",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2469",
+          "failure_type": "assertion-failure",
+          "failure_summary": "CSP violation blocking default entity icon image_14.png + 404 resource errors when starting conversation from agent hub",
+          "reasoning": "Failed all 3 retries with same CSP + 404 pattern as other agent hub modal tests. Deterministic product-level issue."
+        },
+        {
+          "id": "ELITEA-2367",
+          "automation_test_id": "tests.ui.agent_hub.test_empty_state.TestCatalogEmptyState.test_empty_state_when_search_matches_no_agents",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2470",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Unexpected console errors (CSP + 404) on agent hub empty state page",
+          "reasoning": "Fails with 'Expected no console errors, found 3 error(s)' \u2014 same CSP violation for image_14.png + 404 errors seen across all agent hub tests. The same underlying product misconfiguration triggers even on the empty state page."
+        },
+        {
+          "id": "ELITEA-0143",
+          "automation_test_id": "tests.ui.chat.test_agent_with_toolkit_chat.TestAgentWithToolkitInChat.test_agent_with_toolkit_executes_in_chat",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2471",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Toolkit response received but missing expected branch 'main' in output",
+          "reasoning": "The test asserted 'Expected toolkit response to include the known branch main. Response: Branches in EliteaAI/elitea-testing-public:' \u2014 the response was received but 'main' was not present in the branch listing. This is a functional regression: either the branch was renamed/removed, the response was truncated, or the toolkit output format changed. Not a timeout or infra issue."
+        },
+        {
+          "id": "ELITEA-0679",
+          "automation_test_id": "tests.ui.chat.test_image_creation.TestImageCreation.test_create_image[minimal_prompt]",
+          "resolution": "to_rerun",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2472",
+          "failure_type": "timeout",
+          "failure_summary": "AI image generation response timed out (180000ms) \u2014 transient content",
+          "reasoning": "Failed with 'TimeoutError: AI response did not complete within 180000ms \u2014 Copy button appeared but content was transient'. AI generation latency is inherently non-deterministic; the parallel test with 'detailed_description' passed. This is consistent with intermittent AI backend slowness rather than a product bug. Recommend rerun."
+        },
+        {
+          "id": "ELITEA-1866",
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_creation_create_bucket_verify_list_files.TestToolkitCreationCreateBucketVerifyListFiles.test_create_artifact_toolkit_creates_bucket_verify_list_files",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2401"
+        },
+        {
+          "id": "ELITEA-3754",
+          "automation_test_id": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTour.test_sidebar_interactive_tour_completes_via_next",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2473",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for resource link to open in new tab during sidebar interactive tour",
+          "reasoning": "Failed all 3 retries with 'Locator.wait_for: Timeout 10000ms exceeded' at the 'Open a resource link in a new tab' step. Consistent failure across all retries suggests the tour's resource link is either broken, the target element changed, or the feature was modified. Not a flaky infra issue."
+        },
+        {
+          "id": "ELITEA-2036",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2474",
+          "failure_type": "element-not-found",
+          "failure_summary": "Timeout waiting for LLM model selector element in custom node configuration",
+          "reasoning": "Failed all 3 retries with 'Locator.wait_for: Timeout 5000ms exceeded' at 'Select LLM model' step. Consistent failure indicates the LLM model selector UI element is missing, hidden, or the UI has changed in the pipeline custom node configuration panel."
+        },
+        {
+          "id": "ELITEA-2058",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipelineStreaming.test_long_response_streams_progressively",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2475",
+          "failure_type": "element-not-found",
+          "failure_summary": "Timeout waiting for LLM model selector element during pipeline streaming execution setup",
+          "reasoning": "Failed all 3 retries with identical 'Locator.wait_for: Timeout 5000ms exceeded' at 'Select LLM model' step \u2014 same failure pattern as test_custom_node_configuration. Both pipeline tests share the same root cause: LLM model selector UI element is inaccessible."
+        },
+        {
+          "id": "ELITEA-2051",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2476",
+          "failure_type": "infrastructure",
+          "failure_summary": "Test precondition unmet: CI test user has no second non-public project to fork from",
+          "reasoning": "Explicit precondition failure: 'ELITEA-2051 precondition unmet: the acting user belongs to no project usable as a fork SOURCE \u2014 every membership is either the fork target or the public project (1, both excluded)'. This is a test environment data/setup issue \u2014 the CI user account lacks the required project membership. Needs investigation to fix the CI environment setup, not a product code bug per se, but not a transient flake either."
+        },
+        {
+          "id": "ELITEA-3750",
+          "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2477",
+          "failure_type": "element-not-found",
+          "failure_summary": "Timeout clicking 'Save current edits as a new version' button during skill import non-base version",
+          "reasoning": "Failed all 3 retries with 'Locator.click: Timeout 10000ms exceeded' at 'Save current edits as a new version' step. Consistent failure across all retries indicates the save-version button is missing, disabled, or the UI flow for creating a non-base version has changed."
+        },
+        {
+          "id": "ELITEA-2440",
+          "automation_test_id": "tests.ui.skills.test_skill_test_panel_version_instructions.TestSkillTestPanelVersionInstructions.test_test_panel_uses_selected_skill_version_instructions",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2447"
+        }
+      ]
+    }
+  }
+}
