@@ -88,8 +88,11 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
         for target_name in _OUTPUT_TARGETS:
             node_ids_before = set(pipeline_page.get_node_ids())
             pipeline_page.add_node("Printer")
-            pipeline_page.wait_for_node_count(len(node_ids_before) + 1, timeout=UI_ELEMENT_TIMEOUT)
-            new_printer_id = (set(pipeline_page.get_node_ids()) - node_ids_before).pop()
+            # Total canvas count is not a stable handle: an empty pipeline renders 0 nodes and the
+            # first added node brings the synthetic END node with it (+2). Previously-added printers
+            # are already renamed (no longer "Printer N"), so exactly one "Printer" node is new.
+            pipeline_page.wait_for_node_type_count("printer", 1, timeout=UI_ELEMENT_TIMEOUT)
+            new_printer_id = (set(pipeline_page.get_node_ids()) - node_ids_before - {"END"}).pop()
             renamed_id = pipeline_page.edit_node_name(new_printer_id, target_name)
             assert renamed_id == target_name, (
                 f"edit_node_name should return the verbatim new name as the node's new "
@@ -101,7 +104,8 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
         assert set(_OUTPUT_TARGETS).issubset(node_ids_after_setup), (
             f"Renamed target nodes should be on canvas as {_OUTPUT_TARGETS!r}, got {node_ids_after_setup!r}"
         )
-        assert len(node_ids_after_setup) == len(node_ids_before_printers) + 3, (
+        # END is synthetic: it appears with the first added node, so it is excluded from the delta.
+        assert len(node_ids_after_setup - node_ids_before_printers - {"END"}) == 3, (
             "Exactly 3 Printer nodes should have been added during setup"
         )
 
@@ -158,6 +162,9 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
         "Step 5 — Wire DECISION OUTPUTS by drag-connecting the Output handle to each "
         "target node; verify chips + immediate canvas edges (before Save)"
     ):
+        # Expanded node cards push the Printer targets out of the visible pane; Fit View
+        # brings every handle on-screen so the drag has real pixels to start/end on.
+        pipeline_page.fit_canvas_view(timeout=UI_ELEMENT_TIMEOUT)
         for target_name in _OUTPUT_TARGETS:
             pipeline_page.connect_nodes(
                 decision_node_id, target_name, source_handle="nodes", timeout=UI_ELEMENT_TIMEOUT
@@ -208,6 +215,9 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
     with allure.step(
         "Step 8 — Verify canvas shows both output handles labeled 'Output' and 'Default output'"
     ):
+        # Handle labels only render on full-size (expanded) cards; the app switches every card
+        # to a mini card below zoom 0.6 (nodeCard.helpers.js MINI_CARD_ZOOM) — precondition, not an assertion change.
+        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.decision_node_output_handle.is_visible(), "Output handle should be visible"
         assert pipeline_page.decision_node_output_handle.text_content().strip() == "Output", (
             "Output handle's visible label should read exactly 'Output'"

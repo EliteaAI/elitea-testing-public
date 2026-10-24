@@ -3653,6 +3653,7 @@ class PipelineDetailPage(PipelineFormPage):
         "router": "Router",
         "decision": "Decision",
         "toolkit": "Toolkit",
+        "printer": "Printer",
     }
     RF_NODE_TESTID_PREFIX = '[data-testid^="rf__node-{}"]'
     # Exact-id sibling of RF_NODE_TESTID_PREFIX — for callers that already
@@ -3660,6 +3661,10 @@ class PipelineDetailPage(PipelineFormPage):
     # and need to re-locate that SAME node, not "any node of this type".
     # Same ReactFlow-injected `rf__node-{id}` testid, same #579 provenance.
     RF_NODE_TESTID = '[data-testid="rf__node-{}"]'
+    # Node header name label (double-click to rename). Rung 1: DEV serves this testid
+    # (NodeCardHeader.jsx). Replaces the `.MuiTypography-labelMedium` `.first` pick, which
+    # on Printer cards now matches a different label before the name.
+    NODE_NAME_TESTID = '[data-testid="pipeline-node-name"]'
 
     def wait_for_node_type_count(
         self, node_type: str, expected_count: int, timeout: int = 10000
@@ -4471,7 +4476,7 @@ class PipelineDetailPage(PipelineFormPage):
         node = self.page.locator(f'[data-id="{node_id}"]')
 
         # Double-click the name label to activate inline editing
-        name_label = node.locator(".MuiTypography-labelMedium").first
+        name_label = node.locator(self.NODE_NAME_TESTID)
         name_label.dblclick()
         self.page.wait_for_timeout(300)
 
