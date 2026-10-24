@@ -1,0 +1,42 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Fri Oct 23 11:06:00 UTC 2026","Fri Oct 23 11:06:07 UTC 2026","6359","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","[ELITEA-2366] test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
+
+        Steps:
+        1. Navigate to Agent Hub (Catalog)
+        2. Click the Trending category filter chip
+        3. Verify the filter is highlighted/active
+        4. Verify agents are displayed under Trending section
+        5. Verify the section header ""Trending"" is visible
+        "
+"failed","Fri Oct 23 11:06:07 UTC 2026","Fri Oct 23 11:06:14 UTC 2026","7133","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","[ELITEA-2367] Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
+"failed","Fri Oct 23 11:03:47 UTC 2026","Fri Oct 23 11:03:53 UTC 2026","6854","tests.ui.agent_hub","test_agent_hub_filter_single_category","TestAgentHubFilterSingleCategory","","","[ELITEA-2352] test_agent_hub_filter_by_single_category","Clicking a single category filter-rail chip selects that chip and
+        filters the Agent Hub content to that category's agents only."
+"passed","Fri Oct 23 11:03:54 UTC 2026","Fri Oct 23 11:04:03 UTC 2026","8973","tests.ui.agent_hub","test_agent_hub_like_agent_from_modal","TestAgentHubLikeAgentFromModal","","","test_agent_hub_like_agent_from_modal","Like an agent from the expanded detail modal: toggle state, increment
+        count, and verify persistence across modal close/reopen and in the
+        card list."
+"passed","Fri Oct 23 11:02:36 UTC 2026","Fri Oct 23 11:02:48 UTC 2026","12363","tests.ui.agent_hub","test_agent_hub_copy_link_from_modal","TestAgentHubCopyLinkFromModal","","","[ELITEA-2359] test_copy_link_from_modal_navigates_to_agent","Copy a link from the agent detail modal's Share action, navigate to it
+        in a new page context, and verify the modal auto-opens showing the same
+        agent's details (name, description, starters, welcome message)."
+"passed","Fri Oct 23 11:04:03 UTC 2026","Fri Oct 23 11:04:18 UTC 2026","15028","tests.ui.agent_hub","test_agent_hub_like_agent_list_view","TestAgentHubLikeAgentListView","","","[ELITEA-2354] test_agent_hub_like_agent_from_list_view","Liking an unliked agent card increments its count, fills the heart
+        icon, and persists across a full page refresh; unliking (cleanup)
+        restores the original baseline."
+"failed","Fri Oct 23 11:05:53 UTC 2026","Fri Oct 23 11:06:00 UTC 2026","6818","tests.ui.agent_hub","test_agent_hub_start_conversation_creates_new_chat","TestAgentHubStartConversationCreatesNewChat","","","[ELITEA-2360] test_agent_hub_start_conversation_creates_new_chat","Starting a conversation from a Catalog agent's detail modal creates a
+        new chat and redirects the user to the Chat interface with the
+        blank-conversation welcome message displayed."
+"failed","Fri Oct 23 11:02:28 UTC 2026","Fri Oct 23 11:02:36 UTC 2026","7788","tests.ui.agent_hub","test_agent_hub_close_agent_detail_modal","TestAgentHubCloseAgentDetailModal","","","[ELITEA-2357] test_agent_hub_close_agent_detail_modal","Clicking the X button in the agent detail modal closes the modal,
+        and the user remains on the Catalog list view — read-only, zero
+        console errors, zero 4xx/5xx."
+"failed","Fri Oct 23 11:04:43 UTC 2026","Fri Oct 23 11:04:50 UTC 2026","7309","tests.ui.agent_hub","test_agent_hub_open_agent_detail_modal","TestAgentHubOpenAgentDetailModal","","","[ELITEA-2356] test_agent_hub_open_agent_detail_modal","Clicking a Catalog agent card opens the preview modal as an overlay,
+        displaying icon, name, owner, liked status, overflow menu, close
+        button, description, CHAT STARTERS section, Welcome Message section,
+        and the Start Chat button — read-only, zero console errors, zero
+        4xx/5xx."
+"failed","Fri Oct 23 11:05:21 UTC 2026","Fri Oct 23 11:05:28 UTC 2026","7293","tests.ui.agent_hub","test_agent_hub_search_bar_filters_in_real_time","TestAgentHubSearchBarFiltersInRealTime","","","[ELITEA-2363] test_agent_hub_search_bar_filters_in_real_time","Typing a partial term into the Catalog search bar filters the
+        agent list in real time via a single debounced request; clearing
+        the typed text restores the exact original unfiltered set."
+"failed","Fri Oct 23 11:03:14 UTC 2026","Fri Oct 23 11:03:21 UTC 2026","7344","tests.ui.agent_hub","test_agent_hub_filter_multiple_categories","TestAgentHubFilterMultipleCategories","","","[ELITEA-2353] test_agent_hub_filter_by_multiple_categories","Clicking multiple category filter-rail chips accumulates filters:
+        both chips remain selected and agents from both categories display
+        simultaneously in separate labeled sections."
+"failed","Fri Oct 23 11:05:14 UTC 2026","Fri Oct 23 11:05:20 UTC 2026","6203","tests.ui.agent_hub","test_agent_hub_page_loads_private_project","TestAgentHubPageLoadsPrivateProject","","","[ELITEA-2350] test_agent_hub_page_loads_private_project","Agent Hub (Catalog) page loads without error for a Private-project
+        user: heading, search bar, full category filter rail, and agent
+        cards are all visible, with zero console errors."

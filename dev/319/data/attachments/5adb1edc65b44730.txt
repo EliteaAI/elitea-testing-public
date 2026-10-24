@@ -1,0 +1,9 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open a resource link in a new tab — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"help-center-tour-link-sidebar-interactive-tour\"]") to be visible
+ERROR    elitea.steps:actions.py:49 Step failed: Open a resource link in a new tab — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"help-center-tour-link-sidebar-interactive-tour\"]") to be visible
+ERROR    elitea.steps:actions.py:49 Step failed: Open a resource link in a new tab — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"help-center-tour-link-sidebar-interactive-tour\"]") to be visible

@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Fill instructions editor — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skill-instructions-editor")
+ERROR    elitea.steps:actions.py:49 Step failed: Fill instructions editor — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skill-instructions-editor")

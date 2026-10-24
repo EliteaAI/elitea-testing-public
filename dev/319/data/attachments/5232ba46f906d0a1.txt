@@ -1,0 +1,10 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open the Test Pipeline panel — Locator expected to be enabled
+Actual value: disabled 
+Call log:
+  - Expect "to_be_enabled" get_by_test_id("pipeline-test-button") with timeout 10000ms
+  - waiting for get_by_test_id("pipeline-test-button")
+    24 × locator resolved to <button disabled tabindex="-1" type="button" data-testid="pipeline-test-button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-special MuiButton-specialPrimary MuiButton-sizeMedium MuiButton-specialSizeMedium MuiButton-colorPrimary css-1316vfu">Test Pipeline</button>
+       - unexpected value "disabled"
+
+Aria snapshot:
+- button "Test Pipeline" [disabled]

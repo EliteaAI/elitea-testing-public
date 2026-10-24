@@ -1,0 +1,1 @@
+WARNING  elitea.tests.agents:test_agent_save_as_version_preserves_skills.py:268 Cleanup: failed to delete skill id=610: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
