@@ -1,0 +1,1 @@
+{"slug":"adjust-2008","cases":[{"id":"ELITEA-2008","outcome":"automated","triage":"D","node":"tests.ui.pipelines.test_pipeline_entry_point_trigger_restricted_interactive_nodes.test_entry_point_trigger_restricted_interactive_nodes","review":"APPROVED"}],"gate":{"runs":3,"green":3,"target":"DEV"},"issue":2655}

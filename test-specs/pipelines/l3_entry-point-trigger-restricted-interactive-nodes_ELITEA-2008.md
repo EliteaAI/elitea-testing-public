@@ -699,3 +699,11 @@ trigger cluster uses; it is the method #1806 will fix.
   parametrized test function once the implementer independently confirms steps 6–7 live (per
   § Blocked Steps) — the restrict/un-restrict assertion shape is identical for all 3, only the
   node-add/interrupt-toggle setup action differs.
+
+## Adjustment — 2026-10-24 (issue #2655, CI run 40049363459)
+
+- **Triage class: D (robustness/timing) — not drift.** Assertions and expected results unchanged.
+- **Symptom:** `Locator.click: Element is outside of the viewport` on `pipeline-entry-point-trigger-select` (Step 3, after the unsaved Printer node is added).
+- **Cause (verified on DEV + EliteaUI `origin/main`):** with 2+ nodes Fit View settles below `MINI_CARD_ZOOM` (0.6, `nodeCard.helpers.js isMiniCardZoom`); `NodeCard` then renders every card as a mini card and its body (holding the Trigger select) is `display:none`.
+- **Fix:** `PipelineDetailPage.open_trigger_select` fits the view and zooms in until full cards render (`zoom_in_until_full_cards`) before clicking. No handle changed.
+- **Expected-result changes:** none.

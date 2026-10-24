@@ -4036,6 +4036,16 @@ class PipelineDetailPage(PipelineFormPage):
         """
         if entry_point_node_id:
             self._select_node(entry_point_node_id)
+            # With several nodes on the canvas, Fit View settles below
+            # MINI_CARD_ZOOM (0.6, EliteaUI nodeCard.helpers.js isMiniCardZoom),
+            # and FlowEditor then renders every card as a MINI card: the body
+            # holding the Trigger select is display:none, so the click fails
+            # with "Element is outside of the viewport" / "not visible"
+            # (CI #2655, ELITEA-2008). Zoom back in until cards render full
+            # size, then bring the entry-point node into view.
+            self.fit_view()
+            self.zoom_in_until_full_cards()
+            self.trigger_select.scroll_into_view_if_needed(timeout=timeout)
 
         enabled = self.page.locator(self.TRIGGER_SELECT_ENABLED)
         expanded = self.page.locator(self.TRIGGER_SELECT_EXPANDED)
