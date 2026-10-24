@@ -124,3 +124,9 @@ pass.
 Link ELITEA-2060 to ELITEA-2018 in the TMS (both ways) so the audit trail resolves:
 ELITEA-2060's `already-covered` disposition points at ELITEA-2018's automated test;
 ELITEA-2018's case gains a "also satisfies ELITEA-2060" back-reference.
+
+## Adjustment (2026-10-24, #2650) — triage class A (UI drift)
+
+- Evidence: CI run 40049363459 and local repro. After the click, no `menu`/`menuitem` ever opened. DEV node headers now render ONE icon button (`NodeHeaderMenu.jsx` -> `DotMenu id="node-menu"`, `data-testid="node-menu-menu-button"`), so the old JS pick of the 2nd `MuiIconButton-colorTertiary` hit nothing. The menu still offers Make entrypoint / Delete.
+- Handle (rung 1 testid, scoped via rf__node-{id}; `testid on DEV ✓`): `[data-testid="rf__node-<id>"] [data-testid="node-menu-menu-button"]`, declared as `PipelineDetailPage.NODE_HEADER_MENU_BUTTON`. Replaces the legacy JS `btns[1]` query in `delete_node` and `make_node_entrypoint`.
+- Expected-result changes: none.

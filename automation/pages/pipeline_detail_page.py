@@ -1702,6 +1702,11 @@ class PipelineDetailPage(PipelineFormPage):
     # level template constant per .agents/testing.md § Locator policy.
     ADD_NODE_MENU_ITEM_BY_TYPE = '[data-testid="pipeline-add-node-menu-item-{}"]'
 
+    # Per-node three-dot header menu button (NodeHeaderMenu -> DotMenu
+    # id="node-menu" => `node-menu-menu-button`), scoped to one node via its
+    # ReactFlow wrapper testid `rf__node-{id}` (same form as RF_NODE_TESTID).
+    NODE_HEADER_MENU_BUTTON = '[data-testid="rf__node-{}"] [data-testid="node-menu-menu-button"]'
+
     # Prefix-match variant for enumerating every item currently rendered in
     # an open Add Node menu, in DOM order — same testid family, no type
     # known up front.
@@ -3726,6 +3731,17 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Node '%s' visible on canvas (id=%s)", node_type, node_id)
         return node_id
 
+    def _open_node_header_menu(self, node_id: str) -> None:
+        """Open a node's three-dot header menu.
+
+        DEV renders a single header icon button per node
+        (``DotMenu id="node-menu"`` -> ``node-menu-menu-button``); the old
+        "second MuiIconButton-colorTertiary" no longer exists. The click is
+        dispatched (not pointer-driven) to avoid interception by overlapping
+        nodes, as the legacy JS click did.
+        """
+        self.page.locator(self.NODE_HEADER_MENU_BUTTON.format(node_id)).dispatch_event("click")
+
     def delete_node(self, node_id: str, timeout: int = 5000):
         """Delete a node from the canvas via its three-dot header menu.
 
@@ -3740,21 +3756,9 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Deleting node: %s", node_id)
 
-        # Click the three-dot button (second MuiIconButton-colorTertiary)
-        # via JS to avoid pointer interception from overlapping nodes.
-        self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                const btns = node.querySelectorAll(
-                    'button.MuiIconButton-colorTertiary'
-                );
-                if (btns[1]) btns[1].click();
-            }""",
-            node_id,
-        )
+        # Open the node's three-dot header menu (testid on DEV).
+        self._open_node_header_menu(node_id)
         self.page.wait_for_timeout(300)
-
-        # Click "Delete" in the menu
         delete_item = self.page.get_by_role("menuitem", name="Delete")
         delete_item.wait_for(state="visible", timeout=timeout)
         delete_item.click()
@@ -3775,17 +3779,8 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Making node '%s' the entrypoint", node_id)
 
-        # Click the three-dot button (second MuiIconButton-colorTertiary)
-        self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                const btns = node.querySelectorAll(
-                    'button.MuiIconButton-colorTertiary'
-                );
-                if (btns[1]) btns[1].click();
-            }""",
-            node_id,
-        )
+        # Open the node's three-dot header menu (testid on DEV).
+        self._open_node_header_menu(node_id)
         self.page.wait_for_timeout(300)
 
         entrypoint_item = self.page.get_by_role("menuitem", name="Make entrypoint")

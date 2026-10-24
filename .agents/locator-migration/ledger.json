@@ -405,7 +405,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1722,
+      "line": 1727,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -417,7 +417,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1795,
+      "line": 1800,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -812,10 +812,10 @@
       "history": []
     }
   },
-  "last_sync": "2026-10-23",
+  "last_sync": "2026-10-24",
   "metric": {
-    "declared_total": 1292,
-    "declared_testid": 1226,
+    "declared_total": 1293,
+    "declared_testid": 1227,
     "declared_non_testid": 66,
     "non_testid_with_hint": 45,
     "non_testid_without_hint": 21,
@@ -824,10 +824,10 @@
       "fallback": 20,
       "locator": 1,
       "role": 22,
-      "testid": 1226,
+      "testid": 1227,
       "xpath": 12
     },
-    "locator_debt": 0.0511,
+    "locator_debt": 0.051,
     "unmanaged_handles": 349
   }
 }
