@@ -269,7 +269,7 @@ class TestExecutePipelineStreaming:
     """
 
     USER_PROMPT = "Write a 500-word essay on AI"
-    MODEL_DISPLAY_NAME = "GPT-5 mini"
+    MODEL_DISPLAY_NAME = "GPT-5.4-mini"  # DEV catalogue dropped "GPT-5 mini" (2026-10)
     MIN_RESPONSE_LENGTH = 200
 
     @pytest.mark.tms("ELITEA-2017", "ELITEA-2058")
@@ -325,6 +325,9 @@ class TestExecutePipelineStreaming:
             "is created and ready for execution"
         ):
             pipelines = _navigate_to_pipeline_detail(page, pipeline_with_fstring_llm_id)
+            # Pipelines 2.0: the embedded chat (and its Model Selector) lives in the
+            # "Test Pipeline" side panel, hidden until opened.
+            pipelines.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(
             "Step 2 — [ELITEA-2058] Verify the Model Selector Menu button is "
