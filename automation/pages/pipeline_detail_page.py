@@ -3470,12 +3470,16 @@ class PipelineDetailPage(PipelineFormPage):
             timeout: Maximum wait time for menu to appear.
         """
         logger.info("Adding node: %s", node_type)
-        self.add_node_button.click()
-        self.page.wait_for_timeout(300)
-
         # Display label -> internal type key rendered in the item's testid.
         type_key = self.ADD_NODE_TYPE_BY_LABEL.get(node_type, node_type.lower())
         menu_item = self.page.locator(self.ADD_NODE_MENU_ITEM_BY_TYPE.format(type_key))
+        # The canvas can re-render right after a save and swallow the first
+        # click, leaving the menu closed — re-click once if it did not open.
+        self.add_node_button.click()
+        try:
+            menu_item.wait_for(state="visible", timeout=2000)
+        except PlaywrightTimeoutError:
+            self.add_node_button.click()
         menu_item.wait_for(state="visible", timeout=timeout)
         menu_item.click()
         self.page.wait_for_timeout(1000)

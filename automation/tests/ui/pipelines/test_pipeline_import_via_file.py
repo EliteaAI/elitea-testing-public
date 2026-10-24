@@ -130,8 +130,7 @@ def test_pipeline_import_via_file(page, pipeline_api):
             list_page.navigate()
             list_page.click_create_pipeline()
 
-            pipeline_page.name_input.click()
-            pipeline_page.name_input.press_sequentially(pipeline_name, delay=20)
+            pipeline_page.replace_name(pipeline_name)
             assert pipeline_page.get_name() == pipeline_name
 
             pipeline_page.description_input.click()
