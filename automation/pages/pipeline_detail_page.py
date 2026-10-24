@@ -3647,6 +3647,7 @@ class PipelineDetailPage(PipelineFormPage):
     # Router (ELITEA-2033), Decision (ELITEA-2034), Toolkit (ELITEA-2010).
     NODE_TYPE_DISPLAY_PREFIX = {
         "llm": "LLM",
+        "code": "Code",
         "hitl": "HITL",
         "mcp": "MCP",
         "router": "Router",

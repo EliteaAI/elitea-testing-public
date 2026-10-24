@@ -1,0 +1,1 @@
+{"batch":"fix-2652","session":"f09de92c-1fc6-4d3a-a4ed-1ff08efbe7f0","generatedAt":"2026-10-24","card":2652,"gate":{"n":3,"verdict":"green","detail":"3/3 green on DEV, separate invocations of test_pipeline_code_node_configuration.py"},"cases":[{"id":"ELITEA-2009","outcome":"automated","triage":"A (UI drift)","review":"APPROVED"}]}
