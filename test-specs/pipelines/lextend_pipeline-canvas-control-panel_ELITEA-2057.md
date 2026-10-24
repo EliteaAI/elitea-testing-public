@@ -239,3 +239,15 @@ rounds):**
    (left over from step 6) doesn't share a basis with the post-toggle
    measurements. Full root-cause writeup: `_surface.md`
    § Toggle cards size.
+
+## Adjustment (2026-10-24, class D robustness — mini-zoom precondition)
+
+- Cause: `FlowEditor` renders cards MINI whenever viewport zoom < `MINI_CARD_ZOOM` (0.6,
+  `isMiniCardZoom`), independent of expand-all. At 1366x768 Auto-arrange's fit-view landed at
+  scale 0.344, so the "expanded" Step 7 baseline was already mini (22.7px -> 22.7px).
+  Measured: cards flip to full size between scale 0.59 and 0.71.
+- Repair (precondition only): Step 7 zooms in via the control panel until scale >= 0.6
+  (`zoom_in_until_full_cards`) before each measurement, and compares heights in unscaled layout
+  px (`get_node_layout_height` = on-screen height / viewport scale), since each toggle re-fits.
+- Expected-result changes: none. Same three assertions (compact < expanded/2; restored == expanded
+  within 1px; no console errors / no pipeline requests).

@@ -3300,6 +3300,46 @@ class PipelineDetailPage(PipelineFormPage):
         tx, ty, scale = match.groups()
         return {"tx": float(tx), "ty": float(ty), "scale": float(scale)}
 
+    def zoom_in_until_full_cards(self, min_scale: float = 0.6, max_clicks: int = 10, timeout: int = 5000) -> dict:
+        """Zoom In until the viewport scale reaches *min_scale* (cards render full size).
+
+        Added for ELITEA-2057 (class D robustness). ``FlowEditor`` renders
+        every card as a MINI card whenever the viewport zoom is below
+        ``MINI_CARD_ZOOM`` (0.6, ``nodeCard.helpers.js isMiniCardZoom``)
+        regardless of the expand-all state, and Fit View / Auto-arrange /
+        Toggle cards size all re-fit the view — on a small viewport that can
+        land below 0.6, making an "expanded" card measure as mini. Reaching a
+        scale >= *min_scale* is the precondition for measuring real card
+        heights. Condition-driven: clicks only while the scale is short.
+
+        Returns:
+            The viewport transform dict (``tx``, ``ty``, ``scale``) reached.
+
+        Raises:
+            AssertionError: if *min_scale* is still not reached after *max_clicks*.
+        """
+        transform = self.get_canvas_viewport_transform()
+        for _ in range(max_clicks):
+            if transform["scale"] >= min_scale:
+                break
+            self.zoom_in_canvas(timeout=timeout)
+            transform = self.get_canvas_viewport_transform()
+        if transform["scale"] < min_scale:
+            raise AssertionError(
+                f"Zoom In x{max_clicks} left viewport scale at {transform['scale']:.3f}, below the required "
+                f"{min_scale} — cards would still render as mini cards"
+            )
+        return transform
+
+    def get_node_layout_height(self, node_id: str, timeout: int = 5000) -> float:
+        """Return the node's height in unscaled (layout) px: on-screen height / viewport scale.
+
+        Added for ELITEA-2057 so card heights measured at different zoom
+        levels (the card-size toggle re-fits the view) are comparable.
+        """
+        box = self.get_node_bounding_box(node_id, timeout=timeout)
+        return box["height"] / self.get_canvas_viewport_transform()["scale"]
+
     def get_node_bounding_box(self, node_id: str, timeout: int = 5000) -> dict:
         """Return the on-screen bounding box of the node with *node_id*.
 

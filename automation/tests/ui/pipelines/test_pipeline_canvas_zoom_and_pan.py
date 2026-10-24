@@ -308,20 +308,29 @@ def test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange
         # on — this is the reset-to-known-state technique, not an assertion
         # about Auto-arrange (that's step 8's job).
         pipeline_page.auto_arrange_canvas(timeout=UI_ELEMENT_TIMEOUT)
-        expanded_box = pipeline_page.get_node_bounding_box(probe_node_id)
+        # Precondition (class D): cards render MINI whenever viewport zoom < 0.6
+        # (FlowEditor MINI_CARD_ZOOM), and Auto-arrange's fit-view can land below
+        # that on a small viewport — zoom in until cards are really expanded
+        # before measuring. Heights are compared in unscaled (layout) px
+        # (on-screen height / viewport scale) because every toggle re-fits the
+        # view, so raw px at different scales are not comparable.
+        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
+        expanded_height = pipeline_page.get_node_layout_height(probe_node_id)
 
         pipeline_page.toggle_canvas_cards_size(timeout=UI_ELEMENT_TIMEOUT)
-        compact_box = pipeline_page.get_node_bounding_box(probe_node_id)
-        assert compact_box["height"] < expanded_box["height"] / 2, (
+        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
+        compact_height = pipeline_page.get_node_layout_height(probe_node_id)
+        assert compact_height < expanded_height / 2, (
             f"Node {probe_node_id!r} should shrink to a compact card height: "
-            f"{expanded_box['height']:.1f}px -> {compact_box['height']:.1f}px"
+            f"{expanded_height:.1f}px -> {compact_height:.1f}px (unscaled)"
         )
 
         pipeline_page.toggle_canvas_cards_size(timeout=UI_ELEMENT_TIMEOUT)
-        restored_box = pipeline_page.get_node_bounding_box(probe_node_id)
-        assert restored_box["height"] == pytest.approx(expanded_box["height"], abs=1.0), (
+        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
+        restored_height = pipeline_page.get_node_layout_height(probe_node_id)
+        assert restored_height == pytest.approx(expanded_height, abs=1.0), (
             f"Node {probe_node_id!r} should restore its exact expanded height: "
-            f"{expanded_box['height']:.1f}px -> {restored_box['height']:.1f}px"
+            f"{expanded_height:.1f}px -> {restored_height:.1f}px (unscaled)"
         )
         assert not console_errors, f"Toggle cards size should not introduce console errors: {list(console_errors)}"
         assert not viewport_op_requests, (

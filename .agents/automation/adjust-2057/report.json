@@ -1,0 +1,3 @@
+{"batch":"adjust-2057","session":"f538a1d8-8b14-4c37-a70d-5998a89f8a6a","generatedAt":"2026-10-24","card":2651,
+ "gate":{"n":3,"verdict":"green","detail":"3/3 separate DEV runs of the ELITEA-2057 node-id, --reruns=0, 23.0s/22.7s/22.5s"},
+ "cases":[{"id":"ELITEA-2057","outcome":"automated","triage":"D (precondition: cards render mini below viewport zoom 0.6)","review":"APPROVED","expectedResultChanges":"none"}]}
