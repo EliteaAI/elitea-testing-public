@@ -1,0 +1,1 @@
+{"batch":"fix-0853","cases":[{"id":"ELITEA-0853","outcome":"automated","spec":"tests.ui.pipelines_2.test_pipeline_nodes.TestAddNode.test_add_human_in_the_loop_node_and_connect_to_end","review":"APPROVED"}],"gate":{"verdict":"green","runs":3,"reruns":0}}
