@@ -835,6 +835,19 @@ class SkillFormPage(BasePage):
         """
         return (self.instructions_editor_content.text_content() or "").strip()
 
+    def get_instructions_body(self) -> str:
+        """Return the Instructions editor text WITHOUT the leading YAML frontmatter.
+
+        In Edit mode the editor shows ``---`` / ``name:`` / ``description:`` / ``---``
+        before the instructions body (EliteaUI ``skillFrontmatter.helpers.js``);
+        ``text_content()`` concatenates the lines. Strip the frontmatter block
+        (opening ``---`` through the next ``---``) and return the body.
+        """
+        text = self.get_instructions()
+        if text.startswith("---") and "---" in text[3:]:
+            text = text[3:].split("---", 1)[1]
+        return text.strip()
+
     def get_instructions_multiline(self) -> str:
         """Return the Instructions CodeMirror editor's text content,
         preserving line breaks (ELITEA-2432).
