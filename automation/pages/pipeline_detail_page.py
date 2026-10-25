@@ -4860,6 +4860,12 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_agent_node_agent_value(self, timeout: int = 5000) -> str:
         """Read the Agent node's currently-selected Agent display text."""
+        # With 2+ nodes Fit View settles below MINI_CARD_ZOOM (0.6) and every card renders
+        # mini: the Agent select body is display:none (CI #2673, ELITEA-2443). Zoom in until
+        # full cards render, same as open_trigger_select (ELITEA-2008).
+        if not self.agent_node_agent_select.is_visible():
+            self.fit_view()
+            self.zoom_in_until_full_cards()
         self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
         text = (self.agent_node_agent_select.text_content() or "").replace("​", "")
         return text.strip()
