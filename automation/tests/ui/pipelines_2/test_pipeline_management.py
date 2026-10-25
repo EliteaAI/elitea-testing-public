@@ -219,6 +219,10 @@ class TestCreatePipeline:
             )
 
         with allure.step("Step 5 — Verify pipeline name on detail page"):
+            # The detail form first renders the stale create-time default
+            # ("Pipeline N") and then hydrates the saved name; wait for
+            # hydration (condition wait) before the unchanged assertion.
+            PipelineFormPage(page).wait_for_name_value(pipeline_name, timeout=UI_ELEMENT_TIMEOUT)
             assert detail_page.get_name() == pipeline_name
 
         with allure.step("Step 6 — Cleanup via API"):
