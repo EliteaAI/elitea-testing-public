@@ -8053,6 +8053,9 @@ class PipelineDetailPage(PipelineFormPage):
         crumb = self.page.locator(self.BREADCRUMB_ITEM_SELECTOR).last
         crumb.wait_for(state="visible", timeout=timeout)
         crumb.click()
+        # Pipelines 2.0 (EL-7155): the detail view remounts with the 'Test Pipeline'
+        # panel closed (history tab + embedded chat live inside it); reopen it.
+        self.open_test_pipeline_panel(timeout=timeout)
         self.chat_input.wait_for(state="visible", timeout=timeout)
         self.history_tab.wait_for(state="visible", timeout=timeout)
         logger.info("Run History view closed (returned to pipeline detail)")

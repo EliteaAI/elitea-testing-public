@@ -108,6 +108,9 @@ class TestPipelineRunHistoryViewExecutions:
             assert detail_page.canvas_wrapper.is_visible(), (
                 "Pipeline canvas should be displayed after navigating to the detail page"
             )
+            # Pipelines 2.0 (EL-7155): the embedded chat sits in the 'Test Pipeline'
+            # side panel, hidden until the toolbar button opens it.
+            detail_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
             assert detail_page.chat_input.is_visible(), (
                 "Embedded chat panel should be visible on the right"
             )
@@ -283,6 +286,9 @@ class TestPipelineRunHistoryPanelClose:
         ):
             detail_page.navigate(pipeline_with_llm_id)
             detail_page.dismiss_banner_if_present()
+            # Pipelines 2.0 (EL-7155): embedded chat lives in the 'Test Pipeline'
+            # side panel, hidden until the toolbar button opens it.
+            detail_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
             assert detail_page.chat_input.is_visible(), (
                 "Embedded chat panel should be visible on the right"
             )
