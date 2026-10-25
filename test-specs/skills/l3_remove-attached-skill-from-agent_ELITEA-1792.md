@@ -242,3 +242,10 @@ three were deleted live in this run.
 
 ## Blocked Steps
 None — case executed end-to-end, all 6 case steps confirmed live, no blockers.
+
+## Adjustment (2026-10-25, #2675)
+
+- **Triage class A (UI drift).** EliteaUI EL-7124 opens the skill Instructions section in **Preview** by default; the CodeMirror `skill-instructions-editor-content` node renders only in **Edit** mode, and Edit mode prefixes the editor text with YAML frontmatter (`---` / `name:` / `description:` / `---`).
+- Test Step 8 now clicks the Edit toggle (`markdown-edit-mode-toggle`, testid on DEV ✓), waits for the editor content, and reads the body via `get_instructions_body()` (frontmatter stripped). Same assertion, same expected value.
+- **Expected-result changes: none.**
+- Note: the CI failure text ("text_content timeout") is the Step 8 `get_instructions()` call. Locally a bare run without `APP_PREFIX=/app` 404s on `/skills/create` — an env-config artifact, not product drift.
