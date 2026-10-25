@@ -392,6 +392,12 @@ class TestSkillExportImportNonBaseVersion:
         # Step 2 — Edit instructions; "Save As Version" → create ver_1
         # ------------------------------------------------------------------
         with allure.step('Step 2 — Edit instructions; "Save As Version" creates ver_1'):
+            # A saved skill opens with Instructions in Preview; the CodeMirror editor only
+            # renders in Edit mode — switch before typing.
+            form_page.click_edit_mode()
+            expect(form_page.instructions_editor_content).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
             form_page.fill_instructions(ver1_instructions)
             form_page.wait_for_form_validation()
 
@@ -541,7 +547,12 @@ class TestSkillExportImportNonBaseVersion:
             assert detail_page.get_tags() == [skill_tag], (
                 f"Imported skill's tags mismatch: {detail_page.get_tags()!r}"
             )
-            assert detail_page.get_instructions() == ver1_instructions, (
+            # Imported skill opens with Instructions in Preview; switch to Edit to read the raw text.
+            detail_page.click_edit_mode()
+            expect(detail_page.instructions_editor_content).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert detail_page.get_instructions_body() == ver1_instructions, (
                 "Imported skill's instructions should match the exported ver_1 "
                 "content, not the source skill's original base instructions"
             )
