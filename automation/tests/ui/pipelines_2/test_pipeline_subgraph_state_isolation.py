@@ -99,6 +99,10 @@ def test_subgraph_state_sharing_non_common_state_isolation(page, pipeline_parent
         node_ids = pipeline_page.get_node_ids()
         assert "CODE1" in node_ids, f"Canvas should render the parent's CODE1 node, got {node_ids!r}"
         assert "AGENT1" in node_ids, f"Canvas should render the parent's AGENT1 node, got {node_ids!r}"
+        # The Agent select lives in the card body, which the app only renders on full-size cards;
+        # below zoom 0.6 (nodeCard.helpers.js MINI_CARD_ZOOM) every card is a mini card and the
+        # select is 0x0/hidden. Precondition, not an assertion change.
+        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == "", (
             "Agent node's Agent combobox should be EMPTY before the Tools-section attach -- the "
             "YAML `tool:` field alone does not resolve the child pipeline reference (AFS Preconditions)"
