@@ -83,13 +83,13 @@ def test_state_modifier_node_configuration_and_persistence(page, pipeline_id):
         pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 1 — Add a State modifier node via canvas '+' button -> 'State modifier'"):
-        node_count_before = pipeline_page.get_node_count()
+        # Type-scoped baseline: the synthetic END node now materialises together with the
+        # first added node, so a total-count delta is not +1 (adjust ELITEA-2035).
+        pipeline_page.wait_for_node_type_count("state_modifier", 0)
         pipeline_page.add_node("State modifier")
         state_modifier_node_id = pipeline_page.wait_for_node_on_canvas("state_modifier", timeout=UI_ELEMENT_TIMEOUT)
         assert state_modifier_node_id, "State modifier node should appear on canvas with a non-empty data-id"
-        assert pipeline_page.get_node_count() == node_count_before + 1, (
-            "Node count should increase by exactly 1 after adding the State modifier node"
-        )
+        pipeline_page.wait_for_node_type_count("state_modifier", 1)  # exactly 1 State modifier node added
 
     with allure.step(
         "Step 2 — 'Verify State modifier node panel shows' is checked inline: config renders "

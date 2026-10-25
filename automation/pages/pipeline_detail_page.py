@@ -3658,6 +3658,7 @@ class PipelineDetailPage(PipelineFormPage):
         "decision": "Decision",
         "toolkit": "Toolkit",
         "printer": "Printer",
+        "state_modifier": "StateModifier",
     }
     RF_NODE_TESTID_PREFIX = '[data-testid^="rf__node-{}"]'
     # Exact-id sibling of RF_NODE_TESTID_PREFIX — for callers that already
