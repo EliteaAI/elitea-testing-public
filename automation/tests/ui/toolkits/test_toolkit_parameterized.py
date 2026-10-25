@@ -19,7 +19,6 @@ import allure
 import pytest
 import requests
 from api import CredentialAPI, ToolkitAPI
-from components.mui import Popper
 from config import settings
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
@@ -463,18 +462,16 @@ class TestToolkitTestSettings:
             # a role-based combobox scan, both filtered by horizontal position,
             # plus a CSS class fallback — in favour of a testid, per
             # `.agents/testing.md` § Locator policy.
-            test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
+            expect(test_settings.start_search).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
-            visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
-            visible_search.fill(cfg.test_tool_name)
-            page.wait_for_timeout(500)
-
-            keyword = cfg.test_tool_name.lower().split()[0]
-            selected = Popper.select_menuitem_by_content(
-                page, lambda text: keyword in text.lower(),
+            # DRIFT (card #2683): the empty state is now a searchable list of
+            # tool chips (ToolkitTestEmptyState.jsx), not a 'Select Tool'
+            # popover. Search for the tool and click its chip; the click only
+            # succeeds if the chip for exactly this tool exists.
+            test_settings.select_tool_chip_by_name(
+                cfg.test_tool_name, timeout=UI_ELEMENT_TIMEOUT,
             )
-            assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
 
         with allure.step("Step 5 — Verify the Test Settings panel is now shown"):
             # Anchored on the panel's Tool dropdown testid rather than the
