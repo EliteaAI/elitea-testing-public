@@ -1,0 +1,22 @@
+{
+ "slug": "adjust-3750",
+ "card": 2677,
+ "triage": "A (UI drift)",
+ "cases": [
+  {
+   "id": "ELITEA-3750",
+   "outcome": "automated",
+   "spec": "tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version",
+   "review": "APPROVED",
+   "expectedResultChanges": "none"
+  }
+ ],
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "green": 3,
+  "target": "DEV",
+  "reruns": 0
+ },
+ "locatorDelta": "declared 1294 (testid 1228, non-testid 66) unchanged (diff touches no pages/); unmanaged 348 unchanged; ledger sync 0 added"
+}
