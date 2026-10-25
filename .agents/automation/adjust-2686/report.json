@@ -1,0 +1,13 @@
+{
+ "slug": "adjust-2686",
+ "card": 2686,
+ "cases": [
+  {"id": "ELITEA-2378", "outcome": "automated", "class": "A",
+   "spec": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_target_summary_tokens_range_validation",
+   "review": "APPROVED"}
+ ],
+ "gate": {"n": 3, "verdict": "green", "reruns": 0, "runs": ["17.23s", "18.60s", "17.88s"]},
+ "triage": "A (UI drift) — frontend EL-6898 (7242d9c3) made context management always-on; context-management-toggle removed from DEV, so Step 2 precondition timed out",
+ "expectedResultChanges": "none",
+ "locatorDelta": "declared 1297 unchanged, non-testid 66 unchanged, unmanaged 348 unchanged, ledger sync 0 added"
+}

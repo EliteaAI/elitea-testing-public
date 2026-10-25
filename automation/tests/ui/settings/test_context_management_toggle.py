@@ -376,6 +376,11 @@ class TestContextManagementToggle:
         ``submitForm()`` and returns early on errors); an in-range value
         autosaves normally.
 
+        Context management is always-on (EL-6898), so the former Step 2
+        precondition (turn the parent toggle ON) now asserts the always-on
+        state instead: the section's Preserve Recent Messages input is
+        visible and enabled.
+
         AFS: test-specs/settings-user-profile/
         lextend_target-summary-tokens-range-validation_ELITEA-2378.md
         """
@@ -390,19 +395,10 @@ class TestContextManagementToggle:
 
         with allure.step(
             "Step 2 — Ensure Context Management is enabled (precondition — "
-            "Target Summary Tokens is unreachable while it's OFF)"
+            "always-on since EL-6898: Target Summary Tokens is reachable)"
         ):
-            if profile.is_context_management_enabled():
-                logger.info("Context Management already ON — precondition satisfied, no click needed")
-            else:
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.enable_context_management()
-                assert put_info.value.status == 200, (
-                    f"Turning Context Management ON (precondition) should "
-                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
-                )
-                _ = get_info.value
+            expect(profile.preserve_recent_messages_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.preserve_recent_messages_input).to_be_enabled()
 
         with allure.step(
             "Step 3 — Ensure Automatic Summarization is enabled (precondition "
