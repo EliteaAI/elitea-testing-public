@@ -254,3 +254,11 @@ up during this analysis).
   to return to `disabled` state (dirty-flag cleared) rather than a fixed
   sleep — mirrors the existing `is_save_enabled()` / `wait_for_form_validation()`
   pattern in `SkillFormPage`.
+
+## Adjustment (adjust-automated-test, class A — UI drift)
+
+- Old: Step 9 read instructions via `get_instructions()` directly on the detail page.
+- New: the detail page now opens Instructions in Preview mode; the test switches to
+  Edit mode (`click_edit_mode()`), waits for the editor, and reads the
+  frontmatter-stripped body via `get_instructions_body()` (strict `==` kept).
+- Expected-result changes: none.

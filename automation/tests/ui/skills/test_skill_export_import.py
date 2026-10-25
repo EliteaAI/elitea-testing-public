@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 import allure
 import yaml
+from playwright.sync_api import expect
 
 from pages.skills_list_page import SkillsListPage
 from pages.skill_form_page import SkillFormPage
@@ -264,7 +265,13 @@ class TestSkillExportImport:
             assert detail_page.get_tags() == [skill_tag], (
                 f"Imported skill's tags mismatch: {detail_page.get_tags()!r}"
             )
-            assert detail_page.get_instructions() == skill_instructions, (
+            # Instructions opens in Preview; the editor only renders in Edit mode and there
+            # prefixes YAML frontmatter — read only the body so the comparison stays strict.
+            detail_page.click_edit_mode()
+            expect(detail_page.instructions_editor_content).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert detail_page.get_instructions_body() == skill_instructions, (
                 "Imported skill's instructions should match the source skill's exported content"
             )
 
