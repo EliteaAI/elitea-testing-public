@@ -24,6 +24,7 @@ from pathlib import Path
 
 import allure
 import pytest
+from playwright.sync_api import expect
 
 from pages.agent_detail_page import AgentDetailPage
 from pages.agent_form_page import AgentFormPage
@@ -363,7 +364,14 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 assert skill_detail_page.get_description() == skill_description, (
                     "Imported skill's description should match the source verbatim"
                 )
-                imported_instructions = skill_detail_page.get_instructions()
+                # Instructions opens in Preview; the CodeMirror editor only renders in Edit
+                # mode, and there it now prefixes the YAML name/description frontmatter —
+                # read only the body so the verbatim comparison stays strict.
+                skill_detail_page.click_edit_mode()
+                expect(skill_detail_page.instructions_editor_content).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+                imported_instructions = skill_detail_page.get_instructions_body()
                 assert MARKER in imported_instructions, (
                     f"Imported skill's instructions should contain the planted "
                     f"marker {MARKER!r} verbatim, got: {imported_instructions!r}"
