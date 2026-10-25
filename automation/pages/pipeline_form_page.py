@@ -156,7 +156,7 @@ class PipelineFormPage(BasePage):
     def fill_form(self, name: str, description: str):
         """Fill in the pipeline create/edit form.
 
-        Uses click() + type() instead of fill() because MUI React forms
+        Name replaces the create form's prefilled default ("Pipeline N"); description uses click() + type() because MUI React forms
         do not recognize programmatic fill() value changes.
 
         Args:
