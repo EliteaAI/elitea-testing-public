@@ -881,6 +881,10 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-llm-node-output-select",
         description="LLM node's tool-agnostic Output state-variable select"
     )
+    llm_node_output_select_combobox = LocatorDescriptor(
+        testid="pipeline-llm-node-output-select-combobox",
+        description="LLM node's Output select inner combobox (role=combobox) - keyboard-focus target"
+    )
     llm_node_toolkits_select = LocatorDescriptor(
         testid="pipeline-llm-node-toolkits-select",
         description="LLM node's Toolkits multi-select (ToolkitsSelect.jsx, LLM-only call site)"
@@ -5271,27 +5275,18 @@ class PipelineDetailPage(PipelineFormPage):
     def open_llm_node_output_select(self, timeout: int = 5000) -> None:
         """Open the LLM node's Output dropdown.
 
-        Clicks near the field's right edge (where the dropdown arrow icon
-        renders) rather than its geometric center. A plain center click is
-        fine while the field is empty or holds 0-1 chips, but once 3+
-        variables are selected the rendered chips occupy enough width that
-        the bounding box's center point can land ON a chip's own delete
-        ("x") icon instead of the field background — clicking there removes
-        that chip instead of opening the dropdown (confirmed live,
-        ELITEA-2045: selecting a 3rd/4th Output variable via a center click
-        silently failed to open the popover at all, with the chip count
-        frozen at 2). The right-edge offset is safe for any chip count —
-        chips are left-aligned and the arrow icon area is never covered.
+        Focuses the inner combobox (``role=combobox``) and opens it with the
+        keyboard (MUI Select opens on Enter/ArrowDown). Pointer clicks are
+        unreliable here: a right-edge click no longer opens the select on DEV
+        (aria-expanded stays false), and a center click can land on a chip's
+        delete "x" once 3+ variables are selected, removing the chip instead
+        (ELITEA-2045). Keyboard opening is independent of chip layout and
+        works for 0..N chips.
         """
         self._wait_for_open_popovers_closed(timeout=timeout)
-        self.llm_node_output_select.wait_for(state="visible", timeout=timeout)
-        box = self.llm_node_output_select.bounding_box()
-        if box:
-            self.llm_node_output_select.click(
-                position={"x": max(box["width"] - 12, 1), "y": box["height"] / 2}, timeout=timeout
-            )
-        else:
-            self.llm_node_output_select.click(timeout=timeout)
+        self.llm_node_output_select_combobox.wait_for(state="visible", timeout=timeout)
+        self.llm_node_output_select_combobox.focus(timeout=timeout)
+        self.page.keyboard.press("Enter")
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
     def select_llm_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
