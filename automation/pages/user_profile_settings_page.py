@@ -173,14 +173,15 @@ class UserProfileSettingsPage(BasePage):
         # The accordion should be expanded by default, but give it time to render
         self.page.wait_for_timeout(500)
 
-        # Wait for the context management toggle to be present — it is
-        # the key element used by the context management tests.
-        self.context_management_toggle.wait_for(state="visible", timeout=timeout)
+        # Context management is always-on (EL-6898) — the parent toggle and the
+        # Max Context Tokens input no longer exist. Wait on the Automatic
+        # Summarization toggle, the key element that is always mounted.
+        self.automatic_summarization_toggle.wait_for(state="visible", timeout=timeout)
 
         if self.max_context_tokens_input.count() == 0:
             logger.info(
-                "wait_for_page_load: Context Management is OFF for this account "
-                "(Max Context Tokens input not mounted) — skipping value-stabilization poll"
+                "wait_for_page_load: Max Context Tokens input not mounted "
+                "(removed by the always-on context management change) — skipping value-stabilization poll"
             )
             logger.info("Profile settings page loaded")
             return

@@ -1,0 +1,13 @@
+{
+ "slug": "adjust-2685",
+ "card": 2685,
+ "cases": [
+  {"id": "ELITEA-2377", "outcome": "automated", "class": "A",
+   "spec": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_automatic_summarization_toggle_enables_disables_own_fields",
+   "review": "APPROVED"}
+ ],
+ "gate": {"n": 3, "verdict": "green", "reruns": 0, "runs": ["11.97s", "12.01s", "12.19s"]},
+ "triage": "A (UI drift) — frontend EL-6898 (7242d9c3) made context management always-on; context-management-toggle + max-context-tokens-input removed from DEV",
+ "expectedResultChanges": "none",
+ "locatorDelta": "declared 1297 unchanged, non-testid 66 unchanged, unmanaged 348 unchanged, ledger sync 0 added"
+}
