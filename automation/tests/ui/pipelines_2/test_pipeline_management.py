@@ -290,8 +290,9 @@ class TestCreatePipeline:
             form_page.wait_for_page_load()
 
         with allure.step("Step 3 — Fill Name field"):
-            form_page.name_input.click()
-            form_page.name_input.type(pipeline_name)
+            # The create form pre-fills Name with "Pipeline N" (useDefaultPipelineName),
+            # so the default is replaced rather than appended to.
+            form_page.replace_name(pipeline_name)
             assert form_page.get_name() == pipeline_name, (
                 "Name field should hold the typed value"
             )
