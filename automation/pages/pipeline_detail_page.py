@@ -3300,6 +3300,29 @@ class PipelineDetailPage(PipelineFormPage):
         tx, ty, scale = match.groups()
         return {"tx": float(tx), "ty": float(ty), "scale": float(scale)}
 
+    def ensure_full_cards(self, min_scale: float = 0.6) -> bool:
+        """Zoom in to full cards ONLY if the canvas currently renders mini cards.
+
+        ELITEA-2016: below ``MINI_CARD_ZOOM`` (0.6) card bodies are
+        ``display:none``. When the scale is already >= *min_scale* this is a
+        strict no-op (the view is left exactly as the caller arranged it, so
+        specs that already fit the graph are unaffected).
+
+        Returns:
+            True if the view was changed (caller should :meth:`fit_canvas_view`
+            afterwards to restore the whole-graph view), else False.
+        """
+        if self.get_canvas_viewport_transform()["scale"] >= min_scale:
+            return False
+        self.fit_canvas_view()
+        self.zoom_in_until_full_cards(min_scale=min_scale)
+        return True
+
+    def restore_graph_view(self, changed: bool) -> None:
+        """Re-fit the whole graph if :meth:`ensure_full_cards` changed the view."""
+        if changed:
+            self.fit_canvas_view()
+
     def zoom_in_until_full_cards(self, min_scale: float = 0.6, max_clicks: int = 10, timeout: int = 5000) -> dict:
         """Zoom In until the viewport scale reaches *min_scale* (cards render full size).
 
@@ -5490,7 +5513,16 @@ class PipelineDetailPage(PipelineFormPage):
         value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
             self.PRINTER_NODE_VALUE_TESTID
         )
+        # With several nodes on the canvas Fit View settles below
+        # MINI_CARD_ZOOM (0.6, EliteaUI nodeCard.helpers.js isMiniCardZoom) and
+        # every card renders as a MINI card whose body (holding the Value
+        # textarea) is display:none (ELITEA-2016, class D). Zoom back in until
+        # cards render full size, then bring the field into view.
+        changed = self.ensure_full_cards()
+        value_field.scroll_into_view_if_needed(timeout=timeout)
         self._fill_node_field_value(value_field, value, timeout=timeout)
+        # Restore the whole-graph view so later drags/connects see every node.
+        self.restore_graph_view(changed)
 
     def get_printer_node_value_for_node(self, node_id: str) -> str:
         """Read the Value field content of the SPECIFIC Printer node *node_id*.
@@ -6908,6 +6940,15 @@ class PipelineDetailPage(PipelineFormPage):
 
         self.page.mouse.up()
         self.page.wait_for_timeout(300)
+        # A drag that starts on a connection handle (small/zoomed-out cards) or
+        # ends on empty canvas leaves ReactFlow's "create new node" dropdown
+        # open; its invisible backdrop then intercepts every later click
+        # (ELITEA-2016 rename of the third Printer). Dismiss it, as
+        # connect_nodes() does, only when it is actually open.
+        if self.is_popup_menu_visible():
+            logger.info("Dismissing a stray popup left open by the node drag")
+            self.page.keyboard.press("Escape")
+            self.wait_for_popup_menu_hidden()
         logger.info("Moved node %s by (%d, %d)", node_id, dx, dy)
 
     def move_node_by_flow_offset(
@@ -8869,6 +8910,9 @@ class PipelineDetailPage(PipelineFormPage):
     def open_decision_node_input_select(self, timeout: int = 5000) -> None:
         """Open the Decision node's tool-agnostic Input dropdown."""
         self._wait_for_open_popovers_closed(timeout=timeout)
+        # Mini cards (viewport zoom < 0.6) hide the card body — ELITEA-2016.
+        self._input_select_view_changed = self.ensure_full_cards()
+        self.decision_node_input_select.scroll_into_view_if_needed(timeout=timeout)
         self.decision_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -8888,6 +8932,10 @@ class PipelineDetailPage(PipelineFormPage):
             self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
         self.page.keyboard.press("Escape")
         self._wait_for_open_popovers_closed(timeout=timeout)
+        # open_decision_node_input_select may have zoomed in to full cards
+        # (ELITEA-2016); restore the whole-graph view only in that case.
+        self.restore_graph_view(getattr(self, "_input_select_view_changed", False))
+        self._input_select_view_changed = False
 
     def get_decision_node_input_value(self) -> str:
         """Read the Decision node's currently-selected Input display text."""
@@ -8903,9 +8951,14 @@ class PipelineDetailPage(PipelineFormPage):
         events (.claude/rules/mui-patterns.md). Starts empty on a
         freshly-added node, so no clear-before-type step is needed.
         """
+        # Mini cards (viewport zoom < 0.6) hide the card body — ELITEA-2016.
+        changed = self.ensure_full_cards()
+        self.decision_node_description_input.scroll_into_view_if_needed(timeout=timeout)
         self.decision_node_description_input.wait_for(state="visible", timeout=timeout)
         self.decision_node_description_input.click()
         self.decision_node_description_input.press_sequentially(text, delay=20)
+        # Restore the whole-graph view (only if zoomed in above) for later connects.
+        self.restore_graph_view(changed)
 
     def get_decision_node_description(self) -> str:
         """Read the Decision node's Description textarea current value."""

@@ -251,3 +251,9 @@ None.
 - `PIPELINE_EXECUTION_TIMEOUT = 90_000` ms (from `test_pipeline_execution.py`) is a
   reasonable default — observed live executions completed in ~3-6s ("Thought for 3 secs"),
   well under that ceiling.
+
+## Adjustment — 2026-10-26 (issue #2707, class D robustness)
+
+- Cause: with 4+ nodes Fit View settles below MINI_CARD_ZOOM (0.6, EliteaUI `nodeCard.helpers.js isMiniCardZoom`), so cards render as mini cards and the body fields (Printer Value, Decision Input/Description) are `display:none`. A node drag could also leave ReactFlow's "create new node" dropdown open, whose backdrop blocked the next rename.
+- Fix (page object only): `fill_printer_node_value_for_node`, `open_decision_node_input_select`, `fill_decision_node_description` fit the view, zoom in to full cards and scroll the field into view, then restore Fit View; `move_node` dismisses a stray connection dropdown.
+- Expected results / assertions: unchanged.
