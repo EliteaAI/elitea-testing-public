@@ -4552,8 +4552,9 @@ class PipelineDetailPage(PipelineFormPage):
     def get_node_name(self, node_id: str) -> str:
         """Read the display name of a node.
 
-        The name is shown in a MuiTypography-labelMedium span in the
-        node header.
+        The name is shown in the node header's ``pipeline-node-name`` label
+        (NODE_NAME_TESTID); the former ``.MuiTypography-labelMedium`` ``.first``
+        pick now matches a "Chat Message" label on LLM cards.
 
         Args:
             node_id: The data-id of the node.
@@ -4562,7 +4563,7 @@ class PipelineDetailPage(PipelineFormPage):
             The node's display name text.
         """
         node = self.page.locator(f'[data-id="{node_id}"]')
-        return node.locator(".MuiTypography-labelMedium").first.text_content().strip()
+        return node.locator(self.NODE_NAME_TESTID).text_content().strip()
 
     # ------------------------------------------------------------------
     # MCP node inline config (ELITEA-1954)

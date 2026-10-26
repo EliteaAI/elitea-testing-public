@@ -35,18 +35,21 @@ UI_ELEMENT_TIMEOUT = 10_000
 def _add_node_and_get_new_id(pipeline_page, internal_type: str) -> str:
     """Add one node of *internal_type* via the Add Node menu; return its new node id.
 
-    Uses the before/after `get_node_ids()` set-difference pattern (not
+    Uses the before/after type-scoped `get_node_ids()` set-difference pattern (not
     `wait_for_node_on_canvas()`'s return value) so the correct node is
     identified even when another node of the same type already exists on
     canvas.
     """
-    ids_before = set(pipeline_page.get_node_ids())
+    prefix = pipeline_page.NODE_TYPE_DISPLAY_PREFIX[internal_type]
+    ids_before = {i for i in pipeline_page.get_node_ids() if i.startswith(prefix)}
     pipeline_page.get_add_node_menu_items(timeout=UI_ELEMENT_TIMEOUT)
     pipeline_page.select_add_node_menu_item(internal_type, timeout=UI_ELEMENT_TIMEOUT)
-    pipeline_page.wait_for_node_count(len(ids_before) + 1, timeout=UI_ELEMENT_TIMEOUT)
-    new_ids = set(pipeline_page.get_node_ids()) - ids_before
+    # Count by TYPE, not total: on DEV the END node now materialises together with the
+    # first added node (0 -> 2 total), so a total-count +1 wait can never hold.
+    pipeline_page.wait_for_node_type_count(internal_type, len(ids_before) + 1, timeout=UI_ELEMENT_TIMEOUT)
+    new_ids = {i for i in pipeline_page.get_node_ids() if i.startswith(prefix)} - ids_before
     assert len(new_ids) == 1, (
-        f"Adding one {internal_type!r} node should add exactly one new node id, "
+        f"Adding one {internal_type!r} node should add exactly one new node id of that type, "
         f"got {new_ids!r} (before={ids_before!r})"
     )
     return new_ids.pop()

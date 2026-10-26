@@ -173,3 +173,11 @@ existing `get_node_ids()`/`get_node_name()`).
   set-difference — do NOT trust `wait_for_node_on_canvas()`'s return value
   once more than one node of a given type exists on canvas (documented
   `.first`-collision in `_surface.md`).
+
+## Adjustment
+
+- **Triage class:** A (UI drift). **Date:** 2026-10-26 (card #2703). Same drift as ELITEA-2035 (a7916159).
+- **Observed (1):** the END node now materialises together with the first added node, so total `.react-flow__node` count jumps 0 -> 2 and `wait_for_node_count(before + 1)` can never hold.
+- **Observed (2):** `get_node_name()` read `.MuiTypography-labelMedium` `.first`, which on LLM cards now matches a "Chat Message" label before the name.
+- **Old -> new:** the add helper waits on the per-type count via `wait_for_node_type_count` and takes the new id from a set-difference filtered to `NODE_TYPE_DISPLAY_PREFIX[type]`; `get_node_name()` reads the existing `pipeline-node-name` testid (`NODE_NAME_TESTID`, rung 1, already declared). The `get_node_count() == 3 / == 4` asserts are unchanged and still hold (LLM 1, LLM 2, END / + Code 1).
+- **Expected-result changes:** none.
