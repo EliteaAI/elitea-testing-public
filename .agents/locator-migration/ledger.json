@@ -812,7 +812,7 @@
       "history": []
     }
   },
-  "last_sync": "2026-10-25",
+  "last_sync": "2026-10-26",
   "metric": {
     "declared_total": 1297,
     "declared_testid": 1231,
@@ -828,6 +828,6 @@
       "xpath": 12
     },
     "locator_debt": 0.0509,
-    "unmanaged_handles": 348
+    "unmanaged_handles": 347
   }
 }

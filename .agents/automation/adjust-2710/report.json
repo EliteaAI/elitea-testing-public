@@ -1,0 +1,13 @@
+{
+ "slug": "adjust-2710",
+ "card": 2710,
+ "cases": [
+  {"id": "ELITEA-2058", "outcome": "automated", "class": "A",
+   "spec": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipelineStreaming.test_long_response_streams_progressively",
+   "review": "APPROVED"}
+ ],
+ "gate": {"n": 3, "verdict": "green", "reruns": 0, "runs": ["22.39s", "21.88s", "22.28s"]},
+ "triage": "A (UI drift) — EL-7155 moved embedded chat into hidden 'Test Pipeline' panel; 'GPT-5 mini' removed from DEV model catalog (now GPT-5.4-mini)",
+ "expectedResultChanges": "none",
+ "locatorDelta": "declared 1297 unchanged, non-testid 66 unchanged, unmanaged 347 unchanged, ledger sync 0 added"
+}

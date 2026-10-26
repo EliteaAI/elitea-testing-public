@@ -294,3 +294,9 @@ the covering spec (reconfirmed live), 3 filled by new gap assertions
   `wait_for_embedded_chat_response()` call (Step 5) has already confirmed
   the response is stable — reading it earlier risks the chip not having
   rendered yet mid-stream.
+
+## Adjustment — 2026-10-26 (#2710, class A UI drift)
+
+- **Old -> new (1):** the pipeline embedded chat now lives in the hidden "Test Pipeline" side panel (EL-7155); the test opens it via `open_test_pipeline_panel()` right after navigation, before the Model Selector assertions.
+- **Old -> new (2):** model "GPT-5 mini" is no longer in the DEV Model Selector catalog; the test selects "GPT-5.4-mini" (closest equivalent, verified live). The chip assertion names the same model.
+- **Expected-result changes:** none (same assertions, same step names; only the model name literal and panel-open precondition changed).
