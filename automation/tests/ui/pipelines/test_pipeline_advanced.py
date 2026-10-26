@@ -417,6 +417,8 @@ class TestMultiNodeTopology:
             pipelines.wait_for_network()
             pipelines.wait_for_detail_page_load()
             pipelines.wait_for_canvas()
+            # Nodes render after the ReactFlow wrapper; poll instead of an instant read
+            pipelines.wait_for_node_count(2, timeout=20_000)
 
         with allure.step("Step 5 — Verify nodes persist after reload"):
             node_count = pipelines.get_node_count()

@@ -1,0 +1,1 @@
+{"verdict":"green","runs":3,"passed":3,"reruns":0,"env":"DEV","node":"tests/ui/pipelines/test_pipeline_advanced.py::TestMultiNodeTopology::test_save_multi_node_pipeline","case":"ELITEA-0858"}
