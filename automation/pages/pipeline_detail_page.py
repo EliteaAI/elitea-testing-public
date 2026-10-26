@@ -4055,13 +4055,23 @@ class PipelineDetailPage(PipelineFormPage):
                 control to become enabled (Leg 1) is budgeted separately by
                 :data:`TRIGGER_SELECT_READY_TIMEOUT`.
             entry_point_node_id: Optional data-id of the entry point node to
-                bring to the front before opening the dropdown.
+                bring to the front before opening the dropdown. When omitted and exactly one Trigger select
+                exists, the current entry-point node is resolved and used (ELITEA-2005).
 
         Raises:
             PlaywrightTimeoutError: the Select never became enabled within
                 :data:`TRIGGER_SELECT_READY_TIMEOUT`, or the menu never opened
                 within *timeout*. Either message names the observed state.
         """
+        if not entry_point_node_id and self.trigger_select.count() == 1:
+            # ELITEA-2005 (CI #2708): a caller that did not name the node still
+            # needs the entry-point card brought on-canvas at full size (a
+            # promoted node can sit outside the viewport / render as a mini
+            # card -> "Element is outside of the viewport").
+            entry_point_node_id = self.get_entrypoint_node_id()
+            # Fit first so the node is on-screen when it is clicked (a prior
+            # zoom/pan can leave it outside the viewport).
+            self.fit_view()
         if entry_point_node_id:
             self._select_node(entry_point_node_id)
             # With several nodes on the canvas, Fit View settles below
