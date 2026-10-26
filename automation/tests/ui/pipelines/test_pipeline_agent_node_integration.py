@@ -92,8 +92,11 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         # Agent node's own inline field clicks in later steps (same gotcha
         # documented for the sibling Decision/Router/Code/State-modifier node AFSes).
         pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
-        assert pipeline_page.get_node_ids() == ["END"], (
-            "A fresh pipeline's canvas should show only the END node before any node is added"
+        # Adjusted (#2702, EL-7154): DEV no longer renders the terminal END node on an
+        # empty canvas — it is created together with the first node added. A fresh
+        # pipeline's canvas must therefore hold NO nodes at all (still exact, not weaker).
+        assert pipeline_page.get_node_ids() == [], (
+            "A fresh pipeline's canvas should be empty (no nodes, END included) before any node is added"
         )
 
     with allure.step('Step 2 — Click TOOLS "+ Agent"; select the fixture agent from the popper'):
