@@ -423,16 +423,19 @@ class TestEditPipeline:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0851")
     @pytest.mark.p1
-    def test_pipeline_has_configuration_and_history_tabs(self, page, pipeline_id):
+    def test_pipeline_has_configuration_and_history_tabs(self, page, pipeline_with_llm_id):
         """Pipeline detail page shows configuration panel and history button."""
         with allure.step("Step 1 — Navigate to pipeline detail page"):
             detail_page = PipelineDetailPage(page)
-            detail_page.navigate(pipeline_id)
+            detail_page.navigate(pipeline_with_llm_id)
 
         with allure.step("Step 2 — Verify configuration panel is visible"):
             assert detail_page.configuration_tab.is_visible(), "Configuration panel (General section) should be visible"
 
         with allure.step("Step 3 — Verify history button is visible"):
+            # EL-7155: the run-history button now lives in the Test Pipeline side
+            # panel (display:none until opened) — open it, then assert as before.
+            detail_page.open_test_pipeline_panel()
             assert detail_page.history_tab.is_visible(), "History icon button should be visible"
 
 
