@@ -64,8 +64,8 @@ def test_pipeline_welcome_message_shown_before_first_input(page, pipeline_api):
         url_path = urlparse(page.url).path
         assert "/pipelines/create" in url_path, f"Should be on the create form, got: {page.url}"
 
-        pipeline_page.name_input.click()
-        pipeline_page.name_input.press_sequentially(pipeline_name, delay=20)
+        # Name is pre-filled with a default ("Pipeline N") — replace, don't append.
+        pipeline_page.replace_name(pipeline_name)
         assert pipeline_page.get_name() == pipeline_name
 
         pipeline_page.description_input.click()
@@ -98,16 +98,28 @@ def test_pipeline_welcome_message_shown_before_first_input(page, pipeline_api):
         with allure.step(
             "Step 5 — Open a new chat session: full-page reload of the detail page for a pristine load"
         ):
-            # The embedded chat panel is already mounted on the detail page
-            # right after Save — there is no separate "open chat" action on
-            # this route (AFS Step 5 note). A full-page reload (not an SPA
-            # route change) gives a pristine "new session" load distinct
-            # from any live-preview state carried over from Step 3's typing.
+            # The chat lives in the Test Pipeline side panel (opened below,
+            # after the reload) — there is no separate "open chat" route
+            # (AFS Step 5 note). A full-page reload (not an SPA route change)
+            # gives a pristine "new session" load distinct from any
+            # live-preview state carried over from Step 3's typing.
             canonical_url = page.url
             page.goto(canonical_url)
             pipeline_page.wait_for_detail_page_load()
             pipeline_page.dismiss_banner_if_present()
             page.wait_for_load_state("networkidle")
+            # The chat panel is no longer mounted inline on the detail page: it
+            # lives in the Test Pipeline side panel (display:none until opened).
+            # The toolbar button stays disabled until a node is connected to
+            # End, so give the (otherwise empty) pipeline one LLM node -> END
+            # first (same precedent as test_pipeline_chat_starters_visible_and_clickable.py).
+            pipeline_page.add_node("LLM")
+            llm_id = pipeline_page.wait_for_node_on_canvas("llm")
+            pipeline_page.fit_view()
+            pipeline_page.wait_for_network()
+            pipeline_page.connect_nodes(llm_id, "END")
+            pipeline_page.wait_for_network()
+            pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(
             "Step 6 — Verify the welcome message appears automatically, alone, before any user input"

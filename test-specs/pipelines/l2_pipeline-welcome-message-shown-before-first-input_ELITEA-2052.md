@@ -69,7 +69,8 @@
 5. "Open a new chat session with this pipeline."
    - **Verify — PASSES, with a live-product clarification (not a defect).**
      There is no separate "open chat" action on the pipeline detail route —
-     the embedded chat panel is **already mounted** on the detail page (same
+     the embedded chat panel is **already mounted** on the detail page [SUPERSEDED
+     2026-10-26 — it now lives in the Test Pipeline side panel; see § Adjustment] (same
      live-product shape ELITEA-1885 documented for the agent detail page).
      The AFS treats "open a new chat session" as: (a) the chat panel visible
      immediately after Save (step 4, same page), **and** (b) a full-page
@@ -238,3 +239,23 @@ None.
 - Test data teardown note: this session's throwaway pipeline (`autotest_2052_welcome`,
   id `8580`) was left in the shared local dev DB (see Cleanup) — harmless,
   same precedent as ELITEA-2021's analyst-session pipelines.
+
+## Adjustment (2026-10-26, #2705) — triage class A (UI drift) + D (env prefill)
+
+Evidence: CI run 40251884240 (Step 1 name mismatch), reproduced on DEV; Step 6 re-walked live.
+
+1. **Name prefill (create form).** The create form pre-fills Name with a default
+   ("Pipeline N", `useDefaultPipelineName`); typing appended to it
+   (`'Pipeline 12autotest_pipe_welcome'`). Step 1 now uses
+   `PipelineFormPage.replace_name()` (select-all + Backspace + type). Description
+   starts empty — unaffected.
+2. **Embedded chat moved (Pipelines 2.0, EL-7155).** The chat panel is no longer
+   mounted inline on the detail page; `chat-message-list` is `display:none` until the
+   toolbar "Test Pipeline" button (`pipeline-test-button`, testid on DEV ✓) opens the
+   side panel. The button is disabled for an empty pipeline (`pipelineReadiness.helpers.js`:
+   "Connect the entry point to End to test the pipeline."). Step 5 now adds one LLM node,
+   connects it to END, then calls `open_test_pipeline_panel()` — same precedent as tests/ui/pipelines/test_pipeline_chat_starters_visible_and_clickable.py.
+   The extra node is navigation setup only; the welcome-message assertions (count == 1,
+   exact text, agent-answer markers, empty input, no console errors) are unchanged.
+
+**Expected-result changes: none.** Handles: all pre-existing testid/declared locators; no new declarations.
