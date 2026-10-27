@@ -918,6 +918,24 @@ class AgentHubPage(BasePage):
             self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
 
+    @action("Search Catalog and capture the search response")
+    def search_and_capture_response(self, query: str, timeout: int = 15000) -> dict:
+        """Same interaction as :meth:`search`, but returns the parsed JSON body
+        of the debounced search response (``{"rows": [...], ...}``) so a test
+        can use the server's own result set as ground truth (ELITEA-2363:
+        the backend matches name OR description, so a name-only substring
+        check on rendered cards is not a valid oracle).
+        """
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/public_applications/prompt_lib/" in r.url and r.request.method == "GET",
+            timeout=timeout,
+        ) as response_info:
+            self.search_input.click()
+            self.search_input.press_sequentially(query, delay=50)
+        self.wait_for_network(timeout=timeout)
+        return response_info.value.json()
+
     @action("Clear Catalog search field")
     def clear_search(self, timeout: int = 15000):
         """Clear the Catalog search field and wait for the debounced
@@ -1034,3 +1052,17 @@ class AgentHubPage(BasePage):
         """
         cards = self.page.locator(self.AGENT_CARD_PREFIX)
         return [(cards.nth(i).text_content() or "").strip() for i in range(cards.count())]
+
+    def get_visible_agent_card_ids(self) -> list[int]:
+        """Return the numeric application id of every rendered agent card
+        (ELITEA-2363), parsed from the ``catalog-agent-card-{id}`` testid
+        suffix of ``AGENT_CARD_PREFIX`` matches — lets a test map rendered
+        cards to API rows exactly, independent of display-name text.
+        """
+        cards = self.page.locator(self.AGENT_CARD_PREFIX)
+        prefix = "catalog-agent-card-"
+        ids = []
+        for i in range(cards.count()):
+            testid = cards.nth(i).get_attribute("data-testid") or ""
+            ids.append(int(testid[len(prefix):]))
+        return ids
