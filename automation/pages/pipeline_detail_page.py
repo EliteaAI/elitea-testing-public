@@ -4899,8 +4899,22 @@ class PipelineDetailPage(PipelineFormPage):
     # Agent node inline config (ELITEA-2038)
     # ------------------------------------------------------------------
 
+    def ensure_agent_node_panel_open(self, timeout: int = 5000) -> None:
+        """Make sure the Agent node's side panel is open (select the node if it is not).
+
+        ELITEA-2443/2444 (class A, UI drift): the Agent select, Input/Output and
+        input-mapping fields render in the node side panel, which exists only
+        while the node is selected. No-op when the Agent select is already visible.
+        """
+        if self.agent_node_agent_select.is_visible():
+            return
+        node_id = self.wait_for_node_on_canvas("agent", timeout=timeout)
+        self._select_node(node_id)
+        self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
+
     def get_agent_node_agent_value(self, timeout: int = 5000) -> str:
         """Read the Agent node's currently-selected Agent display text."""
+        self.ensure_agent_node_panel_open(timeout=timeout)
         self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
         text = (self.agent_node_agent_select.text_content() or "").replace("​", "")
         return text.strip()
@@ -4913,6 +4927,7 @@ class PipelineDetailPage(PipelineFormPage):
                 ``select-option-{agent_name}``).
             timeout: Maximum wait time for the dropdown / option.
         """
+        self.ensure_agent_node_panel_open(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.agent_node_agent_select.click(timeout=timeout)
         option = self.page.locator(self.SELECT_OPTION.format(agent_name))
