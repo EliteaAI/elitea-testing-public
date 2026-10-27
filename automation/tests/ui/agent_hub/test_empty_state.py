@@ -64,7 +64,7 @@ class TestCatalogEmptyState:
 
         # Set up console message listener to capture errors during the test
         console_messages = []
-        page.on("console", lambda msg: console_messages.append(msg.type))
+        page.on("console", lambda msg: console_messages.append((msg.type, msg.text)))
 
         # Step 1: Navigate to Catalog
         with allure.step("Step 1 — Navigate to Agent Hub"):
@@ -151,5 +151,8 @@ class TestCatalogEmptyState:
 
         # Step 8: Verify zero console errors during empty state
         with allure.step("Step 8 — Verify no console errors"):
-            error_types = [msg_type for msg_type in console_messages if msg_type == "error"]
-            assert len(error_types) == 0, f"Expected no console errors, found {len(error_types)} error(s)"
+            # Known defect: #2537 — stays red (sanctioned RED); assertion strict, errors not filtered.
+            error_texts = [text for msg_type, text in console_messages if msg_type == "error"]
+            assert len(error_texts) == 0, (
+                f"Expected no console errors, found {len(error_texts)} error(s): {error_texts}"
+            )
