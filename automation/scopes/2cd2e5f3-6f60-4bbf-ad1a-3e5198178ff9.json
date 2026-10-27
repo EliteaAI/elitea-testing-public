@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "2cd2e5f3-6f60-4bbf-ad1a-3e5198178ff9",
+  "intent": "maintenance",
+  "cases": [
+    "ELITEA-2004"
+  ],
+  "declaredAt": "2026-10-27T04:19:52.893Z",
+  "updatedAt": "2026-10-27T04:53:37.668Z",
+  "outcomes": {
+    "ELITEA-2004": {
+      "outcome": "automated",
+      "at": "2026-10-27T04:53:37.630Z"
+    }
+  },
+  "closedAt": "2026-10-27T04:53:37.668Z"
+}
