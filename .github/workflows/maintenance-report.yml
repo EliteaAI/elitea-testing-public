@@ -81,8 +81,39 @@ jobs:
 
           print(f"Found {len(groups)} groups: {list(groups.keys())}")
 
+          def iter_run_tests(data):
+              """Yield tests of the latest run in a maintenance file (old list / new {total, details} schema)."""
+              runs = data.get('runs', {})
+              if not runs:
+                  return
+              run_data = runs.get(max(runs.keys()), {})
+              if isinstance(run_data, list):
+                  tests = run_data
+              elif isinstance(run_data, dict):
+                  tests = run_data.get('details', [])
+              else:
+                  tests = []
+              for test in tests:
+                  if isinstance(test, dict):
+                      yield test
+
           # Generate report for each group
           for group_name, files_info in groups.items():
+              # automation_test_id -> newest known TMS id, across ALL runs of the group.
+              # A run that failed before its TMS mapping existed recorded id=null; once a newer
+              # run resolves it, every row for that test uses the TMS id instead of the automation id.
+              tms_id_by_auto_id = {}
+              for _, _, filepath in sorted(files_info, key=lambda x: x[0]):
+                  try:
+                      with open(filepath, 'r') as f:
+                          data = json.load(f)
+                  except Exception:
+                      continue
+                  for test in iter_run_tests(data):
+                      auto_id = (test.get('automation_test_id') or '').lower()
+                      if auto_id and test.get('id'):
+                          tms_id_by_auto_id[auto_id] = test['id']
+
               # Sort by run_number descending, take latest 10
               files_info.sort(key=lambda x: x[0], reverse=True)
               files_info = files_info[:MAX_RUNS]
@@ -134,7 +165,9 @@ jobs:
                       run_numbers_order.append(run_key)
 
                   for test in tests:
-                      test_id = test.get('id') or test.get('automation_test_id') or 'UNKNOWN'
+                      auto_id = test.get('automation_test_id') or ''
+                      test_id = (tms_id_by_auto_id.get(auto_id.lower())
+                                 or test.get('id') or auto_id or 'UNKNOWN')
                       resolution = test.get('resolution', 'unknown')
                       tracking_issue = test.get('tracking_issue', '')
                       runs_data[run_key][test_id] = {
