@@ -856,6 +856,10 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-node-panel-advanced-section-toggle",
         description="Node side panel's 'Advanced' accordion header (aria-expanded reflects state)"
     )
+    node_panel_close_button = LocatorDescriptor(
+        testid="pipeline-node-panel-close",
+        description="Node side panel header's close (X) button (NodeConfigPanelHeader.jsx)"
+    )
     llm_node_system_type_select = LocatorDescriptor(
         testid="pipeline-llm-node-system-type-select",
         description="LLM node's SYSTEM section Type select (inline on canvas card)"
@@ -4292,6 +4296,10 @@ class PipelineDetailPage(PipelineFormPage):
             Parsed JSON body of the trigger-update PUT response, or ``None``
             when *value* is ``"schedule"``.
         """
+        # ELITEA-2007 (class A): the Trigger select lives in the node side panel,
+        # which exists only while the node is selected (closed after a reload).
+        if not self.trigger_select.is_visible():
+            self.ensure_llm_node_panel_open(timeout=timeout)
         self.trigger_select.click(timeout=timeout, force=True)
         option = self.page.locator(self.SELECT_OPTION.format(value))
         option.wait_for(state="visible", timeout=timeout)
@@ -8179,6 +8187,10 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Opening Run Details panel")
         self.run_node_label.wait_for(state="visible", timeout=timeout)
+        # ELITEA-2045 (class A): an open node side panel overlays the run node label.
+        if self.node_panel_close_button.is_visible():
+            self.node_panel_close_button.click(timeout=timeout)
+            self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
         self.run_node_label.click()
         self.run_details_panel.wait_for(state="visible", timeout=timeout)
         logger.info("Run Details panel opened")
@@ -9074,6 +9086,10 @@ class PipelineDetailPage(PipelineFormPage):
         is already open.
         """
         if self.state_drawer_toggle_button.count() > 0:
+            # ELITEA-2045 (class A): an open node side panel overlays the toggle; close it first.
+            if self.node_panel_close_button.is_visible():
+                self.node_panel_close_button.click(timeout=timeout)
+                self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
             self.state_drawer_toggle_button.click(timeout=timeout)
         self.state_add_variable_button.wait_for(state="visible", timeout=timeout)
 

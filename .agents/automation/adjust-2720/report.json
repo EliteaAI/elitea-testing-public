@@ -1,0 +1,13 @@
+{
+ "slug": "adjust-2720",
+ "card": 2720,
+ "cases": [
+  {"id": "ELITEA-2007", "outcome": "automated", "class": "A", "review": "APPROVED"},
+  {"id": "ELITEA-2042", "outcome": "blocked", "class": "none (CI-only/env: passes unchanged on DEV; no code change)", "review": "n/a"},
+  {"id": "ELITEA-2045", "outcome": "blocked", "class": "A + B (sanctioned RED on #2746)", "review": "APPROVED"}
+ ],
+ "gate": {"n": 3, "verdict": "sanctioned-red", "reruns": 0, "note": "2007+2042 green 3/3; 2045 identical RED 3/3 = #2746 metadata soft failure only"},
+ "triage": "A (LLM node side panel overlays State/Run-details toggles; Trigger select needs panel open after reload) + B (#2746 Json state var empty)",
+ "expectedResultChanges": "none",
+ "locatorDelta": "declared 1298->1299 (+1 testid), non-testid 66 unchanged, unmanaged 347 unchanged, ledger sync 0 added"
+}

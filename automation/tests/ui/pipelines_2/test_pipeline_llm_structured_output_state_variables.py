@@ -96,6 +96,9 @@ def test_llm_structured_output_parses_into_state_variables(page, pipeline_id, pi
     project_id = str(settings.elitea_project_id)
 
     console_errors = []
+    # Isolated known product defect #2746 is aggregated here and raised once at the end
+    # via pytest.fail() (soft_failures idiom, cf. test_pipeline_webhook_trigger_settings_modal.py).
+    soft_failures: list[str] = []
 
     def _on_console(msg):
         if msg.type == "error" and not _is_known_1267_stepper_prop_leak(msg):
@@ -248,7 +251,13 @@ def test_llm_structured_output_parses_into_state_variables(page, pipeline_id, pi
         assert isinstance(parsed_metadata, dict), (
             f"'metadata' (Json) After value should parse as a JSON object, got {metadata_after!r}"
         )
-        assert len(parsed_metadata) > 0, "'metadata' After value should be a non-empty object"
+        # Known defect: #2746 — the LLM answers in prose, so 'metadata' After value is `{}`.
+        if not len(parsed_metadata) > 0:
+            soft_failures.append(
+                "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/2746: "
+                "'metadata' After value should be a non-empty object, got "
+                f"{metadata_after!r}"
+            )
 
     with allure.step(
         "Step 9 — Verify in YAML: node has structured_output: true and output lists all "
@@ -272,3 +281,11 @@ def test_llm_structured_output_parses_into_state_variables(page, pipeline_id, pi
         assert not console_errors, (
             f"Unexpected console errors during the full flow: {[m.text for m in console_errors]}"
         )
+
+    with allure.step("Sanctioned RED — raise the aggregated known-defect #2746 soft failure"):
+        if soft_failures:
+            pytest.fail(
+                "Soft assertion failed — known isolated product defect "
+                "https://github.com/EliteaAI/elitea-testing-public/issues/2746, not test/"
+                "infrastructure. Every other check in this test passed:\n" + "\n".join(soft_failures)
+            )

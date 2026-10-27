@@ -182,6 +182,8 @@ def test_schedule_trigger_settings_modal(page, pipeline_with_llm_id):
         # currentTriggerType falls back to its "chat_message" default while
         # the post-reload GET .../trigger refetch is still in flight — poll
         # instead of reading same-tick (AFS § Quirks, same as ELITEA-2005/2006).
+        # The Trigger select lives in the node side panel, closed after reload (class A drift).
+        pipeline_page.ensure_llm_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.trigger_select).to_have_text("Schedule", timeout=UI_ELEMENT_TIMEOUT)
 
         # The saved cron round-trips, not just the trigger `type` string.
