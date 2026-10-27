@@ -188,7 +188,13 @@ jobs:
               for run_tests in runs_data.values():
                   all_test_ids.update(run_tests.keys())
 
-              all_test_ids = sorted(all_test_ids)
+              # Drop rows still keyed by automation_test_id (no TMS id known in any run) that are
+              # green in the newest run: an unmapped test that stopped failing needs no follow-up.
+              newest_run = run_numbers_order[-1]
+              all_test_ids = sorted(
+                  t for t in all_test_ids
+                  if not (t.startswith('tests.') and t not in runs_data[newest_run])
+              )
 
               # Generate markdown report
               lines = [
