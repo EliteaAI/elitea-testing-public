@@ -1661,6 +1661,13 @@ class PipelineDetailPage(PipelineFormPage):
     # template constant per .agents/testing.md § Locator policy, formatted
     # with test-generated data only at the call site.
     MCP_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-mcp-node-input-mapping-value-{}"]'
+    # Required input-mapping Value fields inside the node panel's Basic section
+    # (ELITEA-1954 adjust: the 'Input mapping (required N)' heading no longer
+    # renders in the panel layout; required params are listed directly under Basic).
+    MCP_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES = (
+        '[data-testid="pipeline-node-panel-basic-section"] '
+        '[data-testid^="pipeline-mcp-node-input-mapping-value-"]'
+    )
 
     # Dynamic (runtime-parameterized) testids — one Value/Type select pair per
     # tool parameter (e.g. search_query, repo_name, max_count). Class-level
@@ -4617,6 +4624,20 @@ class PipelineDetailPage(PipelineFormPage):
     # MCP node inline config (ELITEA-1954)
     # ------------------------------------------------------------------
 
+    def ensure_mcp_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the MCP node's config side panel is open (select the node if not).
+
+        ELITEA-1954 (class A, UI drift): canvas node cards are compact view-only
+        summaries; the Toolkit/Tool selects and Input mapping render in the node
+        side panel that exists only while a node is selected (closed after a
+        page reload). No-op when the panel is already open.
+        """
+        if self.mcp_node_toolkit_select.is_visible():
+            return
+        node_id = self.wait_for_node_on_canvas("mcp", timeout=timeout)
+        self._select_node(node_id)
+        self.mcp_node_toolkit_select.wait_for(state="visible", timeout=timeout)
+
     def get_mcp_node_toolkit_value(self, timeout: int = 5000) -> str:
         """Read the MCP node's currently-selected Toolkit display text.
 
@@ -4842,6 +4863,23 @@ class PipelineDetailPage(PipelineFormPage):
             field.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
+            return False
+
+    def has_mcp_node_required_input_mapping_count(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check the node panel's Basic section lists exactly *required_count* required Value fields.
+
+        ELITEA-1954 (class A): replaces the retired 'Input mapping (required N)'
+        heading check — the panel layout has no such heading; required params
+        are rendered directly under Basic (optional ones only when set, under
+        Advanced).
+        """
+        from playwright.sync_api import expect
+
+        fields = self.page.locator(self.MCP_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES)
+        try:
+            expect(fields).to_have_count(required_count, timeout=timeout)
+            return True
+        except AssertionError:
             return False
 
     def is_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:

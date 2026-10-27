@@ -131,3 +131,16 @@ None. All 10 case steps were executed to completion against the live local envir
 - Test-data fixture: needs a new "MCP toolkit with real, auth-free tools" fixture (see Test Data) — recommend `automation/fixtures/data_fixtures.py` gain an `mcp_toolkit_with_tools` fixture that provisions against a known-stable public/mock MCP endpoint, parallel to the existing `github_toolkit` pattern, rather than reusing the placeholder-URL MCPs already in the environment.
 - Wait strategy: wait for the `PUT .../application/prompt_lib/{project}/{pipeline_id}` response (`201`) before reloading/asserting persistence — not a fixed timeout.
 - The pipeline's own `Save` button testid (`agent-save-button`) and the MCP-attach search-popper's `select-option-{name}` pattern are both already proven and reusable from the ELITEA-1922 precedent and this session.
+
+## Adjustment (2026-10-27) — triage class A (UI drift)
+
+Cause: EliteaUI EL-7157 (a695e4e8) — canvas node cards are compact view-only summaries; clicking a card opens a right-side node configuration panel (Basic / Advanced). Supersedes the "inline on the canvas card / no click-to-open" statements above (Test Steps 2, Coverage Map row 2, Concrete Handles); the pre-2026-10 wording is historical.
+
+| Old | New |
+|---|---|
+| Toolkit/Tool selects visible inline on the canvas card, no click needed | Click the MCP node card (`.react-flow__node-mcp`) to open the panel (`pipeline-node-panel`); Toolkit/Tool selects (testids `pipeline-mcp-node-toolkit-select` / `-tool-select`, unchanged) are in its Basic section. Panel is closed after a reload — reopen before reading persisted values (Step 10). |
+| `Input mapping (required N)` accordion heading (`pipeline-mcp-node-input-mapping-heading`) | Heading no longer renders in the panel. Required params are listed directly under Basic (`pipeline-node-panel-basic-section`), each Value field testid `pipeline-mcp-node-input-mapping-value-<key>` (unchanged). Optional params appear only when set, under Advanced, plus an "Add optional parameter" button. |
+
+Handles Reference additions: rung 1 `pipeline-node-panel-basic-section` (scope) + `[data-testid^="pipeline-mcp-node-input-mapping-value-"]` (all testid on DEV; no suggested_testid needed).
+
+Expected-result changes: the "section titled `Input mapping (required 2)`" observable is replaced by "exactly 2 required Input-mapping Value fields (repoName, question) listed in the panel's Basic section" (same information: the required-parameter count and names; both fields still asserted visible, filled, saved, and persisted). Everything else: none.
