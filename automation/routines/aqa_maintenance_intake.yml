@@ -64,6 +64,9 @@ state:
   issue_groups:
     type: str
     value: '[]'
+  issue_labels:
+    type: list
+    value: []
   issue_number:
     type: str
     value: '0'
@@ -1281,6 +1284,8 @@ nodes:
     code:
       type: fixed
       value: |
+        import json
+
         # Prepare inputs for AddLabelsToIssue - ensure non-empty values
         issue_number = alita_state.get('issue_number', '0') or '0'
         issue_label = alita_state.get('issue_label', '') or 'aqa:maintenance'
@@ -1291,64 +1296,62 @@ nodes:
         except:
             issue_number_int = 0
 
+        # Suite label per distinct suite of the group's tests: aqa:support:[suite_name]
+        # automation_test_id is dotted Form C - tests.ui.<suite>.<module>.<Class>.<method>
+        issue_labels = [issue_label]
+        try:
+            groups_raw = alita_state.get('issue_groups', '[]')
+            idx = int(alita_state.get('current_group_index', '0'))
+            groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
+            if isinstance(groups, list) and idx < len(groups):
+                for test_id in groups[idx].get('tests', []):
+                    parts = str(test_id or '').split('.')
+                    if len(parts) > 3 and parts[0] == 'tests':
+                        suite_label = f"aqa:support:{parts[2]}"
+                        if suite_label not in issue_labels:
+                            issue_labels.append(suite_label)
+        except:
+            pass
+
         out = {
             'issue_number_int': str(issue_number_int),
-            'issue_label': issue_label
+            'issue_label': issue_label,
+            'issue_labels': issue_labels
         }
         out
     input:
       - issue_number
       - issue_label
+      - issue_groups
+      - current_group_index
     output:
       - issue_number_int
       - issue_label
+      - issue_labels
     structured_output: true
     transition: CheckIssueNumberValid
   - id: CheckIssueNumberValid
     type: router
     condition: |
-      {% if issue_number_int and issue_number_int != '0' %}{% if issue_label == 'aqa:mapping' %}AddLabelMapping{% else %}AddLabelMaintenance{% endif %}{% else %}StoreIssueAndNext{% endif %}
+      {% if issue_number_int and issue_number_int != '0' %}AddLabels{% else %}StoreIssueAndNext{% endif %}
     default_output: StoreIssueAndNext
     input:
       - issue_number_int
-      - issue_label
     routes:
-      - AddLabelMaintenance
-      - AddLabelMapping
+      - AddLabels
       - StoreIssueAndNext
-  - id: AddLabelMaintenance
+  - id: AddLabels
     type: toolkit
     input:
       - issue_number_int
+      - issue_labels
     input_mapping:
       issue_id:
         type: variable
         value: issue_number_int
       labels:
-        type: fixed
-        value:
-          - aqa:maintenance
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
-    output:
-      - label_result
-    structured_output: true
-    tool: update_issue
-    toolkit_name: AQA_GHAutotestsTools
-    transition: StoreIssueAndNext
-  - id: AddLabelMapping
-    type: toolkit
-    input:
-      - issue_number_int
-    input_mapping:
-      issue_id:
         type: variable
-        value: issue_number_int
-      labels:
-        type: fixed
-        value:
-          - aqa:mapping
+        value: issue_labels
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
