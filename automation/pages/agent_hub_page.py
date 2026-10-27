@@ -332,6 +332,27 @@ class AgentHubPage(BasePage):
         """Return the Locator for the agent card matching *agent_name* (by visible text)."""
         return self.page.locator(self.AGENT_CARD_PREFIX).filter(has_text=agent_name)
 
+    def wait_for_agent_card(self, agent_name: str, timeout: int = 15000, max_reloads: int = 2) -> None:
+        """Wait until the card for *agent_name* is visible, reloading the Catalog when the list came back empty.
+
+        The Catalog's bulk agents fetch is occasionally answered with HTTP 429 on DEV (rate limiting),
+        which leaves the page on "No agents found" for the whole session (CI run #322, FIX #2743 —
+        environment, not a product-flow change). Reloading re-issues the fetch. This only
+        synchronises on data arriving: the card must still be visible, and a card that is absent
+        while the list is populated fails immediately-style after *timeout*.
+        """
+        card = self.get_agent_card(agent_name).first
+        for attempt in range(max_reloads + 1):
+            try:
+                expect(card).to_be_visible(timeout=timeout)
+                return
+            except AssertionError:
+                if attempt == max_reloads or not self.no_results_title.is_visible():
+                    raise
+                logger.warning("Catalog list empty (attempt %s) — reloading to retry the agents fetch", attempt + 1)
+                self.page.reload()
+                self.wait_for_page_load()
+
     def get_agent_card_count(self) -> int:
         """Return the number of agent cards currently rendered in the main content area."""
         return self.page.locator(self.AGENT_CARD_PREFIX).count()

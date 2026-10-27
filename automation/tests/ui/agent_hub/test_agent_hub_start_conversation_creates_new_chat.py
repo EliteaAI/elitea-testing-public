@@ -73,6 +73,7 @@ class TestAgentHubStartConversationCreatesNewChat:
 
         console_errors = agent_hub.capture_console_errors()
         failed_responses: list[int] = []
+        soft_failures: list[str] = []
         page.on("response", lambda resp: failed_responses.append(resp.status) if resp.status >= 400 else None)
 
         try:
@@ -81,22 +82,26 @@ class TestAgentHubStartConversationCreatesNewChat:
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
             with allure.step(f"Step 2 — Click on the {CATALOG_AGENT_NAME!r} agent card to open the detail modal"):
-                assert agent_hub.get_agent_card(CATALOG_AGENT_NAME).first.is_visible(), (
-                    f"Agent card {CATALOG_AGENT_NAME!r} should be visible on the Catalog page"
-                )
+                # Condition wait that survives an empty list caused by a 429 on the catalog fetch
+                # (FIX #2743, class D) — the card must still become visible.
+                agent_hub.wait_for_agent_card(CATALOG_AGENT_NAME, timeout=NAVIGATION_TIMEOUT)
                 # open_agent_by_name() waits on the agent-details GET response
                 # (.../public_application/prompt_lib/{id} -> 200) — deterministic
                 # ready-signal, but NOT sufficient on its own to safely click Start
                 # Chat (known defect #1043 — see module docstring). click_start_chat()
                 # now owns the extra wait internally.
                 agent_hub.open_agent_by_name(CATALOG_AGENT_NAME, timeout=NAVIGATION_TIMEOUT)
-                assert not console_errors, f"Unexpected console errors while opening the modal: {console_errors}"
+                # Known defect: #2537 — recorded here, asserted strictly in the side-channel step below.
+                if console_errors:
+                    soft_failures.append(f"Unexpected console errors while opening the modal: {console_errors}")
 
             with allure.step("Step 3 — Verify the detail modal opens displaying the agent name"):
                 assert agent_hub.modal_agent_name.text_content().strip() == CATALOG_AGENT_NAME, (
                     f"Preview modal should show the agent name {CATALOG_AGENT_NAME!r}"
                 )
-                assert not console_errors, f"Unexpected console errors while reading the modal: {console_errors}"
+                # Known defect: #2537 — recorded here, asserted strictly in the side-channel step below.
+                if console_errors:
+                    soft_failures.append(f"Unexpected console errors while reading the modal: {console_errors}")
 
             with allure.step(
                 'Step 4 — Click "Start Chat" (case text: "Start conversation" — drift, '
@@ -110,7 +115,9 @@ class TestAgentHubStartConversationCreatesNewChat:
             ):
                 page.wait_for_url(re.compile(r"/chat"), timeout=NAVIGATION_TIMEOUT)
                 chat.wait_for_page_load()
-                assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
+                # Known defect: #2537 (icon 404s) — recorded here, asserted strictly in the side-channel step.
+                if failed_responses:
+                    soft_failures.append(f"4xx/5xx responses by the redirect: {failed_responses}")
 
             with allure.step(
                 'Step 6 — Verify the chat welcome message "Hello, [username]! What can I do for you today?" '
@@ -122,10 +129,13 @@ class TestAgentHubStartConversationCreatesNewChat:
                 assert "What can I do for you today" in greeting_text, (
                     f"Expected greeting to contain 'What can I do for you today', got: {greeting_text!r}"
                 )
-                assert not console_errors, f"Unexpected console errors on the Chat page: {console_errors}"
+                # Known defect: #2537 — recorded here, asserted strictly in the side-channel step below.
+                if console_errors:
+                    soft_failures.append(f"Unexpected console errors on the Chat page: {console_errors}")
 
             with allure.step("Side-channel check — zero console errors, zero 4xx/5xx across the whole flow"):
-                assert not console_errors, f"Unexpected console errors: {console_errors}"
+                # Known defect: #2537 — stays red (sanctioned RED); assertions strict, errors not filtered.
+                assert not console_errors, f"Unexpected console errors: {console_errors} (earlier: {soft_failures})"
                 assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
         finally:
             console_errors.stop()
