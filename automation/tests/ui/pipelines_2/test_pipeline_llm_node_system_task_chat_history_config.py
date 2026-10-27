@@ -67,6 +67,10 @@ def test_llm_node_system_task_chat_history_config(page, pipeline_id):
     with allure.step(
         "Step 3 — Config fields render inline on the node — no click-to-open action needed"
     ):
+        # Live product: CHAT HISTORY / Input / Output / Structured output sit in
+        # the node panel's collapsed-by-default "Advanced" accordion — expand it
+        # (ELITEA-2004 adjust, class A); every visibility assertion below is unchanged.
+        pipeline_page.expand_node_panel_advanced_section()
         assert pipeline_page.llm_node_system_value.is_visible(), (
             "SYSTEM Value field should be visible inline on the canvas card — "
             "no separate click-to-open action needed (live product simplification, "

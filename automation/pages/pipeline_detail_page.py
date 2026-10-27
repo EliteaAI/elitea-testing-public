@@ -849,6 +849,13 @@ class PipelineDetailPage(PipelineFormPage):
     # types stay untagged, .agents/testing.md § Locator policy). Page-wide
     # (not scoped to a specific node container): correct as long as a test
     # only has a single LLM node on canvas.
+    # Node side-panel "Advanced" accordion (NodeConfigSection.jsx, defaultExpanded
+    # only for Basic). Holds the LLM node's CHAT HISTORY, Input, Output and
+    # Structured output; collapsed by default (ELITEA-2004 adjust, class A).
+    node_panel_advanced_toggle = LocatorDescriptor(
+        testid="pipeline-node-panel-advanced-section-toggle",
+        description="Node side panel's 'Advanced' accordion header (aria-expanded reflects state)"
+    )
     llm_node_system_type_select = LocatorDescriptor(
         testid="pipeline-llm-node-system-type-select",
         description="LLM node's SYSTEM section Type select (inline on canvas card)"
@@ -5016,17 +5023,55 @@ class PipelineDetailPage(PipelineFormPage):
     # ------------------------------------------------------------------
 
     _LLM_NODE_SECTIONS = ("system", "task", "chat_history")
+    # Sections rendered inside the node panel's collapsed-by-default "Advanced" accordion.
+    _LLM_NODE_ADVANCED_SECTIONS = ("chat_history",)
+
+    def ensure_llm_node_panel_open(self, timeout: int = 5000) -> None:
+        """Make sure the LLM node's side panel is open (select the node if it is not).
+
+        ELITEA-2004 (class A): node config renders in a side panel that exists
+        only while a node is selected (it is open right after adding a node,
+        closed after a page reload). No-op when the panel is already open.
+        """
+        if self.node_panel_advanced_toggle.is_visible():
+            return
+        node_id = self.wait_for_node_on_canvas("llm", timeout=timeout)
+        self._select_node(node_id)
+        self.node_panel_advanced_toggle.wait_for(state="visible", timeout=timeout)
+
+    def expand_node_panel_advanced_section(self, timeout: int = 5000) -> None:
+        """Expand the selected node's side-panel "Advanced" accordion if it is collapsed.
+
+        ELITEA-2004 (class A, UI drift): the LLM node config moved from the
+        canvas card into a node side panel whose "Advanced" section
+        (CHAT HISTORY, Input, Output, Structured output) is collapsed until
+        opened (``NodeConfigSection.jsx``: ``defaultExpanded={isBasic}``).
+        Idempotent: a strict no-op when already expanded.
+        """
+        self.ensure_llm_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+            self.llm_node_chat_history_type_select.wait_for(state="visible", timeout=timeout)
 
     def _llm_node_type_select_locator(self, section: str) -> Locator:
         """Return the class-level Type-select LocatorDescriptor for *section*."""
         if section not in self._LLM_NODE_SECTIONS:
             raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
+        self.ensure_llm_node_panel_open()
+        if section in self._LLM_NODE_ADVANCED_SECTIONS:
+            self.expand_node_panel_advanced_section()
         return getattr(self, f"llm_node_{section}_type_select")
 
     def _llm_node_value_locator(self, section: str) -> Locator:
         """Return the class-level Value-field LocatorDescriptor for *section*."""
         if section not in self._LLM_NODE_SECTIONS:
             raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
+        self.ensure_llm_node_panel_open()
+        if section in self._LLM_NODE_ADVANCED_SECTIONS:
+            self.expand_node_panel_advanced_section()
         return getattr(self, f"llm_node_{section}_value")
 
     # Variable-mode Value select's role="combobox" display element carries a
@@ -5275,6 +5320,7 @@ class PipelineDetailPage(PipelineFormPage):
     def open_llm_node_input_select(self, timeout: int = 5000) -> None:
         """Open the LLM node's Input dropdown."""
         self._wait_for_open_popovers_closed(timeout=timeout)
+        self.expand_node_panel_advanced_section(timeout=timeout)
         self.llm_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -5319,11 +5365,13 @@ class PipelineDetailPage(PipelineFormPage):
         chips are left-aligned and the arrow icon area is never covered.
         """
         self._wait_for_open_popovers_closed(timeout=timeout)
+        self.expand_node_panel_advanced_section(timeout=timeout)
         self.llm_node_output_select.wait_for(state="visible", timeout=timeout)
+        self.llm_node_output_select.scroll_into_view_if_needed(timeout=timeout)
         box = self.llm_node_output_select.bounding_box()
         if box:
             self.llm_node_output_select.click(
-                position={"x": max(box["width"] - 12, 1), "y": box["height"] / 2}, timeout=timeout
+                position={"x": max(box["width"] - 20, 1), "y": box["height"] / 2}, timeout=timeout
             )
         else:
             self.llm_node_output_select.click(timeout=timeout)
