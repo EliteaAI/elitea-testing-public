@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "session": "93a18a6d-2611-42e1-a23f-58dd8721608b",
+  "intent": "automation",
+  "batch": "adjust-2720",
+  "cases": [
+    "ELITEA-2007",
+    "ELITEA-2042",
+    "ELITEA-2045"
+  ],
+  "declaredAt": "2026-10-27T05:41:30.023Z",
+  "updatedAt": "2026-10-27T06:18:06.185Z",
+  "outcomes": {
+    "ELITEA-2007": {
+      "outcome": "automated",
+      "at": "2026-10-27T06:18:06.147Z"
+    },
+    "ELITEA-2042": {
+      "outcome": "blocked",
+      "at": "2026-10-27T06:18:06.147Z"
+    },
+    "ELITEA-2045": {
+      "outcome": "blocked",
+      "at": "2026-10-27T06:18:06.147Z"
+    }
+  },
+  "closedAt": "2026-10-27T06:18:06.185Z"
+}
