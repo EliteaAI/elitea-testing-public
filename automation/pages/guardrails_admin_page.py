@@ -18,13 +18,14 @@ Page Structure:
 """
 
 import logging
-from playwright.sync_api import Page
+
+from config import settings
+from playwright.sync_api import Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import expect
+from utils.actions import action
+
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, ScopedLocator
-from utils.actions import action
-from config import settings
 
 logger = logging.getLogger("elitea.pages.guardrails_admin")
 
@@ -49,34 +50,78 @@ class GuardrailsAdminPage(BasePage):
         role="button", name="Save", exact=True, suggested_testid="admin-config-save-button",
         description="Configuration footer Save button",
     )
-    # Save result snackbar (filled MUI Alert, role=alert): "Configuration saved
-    # successfully" | "Configuration saved. Reload required: …" | "Failed to save: …".
-    save_snackbar = LocatorDescriptor(
-        role="alert", suggested_testid="admin-config-save-snackbar-alert",
-        description="Save result snackbar alert",
+    # Save result snackbar (filled MUI Alert, role=alert). The warning Alert in the
+    # action bar also has role=alert, so each result is addressed by its own name:
+    # "Configuration saved successfully" | "Configuration saved. Reload required: ..." |
+    # "Failed to save: ...". All suggested_testid hints below are for the admin_ui app.
+    save_success_alert = LocatorDescriptor(
+        xpath="//*[@role='alert'][contains(normalize-space(), 'Configuration saved')]",
+        suggested_testid="admin-config-save-success-alert",
+        description="Save success snackbar (admin_ui); also carries the 'Reload required' variant. "
+        "MUI Alert role=alert has no content-derived accessible name, and the action-bar warning "
+        "Alert shares the role, so role+name cannot isolate it",
+    )
+    save_failure_alert = LocatorDescriptor(
+        xpath="//*[@role='alert'][contains(normalize-space(), 'Failed to save')]",
+        suggested_testid="admin-config-save-failure-alert",
+        description="Save failure snackbar (admin_ui); role=alert has no content-derived name",
+    )
+    reload_snackbar_alert = LocatorDescriptor(
+        xpath="//*[@role='alert'][contains(normalize-space(), 'Reload required')]",
+        suggested_testid="admin-config-reload-snackbar-alert",
+        description="Warning snackbar after a save that returned requires_restart (admin_ui); "
+        "role=alert has no content-derived name",
     )
     # Pending-restart bar rendered after a save that returned requires_restart.
     restart_bar_label = LocatorDescriptor(
         xpath="//span[normalize-space()='Reload required:']",
         suggested_testid="admin-config-restart-bar-label",
-        description="Restart bar caption; no role/label/stable css — it is a bare Typography span",
+        description="Restart bar caption (admin_ui); no role/label/stable css - it is a bare Typography span",
     )
-    # GuardrailsFieldCard.jsx: fieldTitleRow = <p>{title}</p> + <Chip label="Reload required">
+    # GuardrailsFieldCard.jsx (admin_ui): fieldTitleRow = <p>{title}</p> + <Chip label="Reload required">
     # when the field declares requires_restart.
     FIELD_TITLE = ScopedLocator(
         xpath="//p[normalize-space()='{}']",
         suggested_testid="admin-guardrails-field-title-{}",
-        description="Field title is a bare body2 Typography; no role/label/stable css",
+        description="Field title is a bare body2 Typography (admin_ui); no role/label/stable css",
     )
+    FIELD_CARD = ScopedLocator(
+        xpath="//p[normalize-space()='{0}']/ancestor::div[.//input]"
+        "[not(.//div[.//input][.//p[normalize-space()='{0}']])]",
+        suggested_testid="admin-guardrails-field-card-{}",
+        description="Field card = nearest ancestor of the title Typography holding the field input, "
+        "expressed without positions (admin_ui); no role/label/stable css",
+    )
+    # Scoped inside a FIELD_CARD: toolkit block of Blocked Tools / Sensitive Action Tools,
+    # i.e. nearest ancestor of the toolkit-name Typography that holds its own tool input.
+    TOOLKIT_BLOCK = ScopedLocator(
+        xpath=".//p[normalize-space()='{0}']/ancestor::div[.//input]"
+        "[not(.//div[.//input][.//p[normalize-space()='{0}']])]",
+        suggested_testid="admin-guardrails-toolkit-block-{}",
+        description="Toolkit block inside a field card (admin_ui); no role/label/stable css",
+    )
+    EMPTY_TOOLKIT_DELETE = ScopedLocator(
+        xpath=".//div[p and button][not(following-sibling::*//*[@role='button'])]/button",
+        suggested_testid="admin-guardrails-empty-toolkit-delete-button",
+        description="Trash button in the header row (toolkit-name p + button) of a toolkit block "
+        "that holds no tool chip (admin_ui); the button has no accessible name",
+    )
+    FIELD_CHIP_LABEL = ScopedLocator(
+        xpath=".//div[@role='button']/span",
+        suggested_testid="admin-guardrails-field-chip-label",
+        description="Label span of every deletable chip (div[role=button]) in a field card (admin_ui); "
+        "enumerates all chips, so it needs no accessible name",
+    )
+    # MUI deletable chips render role=button with the label as accessible name.
+    FIELD_CHIP = ScopedLocator(
+        role="button", name="{}", exact=True, suggested_testid="admin-guardrails-field-chip-{}",
+    )
+    # Anchored inside the field card, so it depends on the same verified anchor as FIELD_CARD.
     FIELD_RELOAD_CHIP = ScopedLocator(
-        xpath="//p[normalize-space()='{}']/following-sibling::*[normalize-space()='Reload required']",
+        xpath=".//*[normalize-space()='Reload required']",
         suggested_testid="admin-guardrails-field-reload-chip-{}",
-        description="Chip is a sibling of the field title Typography; no role/label/stable css anchors it",
-    )
-    ANY_RELOAD_CHIP = LocatorDescriptor(
-        xpath="//span[normalize-space()='Reload required']",
-        suggested_testid="admin-guardrails-field-reload-chip",
-        description="Any field's Reload required chip label; Chip has no role/name of its own",
+        description="Reload required chip label searched inside the field card (admin_ui); "
+        "Chip has no role/name of its own",
     )
 
     def __init__(self, page: Page):
@@ -94,9 +139,6 @@ class GuardrailsAdminPage(BasePage):
         self.page.goto(url, wait_until="domcontentloaded")
         self.page.wait_for_load_state("networkidle", timeout=30000)
         self.wait_for_page_load()
-        # Fresh browser contexts (admin_page fixture) are not covered by the autouse
-        # announcement dismiss; best-effort, no-op when no dialog is shown.
-        self.dismiss_announcement_dialog_if_present()
 
     def wait_for_page_load(self, timeout: int = 15000):
         """Wait for Guardrails page to fully load."""
@@ -143,47 +185,26 @@ class GuardrailsAdminPage(BasePage):
     # ------------------------------------------------------------------
 
     def get_blocked_toolkits(self) -> list[str]:
-        """Get list of currently blocked toolkit names from chips.
-
-        Returns list of blocked toolkit names by finding deletable chips
-        in the "Blocked Toolkits" section (before "Blocked Tools" heading).
-        """
+        """Get names of currently blocked toolkits (chips in the Blocked Toolkits card)."""
         self._expand_blocked_section()
-
-        toolkit_names = []
-
-        # Strategy: Get all deletable chips on the page, then filter to those
-        # that appear before the "Blocked Tools" heading (which marks the end
-        # of the Blocked Toolkits section)
-
-        # First, check if "Blocked Tools" heading exists to know the boundary
-        blocked_tools_heading = self.page.locator('text="Blocked Tools"').first
-        has_blocked_tools_section = blocked_tools_heading.count() > 0
-
-        # Get all deletable chips (these are the blocked toolkit chips)
-        chips = self.page.locator('.MuiChip-deletable .MuiChip-label').all()
-
-        for chip in chips:
-            # If we have a Blocked Tools section, only include chips that appear
-            # before it (i.e., in the Blocked Toolkits section)
-            if has_blocked_tools_section:
-                chip_box = chip.bounding_box()
-                tools_box = blocked_tools_heading.bounding_box()
-                # Skip chips that are below the "Blocked Tools" heading
-                if chip_box and tools_box and chip_box['y'] > tools_box['y']:
-                    continue
-
-            text = chip.text_content()
-            if text and text.strip():
-                toolkit_names.append(text.strip())
-
-        logger.info("Blocked toolkits: %s", toolkit_names)
-        return toolkit_names
+        card = self.FIELD_CARD.within(self.page, "Blocked Toolkits")
+        labels = self.FIELD_CHIP_LABEL.within(card)
+        names = []
+        for i in range(labels.count()):  # enumerates every chip, never picks one
+            text = (labels.nth(i).text_content() or "").strip()
+            if text:
+                names.append(text)
+        logger.info("Blocked toolkits: %s", names)
+        return names
 
     def is_toolkit_blocked(self, toolkit_name: str) -> bool:
         """Check if a toolkit is in the blocked list."""
-        blocked = self.get_blocked_toolkits()
-        return any(toolkit_name.lower() == t.lower() for t in blocked)
+        card = self.FIELD_CARD.within(self.page, "Blocked Toolkits")
+        return any(
+            self.FIELD_CHIP.within(card, name).count() > 0
+            for name in self.get_blocked_toolkits()
+            if name.lower() == toolkit_name.lower()
+        )
 
     @action("Add blocked toolkit")
     def add_blocked_toolkit(self, toolkit_name: str, timeout: int = 5000):
@@ -225,7 +246,7 @@ class GuardrailsAdminPage(BasePage):
         """
         logger.info("Removing blocked toolkit: %s", toolkit_name)
         self._expand_blocked_section(timeout)
-        
+
         # Find the chip with the toolkit name (case-insensitive)
         # Structure: .MuiChip-root > span.MuiChip-label + svg (delete icon)
         chip = self.page.locator(f'.MuiChip-deletable:has(.MuiChip-label:text-is("{toolkit_name}"))').first
@@ -320,97 +341,27 @@ class GuardrailsAdminPage(BasePage):
         logger.info("Removed blocked tool: %s", tool_name)
 
     def remove_empty_toolkit_containers(self, timeout: int = 5000):
-        """Remove empty toolkit containers from Blocked Tools section.
+        """Remove empty toolkit blocks (header + trash button, no tool chips) from Blocked Tools.
 
-        After removing all tool chips from a toolkit, the toolkit container
-        (label + basket icon) remains. This method clicks the basket icon
-        to remove empty containers.
-
-        The basket icon appears on the right side of the toolkit label row.
+        After removing the last tool chip of a toolkit, its block stays. Every match of
+        EMPTY_TOOLKIT_DELETE is such a block's trash button, so any of them is the right
+        one to remove next; re-counted after each click because the DOM re-renders.
 
         Args:
             timeout: Maximum wait time in milliseconds
         """
         self._expand_blocked_section(timeout)
-
-        removed_count = 0
-        max_attempts = 10  # Prevent infinite loop
-
-        for attempt in range(max_attempts):
-            # Find the "Blocked Tools" heading to identify the section
-            blocked_tools_heading = self.page.locator('text="Blocked Tools"').first
-            if blocked_tools_heading.count() == 0:
-                logger.debug("Blocked Tools section not found")
+        card = self.FIELD_CARD.within(self.page, "Blocked Tools")
+        removed = 0
+        for _ in range(10):  # bounded: a block that refuses to go away must not loop forever
+            empty_trash = self.EMPTY_TOOLKIT_DELETE.within(card)
+            remaining = empty_trash.count()
+            if remaining == 0:
                 break
-
-            tools_heading_box = blocked_tools_heading.bounding_box()
-            if not tools_heading_box:
-                break
-
-            # Look for visible delete/trash/basket icons below the "Blocked Tools" heading
-            # Try multiple selectors for the delete icon
-            delete_icon_selectors = [
-                'svg[data-testid*="Delete"]',
-                'button[aria-label*="delete"]',
-                '[data-testid*="delete-icon"]',
-                'svg[class*="delete"]',
-                'svg[class*="Delete"]',
-                # Generic trash/basket icon selector
-                'svg',  # Last resort - all SVGs
-            ]
-
-            found_icon = None
-            for selector in delete_icon_selectors:
-                icons = self.page.locator(selector).all()
-                for icon in icons:
-                    try:
-                        if not icon.is_visible():
-                            continue
-
-                        icon_box = icon.bounding_box()
-                        if not icon_box:
-                            continue
-
-                        # Check if icon is below "Blocked Tools" heading
-                        # and before "Sensitive Actions" section (if it exists)
-                        if icon_box['y'] <= tools_heading_box['y']:
-                            continue
-
-                        # Check if this is before Sensitive Actions section
-                        sensitive_heading = self.page.locator('text="Sensitive Actions"').first
-                        if sensitive_heading.count() > 0:
-                            sensitive_box = sensitive_heading.bounding_box()
-                            if sensitive_box and icon_box['y'] >= sensitive_box['y']:
-                                continue
-
-                        # Found a candidate icon in the right section
-                        found_icon = icon
-                        break
-                    except Exception:
-                        continue
-
-                if found_icon:
-                    break
-
-            if not found_icon:
-                # No more delete icons found
-                logger.debug("No more delete icons found in Blocked Tools section")
-                break
-
-            # Click the icon to remove the toolkit container
-            try:
-                found_icon.click(timeout=timeout, force=True)
-                self.page.wait_for_timeout(500)
-                removed_count += 1
-                logger.info("Removed empty toolkit container (attempt %d)", attempt + 1)
-            except Exception as e:
-                logger.debug("Could not click delete icon: %s", e)
-                break
-
-        if removed_count > 0:
-            logger.info("Removed %d empty toolkit container(s)", removed_count)
-        else:
-            logger.info("No empty toolkit containers to remove")
+            empty_trash.all()[0].click(timeout=timeout)
+            expect(empty_trash).to_have_count(remaining - 1, timeout=timeout)
+            removed += 1
+        logger.info("Removed %d empty toolkit container(s) from Blocked Tools", removed)
 
     def is_tool_blocked(self, tool_name: str) -> bool:
         """Check if a specific tool is in the blocked tools list.
@@ -423,16 +374,10 @@ class GuardrailsAdminPage(BasePage):
         """
         self._expand_blocked_section()
 
-        # Look for chip with the tool name in the Blocked Tools section
-        chips = self.page.locator('.MuiChip-root .MuiChip-label')
-        for i in range(chips.count()):
-            text = chips.nth(i).text_content()
-            if text and tool_name.lower() == text.strip().lower():
-                logger.info("Tool '%s' is blocked", tool_name)
-                return True
-
-        logger.info("Tool '%s' is NOT blocked", tool_name)
-        return False
+        card = self.FIELD_CARD.within(self.page, "Blocked Tools")
+        blocked = self.FIELD_CHIP.within(card, tool_name).count() > 0
+        logger.info("Tool '%s' blocked: %s", tool_name, blocked)
+        return blocked
 
     # ------------------------------------------------------------------
     # Sensitive Action Tools methods
@@ -487,13 +432,13 @@ class GuardrailsAdminPage(BasePage):
 
                 # UI Flow: Clicking dropdown option CREATES the toolkit block immediately
                 # No Add button click needed - dropdown selection is sufficient
-                print(f"[ADD_SENSITIVE] Dropdown option found, clicking to create toolkit block")
+                print("[ADD_SENSITIVE] Dropdown option found, clicking to create toolkit block")
                 dropdown_option.click()
                 self.page.wait_for_timeout(1000)  # Wait for toolkit block creation
 
-                print(f"[ADD_SENSITIVE] Toolkit block created via dropdown selection")
+                print("[ADD_SENSITIVE] Toolkit block created via dropdown selection")
 
-            except Exception as e:
+            except Exception:
                 # No dropdown option found - use Add button for manual entry
                 # This allows adding arbitrary/non-existent toolkit names
                 print(f"[ADD_SENSITIVE] No dropdown option for '{toolkit_name}', using Add button")
@@ -504,12 +449,14 @@ class GuardrailsAdminPage(BasePage):
                 # Add button should be enabled when typing arbitrary text
                 try:
                     add_btn.wait_for(state="enabled", timeout=2000)
-                    print(f"[ADD_SENSITIVE] Add button enabled, clicking")
+                    print("[ADD_SENSITIVE] Add button enabled, clicking")
                     add_btn.click()
                     self.page.wait_for_timeout(1000)
                 except Exception:
                     logger.warning("Add button did not enable for manual entry")
-                    raise Exception(f"Cannot add toolkit '{toolkit_name}': dropdown option not found and Add button disabled")
+                    raise Exception(
+                        f"Cannot add toolkit '{toolkit_name}': dropdown option not found and Add button disabled"
+                    )
 
             logger.info("Created toolkit block for: %s", toolkit_name)
         else:
@@ -682,27 +629,17 @@ class GuardrailsAdminPage(BasePage):
         logger.info("Removed %d empty toolkit blocks from Sensitive Action Tools", removed_count)
         print(f"[CLEANUP] Total removed: {removed_count} empty blocks")
 
-    def is_tool_in_sensitive_list(self, tool_name: str, toolkit_name: str = None) -> bool:
-        """Check if a tool is in the sensitive action tools list.
+    def is_tool_in_sensitive_list(self, tool_name: str, toolkit_name: str) -> bool:
+        """Check if a tool chip is inside the toolkit's block of Sensitive Action Tools.
 
         Args:
-            tool_name: Name of tool to check
-            toolkit_name: Optional toolkit to scope the search
-
-        Returns:
-            True if tool is in the sensitive list
+            tool_name: Exact tool name (e.g. "list_projects")
+            toolkit_name: Toolkit block the chip must belong to (e.g. "jira")
         """
         self._expand_sensitive_section()
-
-        if toolkit_name:
-            # Look for the tool chip within the toolkit block
-            toolkit_block = self.page.locator(f'text="{toolkit_name}"').first.locator('xpath=ancestor::div[2]')
-            chip = toolkit_block.locator(f'.MuiChip-root:has-text("{tool_name}")')
-        else:
-            # Look anywhere in sensitive section
-            chip = self.page.locator(f'.MuiChip-root:has-text("{tool_name}")')
-
-        return chip.count() > 0 and chip.first.is_visible()
+        card = self.FIELD_CARD.within(self.page, "Sensitive Action Tools")
+        block = self.TOOLKIT_BLOCK.within(card, toolkit_name)
+        return self.FIELD_CHIP.within(block, tool_name).count() > 0
 
     # ------------------------------------------------------------------
     # Page actions and indicators
@@ -710,59 +647,64 @@ class GuardrailsAdminPage(BasePage):
 
     @action("Save configuration")
     def save_configuration(self, timeout: int = 10000) -> str:
-        """Click Save and wait for the save result snackbar; return its text.
+        """Click Save, verify the PUT response and return the save-result snackbar text.
 
-        Removing a chip makes the form dirty, so Save enables on any real change
-        (verified on DEV). Save that stays disabled means there was nothing to
-        save — that is a test-flow error, raised rather than papered over.
+        The PUT of /plugin_config_values/ is the ground truth (a stale snackbar from a
+        previous save inside its 5 s auto-hide window cannot satisfy it). Save that
+        stays disabled means there was nothing to save - a test-flow error, raised.
 
         Raises:
-            AssertionError: Save stayed disabled, or the snackbar reports
-                "Failed to save", or no save result appeared within timeout.
+            AssertionError: Save stayed disabled, the PUT failed, or no result
+                snackbar appeared within timeout.
         """
         logger.info("Saving Guardrails configuration")
         self.save_button.scroll_into_view_if_needed()
         try:
             expect(self.save_button).to_be_enabled(timeout=timeout)
         except AssertionError as exc:
-            raise AssertionError("Save button stayed disabled — no unsaved changes to save") from exc
+            raise AssertionError("Save button stayed disabled - no unsaved changes to save") from exc
 
-        self.save_button.click()
-        result = self.save_snackbar.filter(has_text="Configuration saved").or_(
-            self.save_snackbar.filter(has_text="Failed to save")
-        )
         try:
-            result.first.wait_for(state="visible", timeout=timeout)
+            with self.page.expect_response(
+                lambda r: "/plugin_config_values/" in r.url and r.request.method == "PUT", timeout=timeout
+            ) as response_info:
+                self.save_button.click()
         except PlaywrightTimeoutError as exc:
-            raise AssertionError("No save result snackbar appeared after clicking Save") from exc
+            raise AssertionError("No configuration PUT response after clicking Save") from exc
+        response = response_info.value
+        if not response.ok:
+            raise AssertionError(f"Guardrails save failed: HTTP {response.status}")
 
-        text = (result.first.text_content() or "").strip()
+        result = self.save_success_alert.or_(self.save_failure_alert)
+        try:
+            result.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError as exc:
+            raise AssertionError("No save result snackbar appeared after the save request") from exc
+        text = (result.text_content() or "").strip()
         logger.info("Save result: %s", text[:200])
         if "Failed to save" in text:
             raise AssertionError(f"Guardrails save failed: {text}")
         return text
 
-    def has_reload_required_badge(self, field_name: str = None) -> bool:
-        """Check if a "Reload required" chip is shown (optionally on one field).
+    def has_reload_required_badge(self, field_name: str) -> bool:
+        """Check if a "Reload required" chip is shown on one field card.
 
         After live-reload enhancement, these badges should NOT appear
         for Blocked Toolkits, Blocked Tools, and Sensitive Action Tools.
 
         Args:
-            field_name: Field title (e.g. "Blocked Toolkits"); the field title
+            field_name: Field title (e.g. "Blocked Toolkits"); the field card
                 must be on the page, otherwise the check would be vacuous.
 
         Returns:
-            True if reload required badge is visible
+            True if the reload required badge is visible
         """
-        if field_name:
-            title = self.FIELD_TITLE.within(self.page, field_name)
-            if title.count() == 0:
-                raise AssertionError(f"Field title {field_name!r} not found — cannot check its badge")
-            badge = self.FIELD_RELOAD_CHIP.within(self.page, field_name)
-        else:
-            badge = self.ANY_RELOAD_CHIP
-        visible = badge.count() > 0 and badge.first.is_visible()
+        if self.FIELD_TITLE.within(self.page, field_name).count() == 0:
+            raise AssertionError(f"Field title {field_name!r} not found - cannot check its badge")
+        card = self.FIELD_CARD.within(self.page, field_name)
+        if card.count() != 1:
+            raise AssertionError(f"Expected exactly 1 field card for {field_name!r}, found {card.count()}")
+        visible = self.FIELD_RELOAD_CHIP.within(card, field_name).count() > 0
         logger.info("Reload required badge visible (field=%s): %s", field_name, visible)
         return visible
 
@@ -770,23 +712,9 @@ class GuardrailsAdminPage(BasePage):
         """Check whether the save asked for a pylon reload.
 
         Covers both signals ConfigurationPage.jsx emits for requires_restart:
-        the warning snackbar ("Configuration saved. Reload required: …") and
+        the warning snackbar ("Configuration saved. Reload required: ...") and
         the pending-restart bar ("Reload required:" + reload buttons).
-
-        Returns:
-            True if a reload-required snackbar or restart bar is visible
         """
-        snackbar = self.save_snackbar.filter(has_text="Reload required")
-        visible = (snackbar.count() > 0 and snackbar.first.is_visible()) or (
-            self.restart_bar_label.count() > 0 and self.restart_bar_label.first.is_visible()
-        )
+        visible = self.reload_snackbar_alert.count() > 0 or self.restart_bar_label.count() > 0
         logger.info("Reload banner visible: %s", visible)
         return visible
-
-    def get_reload_banner_text(self) -> str:
-        """Get the text of the save result snackbar if visible."""
-        if self.save_snackbar.count() > 0 and self.save_snackbar.first.is_visible():
-            text = self.save_snackbar.first.text_content() or ""
-            logger.info("Save snackbar text: %s", text[:100])
-            return text
-        return ""

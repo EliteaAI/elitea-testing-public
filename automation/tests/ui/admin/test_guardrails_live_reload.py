@@ -28,14 +28,13 @@ Usage:
 
 import logging
 
-import pytest
 import allure
-from playwright.sync_api import Browser, Page
-
-from pages.guardrails_admin_page import GuardrailsAdminPage
-from pages.agent_detail_page import AgentDetailPage
+import pytest
 from api import AgentAPI, CredentialAPI, ToolkitAPI
 from config import settings
+from pages.agent_detail_page import AgentDetailPage
+from pages.guardrails_admin_page import GuardrailsAdminPage
+from playwright.sync_api import Browser, Page, expect
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +340,6 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
             # Reload page to ensure stable state before sensitive tools cleanup
             print("[CLEANUP] Reloading page for stable state")
             guardrails.navigate_to_guardrails()
-            pg.wait_for_timeout(1000)  # Let page settle
 
             # Remove sensitive tools
             print("[CLEANUP] Cleaning up sensitive tools")
@@ -483,7 +481,7 @@ class TestBlockedToolkitLiveReload:
             agent_page.navigate(agent_id)
 
             toolkit_name = guardrails_test_agent["toolkit_name"]
-            initial_count = agent_page._embedded_chat_messages().count()
+            initial_count = agent_page.get_chat_message_count()
             agent_page.send_chat_message(
                 "List all JIRA projects available. Execute the tool."
             )
@@ -507,18 +505,16 @@ class TestBlockedToolkitLiveReload:
             )
 
         with allure.step("Step 5 — Save and verify no pylon reload banner"):
-            guardrails.save_configuration()
+            save_result = guardrails.save_configuration()
             assert not guardrails.has_reload_banner_after_save(), (
                 "Should NOT show pylon reload banner after save"
+            )
+            assert "reload required" not in save_result.lower() and "pylon" not in save_result.lower(), (
+                f"Save result should not ask for a pylon reload. Text: {save_result}"
             )
             assert not guardrails.has_reload_required_badge("Blocked Toolkits"), (
                 "Blocked Toolkits should NOT have 'Reload required' badge after save"
             )
-            banner_text = guardrails.get_reload_banner_text()
-            if banner_text:
-                assert "pylon" not in banner_text.lower(), (
-                    f"Banner should not mention pylon. Text: {banner_text}"
-                )
 
         with allure.step("Step 6 — Verify toolkit is now blocked in agent"):
             agent_page.navigate(agent_id)
@@ -618,7 +614,7 @@ class TestBlockedToolLiveReload:
             agent_page.auto_dismiss_announcement_dialog()
             agent_page.navigate(agent_id)
 
-            initial_count = agent_page._embedded_chat_messages().count()
+            initial_count = agent_page.get_chat_message_count()
             agent_page.send_chat_message(
                 'Search for issues in TEST project using JQL query: project = TEST. Execute the tool.'
             )
@@ -661,7 +657,7 @@ class TestBlockedToolLiveReload:
             logger.info("Blocked tool indicator visible for '%s'", toolkit_name)
 
         with allure.step("Step 7 — Verify other tools in toolkit still work"):
-            initial_count = agent_page._embedded_chat_messages().count()
+            initial_count = agent_page.get_chat_message_count()
             agent_page.send_chat_message(
                 "List all JIRA projects. Execute the tool."
             )
@@ -747,12 +743,9 @@ class TestSensitiveToolLiveReload:
                     guardrails.remove_sensitive_tool(TEST_SENSITIVE_TOOL)
                     guardrails.remove_empty_sensitive_toolkit_blocks()
                     guardrails.save_configuration(timeout=15000)
-                    # Wait longer for backend to persist the change
-                    admin_page.wait_for_timeout(2000)
+                    # save_configuration() returned only after the PUT succeeded
                     admin_page.reload()
                     guardrails.wait_for_page_load()
-                    # Give backend time to fully apply the change
-                    admin_page.wait_for_timeout(1000)
                 except Exception as cleanup_err:
                     logger.warning("Cleanup failed: %s - reloading page", cleanup_err)
                     admin_page.reload()
@@ -773,7 +766,7 @@ class TestSensitiveToolLiveReload:
             agent_page.auto_dismiss_announcement_dialog()
             agent_page.navigate(agent_id)
 
-            initial_count = agent_page._embedded_chat_messages().count()
+            initial_count = agent_page.get_chat_message_count()
             agent_page.send_chat_message(
                 "List all JIRA projects available. Execute the tool."
             )
@@ -786,9 +779,10 @@ class TestSensitiveToolLiveReload:
             response1 = agent_page.get_last_chat_response_text()
             logger.info("Response before marking sensitive: %s", response1[:300] if response1 else "(empty)")
             assert response1, "AI response should not be empty"
-            assert not agent_page.wait_for_sensitive_action_authorization(
-                timeout=AUTH_ABSENT_TIMEOUT, click_authorize=False
-            ), "Sensitive Action Authorization panel should NOT appear before marking sensitive"
+            expect(
+                agent_page.sensitive_action_panel,
+                "Sensitive Action Authorization panel should NOT appear before marking sensitive",
+            ).not_to_be_visible(timeout=AUTH_ABSENT_TIMEOUT)
             assert "authorize" not in response1.lower() and "approval" not in response1.lower(), (
                 "Tool should execute without authorization before marking sensitive"
             )
@@ -813,7 +807,7 @@ class TestSensitiveToolLiveReload:
             page.reload()
             agent_page.wait_for_page_load()
 
-            initial_count2 = agent_page._embedded_chat_messages().count()
+            initial_count2 = agent_page.get_chat_message_count()
             agent_page.send_chat_message(
                 "List all JIRA projects available. Execute the tool."
             )
@@ -846,7 +840,7 @@ class TestSensitiveToolLiveReload:
 
                 agent_page.navigate(agent_id)
 
-                initial_count3 = agent_page._embedded_chat_messages().count()
+                initial_count3 = agent_page.get_chat_message_count()
                 agent_page.send_chat_message(
                     "List all JIRA projects available. Execute the tool."
                 )
@@ -858,9 +852,10 @@ class TestSensitiveToolLiveReload:
 
                 response3 = agent_page.get_last_chat_response_text()
                 logger.info("Response after removing from sensitive: %s", response3[:300] if response3 else "(empty)")
-                assert not agent_page.wait_for_sensitive_action_authorization(
-                    timeout=AUTH_ABSENT_TIMEOUT, click_authorize=False
-                ), "Sensitive Action Authorization panel should NOT appear after removing the tool"
+                expect(
+                    agent_page.sensitive_action_panel,
+                    "Sensitive Action Authorization panel should NOT appear after removing the tool",
+                ).not_to_be_visible(timeout=AUTH_ABSENT_TIMEOUT)
                 assert response3, "AI response should complete without authorization"
             finally:
                 try:
