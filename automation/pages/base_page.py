@@ -357,6 +357,20 @@ class BasePage:
     #: purpose: absence is the common case and must stay cheap.
     ANNOUNCEMENT_APPEAR_TIMEOUT = 2500
 
+    def auto_dismiss_announcement_dialog(self) -> None:
+        """Close the platform announcement dialog whenever it blocks an action.
+
+        The dialog can render seconds after navigation — past the short window
+        :meth:`dismiss_announcement_dialog_if_present` waits — and then intercepts
+        the next click. A Playwright locator handler fires right before any
+        actionability check while the dialog is visible, so a late dialog is
+        closed too. Idempotent per page.
+        """
+        if getattr(self.page, "_announcement_handler_installed", False):
+            return
+        self.page.add_locator_handler(self.platform_banner_close, lambda close: close.click())
+        self.page._announcement_handler_installed = True
+
     def dismiss_announcement_dialog_if_present(self) -> None:
         """Close the platform announcement dialog ("Got it") if it is showing.
 

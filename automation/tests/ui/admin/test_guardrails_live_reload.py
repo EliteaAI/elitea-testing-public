@@ -49,6 +49,9 @@ NAVIGATION_TIMEOUT = 15000
 FORM_SAVE_TIMEOUT = 15000
 TOOLKIT_EXECUTION_TIMEOUT = 30000
 CHAT_RESPONSE_TIMEOUT = 30000
+# Absence check: the panel renders as soon as the tool call is intercepted, so
+# after the response has settled a short window is enough to prove it is absent.
+AUTH_ABSENT_TIMEOUT = 3000
 
 # ---------------------------------------------------------------------------
 # Test Data
@@ -211,23 +214,32 @@ For example:
     logger.info("Created agent %s for guardrails tests", agent_id)
 
     # Attach toolkit via UI
-    ctx = browser.new_context(storage_state=auth_state)
-    pg = ctx.new_page()
-    agent_page = AgentDetailPage(pg)
-    agent_page.navigate(agent_id)
-
     toolkit_name = guardrails_test_toolkit["name"]
-    agent_page.add_toolkit(toolkit_name)
-    agent_page.save_and_wait(timeout=FORM_SAVE_TIMEOUT)
+    ctx = browser.new_context(storage_state=auth_state)
+    try:
+        pg = ctx.new_page()
+        agent_page = AgentDetailPage(pg)
+        # Custom context: the autouse dismiss_banner_after_navigation fixture
+        # only wraps the standard `page`, so the platform announcement dialog
+        # would intercept the "+ Toolkit" click here.
+        agent_page.auto_dismiss_announcement_dialog()
+        agent_page.navigate(agent_id)
 
-    # Verify toolkit attached
-    assert agent_page.is_toolkit_attached(toolkit_name), (
-        f"Toolkit '{toolkit_name}' should be attached to agent"
-    )
-    logger.info("Toolkit '%s' attached to agent %s", toolkit_name, agent_id)
+        agent_page.add_toolkit(toolkit_name)
+        agent_page.save_and_wait(timeout=FORM_SAVE_TIMEOUT)
 
-    pg.close()
-    ctx.close()
+        # Verify toolkit attached
+        assert agent_page.is_toolkit_attached(toolkit_name), (
+            f"Toolkit '{toolkit_name}' should be attached to agent"
+        )
+        logger.info("Toolkit '%s' attached to agent %s", toolkit_name, agent_id)
+    except Exception:
+        # Setup failed before the yield — teardown below never runs, so
+        # delete the agent here instead of leaking it on DEV.
+        module_agent_api.delete_agent(agent_id)
+        raise
+    finally:
+        ctx.close()
 
     yield {"id": agent_id, "name": name, "toolkit_name": toolkit_name}
 
@@ -313,67 +325,13 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not remove empty toolkit containers: {e}")
                 logger.debug("Could not remove empty toolkit containers: %s", e)
 
-            # Save changes after removal
-            # Problem: Removing items doesn't enable Save button (form not marked dirty)
-            # Solution: Add a dummy toolkit, then remove it - this triggers dirty state
+            # Save changes after removal (removing a chip marks the form dirty)
             if removed_anything:
                 print("[CLEANUP] Saving blocked section to persist removal")
                 try:
-                    # Wait for page to stabilize after removals
-                    pg.wait_for_timeout(1000)
-
-                    # Check if Save button is already enabled
-                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    pg.wait_for_timeout(500)
-
-                    save_btn = pg.locator('button:has-text("Save")').last
-
-                    # Check if Save exists and is enabled
-                    if save_btn.count() == 0 or not save_btn.is_enabled():
-                        print("[CLEANUP] Save not enabled, adding dummy item to trigger dirty state")
-
-                        # IMPORTANT: Expand blocked section first!
-                        # (After removals, section might need time to settle)
-                        try:
-                            guardrails._expand_blocked_section(timeout=10000)
-                        except Exception as expand_err:
-                            print(f"[CLEANUP] Could not expand section: {expand_err}")
-                            # Try one more time after navigating fresh
-                            print("[CLEANUP] Reloading page and retrying...")
-                            guardrails.navigate_to_guardrails()
-                            guardrails._expand_blocked_section(timeout=10000)
-
-                        # Add a dummy toolkit to make form dirty
-                        dummy_input = pg.locator('input[placeholder*="search and filter"]').first
-                        dummy_input.click()
-                        dummy_input.fill("dummy_cleanup_toolkit")
-                        pg.wait_for_timeout(300)
-                        dummy_input.press("Enter")
-                        pg.wait_for_timeout(500)
-
-                        # Remove the dummy immediately
-                        dummy_chip = pg.locator('.MuiChip-deletable:has(.MuiChip-label:text-is("dummy_cleanup_toolkit"))')
-                        if dummy_chip.count() > 0:
-                            dummy_chip.first.locator('.MuiChip-deleteIcon').click()
-                            pg.wait_for_timeout(300)
-
-                        print("[CLEANUP] Form now dirty, Save should be enabled")
-
-                    # Now scroll and click Save
-                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    pg.wait_for_timeout(500)
-
-                    save_btn = pg.locator('button:has-text("Save")').last
-                    if save_btn.count() > 0:
-                        save_btn.click(force=True, timeout=5000)
-                        pg.wait_for_load_state("networkidle", timeout=20000)
-                        pg.wait_for_timeout(1000)
-                        print("[CLEANUP] Saved - changes persisted")
-                        logger.info("Saved blocked section successfully")
-                    else:
-                        print("[CLEANUP] WARNING: Save button still not found")
-                        logger.warning("Save button not found after dummy add/remove")
-
+                    result = guardrails.save_configuration(timeout=20000)
+                    print(f"[CLEANUP] Saved - {result}")
+                    logger.info("Saved blocked section successfully: %s", result)
                 except Exception as e:
                     print(f"[CLEANUP] Failed to save: {e}")
                     logger.error("Failed to save blocked section: %s", e)
@@ -411,8 +369,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
             print("[CLEANUP] Checking if save is needed for sensitive section")
             try:
                 # Check if Save button is enabled (indicates changes were made)
-                save_btn = pg.locator('button:has-text("Save")').last
-                if save_btn.count() > 0 and save_btn.is_visible() and save_btn.is_enabled():
+                if guardrails.save_button.is_visible() and guardrails.save_button.is_enabled():
                     print("[CLEANUP] Save button is enabled, saving sensitive section configuration")
                     guardrails.save_configuration(timeout=20000)
                     print("[CLEANUP] Saved sensitive section configuration")
@@ -473,10 +430,11 @@ def admin_page(browser: Browser, auth_state) -> Page:
     ctx.set_default_navigation_timeout(30000)
 
     pg = ctx.new_page()
-    yield pg
-
-    pg.close()
-    ctx.close()
+    try:
+        yield pg
+    finally:
+        pg.close()
+        ctx.close()
 
 
 # ===========================================================================
@@ -520,6 +478,8 @@ class TestBlockedToolkitLiveReload:
 
         with allure.step("Step 3 — Open agent chat and verify tool executes successfully"):
             agent_page = AgentDetailPage(page)
+            # The announcement dialog can render after the autouse dismiss window
+            agent_page.auto_dismiss_announcement_dialog()
             agent_page.navigate(agent_id)
 
             toolkit_name = guardrails_test_agent["toolkit_name"]
@@ -542,11 +502,17 @@ class TestBlockedToolkitLiveReload:
 
         with allure.step("Step 4 — Add JIRA toolkit to blocked list in Admin UI"):
             guardrails.add_blocked_toolkit(TEST_TOOLKIT)
+            assert guardrails.is_toolkit_blocked(TEST_TOOLKIT), (
+                f"{TEST_TOOLKIT} chip should appear in Blocked Toolkits"
+            )
 
         with allure.step("Step 5 — Save and verify no pylon reload banner"):
             guardrails.save_configuration()
             assert not guardrails.has_reload_banner_after_save(), (
                 "Should NOT show pylon reload banner after save"
+            )
+            assert not guardrails.has_reload_required_badge("Blocked Toolkits"), (
+                "Blocked Toolkits should NOT have 'Reload required' badge after save"
             )
             banner_text = guardrails.get_reload_banner_text()
             if banner_text:
@@ -568,6 +534,9 @@ class TestBlockedToolkitLiveReload:
             try:
                 guardrails.remove_blocked_toolkit(TEST_TOOLKIT)
                 guardrails.save_configuration()
+                assert not guardrails.is_toolkit_blocked(TEST_TOOLKIT), (
+                    f"{TEST_TOOLKIT} should no longer be in Blocked Toolkits after save"
+                )
 
                 agent_page.navigate(agent_id)
                 page.reload()
@@ -579,10 +548,11 @@ class TestBlockedToolkitLiveReload:
                 logger.info("Blocked indicator removed for '%s' after unblocking", toolkit_name)
             finally:
                 try:
-                    guardrails.remove_blocked_toolkit(TEST_TOOLKIT)
-                    guardrails.save_configuration()
-                except Exception:
-                    pass
+                    if guardrails.is_toolkit_blocked(TEST_TOOLKIT):
+                        guardrails.remove_blocked_toolkit(TEST_TOOLKIT)
+                        guardrails.save_configuration()
+                except Exception as cleanup_err:
+                    logger.warning("Blocked toolkit cleanup failed: %s", cleanup_err)
 
 
 # ===========================================================================
@@ -644,6 +614,8 @@ class TestBlockedToolLiveReload:
 
         with allure.step("Step 3 — Open agent chat and verify search_using_jql executes"):
             agent_page = AgentDetailPage(page)
+            # The announcement dialog can render after the autouse dismiss window
+            agent_page.auto_dismiss_announcement_dialog()
             agent_page.navigate(agent_id)
 
             initial_count = agent_page._embedded_chat_messages().count()
@@ -665,11 +637,17 @@ class TestBlockedToolLiveReload:
 
         with allure.step("Step 4 — Block search_using_jql tool in Admin UI"):
             guardrails.add_blocked_tool(TEST_TOOLKIT, TEST_TOOL)
+            assert guardrails.is_tool_blocked(TEST_TOOL), (
+                f"{TEST_TOOL} chip should appear under Blocked Tools"
+            )
 
         with allure.step("Step 5 — Save and verify no pylon reload banner"):
             guardrails.save_configuration()
             assert not guardrails.has_reload_banner_after_save(), (
                 "Should NOT show pylon reload banner after save"
+            )
+            assert not guardrails.has_reload_required_badge("Blocked Tools"), (
+                "Blocked Tools should NOT have 'Reload required' badge after save"
             )
 
         with allure.step("Step 6 — Verify search_using_jql is blocked"):
@@ -683,7 +661,7 @@ class TestBlockedToolLiveReload:
             logger.info("Blocked tool indicator visible for '%s'", toolkit_name)
 
         with allure.step("Step 7 — Verify other tools in toolkit still work"):
-            initial_count = 0
+            initial_count = agent_page._embedded_chat_messages().count()
             agent_page.send_chat_message(
                 "List all JIRA projects. Execute the tool."
             )
@@ -704,6 +682,9 @@ class TestBlockedToolLiveReload:
             try:
                 guardrails.remove_blocked_tool(TEST_TOOL)
                 guardrails.save_configuration()
+                assert not guardrails.is_tool_blocked(TEST_TOOL), (
+                    f"{TEST_TOOL} should no longer be in Blocked Tools after save"
+                )
 
                 agent_page.navigate(agent_id)
                 page.reload()
@@ -715,10 +696,11 @@ class TestBlockedToolLiveReload:
                 logger.info("Blocked tool indicator removed for '%s' after unblocking", toolkit_name)
             finally:
                 try:
-                    guardrails.remove_blocked_tool(TEST_TOOL)
-                    guardrails.save_configuration()
-                except Exception:
-                    pass
+                    if guardrails.is_tool_blocked(TEST_TOOL):
+                        guardrails.remove_blocked_tool(TEST_TOOL)
+                        guardrails.save_configuration()
+                except Exception as cleanup_err:
+                    logger.warning("Blocked tool cleanup failed: %s", cleanup_err)
 
 
 # ===========================================================================
@@ -776,16 +758,10 @@ class TestSensitiveToolLiveReload:
                     admin_page.reload()
                     guardrails.wait_for_page_load()
 
-            # Final verification after all cleanup attempts
-            tool_still_in_list = guardrails.is_tool_in_sensitive_list(TEST_SENSITIVE_TOOL, TEST_TOOLKIT)
-            if tool_still_in_list:
-                # If cleanup failed after 3 attempts, this might be a deeper state issue
-                # Log the state but don't fail the test - let Step 3 reveal if it's actually blocking
-                logger.error(
-                    "WARNING: Tool '%s' still in sensitive list after 3 cleanup attempts. "
-                    "This may indicate persistent state. Continuing test to verify actual behavior.",
-                    TEST_SENSITIVE_TOOL
-                )
+            # Final verification after all cleanup attempts — the precondition must hold
+            assert not guardrails.is_tool_in_sensitive_list(TEST_SENSITIVE_TOOL, TEST_TOOLKIT), (
+                f"Tool '{TEST_SENSITIVE_TOOL}' should NOT be in Sensitive Action Tools after cleanup"
+            )
 
             assert not guardrails.has_reload_required_badge("Sensitive Action Tools"), (
                 "Sensitive Action Tools should NOT have 'Reload required' badge"
@@ -793,6 +769,8 @@ class TestSensitiveToolLiveReload:
 
         with allure.step("Step 3 — Verify list_projects executes WITHOUT authorization dialog"):
             agent_page = AgentDetailPage(page)
+            # The announcement dialog can render after the autouse dismiss window
+            agent_page.auto_dismiss_announcement_dialog()
             agent_page.navigate(agent_id)
 
             initial_count = agent_page._embedded_chat_messages().count()
@@ -808,28 +786,26 @@ class TestSensitiveToolLiveReload:
             response1 = agent_page.get_last_chat_response_text()
             logger.info("Response before marking sensitive: %s", response1[:300] if response1 else "(empty)")
             assert response1, "AI response should not be empty"
-
-            # Check if tool is still in sensitive list from cleanup phase
-            # If it is, we expect authorization - this is not the test's fault
-            if tool_still_in_list:
-                logger.warning(
-                    "Tool '%s' is still in sensitive list after cleanup. "
-                    "Skipping authorization assertion - DEV environment may have persistent state.",
-                    TEST_SENSITIVE_TOOL
-                )
-            else:
-                # Tool was successfully removed, should execute without authorization
-                assert "authorize" not in response1.lower() and "approval" not in response1.lower(), (
-                    "Tool should execute without authorization before marking sensitive"
-                )
+            assert not agent_page.wait_for_sensitive_action_authorization(
+                timeout=AUTH_ABSENT_TIMEOUT, click_authorize=False
+            ), "Sensitive Action Authorization panel should NOT appear before marking sensitive"
+            assert "authorize" not in response1.lower() and "approval" not in response1.lower(), (
+                "Tool should execute without authorization before marking sensitive"
+            )
 
         with allure.step("Step 4 — Add list_projects to Sensitive Action Tools in Admin UI"):
             guardrails.add_sensitive_tool(TEST_TOOLKIT, TEST_SENSITIVE_TOOL)
+            assert guardrails.is_tool_in_sensitive_list(TEST_SENSITIVE_TOOL, TEST_TOOLKIT), (
+                f"{TEST_SENSITIVE_TOOL} chip should appear under Sensitive Action Tools"
+            )
 
         with allure.step("Step 5 — Save and verify no pylon reload banner"):
             guardrails.save_configuration()
             assert not guardrails.has_reload_banner_after_save(), (
                 "Should NOT show pylon reload banner after save"
+            )
+            assert not guardrails.has_reload_required_badge("Sensitive Action Tools"), (
+                "Sensitive Action Tools should NOT have 'Reload required' badge after save"
             )
 
         with allure.step("Step 6 — Trigger list_projects and verify authorization dialog appears"):
@@ -858,11 +834,15 @@ class TestSensitiveToolLiveReload:
             assert auth_appeared, (
                 "Sensitive Action Authorization panel should appear for sensitive tool"
             )
+            assert response2, "AI response should complete after authorizing the sensitive tool"
 
         with allure.step("Step 7 — Remove from sensitive list and verify dialog no longer appears"):
             try:
                 guardrails.remove_sensitive_tool(TEST_SENSITIVE_TOOL)
                 guardrails.save_configuration()
+                assert not guardrails.is_tool_in_sensitive_list(TEST_SENSITIVE_TOOL, TEST_TOOLKIT), (
+                    f"{TEST_SENSITIVE_TOOL} should no longer be in Sensitive Action Tools after save"
+                )
 
                 agent_page.navigate(agent_id)
 
@@ -878,9 +858,14 @@ class TestSensitiveToolLiveReload:
 
                 response3 = agent_page.get_last_chat_response_text()
                 logger.info("Response after removing from sensitive: %s", response3[:300] if response3 else "(empty)")
+                assert not agent_page.wait_for_sensitive_action_authorization(
+                    timeout=AUTH_ABSENT_TIMEOUT, click_authorize=False
+                ), "Sensitive Action Authorization panel should NOT appear after removing the tool"
+                assert response3, "AI response should complete without authorization"
             finally:
                 try:
-                    guardrails.remove_sensitive_tool(TEST_SENSITIVE_TOOL)
-                    guardrails.save_configuration()
-                except Exception:
-                    pass
+                    if guardrails.is_tool_in_sensitive_list(TEST_SENSITIVE_TOOL, TEST_TOOLKIT):
+                        guardrails.remove_sensitive_tool(TEST_SENSITIVE_TOOL)
+                        guardrails.save_configuration()
+                except Exception as cleanup_err:
+                    logger.warning("Sensitive tool cleanup failed: %s", cleanup_err)

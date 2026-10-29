@@ -19,7 +19,10 @@ Page Structure:
 
 import logging
 from playwright.sync_api import Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import expect
 from .base_page import BasePage
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from utils.actions import action
 from config import settings
 
@@ -40,6 +43,42 @@ class GuardrailsAdminPage(BasePage):
     URL: /admin/app/configuration#guardrails
     """
 
+    # Footer Save of ConfigurationPage.jsx: disabled={!canSave || saving}, label
+    # "Saving..." while the request is in flight. Only one exact "Save" on the page.
+    save_button = LocatorDescriptor(
+        role="button", name="Save", exact=True, suggested_testid="admin-config-save-button",
+        description="Configuration footer Save button",
+    )
+    # Save result snackbar (filled MUI Alert, role=alert): "Configuration saved
+    # successfully" | "Configuration saved. Reload required: …" | "Failed to save: …".
+    save_snackbar = LocatorDescriptor(
+        role="alert", suggested_testid="admin-config-save-snackbar-alert",
+        description="Save result snackbar alert",
+    )
+    # Pending-restart bar rendered after a save that returned requires_restart.
+    restart_bar_label = LocatorDescriptor(
+        xpath="//span[normalize-space()='Reload required:']",
+        suggested_testid="admin-config-restart-bar-label",
+        description="Restart bar caption; no role/label/stable css — it is a bare Typography span",
+    )
+    # GuardrailsFieldCard.jsx: fieldTitleRow = <p>{title}</p> + <Chip label="Reload required">
+    # when the field declares requires_restart.
+    FIELD_TITLE = ScopedLocator(
+        xpath="//p[normalize-space()='{}']",
+        suggested_testid="admin-guardrails-field-title-{}",
+        description="Field title is a bare body2 Typography; no role/label/stable css",
+    )
+    FIELD_RELOAD_CHIP = ScopedLocator(
+        xpath="//p[normalize-space()='{}']/following-sibling::*[normalize-space()='Reload required']",
+        suggested_testid="admin-guardrails-field-reload-chip-{}",
+        description="Chip is a sibling of the field title Typography; no role/label/stable css anchors it",
+    )
+    ANY_RELOAD_CHIP = LocatorDescriptor(
+        xpath="//span[normalize-space()='Reload required']",
+        suggested_testid="admin-guardrails-field-reload-chip",
+        description="Any field's Reload required chip label; Chip has no role/name of its own",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -55,6 +94,9 @@ class GuardrailsAdminPage(BasePage):
         self.page.goto(url, wait_until="domcontentloaded")
         self.page.wait_for_load_state("networkidle", timeout=30000)
         self.wait_for_page_load()
+        # Fresh browser contexts (admin_page fixture) are not covered by the autouse
+        # announcement dismiss; best-effort, no-op when no dialog is shown.
+        self.dismiss_announcement_dialog_if_present()
 
     def wait_for_page_load(self, timeout: int = 15000):
         """Wait for Guardrails page to fully load."""
@@ -667,95 +709,84 @@ class GuardrailsAdminPage(BasePage):
     # ------------------------------------------------------------------
 
     @action("Save configuration")
-    def save_configuration(self, timeout: int = 10000):
-        """Click Save button and wait for save to complete.
+    def save_configuration(self, timeout: int = 10000) -> str:
+        """Click Save and wait for the save result snackbar; return its text.
 
-        The Save button is at the bottom of the page (footer).
+        Removing a chip makes the form dirty, so Save enables on any real change
+        (verified on DEV). Save that stays disabled means there was nothing to
+        save — that is a test-flow error, raised rather than papered over.
 
-        IMPORTANT: Removing items (clicking X) doesn't enable Save button.
-        If Save is disabled, we add+remove a dummy item to trigger dirty state.
+        Raises:
+            AssertionError: Save stayed disabled, or the snackbar reports
+                "Failed to save", or no save result appeared within timeout.
         """
         logger.info("Saving Guardrails configuration")
+        self.save_button.scroll_into_view_if_needed()
+        try:
+            expect(self.save_button).to_be_enabled(timeout=timeout)
+        except AssertionError as exc:
+            raise AssertionError("Save button stayed disabled — no unsaved changes to save") from exc
 
-        # Scroll to bottom first
-        self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        self.page.wait_for_timeout(500)
+        self.save_button.click()
+        result = self.save_snackbar.filter(has_text="Configuration saved").or_(
+            self.save_snackbar.filter(has_text="Failed to save")
+        )
+        try:
+            result.first.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError as exc:
+            raise AssertionError("No save result snackbar appeared after clicking Save") from exc
 
-        save_btn = self.page.locator('button:has-text("Save")').last
-
-        # Check if Save button is enabled
-        if save_btn.count() == 0 or not save_btn.is_enabled():
-            logger.info("Save button not enabled, triggering dirty state with dummy add/remove")
-
-            # Add a dummy toolkit to trigger dirty state
-            self._expand_blocked_section()
-            dummy_input = self.page.locator('input[placeholder*="search and filter"]').first
-            dummy_input.click()
-            dummy_input.fill("dummy_save_trigger")
-            self.page.wait_for_timeout(300)
-            dummy_input.press("Enter")
-            self.page.wait_for_timeout(500)
-
-            # Remove the dummy
-            dummy_chip = self.page.locator('.MuiChip-deletable:has(.MuiChip-label:text-is("dummy_save_trigger"))')
-            if dummy_chip.count() > 0:
-                dummy_chip.first.locator('.MuiChip-deleteIcon').click()
-                self.page.wait_for_timeout(300)
-
-            # Scroll to Save again
-            self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            self.page.wait_for_timeout(500)
-
-        # Now click Save (should be enabled)
-        save_btn = self.page.locator('button:has-text("Save")').last
-        save_btn.click(force=True, timeout=timeout)
-
-        self.wait_for_network(timeout=timeout)
-        self.page.wait_for_timeout(1000)
-
-        logger.info("Configuration saved")
+        text = (result.first.text_content() or "").strip()
+        logger.info("Save result: %s", text[:200])
+        if "Failed to save" in text:
+            raise AssertionError(f"Guardrails save failed: {text}")
+        return text
 
     def has_reload_required_badge(self, field_name: str = None) -> bool:
-        """Check if reload required badge is visible.
+        """Check if a "Reload required" chip is shown (optionally on one field).
 
         After live-reload enhancement, these badges should NOT appear
         for Blocked Toolkits, Blocked Tools, and Sensitive Action Tools.
 
         Args:
-            field_name: Optional field name to check specific badge
+            field_name: Field title (e.g. "Blocked Toolkits"); the field title
+                must be on the page, otherwise the check would be vacuous.
 
         Returns:
             True if reload required badge is visible
         """
         if field_name:
-            # Look for "Reload required" text near the field
-            field_locator = self.page.locator(f'text="{field_name}"').first
-            badge = field_locator.locator('xpath=ancestor::div[5]').locator('text="Reload required"')
+            title = self.FIELD_TITLE.within(self.page, field_name)
+            if title.count() == 0:
+                raise AssertionError(f"Field title {field_name!r} not found — cannot check its badge")
+            badge = self.FIELD_RELOAD_CHIP.within(self.page, field_name)
         else:
-            badge = self.page.locator('text="Reload required"')
-
+            badge = self.ANY_RELOAD_CHIP
         visible = badge.count() > 0 and badge.first.is_visible()
         logger.info("Reload required badge visible (field=%s): %s", field_name, visible)
         return visible
 
     def has_reload_banner_after_save(self) -> bool:
-        """Check if yellow reload banner appeared after save.
+        """Check whether the save asked for a pylon reload.
 
-        After live-reload enhancement, no pylon reload banner should appear.
+        Covers both signals ConfigurationPage.jsx emits for requires_restart:
+        the warning snackbar ("Configuration saved. Reload required: …") and
+        the pending-restart bar ("Reload required:" + reload buttons).
 
         Returns:
-            True if reload required banner/alert is visible
+            True if a reload-required snackbar or restart bar is visible
         """
-        banner = self.page.locator('[role="alert"]:has-text("reload"), .MuiAlert-root:has-text("pylon"), .MuiAlert-root:has-text("restart")')
-        visible = banner.count() > 0 and banner.first.is_visible()
+        snackbar = self.save_snackbar.filter(has_text="Reload required")
+        visible = (snackbar.count() > 0 and snackbar.first.is_visible()) or (
+            self.restart_bar_label.count() > 0 and self.restart_bar_label.first.is_visible()
+        )
         logger.info("Reload banner visible: %s", visible)
         return visible
 
     def get_reload_banner_text(self) -> str:
-        """Get the text content of the reload banner if visible."""
-        banner = self.page.locator('[role="alert"], .MuiAlert-root')
-        if banner.count() > 0 and banner.first.is_visible():
-            text = banner.first.text_content() or ""
-            logger.info("Reload banner text: %s", text[:100])
+        """Get the text of the save result snackbar if visible."""
+        if self.save_snackbar.count() > 0 and self.save_snackbar.first.is_visible():
+            text = self.save_snackbar.first.text_content() or ""
+            logger.info("Save snackbar text: %s", text[:100])
             return text
         return ""
