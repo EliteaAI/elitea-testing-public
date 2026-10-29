@@ -244,6 +244,9 @@ on:
 env:
   MAX_PARALLEL_USERS: 9  # Number of available test user credentials (1-9)
 
+permissions:
+  contents: read
+
 jobs:
   prepare:
     name: Prepare test matrix
@@ -725,6 +728,8 @@ jobs:
     name: Publish Allure report to GitHub Pages
     needs: [prepare, test]
     if: always()
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     # gh-pages is published as a single force-pushed commit, so two workflows
     # publishing concurrently would silently lose one report (the loser's push

@@ -36,8 +36,13 @@ on:
         type: string
         default: ''
 
+permissions:
+  contents: read
+
 jobs:
   test:
+    permissions:
+      contents: write
     uses: ./.github/workflows/test-ui-custom.yml
     with:
       environment: stage2

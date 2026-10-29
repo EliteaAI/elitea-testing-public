@@ -40,6 +40,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 jobs:
   links:
     # Runs first so its summary is shown at the top of the run page
@@ -87,6 +90,8 @@ jobs:
 
   test:
     needs: links
+    permissions:
+      contents: write
     uses: ./.github/workflows/test-ui-custom.yml
     with:
       environment: dev
