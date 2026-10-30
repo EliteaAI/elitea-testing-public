@@ -143,12 +143,13 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
             "Exactly 1 required Input-mapping field should be listed in the panel for search_issues's "
             "1 required parameter (search_query)"
         )
-        # The optional-mapping accordion heading is gone (panel layout); the 2 optional
-        # parameters are now offered by the Advanced section's "add optional parameter" menu.
-        assert pipeline_page.get_toolkit_node_addable_optional_parameters(timeout=UI_ELEMENT_TIMEOUT) == [
+        # The optional-mapping accordion heading is gone (panel layout): an optional parameter is
+        # either already rendered as a Value field under Advanced (default present) or offered by
+        # the "add optional parameter" menu — the union must be exactly the 2 optional parameters.
+        assert pipeline_page.get_toolkit_node_optional_parameters(timeout=UI_ELEMENT_TIMEOUT) == [
             "max_count",
             "repo_name",
-        ], "search_issues's 2 optional parameters (max_count, repo_name) should be offered in the panel"
+        ], "search_issues's 2 optional parameters (max_count, repo_name) should be exposed in the panel"
         # The now-expanded node's INPUT MAPPING row can land directly under
         # ReactFlow's own pinned bottom-left canvas controls (live-confirmed:
         # a coordinate-based click on the SEARCH QUERY Type select silently

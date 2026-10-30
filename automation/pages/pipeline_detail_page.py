@@ -1699,6 +1699,7 @@ class PipelineDetailPage(PipelineFormPage):
         '[data-testid="pipeline-node-panel-basic-section"] '
         '[data-testid^="pipeline-toolkit-node-input-mapping-value-"]'
     )
+    TOOLKIT_NODE_INPUT_MAPPING_VALUE_PREFIXED = '[data-testid^="pipeline-toolkit-node-input-mapping-value-"]'
     TOOLKIT_NODE_ADD_OPTIONAL_PARAMETER = '[data-testid="pipeline-toolkit-node-add-optional-parameter"]'
     TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS = '[data-testid^="pipeline-toolkit-node-optional-parameter-"]'
     TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
@@ -6014,26 +6015,42 @@ class PipelineDetailPage(PipelineFormPage):
         except AssertionError:
             return False
 
-    def get_toolkit_node_addable_optional_parameters(self, timeout: int = 10000) -> list[str]:
-        """Open the Advanced section's "add optional parameter" menu; return the offered parameter keys; close it.
+    def get_toolkit_node_optional_parameters(self, timeout: int = 10000) -> list[str]:
+        """Return every optional tool parameter the Toolkit node panel exposes (sorted raw keys).
 
-        Replaces the retired 'Input mapping (optional N)' heading: optional parameters are no longer
-        listed up front, they are offered by this menu (BaseToolNode.jsx ``addableOptionalParameters``).
+        Replaces the retired 'Input mapping (optional N)' heading. Per BaseToolNode.jsx an optional
+        key is either already rendered as a Value field under Advanced (it has a value/default in
+        input_mapping) or offered by the "add optional parameter" menu
+        (``addableOptionalParameters``) — the union of the two is the optional set. The menu part
+        is tolerant: the button is not rendered at all when there is nothing to add.
         """
         self.expand_toolkit_node_advanced_section(timeout=timeout)
+        value_prefix = "pipeline-toolkit-node-input-mapping-value-"
+        all_values = self.page.locator(self.TOOLKIT_NODE_INPUT_MAPPING_VALUE_PREFIXED)
+        basic_values = self.page.locator(self.TOOLKIT_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES)
+
+        def _keys(loc: Locator, prefix: str) -> set[str]:
+            return {
+                (loc.nth(i).get_attribute("data-testid") or "").removeprefix(prefix)
+                for i in range(loc.count())
+            }
+
+        rendered_optional = _keys(all_values, value_prefix) - _keys(basic_values, value_prefix)
+
+        offered: set[str] = set()
         button = self.page.locator(self.TOOLKIT_NODE_ADD_OPTIONAL_PARAMETER)
-        button.wait_for(state="visible", timeout=timeout)
-        button.click(timeout=timeout)
-        options = self.page.locator(self.TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS)
-        options.first.wait_for(state="visible", timeout=timeout)
-        prefix = "pipeline-toolkit-node-optional-parameter-"
-        keys = sorted(
-            (options.nth(i).get_attribute("data-testid") or "").removeprefix(prefix)
-            for i in range(options.count())
-        )
-        self.page.keyboard.press("Escape")
-        options.first.wait_for(state="detached", timeout=timeout)
-        return keys
+        try:
+            button.wait_for(state="visible", timeout=3000)
+        except PlaywrightTimeoutError:
+            button = None
+        if button is not None:
+            button.click(timeout=timeout)
+            options = self.page.locator(self.TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS)
+            options.first.wait_for(state="visible", timeout=timeout)
+            offered = _keys(options, "pipeline-toolkit-node-optional-parameter-")
+            self.page.keyboard.press("Escape")
+            options.first.wait_for(state="detached", timeout=timeout)
+        return sorted(rendered_optional | offered)
 
     def open_toolkit_node_picker(self, timeout: int = 10000) -> None:
         """Open the Toolkit node's project toolkit picker and wait for its rows (EL-7159)."""

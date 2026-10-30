@@ -25,6 +25,7 @@ import allure
 import pytest
 from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,8 @@ def test_attach_pipeline_as_tool(page, pipeline_id, pipeline_api):
 
         with allure.step("Step 3 — Select Pipeline B from the picker"):
             pipeline_page.pick_agent_node_application(pipeline_b_name, timeout=UI_ELEMENT_TIMEOUT)
-            assert pipeline_page.wait_for_agent_node_agent_value(pipeline_b_name, timeout=UI_ELEMENT_TIMEOUT) == pipeline_b_name, (
+            shown = pipeline_page.wait_for_agent_node_agent_value(pipeline_b_name, timeout=UI_ELEMENT_TIMEOUT)
+            assert shown == pipeline_b_name, (
                 f"Agent node picker should show {pipeline_b_name!r} after selection"
             )
             pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
@@ -107,9 +109,7 @@ def test_attach_pipeline_as_tool(page, pipeline_id, pipeline_api):
                 "PATCH .../application_relation/prompt_lib/{project}/{pipeline_b_id}/{version_id} "
                 "201 response"
             )
-            assert pipeline_page.save_button.is_disabled(), (
-                "Save should be disabled again once the attachment and the pipeline are persisted"
-            )
+            expect(pipeline_page.save_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 6 — Reload via the canonical URL; the attached pipeline card persists"):
             page.goto(canonical_url)
