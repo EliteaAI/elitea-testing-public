@@ -2010,12 +2010,29 @@ class PipelineDetailPage(PipelineFormPage):
     # Pipeline info
     # ------------------------------------------------------------------
 
+    def _reveal_information_section(self, timeout: int = 10000) -> None:
+        """Make the left-column Information rows (Pipeline ID / Version ID) readable.
+
+        Adjust (class A, UI drift): an open node side panel collapses the left
+        configuration column (which hosts the Information accordion) and closing
+        the panel leaves it collapsed. Close the node panel, then expand the
+        left column if the Information section is still not rendered.
+        Idempotent: a no-op when the section is already visible.
+        """
+        if self.information_section.is_visible():
+            return
+        self.close_node_panel(timeout=timeout)
+        if not self.information_section.is_visible():
+            self.config_panel_collapse_button.click(timeout=timeout)
+        self.information_section.wait_for(state="visible", timeout=timeout)
+
     def get_pipeline_id(self) -> str:
         """Read the Pipeline ID from the Information section.
 
         Returns:
             Pipeline ID as string.
         """
+        self._reveal_information_section()
         return self.copy_id_button.text_content().strip()
 
     def get_version_display(self) -> str:
@@ -2054,6 +2071,7 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Version ID as string (e.g. ``"8311"``).
         """
+        self._reveal_information_section()
         return self.copy_version_id_button.text_content().strip()
 
     @action("Click the Information section's 'Show' link")
@@ -5602,7 +5620,12 @@ class PipelineDetailPage(PipelineFormPage):
         self._select_multi_select_option_and_close(variable_name, timeout=timeout)
 
     def get_llm_node_output_value(self) -> str:
-        """Read the LLM node's currently-selected Output display text."""
+        """Read the LLM node's currently-selected Output display text.
+
+        Adjust (class A, UI drift): the Output field lives in the node side
+        panel's collapsed "Advanced" section — open/expand it before reading.
+        """
+        self.expand_node_panel_advanced_section()
         text = (self.llm_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
