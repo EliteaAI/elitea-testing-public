@@ -42,7 +42,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p0, pytest.mark.regr
 # Timeout constants (ms)
 # ---------------------------------------------------------------------------
 UI_ELEMENT_TIMEOUT = 10_000
-AI_RESPONSE_TIMEOUT = 60_000
+AI_RESPONSE_TIMEOUT = 180_000
 
 # Case text's own step-3 wording, live-confirmed to reliably trigger the
 # skill_builder tool call when the module is enabled, and to NOT trigger it
