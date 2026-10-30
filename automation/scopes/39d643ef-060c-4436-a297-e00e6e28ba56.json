@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "39d643ef-060c-4436-a297-e00e6e28ba56",
+  "intent": "automation",
+  "batch": "fix-2759-delete-node",
+  "cases": [
+    "ELITEA-2060"
+  ],
+  "declaredAt": "2026-10-30T07:11:26.213Z",
+  "updatedAt": "2026-10-30T07:23:45.194Z",
+  "outcomes": {
+    "ELITEA-2060": {
+      "outcome": "automated",
+      "at": "2026-10-30T07:23:45.155Z"
+    }
+  },
+  "closedAt": "2026-10-30T07:23:45.194Z"
+}
