@@ -19,7 +19,6 @@ import allure
 import pytest
 import requests
 from api import CredentialAPI, ToolkitAPI
-from components.mui import Popper
 from config import settings
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
@@ -200,6 +199,11 @@ def managed_toolkit(
 
 class TestCreateCredential:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.p0
     @pytest.mark.credentials
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
@@ -310,6 +314,11 @@ class TestCreateCredential:
 
 class TestCreateToolkit:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.p0
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
     def test_create_toolkit(
@@ -388,6 +397,11 @@ class TestCreateToolkit:
 
 class TestToolkitTestSettings:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.p1
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
     def test_toolkit_test_settings(
@@ -448,18 +462,16 @@ class TestToolkitTestSettings:
             # a role-based combobox scan, both filtered by horizontal position,
             # plus a CSS class fallback — in favour of a testid, per
             # `.agents/testing.md` § Locator policy.
-            test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
+            expect(test_settings.start_search).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
-            visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
-            visible_search.fill(cfg.test_tool_name)
-            page.wait_for_timeout(500)
-
-            keyword = cfg.test_tool_name.lower().split()[0]
-            selected = Popper.select_menuitem_by_content(
-                page, lambda text: keyword in text.lower(),
+            # DRIFT (card #2683): the empty state is now a searchable list of
+            # tool chips (ToolkitTestEmptyState.jsx), not a 'Select Tool'
+            # popover. Search for the tool and click its chip; the click only
+            # succeeds if the chip for exactly this tool exists.
+            test_settings.select_tool_chip_by_name(
+                cfg.test_tool_name, timeout=UI_ELEMENT_TIMEOUT,
             )
-            assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
 
         with allure.step("Step 5 — Verify the Test Settings panel is now shown"):
             # Anchored on the panel's Tool dropdown testid rather than the
@@ -558,6 +570,11 @@ class TestToolkitTestSettings:
 
 class TestChatWithToolkit:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/toolkits_UI/ELITEA-1140_jira-and-confluence-toolkit-crud.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/toolkits_UI/ELITEA-1141_github-toolkit-and-credentials.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.p0
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
     def test_chat_with_toolkit(

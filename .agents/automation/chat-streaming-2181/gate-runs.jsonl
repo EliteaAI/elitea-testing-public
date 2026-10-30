@@ -1,0 +1,1 @@
+{"verdict":"green","at":"2026-10-22T04:58:45Z","runs":3,"seconds":[30.06,30.12,28.94],"cmd":"pytest tests/ui/chat/test_chat_streaming_response.py --reruns 0 x3 (head d8fdd6d5)"}

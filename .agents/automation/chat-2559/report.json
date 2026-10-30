@@ -1,0 +1,122 @@
+{
+ "batch": "chat-2559",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-chat-2559",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "note": "3 separate pytest invocations of test_chat_export_json_message_order.py on trunk 0fca9d05, APP_PREFIX=/app, DEV; 1 passed each (~40s)"
+ },
+ "cases": [
+  {
+   "id": "ELITEA-3775",
+   "outcome": "automated",
+   "note": "gated 3/3 on trunk after stabilize round 1 (ChatPage navigation)",
+   "findings": [
+    {
+     "kind": "clarification",
+     "note": "ELITEA-3775: DEV chat export is encrypted (.json.enc, ELITEA-CHAT-ENC/1), and the case text assumes a plain JSON file opened in an editor. Right-click opens nothing; the menu opens from the hover 3-dot button. Steps 7-16 can only be covered by proxy: the server's own ?summary=true message count plus order and uniqueness on the API message list.",
+     "ref": "ELITEA-3775"
+    },
+    {
+     "kind": "question",
+     "note": "Is a decryption key or utility available to tests? If so, the 3775 JSON-content steps (first/last/middle message, timestamps) become directly observable.",
+     "ref": "ELITEA-3775"
+    },
+    {
+     "kind": "defect",
+     "note": "ELITEA-3786: probable product defect or intent gap, not filed. Export has no author gating in ConversationItem.jsx on origin/main, and a non-author export via API returned 200 for chat 385 in project 470. The user B role is unverified (user 940 may be a project admin). Needs a lead decision and User B credentials before filing.",
+     "ref": "ELITEA-3786"
+    },
+    {
+     "kind": "note",
+     "note": "Playwright MCP chrome is missing on the host, so the earlier analysis used scripted Python Playwright with storage state. navigate_to_chat() plus wait_for_page_load() timed out on a blank chat, and page.goto works. The Send-button click was swallowed by the platform-banner overlay, so use Enter to send."
+    },
+    {
+     "kind": "question",
+     "note": "Is a test decrypt key or utility for the AES-256-GCM chat export obtainable? Without one, steps 7-16 (JSON content, order, duplicates inside the file) stay a proxy check. The case is only partly verified at the file level.",
+     "ref": "ELITEA-3775"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case text says 'right-click conversation' and 'JSON file', but DEV opens the menu from the hover 3-dot button and downloads a .json.enc file. The TMS case text should be corrected. No product defect.",
+     "ref": "ELITEA-3775"
+    },
+    {
+     "kind": "note",
+     "note": "The dispatch prompt's AFS path (l1_chat-export-json-...) did not match the committed file name (l1_export-json-...). Also, the TMS case file is ELITEA-3775_json-all-messages-correct-order.md, which the allure.issue link uses."
+    },
+    {
+     "kind": "note",
+     "note": "Mechanical ladder grep on the full diff (automation/pages and automation/tests, pattern: get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=) returned 0 hits. No page-object changes, no new locators. The spec uses only existing ChatPage members, and I confirmed each exists on the branch. The only raw call is page.goto, which is not a locator. automation/api/client.py adds two C\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_chat_export_json_message_order.py"
+    },
+    {
+     "kind": "clarification",
+     "note": "Reduced observable, honestly declared. Case steps 7-16 (open the JSON, count, first, last, middle, order, duplicates inside the file) are not asserted on the file. DEV serves ELITEA-CHAT-ENC/1 encrypted .json.enc. The test substitutes UI count == API message_groups count == server export-summary messages_count, plus ascending created_at, unique ids, user prompts at even indices in order, first and\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "test-specs/chat-interface/l1_export-json-all-messages-in-order_ELITEA-3775.md"
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation, case to AFS to diff. Pre (20 messages): deviates to 5 exchanges = 10 messages, declared in the docstring and the AFS, and asserted as 2*len(PROMPTS) (spec line 94). Steps 1-4 (count, first, last): Step 3 asserts the UI count, the first message containing PROMPTS[0], and a non-empty last message. Steps 5-6: the export menu, modal, download and toast are asserted in Step 7 (filename r\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "TMS pair is present at method scope: @pytest.mark.tms(\"ELITEA-3775\") plus @allure.issue pointing at chat/ELITEA-3775_json-all-messages-correct-order.md. That file exists in the sibling TMS clone and carries the right id. Markers ui, chat, regression and p0 are present. The implementer's tms_backwrite.py check line is their evidence; I did not run it."
+    },
+    {
+     "kind": "note",
+     "note": "Possible gate-time flake. Step 4 reads the API message list immediately after the last wait_for_ai_response. If the AI group persists after the UI renders it, the API count could lag the UI count by one. The API-vs-UI count assert is hard, so a lag would fail it. Watch the 3x gate for this. No change requested without evidence.",
+     "ref": "automation/tests/ui/chat/test_chat_export_json_message_order.py"
+    },
+    {
+     "kind": "note",
+     "note": "Nit: the dispatch named the AFS test-specs/chat-interface/l1_chat-export-json-all-messages-in-order_ELITEA-3775.md. The actual path on the branch is l1_export-json-all-messages-in-order_ELITEA-3775.md. The test docstring references the actual path, so there is no inconsistency in the repo. Nit: the loop asserts only user prompts at even indices and does not check author alternation at odd indices \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "ELITEA-3786 (blocked AFS lblocked_export-visible-only-to-creator) rides this branch as an AFS only, with no code. It is not part of this review's cases. The finding that Export has no author gating in ConversationItem.jsx, and that non-author API export returned 200, may deserve a lead decision or a bug check elsewhere.",
+     "ref": "test-specs/chat-interface/lblocked_export-visible-only-to-creator_ELITEA-3786.md"
+    }
+   ],
+   "afs": "test-specs/chat-interface/l1_chat-export-json-all-messages-in-order_ELITEA-3775.md",
+   "branch": "tests/ELITEA-3775-export-json-all-messages-in-order"
+  },
+  {
+   "id": "ELITEA-3786",
+   "outcome": "blocked",
+   "note": "Two blockers. User B credentials (TEST_USER_B_*) are not set. The premise also contradicts the code: ConversationItem.jsx on origin/main does not gate Export by author, and a non-author API export returned 200. A User B negative assertion would likely be RED against DEV. The creator half is already covered by the 3779 and 3784 specs. | question #2562",
+   "findings": [
+    {
+     "kind": "clarification",
+     "note": "ELITEA-3775: DEV chat export is encrypted (.json.enc, ELITEA-CHAT-ENC/1), and the case text assumes a plain JSON file opened in an editor. Right-click opens nothing; the menu opens from the hover 3-dot button. Steps 7-16 can only be covered by proxy: the server's own ?summary=true message count plus order and uniqueness on the API message list.",
+     "ref": "ELITEA-3775"
+    },
+    {
+     "kind": "question",
+     "note": "Is a decryption key or utility available to tests? If so, the 3775 JSON-content steps (first/last/middle message, timestamps) become directly observable.",
+     "ref": "ELITEA-3775"
+    },
+    {
+     "kind": "defect",
+     "note": "ELITEA-3786: probable product defect or intent gap, not filed. Export has no author gating in ConversationItem.jsx on origin/main, and a non-author export via API returned 200 for chat 385 in project 470. The user B role is unverified (user 940 may be a project admin). Needs a lead decision and User B credentials before filing.",
+     "ref": "ELITEA-3786"
+    },
+    {
+     "kind": "note",
+     "note": "Playwright MCP chrome is missing on the host, so the earlier analysis used scripted Python Playwright with storage state. navigate_to_chat() plus wait_for_page_load() timed out on a blank chat, and page.goto works. The Send-button click was swallowed by the platform-banner overlay, so use Enter to send."
+    }
+   ],
+   "afs": "test-specs/chat-interface/lblocked_export-visible-only-to-creator_ELITEA-3786.md"
+  }
+ ],
+ "totals": {
+  "automated": 1,
+  "blocked": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": []
+}

@@ -54,7 +54,8 @@ class TestSkillCreationFromChat:
     @allure.title("Skill creation from chat with complete info creates skill; chip opens Canvas")
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/build-skills-project-context/ELITEA-3366_skill-creation-happy-path-with-chip-and-canvas.md",
         "onetest-ai Test Case link",
     )
     def test_skill_created_from_chat_chip_opens_canvas(self, page, conversation_api, skill_api):
@@ -110,6 +111,10 @@ class TestSkillCreationFromChat:
                 assert "action items" in description or "blockers" in description, (
                     f"Description should be topically consistent, got {description!r}"
                 )
+                # Instructions section defaults to Preview (rendered Markdown); the CodeMirror
+                # editor only renders in Edit mode — switch before reading the raw instructions.
+                skill_form.click_edit_mode()
+                expect(skill_form.instructions_editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 instructions = skill_form.get_instructions_multiline().lower()
                 for term in ("standup", "blockers", "decisions", "action items"):
                     assert term in instructions, f"Instructions should contain {term!r}, got {instructions!r}"

@@ -279,3 +279,8 @@ by full cleanup.
 - Cleanup: `SkillDetailPage.delete_skill_via_menu(skill_name)` in a
   `try`/`finally`, mirroring `test_skill_management.py`'s Step 6/7 pattern.
 - No testid work required — see Concrete Handles summary.
+
+## Adjustment (2026-10-25, issue #2678) — class A, UI drift
+- **Old:** Step 2 called `detail_page.fill_instructions("Always say V1")` directly on a freshly created skill's detail page; the CodeMirror editor (`skill-instructions-editor`) was assumed mounted.
+- **New:** DEV opens an existing skill's Instructions in Preview mode (EliteaUI `CreateSkillForm.jsx`); the editor mounts only after the Edit toggle (`markdown-edit-mode-toggle`). Step 2 now calls `detail_page.click_edit_mode()` immediately before `fill_instructions(...)`. No locator changes (existing page-object method/testid).
+- **Expected-result changes:** none. Assertions, steps and markers unchanged.

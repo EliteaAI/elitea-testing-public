@@ -69,6 +69,10 @@ class TestAgentHubOpenAgentDetailModal:
         "agent_hub/ELITEA-2356_agent-hub-open-agent-detail-modal.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/elitea-testing-public/issues/2537",
+        "Known defect — dev-vm.elitea.ai default-icon CSP violation + application_icon 404s (console errors)",
+    )
     @pytest.mark.p2
     def test_agent_hub_open_agent_detail_modal(self, page: Page):
         """Clicking a Catalog agent card opens the preview modal as an overlay,
@@ -77,6 +81,7 @@ class TestAgentHubOpenAgentDetailModal:
         and the Start Chat button — read-only, zero console errors, zero
         4xx/5xx."""
         agent_hub = AgentHubPage(page)
+        soft_failures: list[str] = []
 
         # Registered before navigation so console errors / failed network
         # responses from every step (navigate, card click, modal render) are
@@ -103,7 +108,9 @@ class TestAgentHubOpenAgentDetailModal:
 
         with allure.step("Step 3 — Verify the agent detail modal opens as an overlay"):
             expect(agent_hub.modal_dialog).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            assert not console_errors, f"Unexpected console errors while opening the modal: {console_errors}"
+            # Known defect: #2537 — recorded here, asserted strictly in the side-channel step below.
+            if console_errors:
+                soft_failures.append(f"Unexpected console errors while opening the modal: {console_errors}")
 
         with allure.step(
             "Step 4 — Verify the modal displays agent icon, agent name, owner name, "
@@ -184,6 +191,7 @@ class TestAgentHubOpenAgentDetailModal:
             )
 
         with allure.step("Side-channel check — zero console errors, zero 4xx/5xx"):
-            assert not console_errors, f"Unexpected console errors: {console_errors}"
+            # Known defect: #2537 — stays red (sanctioned RED); assertions strict, errors not filtered.
+            assert not console_errors, f"Unexpected console errors: {console_errors} (earlier: {soft_failures})"
             assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
             console_errors.stop()

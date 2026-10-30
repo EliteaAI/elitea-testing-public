@@ -25,6 +25,7 @@ import allure
 import pytest
 from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
@@ -67,47 +68,48 @@ def test_attach_pipeline_as_tool(page, pipeline_id, pipeline_api):
             pipeline_page.wait_for_canvas()
             canonical_url = page.url  # captured for the reload step
 
-        with allure.step('Step 2 — Click TOOLS "+ Pipeline"; open the pipeline picker'):
-            popper = pipeline_page.open_pipeline_popper(timeout=UI_ELEMENT_TIMEOUT)
-            assert popper.is_visible(), "'+ Pipeline' popper should open"
+        with allure.step(
+            'Step 2 — Attach a pipeline as a tool: add an Agent node and open its "Agents & Pipelines" picker '
+            "(TOOLS '+ Pipeline' button removed, EL-7159)"
+        ):
+            pipeline_page.add_node("Agent", timeout=UI_ELEMENT_TIMEOUT)
+            pipeline_page.wait_for_node_on_canvas("agent", timeout=UI_ELEMENT_TIMEOUT)
+            pipeline_page.open_agent_node_picker(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step("Step 3 — Select Pipeline B from the popper"):
-            # Regression guard: the Pipeline picker auto-persists via the SAME
-            # endpoint as the Agent picker (/application_relation/prompt_lib/,
-            # NOT the sibling Toolkit/MCP pickers' /tool/prompt_lib/) —
-            # select_pipeline_in_popper() hard-blocks on that specific
-            # PATCH-201 response before returning, so a future regression that
-            # reverts to the wrong endpoint (or stops persisting on select)
-            # times out this step instead of silently passing.
-            attach_response = pipeline_page.select_pipeline_in_popper(
-                popper, pipeline_b_name, project_id, timeout=UI_ELEMENT_TIMEOUT
+        with allure.step("Step 3 — Select Pipeline B from the picker"):
+            pipeline_page.pick_agent_node_application(pipeline_b_name, timeout=UI_ELEMENT_TIMEOUT)
+            shown = pipeline_page.wait_for_agent_node_agent_value(pipeline_b_name, timeout=UI_ELEMENT_TIMEOUT)
+            assert shown == pipeline_b_name, (
+                f"Agent node picker should show {pipeline_b_name!r} after selection"
             )
-            assert attach_response is not None, (
-                "Pipeline attach should return the persisted relation payload from the immediate "
-                "PATCH .../application_relation/prompt_lib/{project}/{pipeline_b_id}/{version_id} "
-                "201 response"
-            )
-            page.keyboard.press("Escape")
+            pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(
             "Step 4 — Verify Pipeline B appears attached as a flat-list card (no 'sub-tab' — "
             "same root cause as EliteaAI/elitea-testing-public#1149/#530)"
         ):
+            pipeline_page.ensure_toolkits_section_visible(timeout=UI_ELEMENT_TIMEOUT)
             assert pipeline_page.is_toolkit_attached(pipeline_b_name, timeout=UI_ELEMENT_TIMEOUT), (
                 f"TOOLS section should show a card for the attached pipeline {pipeline_b_name!r}"
             )
             assert not console_errors, f"Attaching the pipeline should not introduce console errors: {console_errors}"
 
         with allure.step(
-            "Step 5 — 'Save Pipeline A': the Save button stays disabled — the attach's own PATCH "
-            "already persisted everything, so there is nothing left to save"
+            "Step 5 — Save Pipeline A: the attach is persisted by the Save "
+            "(PATCH .../application_relation/prompt_lib/ 201 + pipeline PUT 201); Save is disabled afterwards"
         ):
-            assert pipeline_page.save_button.is_disabled(), (
-                "Save should remain disabled after a Tools-section attach — the attachment is "
-                "already persisted by its own immediate PATCH (step 3), matching the same "
-                "auto-persist behavior documented for the Agent-node Tools-section attach "
-                "(ELITEA-2038)"
+            # EL-7159 (class A, UI drift): the picker no longer auto-persists on select; the
+            # attachment is written when the pipeline is saved. Same endpoint as before
+            # (application_relation), so the endpoint regression guard is kept.
+            attach_response = pipeline_page.save_and_wait_for_attach(
+                "/application_relation/prompt_lib/", project_id, pipeline_id, timeout=UI_ELEMENT_TIMEOUT
             )
+            assert attach_response is not None, (
+                "Pipeline attach should return the persisted relation payload from the "
+                "PATCH .../application_relation/prompt_lib/{project}/{pipeline_b_id}/{version_id} "
+                "201 response"
+            )
+            expect(pipeline_page.save_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 6 — Reload via the canonical URL; the attached pipeline card persists"):
             page.goto(canonical_url)

@@ -1183,6 +1183,7 @@ class ChatPage(BasePage):
     # per the testid=identity/state=data-* ruling.
     CONVERSATION_MENU_ITEM_KEYS = (
         "rename", "move-to", "playback", "make-public", "share", "pin", "delete",
+        "export",
     )
 
     # ------------------------------------------------------------------
@@ -1243,6 +1244,59 @@ class ChatPage(BasePage):
     # Severity-scoped toast alert selector — testid identity + data-severity
     # state filter, the compliant shape for a state-dependent assertion.
     TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
+    # ------------------------------------------------------------------
+    # Export-chat modal (ELITEA-3784) — ExportConversationModal.jsx.
+    # All testids observed on DEV by the analyst.
+    # ------------------------------------------------------------------
+    export_chat_modal = LocatorDescriptor(
+        testid="export-chat-modal",
+        description="'Export chat' modal opened from the conversation context menu's Export item.",
+    )
+    export_chat_modal_chat_name = LocatorDescriptor(
+        testid="export-chat-modal-chat-name",
+        description="Chat name shown inside the Export chat modal.",
+    )
+    export_chat_modal_export_button = LocatorDescriptor(
+        testid="export-chat-modal-export-button",
+        description="'Export' confirm button of the Export chat modal.",
+    )
+    export_chat_modal_option_without = LocatorDescriptor(
+        testid="export-chat-modal-option-without",
+        description="'Without attachments' option wrapper (default selected).",
+    )
+    export_chat_modal_option_with = LocatorDescriptor(
+        testid="export-chat-modal-option-with",
+        description="'With attachments' option wrapper (disabled when the chat has no attachments).",
+    )
+    export_chat_modal_option_radio = ScopedLocator(
+        css='input[type="radio"]',
+        suggested_testid="export-chat-modal-option-radio",
+        description="Radio input inside an export option wrapper; resolve via .within(option_wrapper).",
+    )
+    export_chat_modal_option_description = LocatorDescriptor(
+        testid="export-chat-modal-option-description",
+        description="Description line under the export options.",
+    )
+    export_chat_modal_progress = LocatorDescriptor(
+        testid="export-chat-modal-progress",
+        description="Transient progress block ('Exporting chat... N files') shown while a ZIP export runs (ELITEA-3764).",
+    )
+
+    # Icon inside a conversation context-menu item (ELITEA-3779) — resolve via
+    # .within(chat.get_conversation_menu_item("export")). css=svg: the icon is an
+    # MUI SvgIcon with no testid of its own; exactly one per item scoped this way.
+    conversation_menu_item_icon = ScopedLocator(
+        css="svg",
+        suggested_testid="chat-conversation-menu-item-icon",
+        description="Leading icon svg of a conversation context-menu item; scope with .within(menu_item).",
+    )
+
+    # CSS selectors for the in-page MutationObserver in click_export_capturing_progress
+    # (JS cannot take a Playwright Locator). Derived from the declarations above so
+    # each testid is written exactly once.
+    EXPORT_PROGRESS_SELECTOR = f'[data-testid="{export_chat_modal_progress.testid}"]'
+    EXPORT_MODAL_SELECTOR = f'[data-testid="{export_chat_modal.testid}"]'
 
     # Toast dismiss (X) icon button — ELITEA-2200 addition (Toast.jsx's
     # custom `action` IconButton, replacing MUI's unlabeled default close).
@@ -1407,6 +1461,79 @@ class ChatPage(BasePage):
     # chat-conversation-menu-rename sibling. Only "rename" was keyed —
     # Pin remains untouched (this case's test never opens Pin).
     FOLDER_MENU_RENAME_ITEM = '[data-testid="chat-folder-menu-rename-menuitem"]'
+
+    # ------------------------------------------------------------------
+    # Folder dot-menu "New chat" (ELITEA-2757)
+    # ------------------------------------------------------------------
+
+    # FolderItem.jsx menuItems carry no `key` for "New chat", so DEV serves no
+    # testid for it — ladder rung 2 (role+name), unique in the open popper menu.
+    folder_menu_items = LocatorDescriptor(
+        role="menuitem",
+        suggested_testid="chat-folder-menu-item-{}",
+        description="All items of the open folder dot-menu popper (enumerated, never picked).",
+    )
+
+    folder_menu_new_chat_item = LocatorDescriptor(
+        role="menuitem",
+        name="New chat",
+        suggested_testid="chat-folder-menu-new-chat-menuitem",
+        description="'New chat' item in the open folder dot-menu popper.",
+    )
+
+    # The folder's OWN dot-menu button. It shares the non-unique
+    # `conversation-menu-menu-button` testid with the dot-menus of conversation
+    # items nested in an expanded folder, and the folder header has no testid of
+    # its own, so exclude buttons that sit inside a conversation item.
+    folder_own_menu_button = ScopedLocator(
+        xpath=(
+            './/*[@data-testid="conversation-menu-menu-button"]'
+            '[not(ancestor::*[starts-with(@data-testid, "chat-conversation-item-")])]'
+        ),
+        suggested_testid="chat-folder-menu-button",
+        description=(
+            "Folder header dot-menu button within a chat-folder-item row; rungs 1-4 fail: the "
+            "shared testid also matches nested conversation items' buttons, so conversation "
+            "item descendants are excluded (no positional pick)."
+        ),
+    )
+
+    # Currently selected model name label (landing and in-conversation).
+    model_selector_name = LocatorDescriptor(
+        testid="model-selector-name",
+        description="Selected model name text in the model selector.",
+    )
+
+    # Composer bottom-bar controls (ELITEA-2466). The speaking-mode button
+    # (SendButton.jsx) replaces the send button while the input is empty.
+    speaking_mode_button = LocatorDescriptor(
+        role="button",
+        name="enter speaking mode",
+        suggested_testid="chat-speaking-mode-button",
+        description="Waveform button shown instead of Send while the input is empty.",
+    )
+
+    USER_MESSAGE_AVATAR = ScopedLocator(
+        xpath=".//*[contains(@class, 'MuiAvatar-root')]",
+        suggested_testid="chat-message-user-avatar",
+        description=(
+            "UserAvatar.jsx renders an MUI <Avatar> (initials or <img>) with no testid "
+            "(testId prop unset in the message header); no role/label/id exists on it, "
+            "so rungs 1-4 fail. Scoped inside a chat-message-item <li>."
+        ),
+    )
+
+    voice_input_button = LocatorDescriptor(
+        role="button",
+        name="start voice input",
+        suggested_testid="chat-voice-input-button",
+        description="Microphone button in the composer bottom bar.",
+    )
+
+    model_settings_button = LocatorDescriptor(
+        testid="model-settings-button",
+        description="Gear button opening model settings in the composer bottom bar.",
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -2497,6 +2624,14 @@ class ChatPage(BasePage):
     def get_attachment_chip_count(self) -> int:
         """Count of currently visible attachment chips (FileList.jsx, excludes overflow)."""
         return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
+
+    def wait_for_attachment_chip_count(self, expected: int, timeout: int = 10000):
+        """Wait until exactly *expected* attachment chips are rendered."""
+        self.page.wait_for_function(
+            "([sel, n]) => document.querySelectorAll(sel).length === n",
+            arg=[self.CHAT_ATTACHMENT_CHIP_PREFIX, expected],
+            timeout=timeout,
+        )
 
     def get_attachment_overflow_count(self) -> int:
         """Parse the '+N' overflow count from the overflow button's text.
@@ -3647,6 +3782,66 @@ class ChatPage(BasePage):
         their items while closed, so this can't pick up a stale menu).
         """
         return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX).count()
+
+    def get_open_conversation_menu_items(self):
+        """Return the Locator matching every currently rendered context-menu item."""
+        return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX)
+
+    def get_open_conversation_menu_item_keys(self) -> list[str]:
+        """Return the open context menu's item keys in DOM (= visual) order.
+
+        Enumerates EVERY match of ``CONVERSATION_MENU_ITEM_PREFIX`` and strips the
+        ``chat-conversation-menu-`` / ``-menuitem`` affixes from each testid.
+        """
+        items = self.get_open_conversation_menu_items()
+        prefix, suffix = "chat-conversation-menu-", "-menuitem"
+        keys = []
+        for i in range(items.count()):
+            testid = items.nth(i).get_attribute("data-testid") or ""
+            keys.append(testid[len(prefix):-len(suffix)])
+        return keys
+
+    @action("Export the open chat modal and capture the download")
+    def click_export_and_capture_download(self, timeout: int = 30000):
+        """Click the modal's Export button inside ``expect_download`` and return the Download."""
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_chat_modal_export_button.click()
+        return download_info.value
+
+    @action("Export with attachments, capturing the transient progress UI and the download")
+    def click_export_capturing_progress(self, timeout: int = 60000) -> dict:
+        """Click Export while a MutationObserver records the transient progress state.
+
+        The progress block (``export-chat-modal-progress``) and the 'Exporting...'
+        button label only exist for the duration of the fetch, so they are
+        sampled by an observer installed BEFORE the click (ELITEA-3764).
+
+        Returns ``{"download", "progress_seen", "modal_text"}``.
+        """
+        self.page.evaluate(
+            """([sel, modalSel]) => {
+                window.__exportProgress = {seen: false, text: ''};
+                const sample = () => {
+                    if (document.querySelector(sel)) {
+                        window.__exportProgress.seen = true;
+                        const m = document.querySelector(modalSel);
+                        window.__exportProgress.text = m ? m.innerText : '';
+                    }
+                };
+                window.__exportObserver = new MutationObserver(sample);
+                window.__exportObserver.observe(document.body,
+                    {subtree: true, childList: true, characterData: true, attributes: true});
+                sample();
+            }""",
+            [self.EXPORT_PROGRESS_SELECTOR, self.EXPORT_MODAL_SELECTOR],
+        )
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_chat_modal_export_button.click()
+        download = download_info.value
+        info = self.page.evaluate(
+            "() => { window.__exportObserver && window.__exportObserver.disconnect(); return window.__exportProgress; }"
+        )
+        return {"download": download, "progress_seen": info["seen"], "modal_text": info["text"]}
 
     @action("Click conversation context-menu item")
     def click_conversation_menu_item(self, item_key: str, timeout: int = 5000):
@@ -6539,6 +6734,59 @@ class ChatPage(BasePage):
                 f"API delete of folder {folder_id} failed: "
                 f"{response.status} {response.text()}"
             )
+
+    @action("Create folder via API")
+    def create_folder_via_api(
+        self, name: str, project_id: str | int | None = None, timeout: int = 10000,
+    ) -> int:
+        """Create an empty chat folder via ``POST /elitea_core/folder/prompt_lib/{project}``.
+
+        Mirrors ``delete_folder_via_api`` (same auth fallback). Returns the new folder id.
+
+        Raises:
+            RuntimeError: on a non-2xx response.
+        """
+        project = project_id if project_id is not None else settings.elitea_project_id
+        url = f"{settings.elitea_api_base.rstrip('/')}/elitea_core/folder/prompt_lib/{project}"
+        headers = {}
+        if not self.page.context.cookies() and settings.elitea_api_token:
+            headers["Authorization"] = f"Bearer {settings.elitea_api_token}"
+        response = self.page.request.post(url, data={"name": name}, headers=headers, timeout=timeout)
+        if not response.ok:
+            raise RuntimeError(f"API create of folder {name!r} failed: {response.status} {response.text()}")
+        return response.json()["id"]
+
+    @action("Open folder dot-menu")
+    def open_folder_menu(self, folder_id: str | int, timeout: int = 5000):
+        """Hover the folder icon and open the folder's scoped 3-dot menu."""
+        item = self.get_folder_item(folder_id)
+        item.locator(self.FOLDER_ICON).hover()
+        menu_button = self.folder_own_menu_button.within(item)
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+        self.folder_menu_new_chat_item.wait_for(state="visible", timeout=timeout)
+
+    def get_folder_menu_labels(self) -> list[str]:
+        """Return the visible labels of the open folder dot-menu, in order."""
+        return [t.strip() for t in self.folder_menu_items.all_text_contents()]
+
+    @action("Start new chat in folder via dot-menu")
+    def click_folder_menu_new_chat(self, timeout: int = 5000):
+        """Click 'New chat' in the open folder dot-menu (menu closes afterwards)."""
+        self.folder_menu_new_chat_item.click()
+        self.folder_menu_new_chat_item.wait_for(state="hidden", timeout=timeout)
+
+    def get_folder_conversation_items(self, folder_id: str | int, conversation_id: str | int | None = None):
+        """Locator for conversation items inside *folder_id*'s row (one id, or all when None)."""
+        item = self.get_folder_item(folder_id)
+        if conversation_id is not None:
+            return item.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        return item.locator(self.CONVERSATION_ITEM_PREFIX)
+
+    @action("Toggle folder")
+    def toggle_folder(self, folder_id: str | int):
+        """Click the folder icon in the folder's row (expands/collapses it)."""
+        self.get_folder_item(folder_id).locator(self.FOLDER_ICON).click()
 
     @action("Open folder rename editor")
     def open_folder_rename_editor(self, folder_id: str | int, timeout: int = 5000):

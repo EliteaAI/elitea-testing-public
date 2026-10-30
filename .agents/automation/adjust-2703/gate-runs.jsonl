@@ -1,0 +1,1 @@
+{"case":"ELITEA-2061","node":"tests/ui/pipelines_2/test_pipeline_node_auto_increment_naming.py::test_node_auto_increment_naming_by_type","runs":3,"passed":3,"reruns":0,"env":"DEV"}

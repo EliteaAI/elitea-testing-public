@@ -1,74 +1,84 @@
-entry_point: START
-
 state:
-  input:
-    type: str
-  messages:
-    type: list
-  start:
-    type: str
-    value: ''
-  project_items:
-    type: str
-    value: '[]'
-  tms_test_cases:
-    type: str
-    value: '[]'
-  existing_board_issues:
-    type: str
-    value: '[]'
   all_tickets:
     type: str
     value: '[]'
-  tickets_with_cases:
-    type: str
-    value: '[]'
-  tickets_already_tracked:
-    type: str
-    value: '[]'
-  tickets_to_process:
-    type: str
-    value: '[]'
-  grouped_issues:
-    type: str
-    value: '[]'
-  current_group_index:
-    type: str
-    value: '0'
-  total_groups:
-    type: str
-    value: '0'
-  issue_title:
+  comment_body:
     type: str
     value: ''
-  issue_body:
-    type: str
-    value: ''
-  issue_fields:
-    type: dict
-    value: {}
-  issue_result:
-    type: str
-    value: ''
-  issue_number:
-    type: str
-    value: '0'
-  current_source_issues:
-    type: str
-    value: '[]'
-  current_source_index:
-    type: str
-    value: '0'
-  total_source_issues:
-    type: str
-    value: '0'
   comment_result:
     type: str
     value: ''
   created_issues:
     type: str
     value: '[]'
-
+  current_group_index:
+    type: str
+    value: '0'
+  current_source_index:
+    type: str
+    value: '0'
+  current_source_issues:
+    type: str
+    value: '[]'
+  existing_board_issues:
+    type: str
+    value: '[]'
+  grouped_issues:
+    type: str
+    value: '[]'
+  input:
+    type: str
+  issue_body:
+    type: str
+    value: ''
+  issue_fields:
+    type: dict
+    value: {}
+  issue_number:
+    type: str
+    value: '0'
+  issue_result:
+    type: str
+    value: ''
+  issue_title:
+    type: str
+    value: ''
+  messages:
+    type: list
+  milestone_stats:
+    type: str
+    value: '{}'
+  project_items:
+    type: str
+    value: '[]'
+  source_issue_id:
+    type: str
+    value: '0'
+  start:
+    type: str
+    value: ''
+  summary:
+    type: str
+    value: ''
+  tickets_already_tracked:
+    type: str
+    value: '[]'
+  tickets_to_process:
+    type: str
+    value: '[]'
+  tickets_with_cases:
+    type: str
+    value: '[]'
+  tms_test_cases:
+    type: str
+    value: '[]'
+  total_groups:
+    type: str
+    value: '0'
+  total_source_issues:
+    type: str
+    value: '0'
+entry_point: START
 nodes:
   - id: START
     type: code
@@ -81,68 +91,237 @@ nodes:
       - start
     structured_output: true
     transition: FetchProjectItems
-
-  # Fetch all open issues with milestone R-2.0.7
   - id: FetchProjectItems
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: search_issues
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+        import re
+        import requests
+
+        # Open milestone issues whose ELITEA Board (project #1) Status is VERIFIED_STATUS.
+        # search_issues does not return board fields, so this runs one GraphQL search.
+        # Case IDs mentioned in the issue timeline (commits, cross-referenced issues/PRs,
+        # comments) are collected into linked_case_ids, e.g. a TMS commit "add: ELITEA-4127 ... (#6835)".
+        MILESTONE = 'R-2.0.8'
+        VERIFIED_STATUS = 'Verified on DEV Env'
+        BOARD_NUMBER = 1
+        TOKEN_SECRET = 'AQA_FLOW_GH'
+
+        QUERY = """
+        query($q: String!, $after: String) {
+          search(type: ISSUE, query: $q, first: 100, after: $after) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              ... on Issue {
+                number title body state url
+                projectItems(first: 10) {
+                  nodes {
+                    project { number }
+                    fieldValueByName(name: "Status") {
+                      ... on ProjectV2ItemFieldSingleSelectValue { name }
+                    }
+                  }
+                }
+                timelineItems(first: 100, itemTypes: [REFERENCED_EVENT, CROSS_REFERENCED_EVENT, ISSUE_COMMENT]) {
+                  nodes {
+                    ... on ReferencedEvent { commit { message } }
+                    ... on CrossReferencedEvent {
+                      source {
+                        ... on Issue { title body }
+                        ... on PullRequest { title body }
+                      }
+                    }
+                    ... on IssueComment { body }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+
+        out = {'project_items': '[]', 'milestone_stats': '{}'}
+
+        try:
+            token = alita_client.unsecret(TOKEN_SECRET)
+            headers = {'Authorization': f'bearer {token}'}
+            search = f'repo:EliteaAI/elitea_issues is:issue milestone:"{MILESTONE}" state:open'
+
+            total = 0
+            verified = []
+            after = None
+            while True:
+                resp = requests.post(
+                    'https://api.github.com/graphql',
+                    json={'query': QUERY, 'variables': {'q': search, 'after': after}},
+                    headers=headers,
+                    timeout=60,
+                )
+                resp.raise_for_status()
+                payload = resp.json()
+                if payload.get('errors'):
+                    raise RuntimeError(json.dumps(payload['errors'])[:300])
+                result = payload['data']['search']
+
+                for node in result['nodes']:
+                    if not node:
+                        continue
+                    total += 1
+                    status = ''
+                    for pi in (node.get('projectItems') or {}).get('nodes', []):
+                        if (pi.get('project') or {}).get('number') == BOARD_NUMBER:
+                            status = (pi.get('fieldValueByName') or {}).get('name', '')
+                    if status == VERIFIED_STATUS:
+                        timeline_text = []
+                        for ev in (node.get('timelineItems') or {}).get('nodes', []):
+                            if not ev:
+                                continue
+                            timeline_text.append((ev.get('commit') or {}).get('message') or '')
+                            source = ev.get('source') or {}
+                            timeline_text.append(f"{source.get('title') or ''} {source.get('body') or ''}")
+                            timeline_text.append(ev.get('body') or '')
+                        linked_case_ids = sorted(set(re.findall(r'ELITEA-\d+', ' '.join(timeline_text))))
+                        # Same shape as the search_issues tool, plus linked_case_ids
+                        verified.append({
+                            'linked_case_ids': linked_case_ids,
+                            'id': node['number'],
+                            'title': node.get('title', ''),
+                            'description': node.get('body', '') or '',
+                            'status': node.get('state', ''),
+                            'url': node.get('url', ''),
+                            'board_status': status,
+                        })
+
+                if not result['pageInfo']['hasNextPage']:
+                    break
+                after = result['pageInfo']['endCursor']
+
+            out = {
+                'project_items': json.dumps(verified),
+                'milestone_stats': json.dumps({
+                    'milestone': MILESTONE,
+                    'status': VERIFIED_STATUS,
+                    'open_total': total,
+                    'verified_total': len(verified),
+                }),
+            }
+        except Exception as e:
+            out['milestone_stats'] = json.dumps({'milestone': MILESTONE, 'status': VERIFIED_STATUS, 'error': str(e)[:300]})
+
+        out
     input: []
-    input_mapping:
-      search_query:
-        type: fixed
-        value: 'milestone:"R-2.0.7" state:open'
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea_issues
-      max_count:
-        type: fixed
-        value: 200
     output:
       - project_items
+      - milestone_stats
     structured_output: true
     transition: FetchTMSTestCases
-
-  # Fetch TMS index
   - id: FetchTMSTestCases
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: read_file
-    input: []
-    input_mapping:
-      file_path:
-        type: fixed
-        value: index_automated_all_short.json
-      repo_name:
-        type: fixed
-        value: EliteaAI/onetest-ai-tm-Elitea
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+        import re
+        import requests
+
+        # Front-matter of every TMS case referenced by the verified issues, read from the
+        # case files on main (the index files can lag when build-index does not run).
+        TOKEN_SECRET = 'AQA_FLOW_GH'
+        TMS_OWNER = 'EliteaAI'
+        TMS_NAME = 'onetest-ai-tm-Elitea'
+        CASES_DIR = 'tests/automated-full-regression-ui'
+
+        out = {'tms_test_cases': json.dumps({'cases': []})}
+
+        try:
+            token = alita_client.unsecret(TOKEN_SECRET)
+            headers = {'Authorization': f'bearer {token}'}
+
+            items_raw = alita_state.get('project_items', '[]')
+            items = json.loads(items_raw, strict=False) if isinstance(items_raw, str) else items_raw
+            wanted = set()
+            for it in items if isinstance(items, list) else []:
+                text = f"{it.get('title', '') or ''} {it.get('description', '') or ''}"
+                wanted |= set(re.findall(r'ELITEA-\d+', text))
+                wanted |= set(it.get('linked_case_ids') or [])
+
+            tree = requests.get(
+                f'https://api.github.com/repos/{TMS_OWNER}/{TMS_NAME}/git/trees/main?recursive=1',
+                headers=headers,
+                timeout=60,
+            )
+            tree.raise_for_status()
+            path_re = re.compile(r'^' + re.escape(CASES_DIR) + r'/([^/]+)/(?:.*/)?(ELITEA-\d+)_[^/]*\.md$')
+            paths = {}
+            for entry in tree.json().get('tree', []):
+                m = path_re.match(entry.get('path', ''))
+                if m and m.group(2) in wanted:
+                    paths[m.group(2)] = {'path': entry['path'], 'module': m.group(1)}
+
+            def fm_field(front_matter, name, default):
+                m = re.search(r'^' + name + r':\s*["\']?([^"\'\n#]*)', front_matter, re.M)
+                value = m.group(1).strip().lower() if m else ''
+                return value or default
+
+            cases = []
+            ids = sorted(paths)
+            for start in range(0, len(ids), 50):
+                chunk = ids[start:start + 50]
+                fields = ' '.join(
+                    f'c{j}: object(expression: {json.dumps("main:" + paths[cid]["path"])}) {{ ... on Blob {{ text }} }}'
+                    for j, cid in enumerate(chunk)
+                )
+                query = f'query {{ repository(owner: "{TMS_OWNER}", name: "{TMS_NAME}") {{ {fields} }} }}'
+                resp = requests.post('https://api.github.com/graphql', json={'query': query}, headers=headers, timeout=60)
+                resp.raise_for_status()
+                payload = resp.json()
+                if payload.get('errors'):
+                    raise RuntimeError(json.dumps(payload['errors'])[:300])
+                repo = payload['data']['repository']
+                for j, cid in enumerate(chunk):
+                    text = (repo.get(f'c{j}') or {}).get('text') or ''
+                    front_matter = text.lstrip('-\n').split('\n---', 1)[0]
+                    cases.append({
+                        'id': cid,
+                        'path': paths[cid]['path'],
+                        'module': paths[cid]['module'],
+                        'priority': fm_field(front_matter, 'priority', 'medium'),
+                        'execution_type': fm_field(front_matter, 'execution_type', 'manual'),
+                        'status': fm_field(front_matter, 'status', 'draft'),
+                    })
+
+            out = {'tms_test_cases': json.dumps({'cases': cases})}
+        except Exception as e:
+            out = {'tms_test_cases': json.dumps({'cases': [], 'error': str(e)[:300]})}
+
+        out
+    input:
+      - project_items
     output:
       - tms_test_cases
     structured_output: true
     transition: FetchExistingBoardIssues
-
-  # Fetch existing aqa:intake issues to detect already-tracked tickets
   - id: FetchExistingBoardIssues
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: search_issues
     input: []
     input_mapping:
-      search_query:
-        type: fixed
-        value: 'is:issue repo:EliteaAI/elitea-testing-public label:aqa:intake'
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
       max_count:
         type: fixed
         value: 200
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+      search_query:
+        type: fixed
+        value: is:issue repo:EliteaAI/elitea-testing-public label:aqa:intake
     output:
       - existing_board_issues
     structured_output: true
+    tool: search_issues
+    toolkit_name: AQA_GHAutotestsTools
     transition: ClassifyTickets
-
-  # Classify all tickets: with test cases, already tracked, to process
   - id: ClassifyTickets
     type: code
     code:
@@ -215,6 +394,7 @@ nodes:
                             module = module_match.group(1) if module_match else 'unknown'
                             tms_lookup[case_id] = {
                                 'priority': c.get('priority', 'medium'),
+                                'execution_type': c.get('execution_type', 'manual'),
                                 'path': path,
                                 'module': module
                             }
@@ -242,21 +422,35 @@ nodes:
                 title = item.get('title', '') or ''
                 issue_url = item.get('url', '')
 
-                # Find ELITEA-XXXX IDs in issue
+                # Find ELITEA-XXXX IDs in the issue text and in its timeline
                 issue_elitea_ids = set(re.findall(r'ELITEA-\d+', f"{title} {description}"))
+                issue_elitea_ids |= set(item.get('linked_case_ids') or [])
                 linked_cases = issue_elitea_ids & tms_all_ids
+
+                # Only not-yet-automated high/critical cases go to automation
+                eligible_cases = []
+                excluded_cases = []
+                for tc_id in sorted(linked_cases):
+                    tc = tms_lookup[tc_id]
+                    if tc['execution_type'] == 'automated':
+                        excluded_cases.append({'id': tc_id, 'reason': 'already automated'})
+                    elif tc['priority'] not in ('high', 'critical'):
+                        excluded_cases.append({'id': tc_id, 'reason': f"priority {tc['priority']}"})
+                    else:
+                        eligible_cases.append(tc_id)
 
                 ticket_info = {
                     'id': issue_id,
                     'title': title,
                     'url': issue_url,
-                    'linked_cases': list(linked_cases),
-                    'has_cases': len(linked_cases) > 0
+                    'linked_cases': eligible_cases,
+                    'excluded_cases': excluded_cases,
+                    'has_cases': len(eligible_cases) > 0
                 }
 
                 all_tickets.append(ticket_info)
 
-                if linked_cases:
+                if eligible_cases:
                     tickets_with_cases.append(ticket_info)
 
                     # Check if already tracked
@@ -321,13 +515,8 @@ nodes:
       - total_groups
     structured_output: true
     transition: CheckMoreGroups
-
-  # Loop through groups
   - id: CheckMoreGroups
     type: router
-    input:
-      - current_group_index
-      - total_groups
     condition: |
       {% set idx = current_group_index | int %}
       {% set total = total_groups | int %}
@@ -336,12 +525,13 @@ nodes:
       {% else %}
       BuildFinalOutput
       {% endif %}
+    default_output: BuildFinalOutput
+    input:
+      - current_group_index
+      - total_groups
     routes:
       - PrepareGroupIssue
       - BuildFinalOutput
-    default_output: BuildFinalOutput
-
-  # Prepare issue for current group
   - id: PrepareGroupIssue
     type: code
     code:
@@ -349,7 +539,7 @@ nodes:
       value: |
         import json
 
-        out = {'issue_title': '', 'issue_body': '', 'issue_fields': {'Status': 'Promoted'}, 'current_source_issues': '[]'}
+        out = {'issue_title': '', 'issue_body': '', 'issue_fields': {'Status': 'Pre-Approved'}, 'current_source_issues': '[]'}
 
         try:
             groups_raw = alita_state.get('grouped_issues', '[]')
@@ -370,12 +560,12 @@ nodes:
                 medium = [c for c in cases if c.get('priority') == 'medium']
                 low = [c for c in cases if c.get('priority') == 'low']
 
-                title = f"[Automate][{module}] {len(cases)} test cases from R-2.0.7 tickets"
+                title = f"[Automate][{module}] {len(cases)} test cases from R-2.0.8 tickets"
 
                 lines = [
                     "## What this covers",
                     "",
-                    f"Automate **{len(cases)} test cases** in the `{module}` area from R-2.0.7 milestone tickets.",
+                    f"Automate **{len(cases)} test cases** in the `{module}` area from R-2.0.8 milestone tickets.",
                     "",
                     "| | |",
                     "|---|---:|",
@@ -430,11 +620,11 @@ nodes:
                 out = {
                     'issue_title': title[:256],
                     'issue_body': chr(10).join(lines),
-                    'issue_fields': {'Status': 'Promoted'},
+                    'issue_fields': {'Status': 'Pre-Approved'},
                     'current_source_issues': json.dumps(source_issues)
                 }
         except Exception as e:
-            out = {'issue_title': f'Error: {str(e)}', 'issue_body': '', 'issue_fields': {'Status': 'Promoted'}, 'current_source_issues': '[]'}
+            out = {'issue_title': f'Error: {str(e)}', 'issue_body': '', 'issue_fields': {'Status': 'Pre-Approved'}, 'current_source_issues': '[]'}
 
         out
     input:
@@ -447,12 +637,8 @@ nodes:
       - current_source_issues
     structured_output: true
     transition: CreateIssue
-
-  # Create issue on board #9
   - id: CreateIssue
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: create_issue_on_project
     input:
       - issue_title
       - issue_body
@@ -461,31 +647,27 @@ nodes:
       board_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
-      project_title:
-        type: fixed
-        value: Test Automation Factory
-      title:
-        type: variable
-        value: issue_title
       body:
         type: variable
         value: issue_body
-      labels:
-        type: fixed
-        value:
-          - aqa:intake
       fields:
         type: variable
         value: issue_fields
       issue_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
+      project_title:
+        type: fixed
+        value: Test Automation Factory
+      title:
+        type: variable
+        value: issue_title
     output:
       - issue_result
     structured_output: true
+    tool: create_issue_on_project
+    toolkit_name: AQA_GHAutotestsTools
     transition: ExtractIssueNumber
-
-  # Extract issue number
   - id: ExtractIssueNumber
     type: code
     code:
@@ -511,8 +693,6 @@ nodes:
       - issue_number
     structured_output: true
     transition: PrepareSourceComments
-
-  # Prepare to comment on source issues
   - id: PrepareSourceComments
     type: code
     code:
@@ -536,13 +716,8 @@ nodes:
       - total_source_issues
     structured_output: true
     transition: CheckMoreSourceIssues
-
-  # Loop through source issues
   - id: CheckMoreSourceIssues
     type: router
-    input:
-      - current_source_index
-      - total_source_issues
     condition: |
       {% set idx = current_source_index | int %}
       {% set total = total_source_issues | int %}
@@ -551,12 +726,13 @@ nodes:
       {% else %}
       StoreAndNextGroup
       {% endif %}
+    default_output: StoreAndNextGroup
+    input:
+      - current_source_index
+      - total_source_issues
     routes:
       - CommentOnSourceIssue
       - StoreAndNextGroup
-    default_output: StoreAndNextGroup
-
-  # Prepare comment for source issue
   - id: CommentOnSourceIssue
     type: code
     code:
@@ -596,31 +772,39 @@ nodes:
       - source_issue_id
     structured_output: true
     transition: PostCommentToSource
-
-  # Post comment
   - id: PostCommentToSource
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: update_issue
     input:
       - source_issue_id
       - comment_body
     input_mapping:
-      repo_name:
+      state:
         type: fixed
-        value: EliteaAI/elitea_issues
+        value: null
+      assignees:
+        type: fixed
+        value: null
+      body:
+        type: fixed
+        value: null
       issue_id:
         type: variable
         value: source_issue_id
-      comment:
-        type: variable
-        value: comment_body
+      labels:
+        type: fixed
+        value: null
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea_issues
+      title:
+        type: fixed
+        value: null
     output:
       - comment_result
     structured_output: true
+    tool: update_issue
+    toolkit_name: AQA_GHAutotestsTools
     transition: NextSourceIssue
-
-  # Next source
   - id: NextSourceIssue
     type: code
     code:
@@ -634,8 +818,6 @@ nodes:
       - current_source_index
     structured_output: true
     transition: CheckMoreSourceIssues
-
-  # Store and next group
   - id: StoreAndNextGroup
     type: code
     code:
@@ -665,6 +847,7 @@ nodes:
             group = groups[idx] if idx < len(groups) else {}
             created.append({
                 'module': group.get('module', 'unknown'),
+                'case_ids': [c.get('id') for c in group.get('cases', [])],
                 'case_count': len(group.get('cases', [])),
                 'source_count': len(sources) if isinstance(sources, list) else 0,
                 'issue_url': issue_url,
@@ -695,8 +878,6 @@ nodes:
       - current_group_index
     structured_output: true
     transition: CheckMoreGroups
-
-  # Final output like test_failure_intake.yml BuildFinalOutput
   - id: BuildFinalOutput
     type: code
     code:
@@ -704,130 +885,67 @@ nodes:
       value: |
         import json
 
+        def load(name, default):
+            raw = alita_state.get(name, default)
+            try:
+                value = json.loads(raw, strict=False) if isinstance(raw, str) else raw
+            except Exception:
+                value = None
+            return value if isinstance(value, type(json.loads(default))) else json.loads(default)
+
         out = {'summary': 'Pipeline completed'}
 
         try:
-            all_tickets_raw = alita_state.get('all_tickets', '[]')
-            tickets_with_cases_raw = alita_state.get('tickets_with_cases', '[]')
-            tickets_already_tracked_raw = alita_state.get('tickets_already_tracked', '[]')
-            tickets_to_process_raw = alita_state.get('tickets_to_process', '[]')
-            created_raw = alita_state.get('created_issues', '[]')
+            all_tickets = load('all_tickets', '[]')
+            tracked = {t.get('id'): t for t in load('tickets_already_tracked', '[]')}
+            created = load('created_issues', '[]')
+            stats = load('milestone_stats', '{}')
+            tms = load('tms_test_cases', '{}')
 
-            all_tickets = json.loads(all_tickets_raw, strict=False) if isinstance(all_tickets_raw, str) else all_tickets_raw
-            tickets_with_cases = json.loads(tickets_with_cases_raw, strict=False) if isinstance(tickets_with_cases_raw, str) else tickets_with_cases_raw
-            tickets_already_tracked = json.loads(tickets_already_tracked_raw, strict=False) if isinstance(tickets_already_tracked_raw, str) else tickets_already_tracked_raw
-            tickets_to_process = json.loads(tickets_to_process_raw, strict=False) if isinstance(tickets_to_process_raw, str) else tickets_to_process_raw
-            created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
+            milestone = stats.get('milestone', 'R-2.0.8')
+            verified_status = stats.get('status', 'Verified on DEV Env')
+            cases_meta = {c.get('id'): c for c in tms.get('cases', [])}
 
-            if not isinstance(all_tickets, list): all_tickets = []
-            if not isinstance(tickets_with_cases, list): tickets_with_cases = []
-            if not isinstance(tickets_already_tracked, list): tickets_already_tracked = []
-            if not isinstance(tickets_to_process, list): tickets_to_process = []
-            if not isinstance(created, list): created = []
+            # case id -> automation issue it was put into in this run
+            case_issue = {}
+            for item in created:
+                num = item.get('issue_number', '0')
+                for cid in item.get('case_ids', []):
+                    if num and num != '0':
+                        case_issue[cid] = f"[#{num}]({item.get('issue_url', '')})"
 
-            lines = [
-                "## Verified Ticket Intake - Summary",
-                "",
-                "### Statistics",
-                "",
-                "| Metric | Count |",
-                "|---|---:|",
-                f"| Total R-2.0.7 issues | {len(all_tickets)} |",
-                f"| Issues with linked test cases | {len(tickets_with_cases)} |",
-                f"| Already have automation task | {len(tickets_already_tracked)} |",
-                f"| New issues to process | {len(tickets_to_process)} |",
-                f"| Automation issues created | {len(created)} |",
-                "",
-            ]
-
-            # Created issues section
-            if created:
-                total_cases = sum(i.get('case_count', 0) for i in created)
-                total_sources = sum(i.get('source_count', 0) for i in created)
-
-                lines.extend([
-                    "---",
-                    "",
-                    f"### Created Issues ({len(created)})",
-                    "",
-                ])
-
-                for i, item in enumerate(created, 1):
-                    module = item.get('module', 'unknown')
-                    case_count = item.get('case_count', 0)
-                    source_count = item.get('source_count', 0)
-                    issue_url = item.get('issue_url', '')
-                    title = item.get('title', '')[:60]
-
-                    if issue_url:
-                        lines.append(f"{i}. **{module}** ({case_count} cases, {source_count} source tickets): [{title}...]({issue_url})")
-                    else:
-                        lines.append(f"{i}. **{module}** ({case_count} cases): {title}...")
-
-                lines.extend([
-                    "",
-                    f"**Total test cases covered:** {total_cases}",
-                    f"**Total source tickets linked:** {total_sources}",
-                ])
-
-            # Already tracked section
-            if tickets_already_tracked:
-                lines.extend([
-                    "",
-                    "---",
-                    "",
-                    f"### Already In Progress ({len(tickets_already_tracked)} tickets)",
-                    "",
-                ])
-                for t in tickets_already_tracked[:10]:
-                    t_id = t.get('id', '?')
-                    t_title = t.get('title', 'Unknown')[:50]
-                    t_url = t.get('url', '')
-                    auto_url = t.get('automation_url', '')
-                    if t_url and auto_url:
-                        lines.append(f"- [#{t_id}]({t_url}): {t_title}... → [Automation]({auto_url})")
-                    elif t_url:
-                        lines.append(f"- [#{t_id}]({t_url}): {t_title}...")
-                    else:
-                        lines.append(f"- #{t_id}: {t_title}...")
-
-                if len(tickets_already_tracked) > 10:
-                    lines.append(f"- ... and {len(tickets_already_tracked) - 10} more")
-
-            # Issues with test cases but not yet processed (for info)
-            issues_with_cases_not_tracked = [t for t in tickets_with_cases if t['id'] not in [x['id'] for x in tickets_already_tracked] and t['id'] not in [x['id'] for x in tickets_to_process]]
-            # This should be empty if logic is correct, but include for debugging
-
-            # No test cases section
-            no_cases = [t for t in all_tickets if not t.get('has_cases')]
-            if no_cases:
-                lines.extend([
-                    "",
-                    "---",
-                    "",
-                    f"### No Test Cases Linked ({len(no_cases)} tickets)",
-                    "",
-                    "These R-2.0.7 issues don't have ELITEA-XXXX test case references:",
-                    "",
-                ])
-                for t in no_cases[:15]:
-                    t_id = t.get('id', '?')
-                    t_title = t.get('title', 'Unknown')[:50]
-                    t_url = t.get('url', '')
-                    if t_url:
-                        lines.append(f"- [#{t_id}]({t_url}): {t_title}...")
-                    else:
-                        lines.append(f"- #{t_id}: {t_title}...")
-
-                if len(no_cases) > 15:
-                    lines.append(f"- ... and {len(no_cases) - 15} more")
+            lines = [f"## {verified_status} - {milestone}: linked test cases", ""]
+            for label, err in (('Error fetching issues', stats.get('error')), ('Error reading TMS cases', tms.get('error'))):
+                if err:
+                    lines.extend([f"**{label}:** {err}", ""])
 
             lines.extend([
-                "",
-                "---",
-                "",
-                "Issues posted to board #9 in 'Promoted' column. Source tickets commented with automation link.",
+                "| Verified issue | Case | Priority | execution_type | Result |",
+                "|---|---|---|---|---|",
             ])
+            rows = 0
+            for t in all_tickets:
+                cases = [(cid, '') for cid in t.get('linked_cases', [])]
+                cases += [(e['id'], e['reason']) for e in t.get('excluded_cases', [])]
+                if not cases:
+                    continue
+                t_id = t.get('id', '?')
+                issue_ref = f"[#{t_id}]({t['url']})" if t.get('url') else f"#{t_id}"
+                for cid, reason in sorted(cases):
+                    meta = cases_meta.get(cid, {})
+                    if reason:
+                        result = f"skipped: {reason}"
+                    elif t_id in tracked:
+                        auto = tracked[t_id].get('automation_url', '')
+                        result = f"already tracked: {auto}" if auto else 'already tracked'
+                    elif cid in case_issue:
+                        result = f"✅ in {case_issue[cid]}"
+                    else:
+                        result = 'not created (see run log)'
+                    lines.append(f"| {issue_ref} | {cid} | {meta.get('priority', '?')} | {meta.get('execution_type', '?')} | {result} |")
+                    rows += 1
+            if not rows:
+                lines.append("| - | - | - | - | no linked test cases |")
 
             out = {'summary': chr(10).join(lines)}
         except Exception as e:
@@ -837,10 +955,10 @@ nodes:
         out
     input:
       - all_tickets
-      - tickets_with_cases
       - tickets_already_tracked
-      - tickets_to_process
       - created_issues
+      - milestone_stats
+      - tms_test_cases
     output:
       - summary
     structured_output: true

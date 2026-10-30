@@ -1,42 +1,35 @@
 state:
-  input:
-    type: str
-  messages:
-    type: list
-  run_id:
+  actor:
     type: str
     value: ''
-  repo:
+  branch_result:
     type: str
     value: ''
-  conclusion:
+  classified_tests:
     type: str
     value: ''
-  workflow_name:
-    type: str
-    value: ''
-  workflow_name_short:
-    type: str
-    value: ''
-  run_url:
-    type: str
-    value: ''
-  run_number:
-    type: str
-    value: ''
-  head_branch:
+  commit_result:
     type: str
     value: ''
   commit_sha:
     type: str
     value: ''
-  actor:
+  conclusion:
     type: str
     value: ''
-  workflow_details:
+  created_issues:
+    type: str
+    value: '[]'
+  current_group_index:
+    type: str
+    value: '0'
+  delete_result:
     type: str
     value: ''
-  workflow_logs:
+  existing_file_content:
+    type: str
+    value: ''
+  existing_issues:
     type: str
     value: ''
   failed_jobs:
@@ -45,94 +38,104 @@ state:
   failed_tests:
     type: str
     value: ''
-  total_tests:
-    type: str
-    value: '0'
-  tms_index:
-    type: str
-    value: ''
-  tests_with_ids:
-    type: str
-    value: ''
-  existing_issues:
-    type: str
-    value: ''
-  classified_tests:
-    type: str
-    value: ''
   failure_analysis:
-    type: str
-    value: ''
-  maintenance_json:
-    type: str
-    value: ''
-  maintenance_file_path:
-    type: str
-    value: ''
-  full_file_path:
-    type: str
-    value: ''
-  final_maintenance_json:
-    type: str
-    value: ''
-  existing_file_content:
-    type: str
-    value: ''
-  previous_run_content:
     type: str
     value: ''
   file_exists:
     type: str
     value: 'false'
-  delete_result:
+  final_maintenance_json:
+    type: str
+    value: ''
+  full_file_path:
+    type: str
+    value: ''
+  head_branch:
+    type: str
+    value: ''
+  input:
+    type: str
+  issue_body:
     type: str
     value: ''
   issue_fields:
     type: dict
     value: {}
-  issue_title:
-    type: str
-    value: ''
-  issue_body:
-    type: str
-    value: ''
-  issue_result:
-    type: str
-    value: ''
   issue_groups:
     type: str
     value: '[]'
-  current_group_index:
+  issue_labels:
+    type: list
+    value: []
+  issue_number:
     type: str
     value: '0'
-  created_issues:
-    type: str
-    value: '[]'
-  total_groups:
+  issue_number_int:
     type: str
     value: '0'
-  commit_result:
-    type: str
-    value: ''
-  branch_result:
+  issue_result:
     type: str
     value: ''
   issue_status:
     type: str
     value: ''
-  issue_number:
+  issue_title:
     type: str
-    value: '0'
+    value: ''
   label_result:
     type: str
     value: ''
-  issue_number_int:
-    type: str
-    value: '0'
   labels_list:
     type: str
     value: '["aqa:maintenance"]'
+  maintenance_file_path:
+    type: str
+    value: ''
+  maintenance_json:
+    type: str
+    value: ''
+  messages:
+    type: list
+  previous_run_content:
+    type: str
+    value: ''
+  repo:
+    type: str
+    value: ''
+  run_id:
+    type: str
+    value: ''
+  run_number:
+    type: str
+    value: ''
+  run_url:
+    type: str
+    value: ''
   skip_reason:
+    type: str
+    value: ''
+  tests_with_ids:
+    type: str
+    value: ''
+  tms_index:
+    type: str
+    value: ''
+  total_groups:
+    type: str
+    value: '0'
+  total_tests:
+    type: str
+    value: '0'
+  workflow_details:
+    type: str
+    value: ''
+  workflow_logs:
+    type: str
+    value: ''
+  workflow_name:
+    type: str
+    value: ''
+  workflow_name_short:
     type: str
     value: ''
 entry_point: ParseWebhook
@@ -160,7 +163,7 @@ nodes:
         }
 
         try:
-            # Input is well-formed JSON from test-ui-dev.yml notify job
+            # Input is well-formed JSON from test-ui-dev-stable.yml notify job
             raw = alita_state.get('input', '{}')
             payload = json.loads(raw) if isinstance(raw, str) else raw
             workflow_run = payload.get('workflow_run', {})
@@ -218,21 +221,17 @@ nodes:
       - total_tests
     structured_output: true
     transition: CheckFailure
-
   - id: CheckFailure
     type: router
-    input:
-      - conclusion
     condition: |
       {% if conclusion == 'failure' or conclusion == 'success' %}FetchWorkflowDetails{% else %}END{% endif %}
+    default_output: END
+    input:
+      - conclusion
     routes:
       - FetchWorkflowDetails
-    default_output: END
-
   - id: FetchWorkflowDetails
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: get_workflow_status
     input:
       - run_id
     input_mapping:
@@ -242,29 +241,29 @@ nodes:
     output:
       - workflow_details
     structured_output: true
+    tool: get_workflow_status
+    toolkit_name: AQA_GHAutotestsTools
     transition: FetchWorkflowLogs
-
   - id: FetchWorkflowLogs
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: get_workflow_logs
     input:
       - run_id
     input_mapping:
-      run_id:
-        type: variable
-        value: run_id
-      include_logs:
-        type: fixed
-        value: true
       failed_only:
         type: fixed
         value: true
+      include_logs:
+        type: fixed
+        value: true
+      run_id:
+        type: variable
+        value: run_id
     output:
       - workflow_logs
     structured_output: true
+    tool: get_workflow_logs
+    toolkit_name: AQA_GHAutotestsTools
     transition: ParseFailedTests
-
   - id: ParseFailedTests
     type: code
     code:
@@ -371,22 +370,20 @@ nodes:
       - total_tests
     structured_output: true
     transition: CheckHasFailedTests
-
   - id: CheckHasFailedTests
     type: router
-    input:
-      - failed_tests
     condition: |
       {% if failed_tests and failed_tests != '[]' %}
       FetchTMSIndex
       {% else %}
       SkipNoTests
       {% endif %}
+    default_output: SkipNoTests
+    input:
+      - failed_tests
     routes:
       - FetchTMSIndex
       - SkipNoTests
-    default_output: SkipNoTests
-
   - id: SkipNoTests
     type: code
     code:
@@ -416,11 +413,8 @@ nodes:
       - created_issues
     structured_output: true
     transition: BuildFullFilePath
-
   - id: FetchTMSIndex
     type: toolkit
-    toolkit_name: Git_TMS
-    tool: read_file
     input: []
     input_mapping:
       file_path:
@@ -429,8 +423,9 @@ nodes:
     output:
       - tms_index
     structured_output: true
+    tool: read_file
+    toolkit_name: AQA_GHTMSTools
     transition: MapTestsToIds
-
   - id: MapTestsToIds
     type: code
     code:
@@ -499,21 +494,19 @@ nodes:
       - tests_with_ids
     structured_output: true
     transition: SearchExistingIssues
-
   - id: SearchExistingIssues
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: search_issues
     input: []
     input_mapping:
       search_query:
         type: fixed
-        value: "is:issue is:open repo:EliteaAI/elitea-testing-public label:aqa:maintenance,aqa:mapping"
+        value: is:issue is:open repo:EliteaAI/elitea-testing-public label:aqa:maintenance,aqa:mapping
     output:
       - existing_issues
     structured_output: true
+    tool: search_issues
+    toolkit_name: AQA_GHAutotestsTools
     transition: BuildFullFilePath
-
   - id: BuildFullFilePath
     type: code
     code:
@@ -522,8 +515,8 @@ nodes:
         import re
         file_name = alita_state.get('maintenance_file_path', 'unknown.json') or 'unknown.json'
         # Build path to the .md report file (group name without run number/id)
-        # From: ui-tests-dev-main-agents,admin_153_34927456741.json
-        # To:   ui-tests-dev-main-agents,admin.md
+        # From: ui-tests-dev-stable-main-agents,admin_153_34927456741.json
+        # To:   ui-tests-dev-stable-main-agents,admin.md
         base = file_name.replace('.json', '')
         match = re.match(r'^(.+?)_\d+_\d+$', base)
         if match:
@@ -540,28 +533,26 @@ nodes:
       - md_report_path
     structured_output: true
     transition: ReadPreviousRunFile
-
   - id: ReadPreviousRunFile
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: read_file
     input:
       - md_report_path
     input_mapping:
-      file_path:
-        type: variable
-        value: md_report_path
       branch:
         type: fixed
         value: automation/maintenance
+      file_path:
+        type: variable
+        value: md_report_path
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
     output:
       - previous_run_content
     structured_output: true
+    tool: read_file
+    toolkit_name: AQA_GHAutotestsTools
     transition: ClassifyTests
-
   - id: ClassifyTests
     type: code
     code:
@@ -725,12 +716,8 @@ nodes:
       - classified_tests
     structured_output: true
     transition: AnalyzeFailure
-
   - id: AnalyzeFailure
     type: llm
-    prompt:
-      type: string
-      value: ''
     input:
       - workflow_name
       - run_number
@@ -739,6 +726,9 @@ nodes:
       - workflow_logs
       - classified_tests
     input_mapping:
+      chat_history:
+        type: variable
+        value: messages
       system:
         type: fixed
         value: |
@@ -800,15 +790,14 @@ nodes:
           {workflow_logs}
 
           For each test with resolution "pending_analysis", provide a recommendation.
-      chat_history:
-        type: variable
-        value: messages
     output:
       - messages
       - failure_analysis
+    prompt:
+      type: string
+      value: ''
     structured_output: false
     transition: FinalizeClassification
-
   - id: FinalizeClassification
     type: code
     code:
@@ -894,7 +883,6 @@ nodes:
       - failure_analysis
     structured_output: true
     transition: BuildMaintenanceFile
-
   - id: BuildMaintenanceFile
     type: code
     code:
@@ -928,7 +916,6 @@ nodes:
       - maintenance_json
     structured_output: true
     transition: GroupByPattern
-
   - id: GroupByPattern
     type: code
     code:
@@ -1070,8 +1057,8 @@ nodes:
                     "",
                     "1. **Branch from main** - Create fix branch from `main`: `git checkout main && git pull && git checkout -b AI_AQA/fix-<test-name>`",
                     "2. **Commit prefix** - All commits MUST start with `AI_AQA:` (e.g., `AI_AQA: fix agent import test assertion`)",
-                    "3. **Review + 3x gate** - Fresh qa-engineer review, then 3 separate green DEV runs of the fixed node id",
-                    "4. **Land on main (lead only)** - The lead squash-lands the gated fix on `main` by direct push (no PR) per `.agents/role-overrides.md` § Orchestrator slot; product-side fixes are filed as bugs, never landed here",
+                    "3. **Create PR to main** - Submit PR targeting `main` branch",
+                    "4. **Auto-merge if test-only** - If fix is test code only (no backend/UI changes required), merge the PR to `main`",
                     "5. **Do NOT trigger workflows** - Work locally only, do not run GitHub Actions",
                     "6. **Fix on DEV environment** - Use dev.elitea.ai for verification",
                     "7. **Use regular locators** - Use standard Playwright locators (role, text, label) instead of data-testid attributes",
@@ -1091,16 +1078,16 @@ nodes:
                     "# ... make changes ...",
                     "HEADLESS=true ../.venv/bin/pytest tests/ui/path/to/test.py::TestClass::test_method -v",
                     "",
-                    "# 4. Commit (stage files by name) and push the fix branch",
-                    "git add <changed files>",
+                    "# 4. Commit and push",
+                    "git add -A",
                     "git commit -m 'AI_AQA: fix <description>'",
                     "git push -u origin AI_AQA/fix-<test-name>",
                     "",
-                    "# 5. After review APPROVED + 3x gate: the lead lands it on main (one squash commit)",
-                    "git checkout main && git merge --ff-only origin/main",
-                    "git merge --squash AI_AQA/fix-<test-name>",
-                    "git commit -m 'AI_AQA: fix <test>' -m 'Refs #<issue-number>'",
-                    "env -u GITHUB_TOKEN git push origin main   # rejected = fetch, merge origin/main into the fix branch, re-gate, retry; never --force",
+                    "# 5. Create PR to main",
+                    "gh pr create --base main --title 'AI_AQA: fix <test>' --body 'Fixes #<issue-number>'",
+                    "",
+                    "# 6. If test-only fix (no backend/UI changes), merge to main",
+                    "gh pr merge --squash",
                     "```",
                     "",
                     "---",
@@ -1138,12 +1125,8 @@ nodes:
       - total_groups
     structured_output: true
     transition: CheckMoreGroups
-
   - id: CheckMoreGroups
     type: router
-    input:
-      - current_group_index
-      - total_groups
     condition: |
       {% set idx = current_group_index | int %}
       {% set total = total_groups | int %}
@@ -1152,11 +1135,13 @@ nodes:
       {% else %}
       UpdateMaintenanceWithIssues
       {% endif %}
+    default_output: UpdateMaintenanceWithIssues
+    input:
+      - current_group_index
+      - total_groups
     routes:
       - PrepareCurrentIssue
       - UpdateMaintenanceWithIssues
-    default_output: UpdateMaintenanceWithIssues
-
   - id: PrepareCurrentIssue
     type: code
     code:
@@ -1196,18 +1181,16 @@ nodes:
       - issue_label
     structured_output: true
     transition: RouteByStatus
-
   - id: RouteByStatus
     type: router
-    input:
-      - issue_status
     condition: |
       {% if issue_status == 'skip' %}SkipAndNext{% else %}PrepareIssueFields{% endif %}
+    default_output: PrepareIssueFields
+    input:
+      - issue_status
     routes:
       - SkipAndNext
       - PrepareIssueFields
-    default_output: PrepareIssueFields
-
   - id: SkipAndNext
     type: code
     code:
@@ -1221,7 +1204,6 @@ nodes:
       - current_group_index
     structured_output: true
     transition: CheckMoreGroups
-
   - id: PrepareIssueFields
     type: code
     code:
@@ -1241,11 +1223,8 @@ nodes:
       - issue_fields
     structured_output: true
     transition: CreateIssue
-
   - id: CreateIssue
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: create_issue_on_project
     input:
       - issue_title
       - issue_body
@@ -1254,12 +1233,6 @@ nodes:
       board_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
-      project_title:
-        type: fixed
-        value: Test Automation Factory
-      title:
-        type: variable
-        value: issue_title
       body:
         type: variable
         value: issue_body
@@ -1269,11 +1242,18 @@ nodes:
       issue_repo:
         type: fixed
         value: EliteaAI/elitea-testing-public
+      project_title:
+        type: fixed
+        value: Test Automation Factory
+      title:
+        type: variable
+        value: issue_title
     output:
       - issue_result
     structured_output: true
+    tool: create_issue_on_project
+    toolkit_name: AQA_GHAutotestsTools
     transition: ExtractIssueNumber
-
   - id: ExtractIssueNumber
     type: code
     code:
@@ -1299,12 +1279,13 @@ nodes:
       - issue_number
     structured_output: true
     transition: PrepareLabelsInput
-
   - id: PrepareLabelsInput
     type: code
     code:
       type: fixed
       value: |
+        import json
+
         # Prepare inputs for AddLabelsToIssue - ensure non-empty values
         issue_number = alita_state.get('issue_number', '0') or '0'
         issue_label = alita_state.get('issue_label', '') or 'aqa:maintenance'
@@ -1315,77 +1296,71 @@ nodes:
         except:
             issue_number_int = 0
 
+        # Suite label per distinct suite of the group's tests: aqa:support:[suite_name]
+        # automation_test_id is dotted Form C - tests.ui.<suite>.<module>.<Class>.<method>
+        issue_labels = [issue_label]
+        try:
+            groups_raw = alita_state.get('issue_groups', '[]')
+            idx = int(alita_state.get('current_group_index', '0'))
+            groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
+            if isinstance(groups, list) and idx < len(groups):
+                for test_id in groups[idx].get('tests', []):
+                    parts = str(test_id or '').split('.')
+                    if len(parts) > 3 and parts[0] == 'tests':
+                        suite_label = f"aqa:support:{parts[2]}"
+                        if suite_label not in issue_labels:
+                            issue_labels.append(suite_label)
+        except:
+            pass
+
         out = {
             'issue_number_int': str(issue_number_int),
-            'issue_label': issue_label
+            'issue_label': issue_label,
+            'issue_labels': issue_labels
         }
         out
     input:
       - issue_number
       - issue_label
+      - issue_groups
+      - current_group_index
     output:
       - issue_number_int
       - issue_label
+      - issue_labels
     structured_output: true
     transition: CheckIssueNumberValid
-
   - id: CheckIssueNumberValid
     type: router
-    input:
-      - issue_number_int
-      - issue_label
     condition: |
-      {% if issue_number_int and issue_number_int != '0' %}{% if issue_label == 'aqa:mapping' %}AddLabelMapping{% else %}AddLabelMaintenance{% endif %}{% else %}StoreIssueAndNext{% endif %}
-    routes:
-      - AddLabelMaintenance
-      - AddLabelMapping
-      - StoreIssueAndNext
+      {% if issue_number_int and issue_number_int != '0' %}AddLabels{% else %}StoreIssueAndNext{% endif %}
     default_output: StoreIssueAndNext
-
-  - id: AddLabelMaintenance
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: update_issue
     input:
       - issue_number_int
+    routes:
+      - AddLabels
+      - StoreIssueAndNext
+  - id: AddLabels
+    type: toolkit
+    input:
+      - issue_number_int
+      - issue_labels
     input_mapping:
-      repo_name:
-        type: fixed
-        value: EliteaAI/elitea-testing-public
       issue_id:
         type: variable
         value: issue_number_int
       labels:
-        type: fixed
-        value:
-          - aqa:maintenance
-    output:
-      - label_result
-    structured_output: true
-    transition: StoreIssueAndNext
-
-  - id: AddLabelMapping
-    type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: update_issue
-    input:
-      - issue_number_int
-    input_mapping:
+        type: variable
+        value: issue_labels
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
-      issue_id:
-        type: variable
-        value: issue_number_int
-      labels:
-        type: fixed
-        value:
-          - aqa:mapping
     output:
       - label_result
     structured_output: true
+    tool: update_issue
+    toolkit_name: AQA_GHAutotestsTools
     transition: StoreIssueAndNext
-
   - id: StoreIssueAndNext
     type: code
     code:
@@ -1445,7 +1420,6 @@ nodes:
       - current_group_index
     structured_output: true
     transition: CheckMoreGroups
-
   - id: UpdateMaintenanceWithIssues
     type: code
     code:
@@ -1499,28 +1473,32 @@ nodes:
       - maintenance_json
     structured_output: true
     transition: ReadExistingFile
-
   - id: ReadExistingFile
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: read_file
     input:
       - full_file_path
     input_mapping:
-      file_path:
-        type: variable
-        value: full_file_path
       branch:
         type: fixed
         value: automation/maintenance
+      end_line:
+        type: fixed
+        value: null
+      file_path:
+        type: variable
+        value: full_file_path
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
+      start_line:
+        type: fixed
+        value: null
     output:
       - existing_file_content
     structured_output: true
+    tool: read_file
+    toolkit_name: AQA_GHAutotestsTools
     transition: MergeRunData
-
   - id: MergeRunData
     type: code
     code:
@@ -1605,71 +1583,67 @@ nodes:
       - file_exists
     structured_output: true
     transition: RouteFileCommit
-
   - id: RouteFileCommit
     type: router
-    input:
-      - file_exists
     condition: |
       {% if file_exists == 'true' %}
       DeleteMaintenanceFile
       {% else %}
       CreateMaintenanceFile
       {% endif %}
+    default_output: CreateMaintenanceFile
+    input:
+      - file_exists
     routes:
       - DeleteMaintenanceFile
       - CreateMaintenanceFile
-    default_output: CreateMaintenanceFile
-
   - id: DeleteMaintenanceFile
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: delete_file
     input:
       - full_file_path
     input_mapping:
-      file_path:
-        type: variable
-        value: full_file_path
       branch:
         type: fixed
         value: automation/maintenance
+      file_path:
+        type: variable
+        value: full_file_path
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
     output:
       - delete_result
     structured_output: true
+    tool: delete_file
+    toolkit_name: AQA_GHAutotestsTools
     transition: CreateMaintenanceFile
-
   - id: CreateMaintenanceFile
     type: toolkit
-    toolkit_name: GitHub_Tools
-    tool: create_file
     input:
       - full_file_path
       - final_maintenance_json
     input_mapping:
-      file_path:
-        type: variable
-        value: full_file_path
-      file_contents:
-        type: variable
-        value: final_maintenance_json
       branch:
         type: fixed
         value: automation/maintenance
+      file_contents:
+        type: variable
+        value: final_maintenance_json
+      file_path:
+        type: variable
+        value: full_file_path
+      filepath:
+        type: fixed
+        value: null
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
-      commit_message:
-        type: fixed
-        value: "Update maintenance file with new run data"
     output:
       - commit_result
     structured_output: true
+    tool: create_file
+    toolkit_name: AQA_GHAutotestsTools
     transition: BuildFinalOutput
-
   - id: BuildFinalOutput
     type: code
     code:

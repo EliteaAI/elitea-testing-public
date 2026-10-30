@@ -17,11 +17,11 @@ import time
 from contextlib import contextmanager
 
 from components.mui import Dialog, Popper
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from utils.actions import action
 
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from .pipeline_form_page import PipelineFormPage
 
 logger = logging.getLogger("elitea.pages.pipeline_detail")
@@ -506,13 +506,28 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     canvas_controls = LocatorDescriptor(
-        testid="rf__controls",
-        description=(
-            "ReactFlow canvas zoom/fit-view control panel (bottom-left, pinned "
-            "overlay) — real app testid on the panel container; its individual "
-            "buttons are ReactFlow's own third-party internal render (#579 "
-            "sanctioned exception, see fit_canvas_view())"
-        )
+        testid="pipeline-canvas-controls",
+        description="Pipeline canvas control panel (bottom-left overlay)",
+    )
+
+    canvas_zoom_in_button = LocatorDescriptor(
+        testid="pipeline-canvas-zoom-in",
+        description="Canvas control panel — Zoom in",
+    )
+
+    canvas_zoom_out_button = LocatorDescriptor(
+        testid="pipeline-canvas-zoom-out",
+        description="Canvas control panel — Zoom out",
+    )
+
+    canvas_fit_view_button = LocatorDescriptor(
+        testid="pipeline-canvas-fit-view",
+        description="Canvas control panel — Fit view",
+    )
+
+    canvas_lock_button = LocatorDescriptor(
+        testid="pipeline-canvas-lock",
+        description="Canvas control panel — Lock/Unlock canvas (node dragging); aria-pressed when locked",
     )
 
     yaml_editor = LocatorDescriptor(
@@ -611,6 +626,19 @@ class PipelineDetailPage(PipelineFormPage):
     chat_clear_button = LocatorDescriptor(
         testid="chat-clear-button",
         description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
+    )
+
+    # Pipelines 2.0 "Test Pipeline" side panel (EliteaUI EL-7155, ELITEA-2059
+    # adjust #2574): the pipeline's embedded chat lives in this panel, which
+    # stays mounted but display:none until the toolbar button opens it.
+    test_pipeline_button = LocatorDescriptor(
+        testid="pipeline-test-button",
+        description="Toolbar 'Test Pipeline' button (TestPipelineButton.jsx) — opens the embedded-chat TestPanel"
+    )
+
+    test_pipeline_panel = LocatorDescriptor(
+        testid="pipeline-test-panel",
+        description="Test Pipeline side panel (TestPanel) hosting the embedded chat; hidden until opened"
     )
 
     # File attachments (ELITEA-2059). Bare icon-only `AttachmentButton`
@@ -796,10 +824,6 @@ class PipelineDetailPage(PipelineFormPage):
     # Added via add-data-testid for ELITEA-2037 (widened BaseToolNode.jsx's
     # interruptAfterTestId/structuredOutputTestId from Toolkit-only to every
     # node type in TEST_ID_PREFIX_BY_NODE_TYPE — EliteaAI/EliteaUI@00768a44).
-    mcp_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-mcp-node-interrupt-after-toggle",
-        description="MCP node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
-    )
     mcp_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-mcp-node-structured-output-toggle",
         description="MCP node's 'Structured output' switch (CommonInterruptSettings.jsx)"
@@ -833,10 +857,6 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-agent-node-input-mapping-heading",
         description="Agent node's 'Input mapping (required 1)' accordion heading (always TASK)"
     )
-    agent_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-agent-node-interrupt-after-toggle",
-        description="Agent node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
-    )
 
     # LLM node inline config (ELITEA-2004). Testid-only, added via
     # add-data-testid — LLMNode.jsx call sites only (SimpleLLMInputs is
@@ -844,6 +864,21 @@ class PipelineDetailPage(PipelineFormPage):
     # types stay untagged, .agents/testing.md § Locator policy). Page-wide
     # (not scoped to a specific node container): correct as long as a test
     # only has a single LLM node on canvas.
+    # Node side-panel "Advanced" accordion (NodeConfigSection.jsx, defaultExpanded
+    # only for Basic). Holds the LLM node's CHAT HISTORY, Input, Output and
+    # Structured output; collapsed by default (ELITEA-2004 adjust, class A).
+    node_panel_advanced_toggle = LocatorDescriptor(
+        testid="pipeline-node-panel-advanced-section-toggle",
+        description="Node side panel's 'Advanced' accordion header (aria-expanded reflects state)"
+    )
+    node_panel_delete_button = LocatorDescriptor(
+        testid="pipeline-node-panel-delete",
+        description="Node side panel footer's 'Delete node' icon button (NodeConfigFooter.jsx)"
+    )
+    node_panel_close_button = LocatorDescriptor(
+        testid="pipeline-node-panel-close",
+        description="Node side panel header's close (X) button (NodeConfigPanelHeader.jsx)"
+    )
     llm_node_system_type_select = LocatorDescriptor(
         testid="pipeline-llm-node-system-type-select",
         description="LLM node's SYSTEM section Type select (inline on canvas card)"
@@ -880,10 +915,6 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-llm-node-toolkits-select",
         description="LLM node's Toolkits multi-select (ToolkitsSelect.jsx, LLM-only call site)"
     )
-    llm_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-llm-node-interrupt-after-toggle",
-        description="LLM node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
-    )
     llm_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-llm-node-structured-output-toggle",
         description="LLM node's 'Structured output' switch (CommonInterruptSettings.jsx)"
@@ -910,10 +941,6 @@ class PipelineDetailPage(PipelineFormPage):
     code_node_output_select = LocatorDescriptor(
         testid="pipeline-code-node-output-select",
         description="Code node's tool-agnostic Output state-variable select"
-    )
-    code_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-code-node-interrupt-after-toggle",
-        description="Code node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
     )
     code_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-code-node-structured-output-toggle",
@@ -1032,13 +1059,6 @@ class PipelineDetailPage(PipelineFormPage):
         description="Entry-point node's Trigger type select (Chat Message/Schedule/Webhook)"
     )
 
-    # Dynamic (runtime-parameterized) testid — CommonInterruptSettings.jsx's
-    # "Interrupt before" toggle is keyed by node id, not node type (ELITEA-2008,
-    # unconditional for every node type sharing the component). Class-level
-    # template constant per .agents/testing.md § Locator policy, formatted
-    # with the node's own `data-id` (as returned by wait_for_node_on_canvas).
-    NODE_INTERRUPT_BEFORE_TOGGLE = '[data-testid="pipeline-node-interrupt-before-toggle-{}"]'
-
     # Toolkit node inline config (ELITEA-2010). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx's node-type -> testid-prefix map now
     # covers both "mcp" (unchanged, pipeline-mcp-node-*) and "toolkit" (new,
@@ -1071,10 +1091,6 @@ class PipelineDetailPage(PipelineFormPage):
     toolkit_node_input_mapping_optional_heading = LocatorDescriptor(
         testid="pipeline-toolkit-node-input-mapping-optional-heading",
         description="Toolkit node's 'Input mapping (optional N)' accordion heading"
-    )
-    toolkit_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-toolkit-node-interrupt-after-toggle",
-        description="Toolkit node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
     )
     toolkit_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-toolkit-node-structured-output-toggle",
@@ -1114,10 +1130,6 @@ class PipelineDetailPage(PipelineFormPage):
     custom_node_input_mapping_optional_heading = LocatorDescriptor(
         testid="pipeline-custom-node-input-mapping-optional-heading",
         description="Custom node's 'Input mapping (optional N)' accordion heading"
-    )
-    custom_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-custom-node-interrupt-after-toggle",
-        description="Custom node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
     )
     custom_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-custom-node-structured-output-toggle",
@@ -1208,10 +1220,6 @@ class PipelineDetailPage(PipelineFormPage):
         description="Decision node's DECISION OUTPUTS chip-list container"
     )
 
-    decision_node_interrupt_after_toggle = LocatorDescriptor(
-        testid="pipeline-decision-node-interrupt-after-toggle",
-        description="Decision node's Interrupt after switch"
-    )
 
     decision_node_output_handle = LocatorDescriptor(
         testid="pipeline-decision-node-output-handle",
@@ -1282,18 +1290,6 @@ class PipelineDetailPage(PipelineFormPage):
     # on THIS inner element, not on the outer `pipeline-hitl-node-route-
     # select-{action}` testid (which lands on MUI's MuiInputBase-root wrapper).
     HITL_NODE_ROUTE_SELECT_COMBOBOX = '[data-testid="pipeline-hitl-node-route-select-{}-combobox"]'
-
-    # Dynamic (runtime-parameterized) testid — one "Interrupt before" toggle
-    # per node (CommonInterruptSettings.jsx, rendered inline on every node
-    # type). Class-level template constant per .agents/testing.md § Locator
-    # policy, formatted with the target node's id at the call site. Added via
-    # add-data-testid, EliteaAI/EliteaUI@a2ce4732 (ELITEA-2008). "Before" was
-    # chosen over "after": `disabled={yamlNode?.transition === End || ...}`
-    # makes "after" unusable on a freshly-added, unconnected node (pipeline
-    # auto-wires new nodes to END, confirmed live) — "before" only disables
-    # for the SAVED entry point (`entry_point === id`), which a non-entry-point
-    # node never is.
-    NODE_INTERRUPT_BEFORE_TOGGLE = '[data-testid="pipeline-node-interrupt-before-toggle-{}"]'
 
     # Chat HITL runtime actions (ELITEA-2015). Testid-only, added via
     # add-data-testid — ChatHitlActions.jsx's non-sensitive-tool branch +
@@ -1546,16 +1542,22 @@ class PipelineDetailPage(PipelineFormPage):
     # AgentDetailPage's Toolkits-section fields, ported here since
     # PipelineFormPage/PipelineDetailPage had no TOOLS-section locators yet.
     toolkits_section = LocatorDescriptor(
-        testid="agent-toolkits-section",
-        description="TOOLS section container (Toolkit/MCP/Agent/Pipeline add buttons + MODULES)"
+        testid="pipeline-tools-section",
+        description=(
+            "Pipeline TOOLS section container (PipelineToolsSection.jsx, EL-7159: read-only list of "
+            "what the nodes use + MODULES; replaced the shared agent-toolkits-section)"
+        ),
     )
     add_mcp_button = LocatorDescriptor(
         testid="agent-add-mcp-button",
         description='"+ MCP" button in the TOOLS section (ToolMenu.jsx)'
     )
     toolkit_card = LocatorDescriptor(
-        testid="agent-toolkit-card",
-        description="An attached toolkit/MCP card in the TOOLS section"
+        testid="pipeline-tool-card",
+        description=(
+            "An attached toolkit/MCP card in the pipeline TOOLS section "
+            "(PipelineToolCard.jsx; replaced the shared agent-toolkit-card)"
+        ),
     )
 
     # Scoped sub-selectors for a specific attached card (ELITEA-2065) — each
@@ -1566,8 +1568,8 @@ class PipelineDetailPage(PipelineFormPage):
     # already used by `AgentDetailPage.remove_toolkit`); the other two were
     # added this session (`BaseCardBody.jsx`/`EnhancedCardToolActions.jsx`,
     # on-`automation/testids` only — `EliteaAI/EliteaUI@c45f1611`).
-    TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="agent-toolkit-delete-button"]'
-    TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="toolkit-card-tools-toggle"]'
+    TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="pipeline-tool-card-remove"]'
+    TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="pipeline-tool-card-show-tools"]'
     TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
 
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
@@ -1685,6 +1687,24 @@ class PipelineDetailPage(PipelineFormPage):
     # with test-generated data only at the call site.
     MCP_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-mcp-node-input-mapping-value-{}"]'
 
+    # Node-level project pickers (EL-7159, EliteaUI 359dcdb2): toolkits / MCPs /
+    # agents / pipelines are now picked inside the node config panel
+    # (ProjectToolkitPicker / ProjectAgentPicker). Menu rows carry
+    # `{node-select-testid}-option`, the menu's search field `-menu-search`.
+    AGENT_NODE_PICKER_OPTION = '[data-testid="pipeline-agent-node-agent-select-option"]'
+    AGENT_NODE_PICKER_SEARCH = '[data-testid="pipeline-agent-node-agent-select-menu-search"]'
+    MCP_NODE_PICKER_OPTION = '[data-testid="pipeline-mcp-node-toolkit-select-option"]'
+    MCP_NODE_PICKER_SEARCH = '[data-testid="pipeline-mcp-node-toolkit-select-menu-search"]'
+    TOOLKIT_NODE_PICKER_OPTION = '[data-testid="pipeline-toolkit-node-toolkit-select-option"]'
+    TOOLKIT_NODE_PICKER_SEARCH = '[data-testid="pipeline-toolkit-node-toolkit-select-menu-search"]'
+    # Required input-mapping Value fields inside the node panel's Basic section
+    # (ELITEA-1954 adjust: the 'Input mapping (required N)' heading no longer
+    # renders in the panel layout; required params are listed directly under Basic).
+    MCP_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES = (
+        '[data-testid="pipeline-node-panel-basic-section"] '
+        '[data-testid^="pipeline-mcp-node-input-mapping-value-"]'
+    )
+
     # Dynamic (runtime-parameterized) testids — one Value/Type select pair per
     # tool parameter (e.g. search_query, repo_name, max_count). Class-level
     # template constants per .agents/testing.md § Locator policy, formatted
@@ -1692,6 +1712,15 @@ class PipelineDetailPage(PipelineFormPage):
     # MCP_NODE_INPUT_MAPPING_VALUE above, gated to nodeType==toolkit in
     # BaseToolNode.jsx (ELITEA-2010).
     TOOLKIT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-toolkit-node-input-mapping-value-{}"]'
+    # Panel layout (EL-7157/EL-7159, BaseToolNode.jsx): required params are listed under
+    # Basic; optional ones are offered by the Advanced section's "add optional parameter" menu.
+    TOOLKIT_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES = (
+        '[data-testid="pipeline-node-panel-basic-section"] '
+        '[data-testid^="pipeline-toolkit-node-input-mapping-value-"]'
+    )
+    TOOLKIT_NODE_INPUT_MAPPING_VALUE_PREFIXED = '[data-testid^="pipeline-toolkit-node-input-mapping-value-"]'
+    TOOLKIT_NODE_ADD_OPTIONAL_PARAMETER = '[data-testid="pipeline-toolkit-node-add-optional-parameter"]'
+    TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS = '[data-testid^="pipeline-toolkit-node-optional-parameter-"]'
     TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
 
     # Same mechanism, gated to nodeType==custom in DefaultNode.jsx (ELITEA-2036).
@@ -1736,10 +1765,33 @@ class PipelineDetailPage(PipelineFormPage):
     # level template constant per .agents/testing.md § Locator policy.
     ADD_NODE_MENU_ITEM_BY_TYPE = '[data-testid="pipeline-add-node-menu-item-{}"]'
 
+    # Per-node three-dot header menu button (NodeHeaderMenu -> DotMenu
+    # id="node-menu" => `node-menu-menu-button`), scoped to one node via its
+    # ReactFlow wrapper testid `rf__node-{id}` (same form as RF_NODE_TESTID).
+    NODE_HEADER_MENU_BUTTON = '[data-testid="rf__node-{}"] [data-testid="node-menu-menu-button"]'
+
     # Prefix-match variant for enumerating every item currently rendered in
     # an open Add Node menu, in DOM order — same testid family, no type
     # known up front.
     ADD_NODE_MENU_ITEM_PREFIX = '[data-testid^="pipeline-add-node-menu-item-"]'
+
+    # Display label (as ``add_node()`` callers pass it) -> internal type key.
+    ADD_NODE_TYPE_BY_LABEL = {
+        "Human-in-the-loop": "hitl",
+        "State modifier": "state_modifier",
+    }
+
+    # The item's label <span>, resolved inside one menu item. DEV items render
+    # the label plus a one-line description <span> (bodySmall) beneath it, so
+    # an item's whole text_content() is "<label><description>" — read the label
+    # span only (ELITEA-2030 / #2568). `MuiTypography-bodyMedium` is the design
+    # system's typography VARIANT class (the description uses bodySmall), not a
+    # generated `css-*` hash or a `Mui*-root` structural class.
+    ADD_NODE_MENU_ITEM_LABEL = ScopedLocator(
+        css="span.MuiTypography-bodyMedium",
+        suggested_testid="pipeline-add-node-menu-item-label",
+        description="Label span inside an Add Node menu item; sibling bodySmall span holds the description",
+    )
 
     # Generic "any canvas popup menu" check — shared DOM shape across two
     # distinct app components, each with its own real testid (not a raw
@@ -1958,12 +2010,39 @@ class PipelineDetailPage(PipelineFormPage):
     # Pipeline info
     # ------------------------------------------------------------------
 
+    def _reveal_information_section(self, timeout: int = 10000) -> None:
+        """Make the left-column Information rows (Pipeline ID / Version ID) readable.
+
+        Adjust (class A, UI drift): an open node side panel collapses the left
+        configuration column (which hosts the Information accordion) and closing
+        the panel leaves it collapsed. Close the node panel, then expand the
+        left column if the Information section is still not rendered.
+        Idempotent: a no-op when the section is already visible.
+        """
+        try:
+            # Normal path: the accordion is (or is about to be) rendered.
+            self.information_section.wait_for(state="visible", timeout=3000)
+            return
+        except PlaywrightTimeoutError:
+            pass
+        self.close_node_panel(timeout=timeout)
+        # Closing the panel can leave the left column collapsed (the form is
+        # unmounted, so the section never renders). Re-check with a short wait
+        # first; click the bidirectional toggle only if it is still absent.
+        try:
+            self.information_section.wait_for(state="visible", timeout=2000)
+            return
+        except PlaywrightTimeoutError:
+            self.config_panel_collapse_button.click(timeout=timeout)
+        self.information_section.wait_for(state="visible", timeout=timeout)
+
     def get_pipeline_id(self) -> str:
         """Read the Pipeline ID from the Information section.
 
         Returns:
             Pipeline ID as string.
         """
+        self._reveal_information_section()
         return self.copy_id_button.text_content().strip()
 
     def get_version_display(self) -> str:
@@ -2002,6 +2081,7 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Version ID as string (e.g. ``"8311"``).
         """
+        self._reveal_information_section()
         return self.copy_version_id_button.text_content().strip()
 
     @action("Click the Information section's 'Show' link")
@@ -3133,7 +3213,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Fit View"]').click(timeout=timeout)
+        self.canvas_fit_view_button.click(timeout=timeout)
         self.page.wait_for_timeout(500)  # pan/zoom transition settle
 
     def zoom_in_canvas(self, timeout: int = 5000) -> None:
@@ -3154,7 +3234,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Zoom In"]').click(timeout=timeout)
+        self.canvas_zoom_in_button.click(timeout=timeout)
         self.page.wait_for_timeout(300)  # zoom transition settle
 
     def zoom_out_canvas(self, timeout: int = 5000) -> None:
@@ -3169,7 +3249,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Zoom Out"]').click(timeout=timeout)
+        self.canvas_zoom_out_button.click(timeout=timeout)
         self.page.wait_for_timeout(300)  # zoom transition settle
 
     def is_control_panel_fully_visible(self, timeout: int = 5000) -> bool:
@@ -3227,7 +3307,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Toggle Interactivity"]').click(timeout=timeout)
+        self.canvas_lock_button.click(timeout=timeout)
         self.page.wait_for_timeout(300)  # state settle
 
     def toggle_canvas_cards_size(self, timeout: int = 5000) -> None:
@@ -3310,6 +3390,69 @@ class PipelineDetailPage(PipelineFormPage):
             raise ValueError(f"Unexpected ReactFlow viewport transform shape: {transform!r}")
         tx, ty, scale = match.groups()
         return {"tx": float(tx), "ty": float(ty), "scale": float(scale)}
+
+    def ensure_full_cards(self, min_scale: float = 0.6) -> bool:
+        """Zoom in to full cards ONLY if the canvas currently renders mini cards.
+
+        ELITEA-2016: below ``MINI_CARD_ZOOM`` (0.6) card bodies are
+        ``display:none``. When the scale is already >= *min_scale* this is a
+        strict no-op (the view is left exactly as the caller arranged it, so
+        specs that already fit the graph are unaffected).
+
+        Returns:
+            True if the view was changed (caller should :meth:`fit_canvas_view`
+            afterwards to restore the whole-graph view), else False.
+        """
+        if self.get_canvas_viewport_transform()["scale"] >= min_scale:
+            return False
+        self.fit_canvas_view()
+        self.zoom_in_until_full_cards(min_scale=min_scale)
+        return True
+
+    def restore_graph_view(self, changed: bool) -> None:
+        """Re-fit the whole graph if :meth:`ensure_full_cards` changed the view."""
+        if changed:
+            self.fit_canvas_view()
+
+    def zoom_in_until_full_cards(self, min_scale: float = 0.6, max_clicks: int = 10, timeout: int = 5000) -> dict:
+        """Zoom In until the viewport scale reaches *min_scale* (cards render full size).
+
+        Added for ELITEA-2057 (class D robustness). ``FlowEditor`` renders
+        every card as a MINI card whenever the viewport zoom is below
+        ``MINI_CARD_ZOOM`` (0.6, ``nodeCard.helpers.js isMiniCardZoom``)
+        regardless of the expand-all state, and Fit View / Auto-arrange /
+        Toggle cards size all re-fit the view — on a small viewport that can
+        land below 0.6, making an "expanded" card measure as mini. Reaching a
+        scale >= *min_scale* is the precondition for measuring real card
+        heights. Condition-driven: clicks only while the scale is short.
+
+        Returns:
+            The viewport transform dict (``tx``, ``ty``, ``scale``) reached.
+
+        Raises:
+            AssertionError: if *min_scale* is still not reached after *max_clicks*.
+        """
+        transform = self.get_canvas_viewport_transform()
+        for _ in range(max_clicks):
+            if transform["scale"] >= min_scale:
+                break
+            self.zoom_in_canvas(timeout=timeout)
+            transform = self.get_canvas_viewport_transform()
+        if transform["scale"] < min_scale:
+            raise AssertionError(
+                f"Zoom In x{max_clicks} left viewport scale at {transform['scale']:.3f}, below the required "
+                f"{min_scale} — cards would still render as mini cards"
+            )
+        return transform
+
+    def get_node_layout_height(self, node_id: str, timeout: int = 5000) -> float:
+        """Return the node's height in unscaled (layout) px: on-screen height / viewport scale.
+
+        Added for ELITEA-2057 so card heights measured at different zoom
+        levels (the card-size toggle re-fits the view) are comparable.
+        """
+        box = self.get_node_bounding_box(node_id, timeout=timeout)
+        return box["height"] / self.get_canvas_viewport_transform()["scale"]
 
     def get_node_bounding_box(self, node_id: str, timeout: int = 5000) -> dict:
         """Return the on-screen bounding box of the node with *node_id*.
@@ -3441,15 +3584,29 @@ class PipelineDetailPage(PipelineFormPage):
             timeout: Maximum wait time for menu to appear.
         """
         logger.info("Adding node: %s", node_type)
-        # The green + button is the MuiIconButton-colorPrimary in the
-        # canvas area (not the header three-dot button).
-        add_btn = self.page.locator("button.MuiIconButton-colorPrimary").first
-        add_btn.click()
-        self.page.wait_for_timeout(300)
-
-        menu_item = self.page.get_by_role("menuitem", name=node_type, exact=True)
-        menu_item.wait_for(state="visible", timeout=timeout)
-        menu_item.click()
+        # Display label -> internal type key rendered in the item's testid.
+        type_key = self.ADD_NODE_TYPE_BY_LABEL.get(node_type, node_type.lower())
+        menu_item = self.page.locator(self.ADD_NODE_MENU_ITEM_BY_TYPE.format(type_key))
+        # Open the menu with a bounded retry: right after a save the canvas
+        # re-renders and can swallow the click or close the menu again.
+        for attempt in range(3):
+            self.add_node_button.click()
+            try:
+                menu_item.wait_for(state="visible", timeout=3000)
+                break
+            except PlaywrightTimeoutError:
+                if attempt == 2:
+                    raise
+                self.page.wait_for_timeout(500)
+        try:
+            menu_item.click(timeout=timeout)
+        except PlaywrightTimeoutError:
+            # The canvas re-rendered mid-click and detached the menu item (flake
+            # also seen on base). Reopen the menu if it closed, then click again.
+            if not menu_item.is_visible():
+                self.add_node_button.click()
+                menu_item.wait_for(state="visible", timeout=timeout)
+            menu_item.click(timeout=timeout)
         self.page.wait_for_timeout(1000)
         logger.info("Added node: %s", node_type)
 
@@ -3486,7 +3643,9 @@ class PipelineDetailPage(PipelineFormPage):
         items = self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
         items.first.wait_for(state="visible", timeout=timeout)
         count = items.count()
-        return [(items.nth(i).text_content() or "").strip() for i in range(count)]
+        return [
+            (self.ADD_NODE_MENU_ITEM_LABEL.within(items.nth(i)).text_content() or "").strip() for i in range(count)
+        ]
 
     def select_add_node_menu_item(self, node_type: str, timeout: int = 5000) -> None:
         """Click a node type in an ALREADY-OPEN Add Node menu.
@@ -3617,11 +3776,14 @@ class PipelineDetailPage(PipelineFormPage):
     # Router (ELITEA-2033), Decision (ELITEA-2034), Toolkit (ELITEA-2010).
     NODE_TYPE_DISPLAY_PREFIX = {
         "llm": "LLM",
+        "code": "Code",
         "hitl": "HITL",
         "mcp": "MCP",
         "router": "Router",
         "decision": "Decision",
         "toolkit": "Toolkit",
+        "printer": "Printer",
+        "state_modifier": "StateModifier",
     }
     RF_NODE_TESTID_PREFIX = '[data-testid^="rf__node-{}"]'
     # Exact-id sibling of RF_NODE_TESTID_PREFIX — for callers that already
@@ -3629,6 +3791,10 @@ class PipelineDetailPage(PipelineFormPage):
     # and need to re-locate that SAME node, not "any node of this type".
     # Same ReactFlow-injected `rf__node-{id}` testid, same #579 provenance.
     RF_NODE_TESTID = '[data-testid="rf__node-{}"]'
+    # Node header name label (double-click to rename). Rung 1: DEV serves this testid
+    # (NodeCardHeader.jsx). Replaces the `.MuiTypography-labelMedium` `.first` pick, which
+    # on Printer cards now matches a different label before the name.
+    NODE_NAME_TESTID = '[data-testid="pipeline-node-name"]'
 
     def wait_for_node_type_count(
         self, node_type: str, expected_count: int, timeout: int = 10000
@@ -3741,44 +3907,40 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Node '%s' visible on canvas (id=%s)", node_type, node_id)
         return node_id
 
-    def delete_node(self, node_id: str, timeout: int = 5000):
-        """Delete a node from the canvas via its three-dot header menu.
+    def _open_node_header_menu(self, node_id: str) -> None:
+        """Open a node's three-dot header menu.
 
-        Each node has two header icon buttons (no aria-labels). The
-        second one (the three-dot ⋮ icon) opens a menu containing
-        a Delete item. Clicking Delete shows a confirmation dialog
-        with Cancel / Delete buttons.
+        DEV renders a single header icon button per node
+        (``DotMenu id="node-menu"`` -> ``node-menu-menu-button``); the old
+        "second MuiIconButton-colorTertiary" no longer exists. The click is
+        dispatched (not pointer-driven) to avoid interception by overlapping
+        nodes, as the legacy JS click did.
+        """
+        self.page.locator(self.NODE_HEADER_MENU_BUTTON.format(node_id)).dispatch_event("click")
+
+    def delete_node(self, node_id: str, timeout: int = 5000):
+        """Delete a node from the canvas via its config side panel.
+
+        Canvas cards are view-only (no header menu). Clicking a node opens its
+        config panel whose footer carries the "Delete node" button
+        (``NodeConfigFooter.jsx`` -> ``pipeline-node-panel-delete``); it opens
+        the "Are you sure to delete this node" confirmation dialog.
 
         Args:
             node_id: The data-id of the node to delete.
-            timeout: Maximum wait time for menu / dialog to appear.
+            timeout: Maximum wait time for the panel / dialog to appear.
         """
         logger.info("Deleting node: %s", node_id)
 
-        # Click the three-dot button (second MuiIconButton-colorTertiary)
-        # via JS to avoid pointer interception from overlapping nodes.
-        self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                const btns = node.querySelectorAll(
-                    'button.MuiIconButton-colorTertiary'
-                );
-                if (btns[1]) btns[1].click();
-            }""",
-            node_id,
-        )
-        self.page.wait_for_timeout(300)
-
-        # Click "Delete" in the menu
-        delete_item = self.page.get_by_role("menuitem", name="Delete")
-        delete_item.wait_for(state="visible", timeout=timeout)
-        delete_item.click()
-        self.page.wait_for_timeout(300)
+        if not self.node_panel_delete_button.is_visible():
+            self.page.locator(self.RF_NODE_TESTID.format(node_id)).click(force=True)
+        self.node_panel_delete_button.wait_for(state="visible", timeout=timeout)
+        self.node_panel_delete_button.click(timeout=timeout)
 
         # Confirm the "Are you sure to delete this node?" dialog
         dialog = Dialog.wait_for(self.page, timeout=timeout)
         Dialog.click_button(dialog, "Delete")
-        self.page.wait_for_timeout(500)
+        self.node_panel_delete_button.wait_for(state="detached", timeout=timeout)
         logger.info("Deleted node: %s", node_id)
 
     def make_node_entrypoint(self, node_id: str, timeout: int = 5000):
@@ -3790,17 +3952,8 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Making node '%s' the entrypoint", node_id)
 
-        # Click the three-dot button (second MuiIconButton-colorTertiary)
-        self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                const btns = node.querySelectorAll(
-                    'button.MuiIconButton-colorTertiary'
-                );
-                if (btns[1]) btns[1].click();
-            }""",
-            node_id,
-        )
+        # Open the node's three-dot header menu (testid on DEV).
+        self._open_node_header_menu(node_id)
         self.page.wait_for_timeout(300)
 
         entrypoint_item = self.page.get_by_role("menuitem", name="Make entrypoint")
@@ -4001,15 +4154,35 @@ class PipelineDetailPage(PipelineFormPage):
                 control to become enabled (Leg 1) is budgeted separately by
                 :data:`TRIGGER_SELECT_READY_TIMEOUT`.
             entry_point_node_id: Optional data-id of the entry point node to
-                bring to the front before opening the dropdown.
+                bring to the front before opening the dropdown. When omitted and exactly one Trigger select
+                exists, the current entry-point node is resolved and used (ELITEA-2005).
 
         Raises:
             PlaywrightTimeoutError: the Select never became enabled within
                 :data:`TRIGGER_SELECT_READY_TIMEOUT`, or the menu never opened
                 within *timeout*. Either message names the observed state.
         """
+        if not entry_point_node_id and self.trigger_select.count() == 1:
+            # ELITEA-2005 (CI #2708): a caller that did not name the node still
+            # needs the entry-point card brought on-canvas at full size (a
+            # promoted node can sit outside the viewport / render as a mini
+            # card -> "Element is outside of the viewport").
+            entry_point_node_id = self.get_entrypoint_node_id()
+            # Fit first so the node is on-screen when it is clicked (a prior
+            # zoom/pan can leave it outside the viewport).
+            self.fit_view()
         if entry_point_node_id:
             self._select_node(entry_point_node_id)
+            # With several nodes on the canvas, Fit View settles below
+            # MINI_CARD_ZOOM (0.6, EliteaUI nodeCard.helpers.js isMiniCardZoom),
+            # and FlowEditor then renders every card as a MINI card: the body
+            # holding the Trigger select is display:none, so the click fails
+            # with "Element is outside of the viewport" / "not visible"
+            # (CI #2655, ELITEA-2008). Zoom back in until cards render full
+            # size, then bring the entry-point node into view.
+            self.fit_view()
+            self.zoom_in_until_full_cards()
+            self.trigger_select.scroll_into_view_if_needed(timeout=timeout)
 
         enabled = self.page.locator(self.TRIGGER_SELECT_ENABLED)
         expanded = self.page.locator(self.TRIGGER_SELECT_EXPANDED)
@@ -4156,42 +4329,34 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.keyboard.press("Escape")
         return states
 
-    def toggle_node_interrupt_before(self, node_id: str, timeout: int = 5000) -> None:
-        """Click a node's inline "Interrupt before" switch (CommonInterruptSettings.jsx).
+    def set_interrupt_before_via_yaml(self, node_id: str) -> None:
+        """Set the pipeline's top-level ``interrupt_before`` list to ``[node_id]`` via the YAML view.
 
-        Disabled by the source only when *node_id* IS the pipeline's saved
-        entry point (`yamlJsonObject.entry_point === id`) — callers must
-        target a node that is NOT the entry point.
-
-        The testid is wired via `slotProps.switch.slotProps.input` (added
-        EliteaAI/EliteaUI, ELITEA-2008 fix) so it lands directly on the
-        native ``<input type="checkbox">`` — NOT the `MuiSwitch-switchBase`
-        wrapper span MUI's `Switch` normally puts extra props on
-        (`.agents/memory/test-automation-engineer/
-        testid_lands_on_mui_wrapper_not_input.md`; MUI v7's `Switch` silently
-        drops a legacy `inputProps` testid entirely). Clicked via
-        ``element.click()`` (JS, `.claude/rules/mui-patterns.md` § MUI
-        Overlay Interception — same technique as :meth:`delete_node`), NOT a
-        coordinate-based Playwright click, even with ``force=True``.
-        Confirmed live (ELITEA-2008): after a node add/delete cycle earlier
-        on the canvas (e.g. Printer/HITL added then removed before this
-        node), some other canvas element ends up topmost at this switch's
-        on-screen coordinates. `force=True` only skips Playwright's
-        actionability *checks* — the underlying mouse event is still
-        dispatched at those coordinates and the browser still delivers it to
-        whatever's topmost there, so a coordinate click silently lands on
-        the intercepting element instead of the switch (no exception, no
-        `aria-disabled`, the switch's `checked` state simply never flips).
-        `element.click()` on the (now testid'd) native checkbox bypasses
-        on-screen z-order entirely and still fires React's `onChange`.
+        The per-node "Interrupt before" switch was removed from node cards
+        (EliteaAI/EliteaUI@d16f8caf, EL-3872 phase 1 of static-interrupt
+        deprecation); ``interrupt_before`` stays a supported YAML key, so the
+        YAML editor is the only UI route to a saved non-empty interrupt list.
+        Edits the first YAML line (``entry_point: ...``, unique in the doc) by
+        appending the key, then returns to the Flow view. Does NOT save.
 
         Args:
-            node_id: The data-id of the target node.
-            timeout: Maximum wait time in milliseconds.
+            node_id: The data-id of the node to interrupt before.
         """
-        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
-        toggle.wait_for(state="attached", timeout=timeout)
-        toggle.evaluate("el => el.click()")
+        self.switch_to_yaml_view()
+        entry_line = next(
+            line.strip() for line in self.get_yaml_content().splitlines() if line.startswith("entry_point:")
+        )
+        self.edit_yaml_line(entry_line, f"{entry_line}\ninterrupt_before: [{node_id}]")
+        self.switch_to_flow_view()
+
+    def clear_interrupt_before_via_yaml(self) -> None:
+        """Reset the pipeline's ``interrupt_before`` list to ``[]`` via the YAML view. Does NOT save."""
+        self.switch_to_yaml_view()
+        current = next(
+            line.strip() for line in self.get_yaml_content().splitlines() if line.startswith("interrupt_before:")
+        )
+        self.edit_yaml_line(current, "interrupt_before: []")
+        self.switch_to_flow_view()
 
     def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
         """Open the entry-point node's Trigger select and choose *value*.
@@ -4219,6 +4384,10 @@ class PipelineDetailPage(PipelineFormPage):
             Parsed JSON body of the trigger-update PUT response, or ``None``
             when *value* is ``"schedule"``.
         """
+        # ELITEA-2007 (class A): the Trigger select lives in the node side panel,
+        # which exists only while the node is selected (closed after a reload).
+        if not self.trigger_select.is_visible():
+            self.ensure_llm_node_panel_open(timeout=timeout)
         self.trigger_select.click(timeout=timeout, force=True)
         option = self.page.locator(self.SELECT_OPTION.format(value))
         option.wait_for(state="visible", timeout=timeout)
@@ -4458,7 +4627,7 @@ class PipelineDetailPage(PipelineFormPage):
         node = self.page.locator(f'[data-id="{node_id}"]')
 
         # Double-click the name label to activate inline editing
-        name_label = node.locator(".MuiTypography-labelMedium").first
+        name_label = node.locator(self.NODE_NAME_TESTID)
         name_label.dblclick()
         self.page.wait_for_timeout(300)
 
@@ -4519,8 +4688,9 @@ class PipelineDetailPage(PipelineFormPage):
     def get_node_name(self, node_id: str) -> str:
         """Read the display name of a node.
 
-        The name is shown in a MuiTypography-labelMedium span in the
-        node header.
+        The name is shown in the node header's ``pipeline-node-name`` label
+        (NODE_NAME_TESTID); the former ``.MuiTypography-labelMedium`` ``.first``
+        pick now matches a "Chat Message" label on LLM cards.
 
         Args:
             node_id: The data-id of the node.
@@ -4529,11 +4699,38 @@ class PipelineDetailPage(PipelineFormPage):
             The node's display name text.
         """
         node = self.page.locator(f'[data-id="{node_id}"]')
-        return node.locator(".MuiTypography-labelMedium").first.text_content().strip()
+        return node.locator(self.NODE_NAME_TESTID).text_content().strip()
 
     # ------------------------------------------------------------------
     # MCP node inline config (ELITEA-1954)
     # ------------------------------------------------------------------
+
+    def ensure_mcp_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the MCP node's config side panel is open (select the node if not).
+
+        ELITEA-1954 (class A, UI drift): canvas node cards are compact view-only
+        summaries; the Toolkit/Tool selects and Input mapping render in the node
+        side panel that exists only while a node is selected (closed after a
+        page reload). No-op when the panel is already open.
+        """
+        if self.mcp_node_toolkit_select.is_visible():
+            return
+        node_id = self.wait_for_node_on_canvas("mcp", timeout=timeout)
+        self._select_node(node_id)
+        self.mcp_node_toolkit_select.wait_for(state="visible", timeout=timeout)
+
+    def expand_mcp_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the MCP node's panel and expand its "Advanced" accordion (Input/Output/Structured output).
+
+        EL-7157 (class A, UI drift): in the node config panel those fields sit in a
+        collapsed-by-default "Advanced" section. Idempotent.
+        """
+        self.ensure_mcp_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
 
     def get_mcp_node_toolkit_value(self, timeout: int = 5000) -> str:
         """Read the MCP node's currently-selected Toolkit display text.
@@ -4693,9 +4890,127 @@ class PipelineDetailPage(PipelineFormPage):
                 cleaned display name as rendered in the option list).
             timeout: Maximum wait time for the dropdown / option.
         """
-        self.open_mcp_node_toolkit_select(timeout=timeout)
-        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
-        option.click(timeout=timeout)
+        # EL-7159 (class A, UI drift): the node's MCP select is now the project picker
+        # (ProjectToolkitPicker) — rows are `...-toolkit-select-option`, and picking one
+        # attaches the MCP to the pipeline (persisted on Save).
+        if self.page.locator(self.MCP_NODE_PICKER_OPTION).count() == 0:
+            self.open_mcp_node_picker(timeout=timeout)
+        self._click_node_picker_option(
+            self.page.locator(self.MCP_NODE_PICKER_OPTION),
+            self.page.locator(self.MCP_NODE_PICKER_SEARCH),
+            toolkit_name,
+            timeout=timeout,
+        )
+
+    def open_mcp_node_picker(self, timeout: int = 10000) -> None:
+        """Open the MCP node's project MCP picker and wait for its rows (EL-7159)."""
+        self.ensure_mcp_node_panel_open(timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.mcp_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.MCP_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
+
+    def get_mcp_node_picker_search_count(self) -> int:
+        """Count of the search field in the open MCP node picker menu."""
+        return self.page.locator(self.MCP_NODE_PICKER_SEARCH).count()
+
+    def get_mcp_node_picker_option_count(self) -> int:
+        """Count of rows currently listed in the open MCP node picker menu."""
+        return self.page.locator(self.MCP_NODE_PICKER_OPTION).count()
+
+    def _click_node_picker_option(
+        self, options: Locator, search: Locator, name: str, timeout: int = 10000
+    ) -> None:
+        """Pick the row whose text contains *name* in an open node project picker menu."""
+        options.first.wait_for(state="visible", timeout=timeout)
+        if search.count() > 0 and search.first.is_visible():
+            search.first.fill(name)
+        match = options.filter(has_text=name).first
+        match.wait_for(state="visible", timeout=timeout)
+        match.click(timeout=timeout)
+        logger.info("Picked '%s' in node picker", name)
+
+    def _ensure_node_panel_open(self, select_locator, node_type: str, timeout: int = 10000) -> None:
+        """Select the first *node_type* node if its config panel field is not visible yet."""
+        if select_locator.is_visible():
+            return
+        node_id = self.wait_for_node_on_canvas(node_type, timeout=timeout)
+        self._select_node(node_id)
+        select_locator.wait_for(state="visible", timeout=timeout)
+
+    def ensure_agent_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Agent node's config side panel is open (EL-7157/EL-7159)."""
+        self._ensure_node_panel_open(self.agent_node_agent_select, "agent", timeout=timeout)
+
+    def ensure_toolkit_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Toolkit node's config side panel is open (EL-7157/EL-7159)."""
+        self._ensure_node_panel_open(self.toolkit_node_toolkit_select, "toolkit", timeout=timeout)
+
+    def open_agent_node_picker(self, timeout: int = 10000) -> None:
+        """Open the Agent node's "Agents & Pipelines" project picker and wait for its rows (EL-7159)."""
+        self.ensure_agent_node_panel_open(timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_agent_select.click(timeout=timeout)
+        self.page.locator(self.AGENT_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
+
+    def close_node_panel(self, timeout: int = 10000) -> None:
+        """Close the node config side panel if open and wait until it is gone (restores the left TOOLS column)."""
+        if self.node_panel_close_button.count() > 0:
+            self.node_panel_close_button.click(timeout=timeout)
+        self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
+
+    def wait_for_agent_node_agent_value(self, expected: str, timeout: int = 10000) -> str:
+        """Wait until the Agent node's picker shows *expected* (the pick resolves the agent details async)."""
+        self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
+        expect(self.agent_node_agent_select).to_contain_text(expected, timeout=timeout)
+        return self.get_agent_node_agent_value(timeout=timeout)
+
+    def pick_agent_node_application(self, name: str, timeout: int = 10000) -> None:
+        """Pick an agent or pipeline in the Agent node's project picker (EL-7159).
+
+        The row is attached to the pipeline's TOOLS list immediately, but it is
+        persisted (``application_relation`` PATCH) only on Save.
+        """
+        if self.page.locator(self.AGENT_NODE_PICKER_OPTION).count() == 0:
+            self.open_agent_node_picker(timeout=timeout)
+        self._click_node_picker_option(
+            self.page.locator(self.AGENT_NODE_PICKER_OPTION),
+            self.page.locator(self.AGENT_NODE_PICKER_SEARCH),
+            name,
+            timeout=timeout,
+        )
+
+    def save_and_wait_for_attach(
+        self, attach_path: str, project_id: str, pipeline_id: int, timeout: int = 15000
+    ) -> dict:
+        """Click Save; wait for BOTH the deferred attach PATCH and the pipeline PUT (201).
+
+        EL-7159: picking a toolkit/MCP/agent/pipeline in a node attaches it on Save.
+
+        Args:
+            attach_path: URL fragment of the attach endpoint, e.g.
+                ``/tool/prompt_lib/`` (toolkit/MCP) or ``/application_relation/prompt_lib/``
+                (agent/pipeline).
+            project_id: Project id scoping the URL match.
+            pipeline_id: The pipeline's numeric id.
+            timeout: Maximum wait per response in milliseconds.
+
+        Returns:
+            Parsed JSON body of the attach PATCH's ``201`` response.
+        """
+        with self.page.expect_response(
+            lambda r: f"{attach_path}{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as attach_info:
+            with self.page.expect_response(
+                lambda r: f"/application/prompt_lib/{project_id}/{pipeline_id}" in r.url
+                and r.request.method == "PUT"
+                and r.status == 201,
+                timeout=timeout,
+            ):
+                self.save_button.evaluate("el => el.click()")
+        return attach_info.value.json()
 
     def select_mcp_node_tool(self, tool_name: str, timeout: int = 5000) -> None:
         """Open the Tool dropdown and select *tool_name*.
@@ -4760,6 +5075,23 @@ class PipelineDetailPage(PipelineFormPage):
             field.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
+            return False
+
+    def has_mcp_node_required_input_mapping_count(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check the node panel's Basic section lists exactly *required_count* required Value fields.
+
+        ELITEA-1954 (class A): replaces the retired 'Input mapping (required N)'
+        heading check — the panel layout has no such heading; required params
+        are rendered directly under Basic (optional ones only when set, under
+        Advanced).
+        """
+        from playwright.sync_api import expect
+
+        fields = self.page.locator(self.MCP_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES)
+        try:
+            expect(fields).to_have_count(required_count, timeout=timeout)
+            return True
+        except AssertionError:
             return False
 
     def is_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
@@ -4949,17 +5281,55 @@ class PipelineDetailPage(PipelineFormPage):
     # ------------------------------------------------------------------
 
     _LLM_NODE_SECTIONS = ("system", "task", "chat_history")
+    # Sections rendered inside the node panel's collapsed-by-default "Advanced" accordion.
+    _LLM_NODE_ADVANCED_SECTIONS = ("chat_history",)
+
+    def ensure_llm_node_panel_open(self, timeout: int = 5000) -> None:
+        """Make sure the LLM node's side panel is open (select the node if it is not).
+
+        ELITEA-2004 (class A): node config renders in a side panel that exists
+        only while a node is selected (it is open right after adding a node,
+        closed after a page reload). No-op when the panel is already open.
+        """
+        if self.node_panel_advanced_toggle.is_visible():
+            return
+        node_id = self.wait_for_node_on_canvas("llm", timeout=timeout)
+        self._select_node(node_id)
+        self.node_panel_advanced_toggle.wait_for(state="visible", timeout=timeout)
+
+    def expand_node_panel_advanced_section(self, timeout: int = 5000) -> None:
+        """Expand the selected node's side-panel "Advanced" accordion if it is collapsed.
+
+        ELITEA-2004 (class A, UI drift): the LLM node config moved from the
+        canvas card into a node side panel whose "Advanced" section
+        (CHAT HISTORY, Input, Output, Structured output) is collapsed until
+        opened (``NodeConfigSection.jsx``: ``defaultExpanded={isBasic}``).
+        Idempotent: a strict no-op when already expanded.
+        """
+        self.ensure_llm_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+            self.llm_node_chat_history_type_select.wait_for(state="visible", timeout=timeout)
 
     def _llm_node_type_select_locator(self, section: str) -> Locator:
         """Return the class-level Type-select LocatorDescriptor for *section*."""
         if section not in self._LLM_NODE_SECTIONS:
             raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
+        self.ensure_llm_node_panel_open()
+        if section in self._LLM_NODE_ADVANCED_SECTIONS:
+            self.expand_node_panel_advanced_section()
         return getattr(self, f"llm_node_{section}_type_select")
 
     def _llm_node_value_locator(self, section: str) -> Locator:
         """Return the class-level Value-field LocatorDescriptor for *section*."""
         if section not in self._LLM_NODE_SECTIONS:
             raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
+        self.ensure_llm_node_panel_open()
+        if section in self._LLM_NODE_ADVANCED_SECTIONS:
+            self.expand_node_panel_advanced_section()
         return getattr(self, f"llm_node_{section}_value")
 
     # Variable-mode Value select's role="combobox" display element carries a
@@ -5208,6 +5578,7 @@ class PipelineDetailPage(PipelineFormPage):
     def open_llm_node_input_select(self, timeout: int = 5000) -> None:
         """Open the LLM node's Input dropdown."""
         self._wait_for_open_popovers_closed(timeout=timeout)
+        self.expand_node_panel_advanced_section(timeout=timeout)
         self.llm_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -5252,11 +5623,13 @@ class PipelineDetailPage(PipelineFormPage):
         chips are left-aligned and the arrow icon area is never covered.
         """
         self._wait_for_open_popovers_closed(timeout=timeout)
+        self.expand_node_panel_advanced_section(timeout=timeout)
         self.llm_node_output_select.wait_for(state="visible", timeout=timeout)
+        self.llm_node_output_select.scroll_into_view_if_needed(timeout=timeout)
         box = self.llm_node_output_select.bounding_box()
         if box:
             self.llm_node_output_select.click(
-                position={"x": max(box["width"] - 12, 1), "y": box["height"] / 2}, timeout=timeout
+                position={"x": max(box["width"] - 20, 1), "y": box["height"] / 2}, timeout=timeout
             )
         else:
             self.llm_node_output_select.click(timeout=timeout)
@@ -5268,7 +5641,12 @@ class PipelineDetailPage(PipelineFormPage):
         self._select_multi_select_option_and_close(variable_name, timeout=timeout)
 
     def get_llm_node_output_value(self) -> str:
-        """Read the LLM node's currently-selected Output display text."""
+        """Read the LLM node's currently-selected Output display text.
+
+        Adjust (class A, UI drift): the Output field lives in the node side
+        panel's collapsed "Advanced" section — open/expand it before reading.
+        """
+        self.expand_node_panel_advanced_section()
         text = (self.llm_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
@@ -5282,7 +5660,21 @@ class PipelineDetailPage(PipelineFormPage):
         Automation Hints' recommended fixture shape — so the test only ever
         READS the resulting chip, never opens the select to change it).
         """
+        # ELITEA-2059 (class A, UI drift): canvas node cards are view-only
+        # summaries; the Toolkits select renders in the node config side panel,
+        # which exists only while the node is selected (see ELITEA-1954).
+        opened_here = False
+        if not self.llm_node_toolkits_select.is_visible():
+            node_id = self.wait_for_node_on_canvas("llm")
+            self._select_node(node_id)
+            self.llm_node_toolkits_select.wait_for(state="visible", timeout=10000)
+            opened_here = True
         text = (self.llm_node_toolkits_select.text_content() or "").replace("​", "")
+        if opened_here:
+            # An open node panel collapses the left config column (TOOLS/MODULES);
+            # close it so later steps can reach the Attachments switch.
+            self.node_panel_close_button.click(timeout=10000)
+            self.node_panel_close_button.wait_for(state="detached", timeout=10000)
         return text.strip()
 
     # ------------------------------------------------------------------
@@ -5296,8 +5688,31 @@ class PipelineDetailPage(PipelineFormPage):
     # (``_fill_node_field_value``, ``_select_multi_select_option_and_close``,
     # ``_wait_for_open_popovers_closed``) the LLM node methods above use.
 
+    def ensure_code_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Code node's config side panel is open (select the node if not).
+
+        ELITEA-2009 (class A, UI drift): node config renders in a side panel that
+        exists only while a node is selected (open right after adding a node,
+        closed after a page reload). No-op when the panel is already open.
+        """
+        self._ensure_node_panel_open(self.code_node_type_select, "code", timeout=timeout)
+
+    def expand_code_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the Code node's panel and expand its collapsed "Advanced" accordion (Input/Output/Structured output).
+
+        ELITEA-2009 (class A, UI drift; NodeConfigSection.jsx ``defaultExpanded={isBasic}``).
+        Idempotent.
+        """
+        self.ensure_code_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
     def get_code_node_type(self, timeout: int = 5000) -> str:
         """Read the Code node's CODE section Type select current value."""
+        self.ensure_code_node_panel_open(timeout=timeout)
         self.code_node_type_select.wait_for(state="visible", timeout=timeout)
         # MUI's empty-select rendering is a zero-width space (U+200B), not
         # an empty string — same gotcha as get_llm_node_section_type.
@@ -5311,6 +5726,7 @@ class PipelineDetailPage(PipelineFormPage):
             type_value: Option display text, e.g. ``"Fixed"``.
             timeout: Maximum wait time for the dropdown / option.
         """
+        self.ensure_code_node_panel_open(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.code_node_type_select.click(timeout=timeout)
         option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
@@ -5334,14 +5750,17 @@ class PipelineDetailPage(PipelineFormPage):
             value: The Python code to type (may be multi-line).
             timeout: Maximum wait time for the field to be visible.
         """
+        self.ensure_code_node_panel_open(timeout=timeout)
         self._fill_node_field_value(self.code_node_value, value, timeout=timeout)
 
     def get_code_node_value(self) -> str:
         """Read the CODE section's Value field current content."""
+        self.ensure_code_node_panel_open()
         return self.code_node_value.input_value()
 
     def open_code_node_input_select(self, timeout: int = 5000) -> None:
-        """Open the Code node's Input dropdown."""
+        """Open the Code node's Input dropdown (expands the panel's Advanced section first)."""
+        self.expand_code_node_advanced_section(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.code_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
@@ -5353,11 +5772,13 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_code_node_input_value(self) -> str:
         """Read the Code node's currently-selected Input display text."""
+        self.expand_code_node_advanced_section()
         text = (self.code_node_input_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def open_code_node_output_select(self, timeout: int = 5000) -> None:
-        """Open the Code node's Output dropdown."""
+        """Open the Code node's Output dropdown (expands the panel's Advanced section first)."""
+        self.expand_code_node_advanced_section(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.code_node_output_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
@@ -5378,6 +5799,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_code_node_output_value(self) -> str:
         """Read the Code node's currently-selected Output display text."""
+        self.expand_code_node_advanced_section()
         text = (self.code_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
@@ -5456,7 +5878,16 @@ class PipelineDetailPage(PipelineFormPage):
         value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
             self.PRINTER_NODE_VALUE_TESTID
         )
+        # With several nodes on the canvas Fit View settles below
+        # MINI_CARD_ZOOM (0.6, EliteaUI nodeCard.helpers.js isMiniCardZoom) and
+        # every card renders as a MINI card whose body (holding the Value
+        # textarea) is display:none (ELITEA-2016, class D). Zoom back in until
+        # cards render full size, then bring the field into view.
+        changed = self.ensure_full_cards()
+        value_field.scroll_into_view_if_needed(timeout=timeout)
         self._fill_node_field_value(value_field, value, timeout=timeout)
+        # Restore the whole-graph view so later drags/connects see every node.
+        self.restore_graph_view(changed)
 
     def get_printer_node_value_for_node(self, node_id: str) -> str:
         """Read the Value field content of the SPECIFIC Printer node *node_id*.
@@ -5582,31 +6013,6 @@ class PipelineDetailPage(PipelineFormPage):
         text = (self.state_modifier_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
-    def is_node_interrupt_before_toggle_visible(self, node_id: str, timeout: int = 5000) -> bool:
-        """Return whether *node_id*'s 'Interrupt before' switch is visible.
-
-        Node-id-keyed, not node-type-keyed (ELITEA-2008) — works for any node
-        type sharing CommonInterruptSettings.jsx, e.g. the value returned by
-        ``wait_for_node_on_canvas()``.
-        """
-        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
-        try:
-            toggle.wait_for(state="visible", timeout=timeout)
-            return True
-        except Exception:
-            return False
-
-    def is_node_interrupt_before_toggle_disabled(self, node_id: str, timeout: int = 5000) -> bool:
-        """Return whether *node_id*'s 'Interrupt before' switch is disabled.
-
-        Sibling of :meth:`is_node_interrupt_before_toggle_visible` (ELITEA-2037)
-        — CommonInterruptSettings.jsx disables this toggle when the node is the
-        pipeline's entry point (``entry_point === id`` gating).
-        """
-        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
-        toggle.wait_for(state="visible", timeout=timeout)
-        return toggle.is_disabled()
-
     # ------------------------------------------------------------------
     # Toolkit node inline config (ELITEA-2010)
     # ------------------------------------------------------------------
@@ -5665,9 +6071,83 @@ class PipelineDetailPage(PipelineFormPage):
                 ``select-option-{toolkit_name}``).
             timeout: Maximum wait time for the dropdown / option.
         """
-        self.open_toolkit_node_toolkit_select(timeout=timeout)
-        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
-        option.click(timeout=timeout)
+        # EL-7159 (class A, UI drift): project picker (ProjectToolkitPicker) rows.
+        if self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION).count() == 0:
+            self.open_toolkit_node_picker(timeout=timeout)
+        self._click_node_picker_option(
+            self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION),
+            self.page.locator(self.TOOLKIT_NODE_PICKER_SEARCH),
+            toolkit_name,
+            timeout=timeout,
+        )
+
+    def expand_toolkit_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the Toolkit node's panel and expand its "Advanced" accordion (Input/Output/optional params).
+
+        EL-7157 (class A, UI drift): collapsed by default in the node config panel. Idempotent.
+        """
+        self.ensure_toolkit_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
+    def has_toolkit_node_required_input_mapping_count(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check the node panel's Basic section lists exactly *required_count* required Value fields.
+
+        Replaces the retired 'Input mapping (required N)' heading check (panel layout has no heading).
+        """
+        fields = self.page.locator(self.TOOLKIT_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES)
+        try:
+            expect(fields).to_have_count(required_count, timeout=timeout)
+            return True
+        except AssertionError:
+            return False
+
+    def get_toolkit_node_optional_parameters(self, timeout: int = 10000) -> list[str]:
+        """Return every optional tool parameter the Toolkit node panel exposes (sorted raw keys).
+
+        Replaces the retired 'Input mapping (optional N)' heading. Per BaseToolNode.jsx an optional
+        key is either already rendered as a Value field under Advanced (it has a value/default in
+        input_mapping) or offered by the "add optional parameter" menu
+        (``addableOptionalParameters``) — the union of the two is the optional set. The menu part
+        is tolerant: the button is not rendered at all when there is nothing to add.
+        """
+        self.expand_toolkit_node_advanced_section(timeout=timeout)
+        value_prefix = "pipeline-toolkit-node-input-mapping-value-"
+        all_values = self.page.locator(self.TOOLKIT_NODE_INPUT_MAPPING_VALUE_PREFIXED)
+        basic_values = self.page.locator(self.TOOLKIT_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES)
+
+        def _keys(loc: Locator, prefix: str) -> set[str]:
+            return {
+                (loc.nth(i).get_attribute("data-testid") or "").removeprefix(prefix)
+                for i in range(loc.count())
+            }
+
+        rendered_optional = _keys(all_values, value_prefix) - _keys(basic_values, value_prefix)
+
+        offered: set[str] = set()
+        button = self.page.locator(self.TOOLKIT_NODE_ADD_OPTIONAL_PARAMETER)
+        try:
+            button.wait_for(state="visible", timeout=3000)
+        except PlaywrightTimeoutError:
+            button = None
+        if button is not None:
+            button.click(timeout=timeout)
+            options = self.page.locator(self.TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS)
+            options.first.wait_for(state="visible", timeout=timeout)
+            offered = _keys(options, "pipeline-toolkit-node-optional-parameter-")
+            self.page.keyboard.press("Escape")
+            options.first.wait_for(state="detached", timeout=timeout)
+        return sorted(rendered_optional | offered)
+
+    def open_toolkit_node_picker(self, timeout: int = 10000) -> None:
+        """Open the Toolkit node's project toolkit picker and wait for its rows (EL-7159)."""
+        self.ensure_toolkit_node_panel_open(timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.toolkit_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
 
     def open_toolkit_node_tool_select(self, timeout: int = 5000) -> None:
         """Open the Toolkit node's Tool dropdown."""
@@ -5980,6 +6460,13 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
+        # EL-7159/EL-7157 (class A, UI drift): an open node config panel collapses the left
+        # configuration column (unmounting TOOLS); close the panel and, if the column is still
+        # collapsed, expand it again before looking for the section.
+        if self.toolkits_section.count() == 0:
+            self.close_node_panel(timeout=timeout)
+            if self.toolkits_section.count() == 0:
+                self.toggle_config_panel_collapse(timeout=timeout)
         self.toolkits_section.scroll_into_view_if_needed()
         self.toolkits_section.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(500)  # Animation settle
@@ -6899,6 +7386,15 @@ class PipelineDetailPage(PipelineFormPage):
 
         self.page.mouse.up()
         self.page.wait_for_timeout(300)
+        # A drag that starts on a connection handle (small/zoomed-out cards) or
+        # ends on empty canvas leaves ReactFlow's "create new node" dropdown
+        # open; its invisible backdrop then intercepts every later click
+        # (ELITEA-2016 rename of the third Printer). Dismiss it, as
+        # connect_nodes() does, only when it is actually open.
+        if self.is_popup_menu_visible():
+            logger.info("Dismissing a stray popup left open by the node drag")
+            self.page.keyboard.press("Escape")
+            self.wait_for_popup_menu_hidden()
         logger.info("Moved node %s by (%d, %d)", node_id, dx, dy)
 
     def move_node_by_flow_offset(
@@ -7189,24 +7685,21 @@ class PipelineDetailPage(PipelineFormPage):
         )
 
     def fit_view(self):
-        """Click the ReactFlow 'Fit View' zoom control."""
-        btn = self.page.locator('button[title="Fit View"]')
-        if btn.count() > 0:
-            btn.click()
+        """Click the canvas control panel's 'Fit view' button."""
+        if self.canvas_fit_view_button.count() > 0:
+            self.canvas_fit_view_button.click()
             self.page.wait_for_timeout(500)
 
     def zoom_in(self):
-        """Click the ReactFlow 'Zoom In' control."""
-        btn = self.page.locator('button[title="Zoom In"]')
-        if btn.count() > 0:
-            btn.click()
+        """Click the canvas control panel's 'Zoom in' button."""
+        if self.canvas_zoom_in_button.count() > 0:
+            self.canvas_zoom_in_button.click()
             self.page.wait_for_timeout(300)
 
     def zoom_out(self):
-        """Click the ReactFlow 'Zoom Out' control."""
-        btn = self.page.locator('button[title="Zoom Out"]')
-        if btn.count() > 0:
-            btn.click()
+        """Click the canvas control panel's 'Zoom out' button."""
+        if self.canvas_zoom_out_button.count() > 0:
+            self.canvas_zoom_out_button.click()
             self.page.wait_for_timeout(300)
 
     def _select_node(self, node_id: str):
@@ -7343,8 +7836,27 @@ class PipelineDetailPage(PipelineFormPage):
         mapping fix, which does require Save).
         """
         toggle = self.get_tools_module_toggle("attachments")
+        # ELITEA-2059 (class A, UI drift): opening the Test Pipeline panel now
+        # auto-collapses the left config column, unmounting the MODULES switches;
+        # expand it again before reaching for the switch.
+        if toggle.count() == 0:
+            self.toggle_config_panel_collapse(timeout=timeout)
         toggle.wait_for(state="attached", timeout=timeout)
         toggle.click()
+
+    @action("Open the Test Pipeline panel")
+    def open_test_pipeline_panel(self, timeout: int = 10000):
+        """Open the embedded-chat side panel via the toolbar 'Test Pipeline' button.
+
+        Idempotent: no-op when the panel is already visible. Waits for the button
+        to become enabled (it is disabled while the pipeline is not ready).
+        """
+        if self.test_pipeline_panel.is_visible():
+            return
+        self.test_pipeline_button.wait_for(state="visible", timeout=timeout)
+        expect(self.test_pipeline_button).to_be_enabled(timeout=timeout)
+        self.test_pipeline_button.click()
+        self.test_pipeline_panel.wait_for(state="visible", timeout=timeout)
 
     def open_embedded_chat_file_chooser(self, timeout: int = 10000):
         """Click the bare attach button and return the native FileChooser dialog.
@@ -7395,6 +7907,10 @@ class PipelineDetailPage(PipelineFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
+        # Pipelines 2.0 hosts the embedded chat in the 'Test Pipeline' side panel (EL-7155),
+        # hidden until opened. open_test_pipeline_panel is idempotent; skip when chat is already shown.
+        if not self.chat_input.is_visible():
+            self.open_test_pipeline_panel(timeout=timeout)
         self.chat_input.wait_for(state="visible", timeout=timeout)
         self.chat_input.fill(message)
         self.page.wait_for_timeout(300)
@@ -8028,6 +8544,9 @@ class PipelineDetailPage(PipelineFormPage):
         crumb = self.page.locator(self.BREADCRUMB_ITEM_SELECTOR).last
         crumb.wait_for(state="visible", timeout=timeout)
         crumb.click()
+        # Pipelines 2.0 (EL-7155): the detail view remounts with the 'Test Pipeline'
+        # panel closed (history tab + embedded chat live inside it); reopen it.
+        self.open_test_pipeline_panel(timeout=timeout)
         self.chat_input.wait_for(state="visible", timeout=timeout)
         self.history_tab.wait_for(state="visible", timeout=timeout)
         logger.info("Run History view closed (returned to pipeline detail)")
@@ -8050,6 +8569,10 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Opening Run Details panel")
         self.run_node_label.wait_for(state="visible", timeout=timeout)
+        # ELITEA-2045 (class A): an open node side panel overlays the run node label.
+        if self.node_panel_close_button.is_visible():
+            self.node_panel_close_button.click(timeout=timeout)
+            self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
         self.run_node_label.click()
         self.run_details_panel.wait_for(state="visible", timeout=timeout)
         logger.info("Run Details panel opened")
@@ -8839,6 +9362,9 @@ class PipelineDetailPage(PipelineFormPage):
     def open_decision_node_input_select(self, timeout: int = 5000) -> None:
         """Open the Decision node's tool-agnostic Input dropdown."""
         self._wait_for_open_popovers_closed(timeout=timeout)
+        # Mini cards (viewport zoom < 0.6) hide the card body — ELITEA-2016.
+        self._input_select_view_changed = self.ensure_full_cards()
+        self.decision_node_input_select.scroll_into_view_if_needed(timeout=timeout)
         self.decision_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -8858,6 +9384,10 @@ class PipelineDetailPage(PipelineFormPage):
             self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
         self.page.keyboard.press("Escape")
         self._wait_for_open_popovers_closed(timeout=timeout)
+        # open_decision_node_input_select may have zoomed in to full cards
+        # (ELITEA-2016); restore the whole-graph view only in that case.
+        self.restore_graph_view(getattr(self, "_input_select_view_changed", False))
+        self._input_select_view_changed = False
 
     def get_decision_node_input_value(self) -> str:
         """Read the Decision node's currently-selected Input display text."""
@@ -8873,9 +9403,14 @@ class PipelineDetailPage(PipelineFormPage):
         events (.claude/rules/mui-patterns.md). Starts empty on a
         freshly-added node, so no clear-before-type step is needed.
         """
+        # Mini cards (viewport zoom < 0.6) hide the card body — ELITEA-2016.
+        changed = self.ensure_full_cards()
+        self.decision_node_description_input.scroll_into_view_if_needed(timeout=timeout)
         self.decision_node_description_input.wait_for(state="visible", timeout=timeout)
         self.decision_node_description_input.click()
         self.decision_node_description_input.press_sequentially(text, delay=20)
+        # Restore the whole-graph view (only if zoomed in above) for later connects.
+        self.restore_graph_view(changed)
 
     def get_decision_node_description(self) -> str:
         """Read the Decision node's Description textarea current value."""
@@ -8933,6 +9468,10 @@ class PipelineDetailPage(PipelineFormPage):
         is already open.
         """
         if self.state_drawer_toggle_button.count() > 0:
+            # ELITEA-2045 (class A): an open node side panel overlays the toggle; close it first.
+            if self.node_panel_close_button.is_visible():
+                self.node_panel_close_button.click(timeout=timeout)
+                self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
             self.state_drawer_toggle_button.click(timeout=timeout)
         self.state_add_variable_button.wait_for(state="visible", timeout=timeout)
 

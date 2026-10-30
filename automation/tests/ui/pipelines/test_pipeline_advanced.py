@@ -68,6 +68,7 @@ class TestYamlEditor:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0860")
     def test_yaml_view_toggle(self, page, pipeline_id):
         """PIPE-019: Switch to YAML view and verify the editor is visible."""
         with allure.step("Step 1 — Navigate to pipeline detail page"):
@@ -92,6 +93,7 @@ class TestYamlEditor:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0860")
     def test_yaml_content_reflects_pipeline(self, page, pipeline_with_llm_id):
         """PIPE-020: YAML content should reflect the pipeline structure."""
         with allure.step("Step 1 — Navigate to pipeline with LLM node"):
@@ -119,6 +121,7 @@ class TestYamlEditor:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0860_pipeline-yaml-view-and-round-trip.md", "onetest-ai Test Case link")
     @pytest.mark.p1
+    @pytest.mark.tms("ELITEA-0860")
     def test_flow_yaml_round_trip(self, page, pipeline_id):
         """PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."""
         with allure.step("Step 1 — Navigate to pipeline canvas"):
@@ -257,6 +260,7 @@ class TestMakeEntrypoint:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
     @pytest.mark.p2
+    @pytest.mark.tms("ELITEA-0858")
     def test_make_node_entrypoint(self, page, pipeline_id):
         """PIPE-024: Set a node as entrypoint via the three-dot menu."""
         with allure.step("Step 1 — Navigate to pipeline canvas"):
@@ -317,6 +321,7 @@ class TestActionsMenu:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0859_pipeline-three-dot-menu-and-actions.md", "onetest-ai Test Case link")
     @pytest.mark.p2
+    @pytest.mark.tms("ELITEA-0859")
     def test_three_dot_menu_lists_items(self, page, pipeline_id):
         """PIPE-028: The three-dot menu should contain expected items."""
         with allure.step("Step 1 — Navigate to pipeline detail page"):
@@ -332,6 +337,7 @@ class TestActionsMenu:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0859_pipeline-three-dot-menu-and-actions.md", "onetest-ai Test Case link")
     @pytest.mark.p2
+    @pytest.mark.tms("ELITEA-0859")
     def test_export_pipeline_if_available(self, page, pipeline_id):
         """PIPE-029: Export pipeline via menu (skips if not available)."""
         with allure.step("Step 1 — Navigate to pipeline detail page"):
@@ -357,6 +363,7 @@ class TestMultiNodeTopology:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
     @pytest.mark.p2
+    @pytest.mark.tms("ELITEA-0858")
     def test_three_node_chain(self, page, pipeline_id):
         """PIPE-030: Build a three-node chain: LLM → Code → END."""
         with allure.step("Step 1 — Navigate to pipeline canvas"):
@@ -393,6 +400,7 @@ class TestMultiNodeTopology:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0858_pipeline-advanced-node-types.md", "onetest-ai Test Case link")
     @pytest.mark.p2
+    @pytest.mark.tms("ELITEA-0858")
     def test_save_multi_node_pipeline(self, page, pipeline_id):
         """PIPE-030b: Build a multi-node pipeline, save, and verify persistence."""
         with allure.step("Step 1 — Navigate to pipeline canvas"):
@@ -409,6 +417,8 @@ class TestMultiNodeTopology:
             pipelines.wait_for_network()
             pipelines.wait_for_detail_page_load()
             pipelines.wait_for_canvas()
+            # Nodes render after the ReactFlow wrapper; poll instead of an instant read
+            pipelines.wait_for_node_count(2, timeout=20_000)
 
         with allure.step("Step 5 — Verify nodes persist after reload"):
             node_count = pipelines.get_node_count()

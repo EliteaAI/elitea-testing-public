@@ -40,7 +40,8 @@ class TestNewConversationParticipants:
     @allure.title("New conversation: add agent, pipeline, toolkit and MCP participants; warning on misconfigured")
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "chat/ELITEA-2455_chat-create-new-conversation-and-add-agent-pipeline-toolkit.md",
         "onetest-ai Test Case link",
     )
     def test_new_conversation_add_four_participant_types(

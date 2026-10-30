@@ -2,8 +2,8 @@
 
 Verifies that typing a partial term into the Catalog search bar
 (`/elitea-catalog`) filters the agent list in real time — debounced ~300ms,
-no Enter/submit control involved — to only agents whose name contains the
-term (case-insensitive substring match), and that clearing the typed text
+no Enter/submit control involved — to only agents the server matched on the
+term in name OR description (case-insensitive; the backend search matches both), and that clearing the typed text
 (no dedicated clear button exists on this field) restores the exact
 original unfiltered set. Zero console errors throughout.
 
@@ -47,6 +47,10 @@ class TestAgentHubSearchBarFiltersInRealTime:
         "agent_hub/ELITEA-2363_agent-hub-search-bar-filters-agents-in-real-time.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/elitea-testing-public/issues/2537",
+        "Known defect — dev-vm.elitea.ai default-icon CSP violation + application_icon 404s (console errors)",
+    )
     @pytest.mark.p2
     def test_agent_hub_search_bar_filters_in_real_time(self, page: Page):
         """Typing a partial term into the Catalog search bar filters the
@@ -85,7 +89,7 @@ class TestAgentHubSearchBarFiltersInRealTime:
                 network_capture = agent_hub.capture_requests_matching(
                     PUBLIC_APPLICATIONS_PATH, method="GET"
                 )
-                agent_hub.search(SEARCH_TERM, timeout=UI_ELEMENT_TIMEOUT)
+                search_response = agent_hub.search_and_capture_response(SEARCH_TERM, timeout=UI_ELEMENT_TIMEOUT)
                 assert agent_hub.search_input.input_value() == SEARCH_TERM, (
                     f"Search field should display the typed value {SEARCH_TERM!r}"
                 )
@@ -124,11 +128,29 @@ class TestAgentHubSearchBarFiltersInRealTime:
                     f"Expected fewer cards after filtering on {SEARCH_TERM!r} than the "
                     f"{len(baseline_cards)}-card baseline, got {len(filtered_cards)}"
                 )
-                non_matching = [c for c in filtered_cards if SEARCH_TERM not in c.lower()]
-                assert not non_matching, (
-                    f"Every visible card should contain {SEARCH_TERM!r} (case-insensitive), "
-                    f"but found non-matching card(s): {non_matching!r}"
+                # The backend search matches name OR description, so the captured
+                # response rows are the ground truth for what may be rendered.
+                rows = search_response.get("rows") or []
+                assert rows, f"Expected the search response to contain rows for {SEARCH_TERM!r}"
+                bad_rows = [
+                    r.get("name")
+                    for r in rows
+                    if SEARCH_TERM not in f"{r.get('name') or ''} {r.get('description') or ''}".lower()
+                ]
+                assert not bad_rows, (
+                    f"Every returned row should match {SEARCH_TERM!r} in name or description, "
+                    f"but found: {bad_rows!r}"
                 )
+                row_ids = {r["id"] for r in rows}
+                stray_ids = [i for i in agent_hub.get_visible_agent_card_ids() if i not in row_ids]
+                assert not stray_ids, (
+                    f"Every rendered card must map to a returned search row; stray card id(s): {stray_ids!r}"
+                )
+                name_matches = [r["name"] for r in rows if SEARCH_TERM in (r.get("name") or "").lower()]
+                assert name_matches, f"Expected at least one agent whose name contains {SEARCH_TERM!r}"
+                # Every returned name-match must be rendered (cards carry the name as a prefix of their text).
+                missing = [n for n in name_matches if not any(c.startswith(n) for c in filtered_cards)]
+                assert not missing, f"Name-matching agent(s) returned by the server but not rendered: {missing!r}"
                 assert agent_hub.get_agent_card(EXPECTED_EXAMPLE_AGENT).first.is_visible(), (
                     f"Expected the case's own named example {EXPECTED_EXAMPLE_AGENT!r} "
                     "to be visible among the filtered results"
@@ -144,6 +166,9 @@ class TestAgentHubSearchBarFiltersInRealTime:
                 )
 
             with allure.step("Step 7 — Verify zero console errors during typing, filtering, and clearing"):
+                # Known defect: #2537 — Step 7 stays red until fixed (sanctioned RED, deterministic):
+                # dev-vm.elitea.ai default-icon CSP violation + application_icon 404s on Agent Hub cards.
+                # Assertion intentionally stays strict (no filtering of these errors).
                 assert not console_capture, (
                     f"Unexpected console errors: {[m.text for m in console_capture]!r}"
                 )

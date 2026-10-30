@@ -65,6 +65,22 @@ class ToolkitTestSettingsPage(BasePage):
         "INSTEAD of the Test Settings panel until a tool is chosen (EL-5947)",
     )
 
+    # DRIFT (card #2683): the empty state no longer renders a 'Select Tool'
+    # popover; ToolkitTestEmptyState.jsx now shows a search bar plus one
+    # chip button per tool (labelled with the tool's display name).
+    start_search = LocatorDescriptor(
+        testid="toolkit-test-start-search",
+        description="'Search tools...' input on the Test-Tools empty state "
+        "(ToolkitTestEmptyState.jsx) — filters the tool chips by label",
+    )
+
+    start_tool_chip = LocatorDescriptor(
+        testid="toolkit-test-start-tool-chip",
+        description="One chip Button per tool on the Test-Tools empty state "
+        "(ToolkitTestEmptyState.jsx); matches every chip, narrow with "
+        "``.filter(has_text=...)`` on the tool's display name",
+    )
+
     tool_select = LocatorDescriptor(
         testid="toolkit-test-tool-select",
         description="Test Settings panel's 'Tool' dropdown combobox "
@@ -165,6 +181,29 @@ class ToolkitTestSettingsPage(BasePage):
         self.empty_state_tool_select.wait_for(state="visible", timeout=timeout)
         self.empty_state_tool_select.click()
         logger.info("Opened the Test-Tools empty-state tool select")
+
+    @action("Pick a tool chip on the Test-Tools empty state")
+    def select_tool_chip_by_name(self, tool_name: str, timeout: int = 10000) -> None:
+        """Search for *tool_name* on the empty state and click its chip.
+
+        Since the empty state became a searchable chip list (ToolkitTestEmptyState.jsx)
+        there is no popover to open; the chip labelled with the display name
+        (``ToolkitConfig.test_tool_name``) is the route to the Test Settings panel.
+
+        Args:
+            tool_name: The tool's display name, e.g. ``"List projects"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.start_search.wait_for(state="visible", timeout=timeout)
+        self.start_search.fill(tool_name)
+        # Substring, case-insensitive: the config's display name may be a
+        # prefix of the chip label (e.g. "List pages" -> "List pages with label").
+        chip = self.start_tool_chip.filter(
+            has_text=re.compile(re.escape(tool_name), re.IGNORECASE)
+        )
+        chip.wait_for(state="visible", timeout=timeout)
+        chip.click()
+        logger.info("Picked tool chip '%s' on the Test-Tools empty state", tool_name)
 
     def select_tool_from_empty_state(self, tool_key: str, timeout: int = 10000) -> None:
         """Open the empty state's popover and select *tool_key* by its schema key.

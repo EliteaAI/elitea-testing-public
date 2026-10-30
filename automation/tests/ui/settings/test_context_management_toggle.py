@@ -73,6 +73,11 @@ def _is_autosave_get_response(response: Response) -> bool:
 class TestContextManagementToggle:
     """Verify the Context Management toggle mounts/unmounts token fields + Automatic Summarization."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/user-profile/ELITEA-2374_context-management-toggle-enables-and-disables-token-fields.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2374")
     def test_context_management_toggle_enables_disables_fields(self, page):
         """Toggling Context Management OFF unmounts token fields + summarization; ON restores them.
@@ -209,6 +214,11 @@ class TestContextManagementToggle:
                 logger.info("Cleanup: restoring Context Management to ON after test failure")
                 profile.enable_context_management()
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/user-profile/ELITEA-2377_summarization-toggle-enables-and-disables-summarization-fiel.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2377")
     def test_automatic_summarization_toggle_enables_disables_own_fields(self, page):
         """Toggling Automatic Summarization OFF disables its own fields; ON re-enables them (ELITEA-2377).
@@ -222,6 +232,11 @@ class TestContextManagementToggle:
         a real ``disabled`` prop (``MemorySummarization.jsx``), not a
         conditional unmount. Fields stay mounted; assert
         ``to_be_disabled()`` / ``to_be_enabled()``, never ``to_have_count(0)``.
+
+        Context management is always-on (EL-6898), so the former Step 2
+        precondition (turn the parent toggle ON) now asserts the always-on
+        state instead: the section's Preserve Recent Messages input is
+        visible and enabled.
 
         AFS: test-specs/settings-user-profile/
         lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md
@@ -237,19 +252,10 @@ class TestContextManagementToggle:
 
         with allure.step(
             "Step 2 — Ensure Context Management is enabled (precondition — "
-            "Automatic Summarization is unreachable while it's OFF)"
+            "always-on since EL-6898: Automatic Summarization is reachable)"
         ):
-            if profile.is_context_management_enabled():
-                logger.info("Context Management already ON — precondition satisfied, no click needed")
-            else:
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.enable_context_management()
-                assert put_info.value.status == 200, (
-                    f"Turning Context Management ON (precondition) should "
-                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
-                )
-                _ = get_info.value
+            expect(profile.preserve_recent_messages_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.preserve_recent_messages_input).to_be_enabled()
 
         with allure.step(
             "Step 3 — Verify the Automatic Summarization toggle is present; "
@@ -347,6 +353,11 @@ class TestContextManagementToggle:
                 logger.info("Cleanup: restoring Automatic Summarization to ON after test failure")
                 profile.enable_automatic_summarization()
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/user-profile/ELITEA-2378_target-summary-tokens-range-is-1004096.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2378")
     def test_target_summary_tokens_range_validation(self, page):
         """Target Summary Tokens rejects values outside [100, 4096] client-side (ELITEA-2378).
@@ -365,6 +376,11 @@ class TestContextManagementToggle:
         ``submitForm()`` and returns early on errors); an in-range value
         autosaves normally.
 
+        Context management is always-on (EL-6898), so the former Step 2
+        precondition (turn the parent toggle ON) now asserts the always-on
+        state instead: the section's Preserve Recent Messages input is
+        visible and enabled.
+
         AFS: test-specs/settings-user-profile/
         lextend_target-summary-tokens-range-validation_ELITEA-2378.md
         """
@@ -379,19 +395,10 @@ class TestContextManagementToggle:
 
         with allure.step(
             "Step 2 — Ensure Context Management is enabled (precondition — "
-            "Target Summary Tokens is unreachable while it's OFF)"
+            "always-on since EL-6898: Target Summary Tokens is reachable)"
         ):
-            if profile.is_context_management_enabled():
-                logger.info("Context Management already ON — precondition satisfied, no click needed")
-            else:
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.enable_context_management()
-                assert put_info.value.status == 200, (
-                    f"Turning Context Management ON (precondition) should "
-                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
-                )
-                _ = get_info.value
+            expect(profile.preserve_recent_messages_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.preserve_recent_messages_input).to_be_enabled()
 
         with allure.step(
             "Step 3 — Ensure Automatic Summarization is enabled (precondition "

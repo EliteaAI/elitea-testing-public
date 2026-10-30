@@ -6,6 +6,10 @@ on:
     # - cron: "*/6 * * * *"
     - cron: "0 0 * * *" # Everday at midnight
 
+permissions:
+  contents: write
+  pull-requests: read
+
 jobs:
   remove-stale-branches:
     runs-on: ubuntu-latest

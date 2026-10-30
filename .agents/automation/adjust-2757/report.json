@@ -1,0 +1,17 @@
+{
+ "slug": "adjust-2757",
+ "card": 2757,
+ "cases": [
+  {
+   "id": "ELITEA-2059",
+   "outcome": "automated",
+   "class": "A (UI drift): pipeline TOOLS card testids -> pipeline-tool-card*; LLM-node Toolkits select only in node panel; Test panel collapses config column",
+   "review": "APPROVED",
+   "spec": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attach_files_in_chat"
+  }
+ ],
+ "gate": {"verdict": "green", "runs": 3, "detail": "3/3 separate DEV runs of the spec file (2 tests each) green"},
+ "expected_result_changes": "none",
+ "locator_delta": "declared 1300 (no change), non-testid 66 (no change), unmanaged 347 (no change), ledger 0 new rows",
+ "gateVerdict": "green"
+}

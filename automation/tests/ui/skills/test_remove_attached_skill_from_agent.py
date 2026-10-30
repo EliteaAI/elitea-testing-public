@@ -290,7 +290,13 @@ class TestRemoveAttachedSkillFromAgent:
                 assert skill_detail_page.get_description() == SKILL_B_DESCRIPTION, (
                     "Skill B's description should remain intact after detachment"
                 )
-                assert skill_detail_page.get_instructions() == SKILL_B_INSTRUCTIONS, (
+                # Instructions defaults to Preview (rendered Markdown); the CodeMirror
+                # editor only renders in Edit mode — switch before reading raw text.
+                skill_detail_page.click_edit_mode()
+                skill_detail_page.instructions_editor_content.wait_for(
+                    state="visible", timeout=UI_ELEMENT_TIMEOUT
+                )
+                assert skill_detail_page.get_instructions_body() == SKILL_B_INSTRUCTIONS, (
                     "Skill B's instructions should remain intact after detachment"
                 )
 

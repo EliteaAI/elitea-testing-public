@@ -3,7 +3,7 @@ run-name: UI Tests DEV [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites |
 
 on:
   schedule:
-    - cron: '0 23 * * *'
+    - cron: '30 23 * * *'
   workflow_dispatch:
     inputs:
       suite:
@@ -40,6 +40,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 jobs:
   links:
     # Runs first so its summary is shown at the top of the run page
@@ -54,7 +57,9 @@ jobs:
           SUITES: ${{ inputs.custom_suites || inputs.suite || 'all' }}
           # Schedule forces results processing ON (so the maintenance report is fed)
           # but NOT TMS publishing — that follows the dispatch default, i.e. off.
-          RESULTS_PROCESSING: ${{ github.event_name == 'schedule' || inputs.enable_results_processing == true }}
+          # Change back once QA involvement will be done (Valadzko Aliaksandr)
+          # RESULTS_PROCESSING: ${{ github.event_name == 'schedule' || inputs.enable_results_processing == true }}
+          RESULTS_PROCESSING: ${{ inputs.enable_results_processing == true }}
           PUBLISH_TO_TMS: ${{ inputs.publish_to_tms == true }}
         run: |
           # Build run name (github.run_name not available in called workflow context)
@@ -87,6 +92,8 @@ jobs:
 
   test:
     needs: links
+    permissions:
+      contents: write
     uses: ./.github/workflows/test-ui-custom.yml
     with:
       environment: dev

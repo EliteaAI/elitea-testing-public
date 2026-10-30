@@ -179,3 +179,11 @@ def test_agent_hub_filter_by_multiple_categories(page):
 - Zero console errors during interaction ✓
 - Expected behavior fully confirmed live
 
+
+## Adjustment — 2026-10-23 (card #2565, triage class A: shared-data drift; class C: Step 7 known defect #2537)
+
+- **Symptom:** Step 6 total-count assertion failed, `got 7` vs expected 5.
+- **Cause:** the live public catalog changed; the filter itself works as intended (headings `['Business Analyst', 'Elitea']`, both chips selected).
+- **Data change (old -> new):** Elitea category `{Assistant for ELITEA Documentation}` (1) -> `{Custom all fields, Pipeline Orchestrator, Assistant for ELITEA Documentation}` (3). Business Analyst category unchanged (4). Total 5 -> 7.
+- **Expected-result changes:** none to the case's behaviour; only the live catalog dataset in the Elitea category changed 1 -> 3 agents. The exact total-count assertion and the "no cards from other categories" check are unchanged.
+- **Step 7 (class C, known defect #2537):** after the dataset fix, Step 7 (zero console errors) fails deterministically with the open defect EliteaAI/elitea-testing-public#2537 (dev-vm.elitea.ai default-icon CSP violation + application_icon 404s affecting Agent Hub cards). The assertion is kept strict and unchanged; a `# Known defect: #2537` comment marks it. Sanctioned RED (deterministic, single-cause, linked to an open defect) until the product fix ships.

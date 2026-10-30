@@ -1,0 +1,1 @@
+{"slug":"adjust-2053-2576","card":2576,"cases":[{"id":"ELITEA-2053","outcome":"automated","kind":"adjust","triage":"A","node":"tests.ui.pipelines.test_pipeline_chat_starters_visible_and_clickable.test_pipeline_chat_starters_visible_and_clickable","review":"APPROVED"}],"gate":{"n":3,"verdict":"green","runs":"1 passed x3 on DEV"},"expected_result_changes":"none"}

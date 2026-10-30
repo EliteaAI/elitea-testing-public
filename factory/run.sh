@@ -430,6 +430,24 @@ post_tokenomics() { # <issue> <sid> <attempt-no> <board status> <loop verdict>
   echo "[$LOOP] #$1: tokenomics posted (run $run)."
   return 0
 }
+# After every session, append the run's spend to the daily ledger
+# automation/spent/<UTC date>.md on the work repo's $SPENT_BRANCH — one row per
+# case (run cost split evenly across the run's cases), Total row rebuilt. Same
+# ledger-line delta as the comment above; written by git plumbing, so the
+# session's working tree is never touched; a run already on file is skipped.
+# Opt-out: SPENT_LEDGER=0. Never fatal.
+SPENT_SCRIPT="${SPENT_SCRIPT:-factory/tokenomics/spent-ledger.mjs}"   # work-repo mirror, like TOKENOMICS_SCRIPT
+append_spent() { # <issue> <sid>
+  [ "${SPENT_LEDGER:-1}" != "0" ] || return 0
+  [ -f "$SPENT_SCRIPT" ] || return 0
+  local err="$STATE/spent-error-$LOOP.txt" out
+  out=$(node "$SPENT_SCRIPT" append --session "$2" --baseline-count "${ledger_before:-0}" --issue "$1" \
+          --tracking-repo "$TRACKING_REPO" --branch "${SPENT_BRANCH:-automation/maintenance}" \
+          --wait "${TOKENOMICS_WAIT:-30}" 2>"$err") \
+    && echo "[$LOOP] #$1: $out" \
+    || echo "[$LOOP] #$1: spent ledger not written — $(head -1 "$err" 2>/dev/null | cut -c1-160) — continuing" >&2
+  return 0
+}
 # After every session: regenerate the team pages from the ledger (a pure
 # recompute — no scope, no close, no agent) and push the telemetry branch, so
 # reports/ on `telemetry` is always current without anyone remembering to run
@@ -635,6 +653,7 @@ from memory without reading the latest comments is a protocol violation."
     fi
   fi
   post_tokenomics "$issue" "$sid" "$((n + 1))" "$st" "$verdict" || true
+  append_spent "$issue" "$sid" || true
   refresh_reports "$sid" || true
 
   [ -n "$ONCE" ] && exit 0

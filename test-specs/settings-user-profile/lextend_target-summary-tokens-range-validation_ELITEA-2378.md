@@ -251,3 +251,10 @@
   `page.expect_response(...).value.json()["default_summarization"]["target_summary_tokens"]`
   and compare to `200`. Follow the existing `expect_response` + `put_info.value`
   pattern already used throughout `test_context_management_toggle.py`.
+
+## Adjustment (2026-10-25, card #2686, triage class A — UI drift)
+
+- **What changed in the product:** frontend commit 7242d9c3 "[EL-6898] Context management rename, always-on and Memory default mode" removed the parent Context Management toggle; context management is always on.
+- **What changed in the test:** Step 2 (precondition) no longer calls `is_context_management_enabled()` / clicks the toggle; it asserts the always-on state (Preserve Recent Messages input visible and enabled, so the section and Target Summary Tokens are reachable). Step wrapper retained. Same treatment as ELITEA-2377 (commit 5c275664).
+- **Assertions Steps 3-8:** untouched. The `finally` restore path only uses `get/set_target_summary_tokens` (no removed toggle).
+- **Expected-result changes: none.** The precondition was removed because the control was removed by the product; no assertion was deleted or weakened.

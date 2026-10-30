@@ -92,8 +92,11 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         # Agent node's own inline field clicks in later steps (same gotcha
         # documented for the sibling Decision/Router/Code/State-modifier node AFSes).
         pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
-        assert pipeline_page.get_node_ids() == ["END"], (
-            "A fresh pipeline's canvas should show only the END node before any node is added"
+        # Adjusted (#2702, EL-7154): DEV no longer renders the terminal END node on an
+        # empty canvas — it is created together with the first node added. A fresh
+        # pipeline's canvas must therefore hold NO nodes at all (still exact, not weaker).
+        assert pipeline_page.get_node_ids() == [], (
+            "A fresh pipeline's canvas should be empty (no nodes, END included) before any node is added"
         )
 
     with allure.step('Step 2 — Click TOOLS "+ Agent"; select the fixture agent from the popper'):
@@ -143,22 +146,8 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         )
         assert pipeline_page.agent_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.agent_node_output_select.is_visible(), "Output select should be visible inline"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(agent_node_id), (
-            "Interrupt before toggle should be visible inline"
-        )
-        assert pipeline_page.agent_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after toggle should be visible inline"
-        )
-        # Disabled-state assertions (AFS step 6 — confirmed live): Interrupt
-        # before is disabled because this node is the entry point
-        # (CommonInterruptSettings.jsx entry_point === id gating); Interrupt
-        # after is disabled because the node's default transition is END.
-        assert pipeline_page.is_node_interrupt_before_toggle_disabled(agent_node_id), (
-            "Interrupt before should be disabled — this node is the pipeline's entry point"
-        )
-        assert pipeline_page.agent_node_interrupt_after_toggle.is_disabled(), (
-            "Interrupt after should be disabled — the node's default transition is END"
-        )
+        # Interrupt before/after toggles (and their disabled-state checks)
+        # were removed from node cards (EliteaUI EL-3872; human sign-off #2541).
         # Negative/absence assertions (AFS Axis 2) — a naive implementation
         # might only assert presence-after-configuration and silently skip
         # the pre-Agent-select empty state.

@@ -1,0 +1,4 @@
+{"batch":"fix-2641","session":"654097fb-19e1-4a7a-add3-73cacc77237f","generatedAt":"2026-10-23","card":2641,
+ "gate":{"n":3,"verdict":"sanctioned-red","defect":"EliteaAI/elitea-testing-public#2537","detail":"3/3 identical: 2356 and 2357 fail only on console-error assertion (CSP image_14.png + application_icon 404); ELITEA-2358 green 3/3; reruns disabled (--reruns=0)"},
+ "cases":[{"id":"ELITEA-2356","outcome":"merged-sanctioned-red","review":"APPROVED"},{"id":"ELITEA-2357","outcome":"merged-sanctioned-red","review":"APPROVED"}],
+ "extra":"Restored sabotaged ELITEA-2358 decorators and the planted FIX_IT line (commit e1cb91bd)."}

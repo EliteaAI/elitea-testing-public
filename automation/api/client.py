@@ -46,6 +46,24 @@ def _default_llm_settings(model_name: str = None) -> dict:
     }
 
 
+def _default_timeout() -> tuple[float, float]:
+    """(connect, read) timeout applied to every API request that doesn't pass its own."""
+    return (settings.api_connect_timeout, settings.api_read_timeout)
+
+
+class _TimeoutSession(requests.Session):
+    """``requests.Session`` that applies ``_default_timeout()`` when a call passes none.
+
+    ``requests`` has no timeout by default, so a request the server never answers
+    blocks until the peer drops the connection — minutes, not seconds.
+    """
+
+    def request(self, method, url, **kwargs):
+        if kwargs.get("timeout") is None:
+            kwargs["timeout"] = _default_timeout()
+        return super().request(method, url, **kwargs)
+
+
 def _create_retry_session() -> requests.Session:
     """Create a requests Session with retry on 429 (rate limit).
 
@@ -55,8 +73,9 @@ def _create_retry_session() -> requests.Session:
     - 3rd retry after ~20s
 
     If settings.cf_ext_rate is set, adds cf-ext-rate header to bypass Cloudflare rate limits.
+    Every request gets the default (connect, read) timeout — see ``_TimeoutSession``.
     """
-    session = requests.Session()
+    session = _TimeoutSession()
     retry_strategy = Retry(
         total=3,
         backoff_factor=5,
@@ -162,6 +181,7 @@ class APIClient:
         """
         url = f"{self.base_url}{path}"
         logger.debug("GET %s", url)
+        kwargs.setdefault("timeout", _default_timeout())
         return requests.get(url, headers=self._headers_for_method("GET"), **kwargs)
 
     def post(self, path: str, **kwargs) -> requests.Response:
@@ -173,6 +193,7 @@ class APIClient:
         """
         url = f"{self.base_url}{path}"
         logger.debug("POST %s", url)
+        kwargs.setdefault("timeout", _default_timeout())
         return requests.post(url, headers=self._headers_for_method("POST"), **kwargs)
 
     def put(self, path: str, **kwargs) -> requests.Response:
@@ -184,6 +205,7 @@ class APIClient:
         """
         url = f"{self.base_url}{path}"
         logger.debug("PUT %s", url)
+        kwargs.setdefault("timeout", _default_timeout())
         return requests.put(url, headers=self._headers_for_method("PUT"), **kwargs)
 
     def patch(self, path: str, **kwargs) -> requests.Response:
@@ -195,6 +217,7 @@ class APIClient:
         """
         url = f"{self.base_url}{path}"
         logger.debug("PATCH %s", url)
+        kwargs.setdefault("timeout", _default_timeout())
         return requests.patch(url, headers=self._headers_for_method("PATCH"), **kwargs)
 
     def delete(self, path: str, **kwargs) -> requests.Response:
@@ -206,6 +229,7 @@ class APIClient:
         """
         url = f"{self.base_url}{path}"
         logger.debug("DELETE %s", url)
+        kwargs.setdefault("timeout", _default_timeout())
         return requests.delete(url, headers=self._headers_for_method("DELETE"), **kwargs)
 
     def close(self):
@@ -437,6 +461,27 @@ class ConversationAPI:
         )
         logger.debug("GET conversation (raw) %s", url)
         return self._session.get(url)
+
+    def get_message_groups(self, conversation_id: int) -> list[dict]:
+        """Return the conversation's ``message_groups`` list (ELITEA-3775).
+
+        Each group carries ``id``, ``created_at``, ``author_participant_id`` and
+        ``message_items[{item_type, item_details.content}]``.
+        """
+        resp = self.get_conversation_raw(conversation_id)
+        _raise_for_status(resp)
+        return resp.json().get("message_groups", [])
+
+    def get_export_summary(self, conversation_id: int) -> dict:
+        """Return the server-side export summary (``messages_count``, ``attachments_count``, ``total_size``)."""
+        url = (
+            f"{self.base_url}/elitea_core/conversation_export/prompt_lib"
+            f"/{self.project_id}/{conversation_id}"
+        )
+        logger.debug("GET export summary %s", url)
+        resp = self._session.get(url, params={"summary": "true"})
+        _raise_for_status(resp)
+        return resp.json()
 
     def delete_conversation(self, conversation_id: int) -> None:
         """Delete a conversation.  Returns ``None`` on success (HTTP 204).
@@ -1767,7 +1812,7 @@ class SkillAPI:
         self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
         self.project_id = project_id or str(settings.elitea_project_id)
 
-        self._session = requests.Session()
+        self._session = _TimeoutSession()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
         if not browser_cookies and settings.elitea_api_token:
@@ -2217,8 +2262,14 @@ class ToolkitAPI:
         )
         payload = {"url": url, "timeout": timeout, "ssl_verify": ssl_verify}
         logger.debug("POST mcp_sync_tools %s url=%s", sync_url, url)
+        # await_response=true: the server answers only after the MCP handshake, which
+        # may take up to `timeout` seconds — the read timeout must outlast it.
+        connect_timeout, read_timeout = _default_timeout()
         resp = self._session.post(
-            sync_url, json=payload, headers={"Content-Type": "application/json"}
+            sync_url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=(connect_timeout, timeout + read_timeout),
         )
         _raise_for_status(resp)
         result = resp.json().get("result", {})

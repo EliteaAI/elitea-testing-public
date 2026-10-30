@@ -1,0 +1,14 @@
+{
+ "slug": "adjust-2717",
+ "card": 2717,
+ "cases": [
+  {"id": "ELITEA-2004", "outcome": "automated", "class": "A",
+   "spec": "tests.ui.pipelines_2.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_system_task_chat_history_config",
+   "review": "APPROVED"}
+ ],
+ "gate": {"n": 3, "verdict": "green", "reruns": 0, "runs": ["86.56s", "85.12s", "85.85s"],
+          "specs": "llm_node_system_task_chat_history_config (3 tests) + state_panel_default_and_custom_variables (2 tests): 5 passed x3"},
+ "triage": "A (UI drift) — LLM node config moved from canvas card to right node side panel; Advanced section (Input/Output/CHAT HISTORY) collapsed by default; panel exists only while node selected (closed after reload)",
+ "expectedResultChanges": "none",
+ "locatorDelta": "declared 1297->1298 (+1 testid), non-testid 66 unchanged, unmanaged 347 unchanged; ledger sync 0 added (line-number refresh only)"
+}

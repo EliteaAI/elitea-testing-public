@@ -39,7 +39,7 @@
 
 1. Create a pipeline and add a Printer node via "Add node" → "Printer" (`add_node("Printer")`).
    - **Verify**: node appears on canvas — `wait_for_node_on_canvas("printer")` returns a
-     non-empty id (`Printer 1`); node count increased by 1.
+     non-empty id (`Printer 1`); exactly one Printer node on canvas (`wait_for_node_type_count("printer", 0)` before the add, `("printer", 1)` after — type-scoped, END node excluded).
 2. Verify Printer node panel shows: PRINTER section (Type + Value), Final Message field, Output
    handle at bottom.
    - **Verify**: no click-to-open action exists or is needed — the Printer node's config
@@ -250,3 +250,14 @@ live) against the live local environment.
   `_wait_for_open_popovers_closed`).
 - Wait strategy: wait for the `PUT .../application/prompt_lib/{project}/{pipeline_id}` response
   (201, confirmed) before reloading/asserting persistence — not a fixed timeout.
+
+## Adjustment
+
+- **Triage class:** A (UI drift). **Date:** 2026-10-25 (card #2668).
+- **Observed:** a fresh API-created pipeline has 0 `.react-flow__node` before the add; after `add_node("Printer")` the canvas shows END + `Printer 1` = 2 nodes. The END node now materialises together with the first node.
+- **Old -> new:** step 1 asserted total `get_node_count() == before + 1`; now asserts the Printer-type count goes 0 -> 1 via `wait_for_node_type_count("printer", ...)`. Declared scope change of the counter (total -> Printer-type); intent (exactly one new Printer node) unchanged.
+- **Expected-result changes:** none.
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `rf__node-Printer*` (prefix, under `rf__wrapper`) | n/a | testid on DEV ✓ |

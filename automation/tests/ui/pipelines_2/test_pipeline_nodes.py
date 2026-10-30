@@ -47,6 +47,7 @@ class TestAddNode:
         with allure.step("Step 1 — Navigate to pipeline canvas"):
             pipelines = _navigate_to_canvas(page, pipeline_id)
             initial_count = pipelines.get_node_count()
+            ids_before = set(pipelines.get_node_ids())
 
         with allure.step("Step 2 — Add Human-in-the-loop node via + menu"):
             pipelines.add_node("Human-in-the-loop")
@@ -58,10 +59,21 @@ class TestAddNode:
             )
 
         with allure.step("Step 4 — Verify node count increased"):
+            # DEV materialises the END terminal node together with the first node on an
+            # empty canvas, so the expected delta is the HITL node (+1) plus END when
+            # it was not on the canvas yet.
+            end_added = "END" not in ids_before
+            expected_count = initial_count + 1 + (1 if end_added else 0)
+            pipelines.wait_for_node_count(expected_count, timeout=UI_ELEMENT_TIMEOUT)
             node_count = pipelines.get_node_count()
-            assert node_count == initial_count + 1, (
-                f"Node count should be {initial_count + 1} after adding HITL node: "
-                f"before={initial_count}, after={node_count}"
+            new_ids = set(pipelines.get_node_ids()) - ids_before
+            assert new_ids - {"END"} == {hitl_id}, (
+                f"Exactly one new non-END node (the HITL node) should be added: "
+                f"before={ids_before}, new={new_ids}"
+            )
+            assert node_count == expected_count, (
+                f"Node count should be {expected_count} after adding HITL node "
+                f"(END newly added: {end_added}): before={initial_count}, after={node_count}"
             )
 
         with allure.step("Step 5 — Connect HITL node to END (approve handle)"):

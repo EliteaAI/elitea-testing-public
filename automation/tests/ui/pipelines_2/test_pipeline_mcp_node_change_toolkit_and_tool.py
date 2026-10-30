@@ -72,15 +72,19 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
             "Configuration panel (General section) should be visible after navigating"
         )
 
-    with allure.step("Step 2 — Locate the MCP node on the canvas; config fields visible inline"):
+    with allure.step("Step 2 — Locate the MCP node on the canvas; open its panel; config fields visible"):
         mcp_node = pipeline_page.wait_for_node_on_canvas("mcp", timeout=UI_ELEMENT_TIMEOUT)
         assert mcp_node, "MCP node should be present on the canvas with a non-empty data-id"
+        # Canvas cards are view-only summaries (EL-7157): click the node to open
+        # its side configuration panel, where the Toolkit/Tool selects live.
+        pipeline_page.ensure_mcp_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.mcp_node_toolkit_select.is_visible(), (
-            "MCP node's Toolkit select should be visible inline on the canvas card — "
-            "no separate click-to-open action needed (live product simplification, "
-            "see AFS Coverage Map row 2)"
+            "MCP node's Toolkit select should be visible in the node configuration panel "
+            "after clicking the node card"
         )
-        assert pipeline_page.mcp_node_tool_select.is_visible(), "Tool select should be visible inline"
+        assert pipeline_page.mcp_node_tool_select.is_visible(), (
+            "Tool select should be visible in the node configuration panel"
+        )
 
     with allure.step("Step 3 — Read current Toolkit and Tool values; match preconfigured state"):
         current_toolkit = pipeline_page.get_mcp_node_toolkit_value()
@@ -139,10 +143,10 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         )
 
     with allure.step(
-        "Step 8 — Input mapping (required 2) appears with the new tool's actual parameters"
+        "Step 8 — Input mapping (2 required fields) appears with the new tool's actual parameters"
     ):
-        assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (required 2)' section should appear for ask_wiki_question's "
+        assert pipeline_page.has_mcp_node_required_input_mapping_count(2, timeout=UI_ELEMENT_TIMEOUT), (
+            "Exactly 2 required Input-mapping fields should be listed in the panel for ask_wiki_question's "
             "2 required parameters (repoName, question)"
         )
         # Both Value fields for the new tool's parameters must be present —
@@ -177,6 +181,8 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         pipeline_page.wait_for_detail_page_load()
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("mcp", timeout=UI_ELEMENT_TIMEOUT)
+        # The node panel is closed after a reload — reopen it to read the fields.
+        pipeline_page.ensure_mcp_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
 
         persisted_toolkit = pipeline_page.get_mcp_node_toolkit_value()
         persisted_tool = pipeline_page.get_mcp_node_tool_value()
@@ -186,8 +192,8 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         assert persisted_tool == "ask_wiki_question", (
             f"Tool should persist as 'ask_wiki_question' after reload, got {persisted_tool!r}"
         )
-        assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "Input mapping (required 2) section should still be present after reload"
+        assert pipeline_page.has_mcp_node_required_input_mapping_count(2, timeout=UI_ELEMENT_TIMEOUT), (
+            "The 2 required Input-mapping fields should still be present after reload"
         )
         # Axis 2 addition (AFS): the case only mentions Toolkit/Tool
         # persisting — also assert the input-mapping VALUES survive, since a

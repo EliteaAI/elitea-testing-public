@@ -13,8 +13,8 @@ tests the multi-select accumulation behavior: after the first chip click,
 the second chip click does NOT deselect the first — both remain selected and
 both categories' agents render together (confirmed live during this
 dispatch's exploration: `data-selected="true"` on both chips, content-list
-headings `["Business Analyst", "Elitea"]` in that order, 5 agent cards total
-— 4 Business Analyst + 1 Elitea).
+headings `["Business Analyst", "Elitea"]` in that order; dataset re-verified 2026-10-23: 7 agent cards total
+— 4 Business Analyst + 3 Elitea).
 
 Each step's expected result is asserted immediately within that step's own
 `allure.step` block, not deferred to a later step — in particular Step 3's
@@ -79,9 +79,11 @@ BUSINESS_ANALYST_AGENTS = {
     "AI Platform Design Advisor",
     "Business Analyst",
 }
-# Elitea category has this agent (confirmed live during this implementer dispatch:
-# 1 card, "Assistant for ELITEA Documentation").
+# Elitea category has these agents (re-verified live 2026-10-23, adjust #2565: 3 cards;
+# "Custom all fields" and "Pipeline Orchestrator" were added after the test was written).
 ELITEA_CATEGORY_AGENTS = {
+    "Custom all fields",
+    "Pipeline Orchestrator",
     "Assistant for ELITEA Documentation",
 }
 EXPECTED_TOTAL_CARD_COUNT = len(BUSINESS_ANALYST_AGENTS) + len(ELITEA_CATEGORY_AGENTS)
@@ -209,6 +211,9 @@ class TestAgentHubFilterMultipleCategories:
                 # EliteaAI/elitea-testing-public#1212); not asserted here (reverse-masking guard).
 
             with allure.step("Step 7 — Verify zero console errors during the multi-click filter interaction"):
+                # Known defect: #2537 — Step 7 stays red until fixed (sanctioned RED, deterministic):
+                # dev-vm.elitea.ai default-icon CSP violation + application_icon 404s on Agent Hub cards.
+                # Assertion intentionally stays strict (no filtering of these errors).
                 # Known defect: elitea-testing-public#1434 — the app-wide Montserrat
                 # webfont CDN 404 (see _is_known_1434_montserrat_font_404 docstring
                 # above); filtered by resource URL, not a blanket 404 exclusion.

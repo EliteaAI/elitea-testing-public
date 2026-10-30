@@ -189,3 +189,17 @@
   3-node layout); the pattern (scale increases on zoom, translate shifts by
   the exact drag delta on pan, Fit View is an idempotent deterministic
   reset) is what's being asserted, not these specific numbers.
+
+## Adjustment (2026-10-30, card #2760)
+- **Triage class:** A — UI drift. DEV redesigned the canvas control panel (EliteaUI `CanvasControls.jsx`); `rf__controls` and `button[title="Fit View"|"Zoom In"|"Zoom Out"|"Toggle Interactivity"]` no longer exist.
+- **Handles Reference (old → new), all verified on DEV:**
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `pipeline-canvas-controls` (was `rf__controls`) — `canvas_controls` | — | testid on DEV ✓ |
+| testid | `pipeline-canvas-fit-view` (was `button[title="Fit View"]`) — `canvas_fit_view_button` | — | testid on DEV ✓ |
+| testid | `pipeline-canvas-zoom-in` (was `button[title="Zoom In"]`) — `canvas_zoom_in_button` | — | testid on DEV ✓ |
+| testid | `pipeline-canvas-zoom-out` (was `button[title="Zoom Out"]`) — `canvas_zoom_out_button` | — | testid on DEV ✓ |
+| testid | `pipeline-canvas-lock` (was `button[title="Toggle Interactivity"]`) — `canvas_lock_button` | — | testid on DEV ✓ |
+
+- **Expected-result changes:** none.

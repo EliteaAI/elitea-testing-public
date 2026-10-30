@@ -352,7 +352,7 @@ def setup_user(
     project_secret_name = f"TEST_USER_PROJECT_{env.upper()}_{index}"  # "PROJECT" blocked by org policy
 
     if dry_run:
-        logger.info("[DRY RUN] Would set secret: %s = %s...", token_secret_name, token_value[:20])
+        logger.info("[DRY RUN] Would set token secret (name hidden, value hidden)")
         logger.info("[DRY RUN] Would set secret: %s = %s", project_secret_name, project_id)
         return True
 

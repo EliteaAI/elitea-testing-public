@@ -116,6 +116,11 @@ class Settings(BaseSettings):
     # Playwright traces: set PLAYWRIGHT_TRACES=true to enable.
     # Off by default; safe to enable locally for debugging failures.
     playwright_traces: bool = False
+    # Failure videos larger than this are not attached to Allure (they are moved to
+    # reports/videos-oversize/, uploaded by CI as their own artifact). A rerun-spanning
+    # video of a hung test reached 200 MB — over GitHub's 100 MB push limit, which
+    # lost the whole published report (run 329).
+    video_attach_max_mb: int = 50
 
     # ------------------------------------------------------------------
     # GitHub toolkit
@@ -239,6 +244,18 @@ class Settings(BaseSettings):
     # Rate limiting (Cloudflare bypass)
     # ------------------------------------------------------------------
     cf_ext_rate: str = ""
+
+    # ------------------------------------------------------------------
+    # API request timeouts (seconds) — default for every API-client request.
+    # Without one, a request the server never answers blocks until the peer
+    # drops the connection: a single pipeline/agent create hung ~16 min that way
+    # (night run 329), and the failure video spanning it reached 200 MB.
+    # Read timeout = max silence between bytes, not total request time. The 429
+    # Retry adapter re-sends on read errors too (up to 3x), so worst case per call
+    # is ~4 x read timeout + backoff.
+    # ------------------------------------------------------------------
+    api_connect_timeout: float = 10
+    api_read_timeout: float = 60
 
     # ------------------------------------------------------------------
     # Source priority: .env.test beats system env vars

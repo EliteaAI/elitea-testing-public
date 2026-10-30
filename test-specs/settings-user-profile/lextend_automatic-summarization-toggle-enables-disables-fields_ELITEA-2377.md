@@ -170,6 +170,26 @@ genuine `disabled`-prop mechanism (contrast with the parent Context
 Management toggle, whose "disabled" state is actually a conditional unmount
 and is asserted via absence, per the covering AFS).
 
+## Handles Reference (DEV, verified 2026-10-25 — adjustment)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| 1 testid | `context-management-section` | n/a | testid on DEV ✓ |
+| 1 testid | `preserve-recent-messages-input` | n/a | testid on DEV ✓ (Step 2 always-on check; also `wait_for_page_load` is no longer gated on a removed control) |
+| 1 testid | `automatic-summarization-toggle` | n/a | testid on DEV ✓ (now the page-load readiness handle) |
+| 1 testid | `summarization-instructions-textarea` | n/a | testid on DEV ✓ |
+| 1 testid | `target-summary-tokens-input` | n/a | testid on DEV ✓ |
+| removed | `context-management-toggle`, `max-context-tokens-input` | n/a | absent on DEV (0 matches) — removed by product, EL-6898 |
+
+(All testids above are served by DEV as deployed; the "on-automation/testids only" provenance in the table above is superseded.)
+
+## Adjustment (2026-10-25, card #2685, triage class A — UI drift)
+
+- **What changed in the product:** frontend commit 7242d9c3 "[EL-6898] Context management rename, always-on and Memory default mode" removed the parent Context Management toggle and the Max Context Tokens input; context management is always on.
+- **What changed in the test:** `UserProfileSettingsPage.wait_for_page_load` now waits on `automatic-summarization-toggle` instead of the removed parent toggle. Step 2 (precondition) no longer clicks a toggle; it asserts the always-on state (Preserve Recent Messages input visible and enabled, so Automatic Summarization is reachable). Step wrapper retained.
+- **Assertions Steps 3-8:** untouched. The disabled mechanism is unchanged (`isSummarizationDisabled = !values.enable_summarization`, children stay mounted with `disabled`).
+- **Expected-result changes: none.** The precondition was removed because the control was removed by the product; no assertion was deleted or weakened.
+
 ## Network Behavior
 - `PUT /api/v2/social/author/` — fires immediately on every Automatic
   Summarization toggle click (both directions); 200 on success. Same

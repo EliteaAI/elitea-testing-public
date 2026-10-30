@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 import allure
 import yaml
+from playwright.sync_api import expect
 
 from pages.skills_list_page import SkillsListPage
 from pages.skill_form_page import SkillFormPage
@@ -62,6 +63,11 @@ def cleanup_skill_ids(skill_api):
 class TestSkillExportImport:
     """Export a skill's base version and import it as a new skill (ELITEA-3749)."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-3749_import-skill-base-version.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3749")
     @allure.issue("ELITEA-3749", "onetest-ai Test Case link")
     @pytest.mark.p2
@@ -259,7 +265,13 @@ class TestSkillExportImport:
             assert detail_page.get_tags() == [skill_tag], (
                 f"Imported skill's tags mismatch: {detail_page.get_tags()!r}"
             )
-            assert detail_page.get_instructions() == skill_instructions, (
+            # Instructions opens in Preview; the editor only renders in Edit mode and there
+            # prefixes YAML frontmatter — read only the body so the comparison stays strict.
+            detail_page.click_edit_mode()
+            expect(detail_page.instructions_editor_content).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert detail_page.get_instructions_body() == skill_instructions, (
                 "Imported skill's instructions should match the source skill's exported content"
             )
 
@@ -301,6 +313,11 @@ class TestSkillExportImportNonBaseVersion:
     the source skill's original base-version content.
     """
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-3750_import-skill-non-base-version.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-3750")
     @allure.issue("ELITEA-3750", "onetest-ai Test Case link")
     @pytest.mark.p3
@@ -375,6 +392,12 @@ class TestSkillExportImportNonBaseVersion:
         # Step 2 — Edit instructions; "Save As Version" → create ver_1
         # ------------------------------------------------------------------
         with allure.step('Step 2 — Edit instructions; "Save As Version" creates ver_1'):
+            # A saved skill opens with Instructions in Preview; the CodeMirror editor only
+            # renders in Edit mode — switch before typing.
+            form_page.click_edit_mode()
+            expect(form_page.instructions_editor_content).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
             form_page.fill_instructions(ver1_instructions)
             form_page.wait_for_form_validation()
 
@@ -524,7 +547,12 @@ class TestSkillExportImportNonBaseVersion:
             assert detail_page.get_tags() == [skill_tag], (
                 f"Imported skill's tags mismatch: {detail_page.get_tags()!r}"
             )
-            assert detail_page.get_instructions() == ver1_instructions, (
+            # Imported skill opens with Instructions in Preview; switch to Edit to read the raw text.
+            detail_page.click_edit_mode()
+            expect(detail_page.instructions_editor_content).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert detail_page.get_instructions_body() == ver1_instructions, (
                 "Imported skill's instructions should match the exported ver_1 "
                 "content, not the source skill's original base instructions"
             )
@@ -581,6 +609,11 @@ class TestSkillImportMissingFrontmatter:
     See test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md
     """
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-2438_import-skill-with-missing-required-frontmatter-shows-validat.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.tms("ELITEA-2438")
     @allure.issue("ELITEA-2438", "onetest-ai Test Case link")
     @pytest.mark.p2

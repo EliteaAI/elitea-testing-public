@@ -69,35 +69,30 @@ def test_code_node_configuration_and_persistence(page, pipeline_id):
         pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 1 — Add a Code node via canvas '+' button -> 'Code'"):
-        node_count_before = pipeline_page.get_node_count()
+        # Total canvas count is not a stable handle: an empty pipeline renders 0 nodes and the
+        # first added node brings the synthetic END node with it (+2), so count Code nodes.
+        pipeline_page.wait_for_node_type_count("code", 0)
         pipeline_page.add_node("Code")
         code_node_id = pipeline_page.wait_for_node_on_canvas("code", timeout=UI_ELEMENT_TIMEOUT)
         assert code_node_id, "Code node should appear on canvas with a non-empty data-id"
-        assert pipeline_page.get_node_count() == node_count_before + 1, (
-            "Node count should increase by exactly 1 after adding the Code node"
-        )
+        pipeline_page.wait_for_node_type_count("code", 1)
 
     with allure.step(
-        "Step 2 — 'Click on Code node to open configuration panel' is trivially satisfied: "
-        "config renders inline on the canvas card, no click-to-open action exists"
+        "Step 2 — 'Click on Code node to open configuration panel': the node config side panel "
+        "is open right after adding the node (CODE Type + Value visible in it)"
     ):
         assert pipeline_page.code_node_type_select.is_visible(), "CODE Type select should be visible inline"
         assert pipeline_page.code_node_value.is_visible(), "CODE Value field should be visible inline"
 
     with allure.step(
         "Step 3 — Verify panel shows: CODE (Type+Value), Input, Output, "
-        "Interrupt before/after, Structured output"
+        "Structured output (Interrupt before/after toggles removed from node cards, EL-3872)"
     ):
         assert pipeline_page.code_node_type_select.is_visible(), "CODE Type select should be present"
         assert pipeline_page.code_node_value.is_visible(), "CODE Value field should be present"
+        pipeline_page.expand_code_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.code_node_input_select.is_visible(), "Input select should be present"
         assert pipeline_page.code_node_output_select.is_visible(), "Output select should be present"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(code_node_id), (
-            "Interrupt before switch should be present"
-        )
-        assert pipeline_page.code_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after switch should be present"
-        )
         assert pipeline_page.code_node_structured_output_toggle.is_visible(), (
             "Structured output switch should be present"
         )

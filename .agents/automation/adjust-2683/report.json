@@ -1,0 +1,33 @@
+{
+ "slug": "adjust-2683",
+ "card": 2683,
+ "cases": [
+  {
+   "id": "ELITEA-1140",
+   "outcome": "automated",
+   "class": "A",
+   "spec": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[jira,confluence]",
+   "review": "APPROVED"
+  },
+  {
+   "id": "ELITEA-1141",
+   "outcome": "automated",
+   "class": "A",
+   "spec": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[github]",
+   "review": "APPROVED",
+   "note": "github param skipped locally (no GIT_HUB_TOKEN); same code path as jira/confluence"
+  }
+ ],
+ "gate": {
+  "n": 3,
+  "verdict": "green",
+  "reruns": 0,
+  "runs": [
+   "41.96s",
+   "41.77s",
+   "42.39s"
+  ]
+ },
+ "triage": "A (UI drift)",
+ "locatorDelta": "declared 1295->1297 (testid 1229->1231, +2 testid rung), non-testid 66 unchanged, unmanaged 348 unchanged, ledger metric synced"
+}

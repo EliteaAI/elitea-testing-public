@@ -1,0 +1,24 @@
+{
+ "slug": "adjust-2761",
+ "cards": [
+  2761
+ ],
+ "cases": [
+  {
+   "id": "ELITEA-2009",
+   "outcome": "automated",
+   "review": "APPROVED",
+   "spec": "tests.ui.pipelines.test_pipeline_code_node_configuration.test_code_node_configuration_and_persistence",
+   "class": "A (UI drift): Code node config moved to node side panel; Input/Output/Structured output in collapsed Advanced accordion"
+  }
+ ],
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "detail": "3/3 separate DEV runs of the spec, 0 reruns; 4 sibling code-node specs also green"
+ },
+ "card": 2761,
+ "gateVerdict": "green",
+ "expected_result_changes": "none",
+ "locator_delta": "declared 1315->1315, non-testid 66 (no change), unmanaged 339 (no change), ledger 0 new rows"
+}

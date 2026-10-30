@@ -6,6 +6,13 @@ a time; last confirmed by: qa-engineer analyst, ELITEA-3315, 2026-10-17
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: ELITEA-3369, 2026-10-17).
 
+## Composer send/speaking-mode swap (ELITEA-2466, 2026-10-22)
+
+- `SendButton.jsx`: empty input renders `button[aria-label="enter speaking mode"]` (no testid); non-empty renders `chat-send-button` (absent from DOM when empty). Bottom bar also: `plus-menu-button`, `chat-clear-button`, `model-selector-name`, `model-settings-button`, `button[aria-label="start voice input"]`, `context-budget-ring`.
+- After send the composer shows neither send nor speaking-mode for ~1.5-3s; speaking-mode returns when generation ends.
+- Platform banner dialog (`platform-banner-close`) and `platform-banner-corner` can intercept clicks on input/Send on a fresh DEV session.
+- Playwright MCP chrome binary was missing on the host; scripted python-playwright probes (chromium + dev-storage-state.json) worked.
+
 ## Project Context — cross-project isolation + project switch (ELITEA-3315)
 
 - **`ProjectContextContent.jsx`'s `useProjectContextQuery` is keyed purely by
@@ -1129,6 +1136,7 @@ spec merges, both should very likely resolve `already-covered` /
 `extend-existing` against it — sequence their analysis after this one lands.
 
 ## Streaming / in-progress response widget (ELITEA-2181)
+- **DEV re-verified 2026-10-20:** every handle below now has a testid on DEV (`chat-answer-loading-placeholder`, `-thought-accordion`, `-model-chip`, `-pause-scroll-toggle`, `chat-copy-button`, `chat-regenerate-button`) and is declared in ChatPage. `/app/chat` reopens the previous conversation -> scope counts to `chat-message-item` last. Platform banners (`platform-banner-center` dialog / `-corner`) block composer clicks. Generation ~12-15s today.
 - The "loading indicator" shown between Send and content-arrival is
   `RotatingMessages.jsx` — text-cycling placeholder ("Waking the agent…", …),
   NOT a `CircularProgress` spinner. No testid.
@@ -1521,3 +1529,66 @@ on DEV.** Three load-bearing findings this pass:
 - Trigger is model-discretionary: `Create a skill for onboarding` with skill_builder+ask_user on asks in only ~3/17 fresh conversations; otherwise creates the skill directly. Detect branch by waiting on `input[placeholder="Your option"]` vs `generated-entity-chip`.
 - Card: radio rows (title+description), `Your option` free text, `Skip`->`Continue` once answered, `Previous/Next question`, counter `1/2`. Click on option auto-advances; radio input is overlay-covered (click the visible row). Submit -> card gone, answer summary `1. q / answer` in the message, then `post_elitea_core_generate_skill_draft` + `post_elitea_core_skills` run and one chip appears. Full AFS: l1_skill-creation-ask-user-clarification_ELITEA-3367.md.
 - DEV chat answers again as of 2026-10-20 (earlier "no reply" notes are resolved).
+
+## Export chat modal (ELITEA-3784, 2026-10-20)
+
+- Entry: conversation hover 3-dot menu -> `chat-conversation-menu-export-menuitem` (right-click opens nothing). Menu on a Private-project chat has 7 items incl. playback, share-external.
+- Modal testids all on DEV: `export-chat-modal`, `-chat-name`, `-option-without|with`, `-option-description`, `-cancel-button`, `-export-button`; `-progress`/`-browser-download-note`/`-large-warning` conditional (source only).
+- "With attachments" option disabled when chat has no attachments.
+- DEV export is ENCRYPTED: download name `<name>_<date>_<time>.json.enc`, body starts `ELITEA-CHAT-ENC/1`. Success toast "Chat exported successfully"; modal closes.
+- Platform announcement dialog on DEV intercepts hover/click: dismiss `platform-banner-close` first.
+- Playwright MCP browser binary missing in this environment (chrome not found); scripted pytest-playwright chromium probes work.
+
+### ELITEA-3764 addendum (2026-10-21): export WITH attachments
+- Seed: `attach_files_via_menu([3 files])` + `send_message` on an API-created chat; modal option label becomes `With attachments (3 files · 36 Bytes)` (summary query, loads async - option disabled while loading).
+- Selecting it swaps description to the ZIP sentence; Export click shows `Exporting chat... 3 files` + `export-chat-modal-progress` + button "Exporting..." (transient; capture with a MutationObserver installed before click). Download `<name>_<date>_<time>.zip.enc`, encrypted (`ELITEA-CHAT-ENC/1`), toast "Chat exported successfully", modal closes.
+- Needs `APP_PREFIX=/app` exported if `.env.test` is absent, else all pages 404.
+
+### ELITEA-3762 addendum (2026-10-22): export chat WITH text messages, no attachments
+- Chat with 2 AI exchanges: modal identical (title, desc "Only chat messages will be exported as a JSON file."); download `<name>_<date>_<time>.json.enc`, 3055 B, `ELITEA-CHAT-ENC/1` header (encrypted; content unverifiable). Toast already gone when read after `save_as` - assert it right after the click.
+- `ConversationAPI` has only list/create/delete: messages must be seeded via UI send_message.
+
+## Stop generation (ELITEA-2182, 2026-10-20)
+
+- **Timeline on DEV (Haiku 4.5), "generate a poem"**: Stop control renders ~0.5s after Send (bubble "Waking the agent..."), agent bubble shows `Thinking` ~2.3s, final text ~2.9s, Stop disappears the moment final text starts. Windows are short: poll <=100ms, never 500ms+.
+- **Stop in the thinking phase REMOVES the turn**: user bubble + partial agent bubble vanish from the timeline (new chat -> `li` count 0, sidebar keeps an empty "Generate poem" row, URL `/chat/<id>?name=Generate+poem`); composer returns to `chat-send-button` with the exact original prompt restored in `chat-message-input`, editable. Input is `disabled` ~100ms right after the click.
+- **Stop button without injection**: `chat-inject-button` is absent when mid-turn injection is off, so `ChatPage.STOP_BUTTON` (scoped under it) cannot resolve; the Stop is then the only `button` in the composer footer with no `data-testid` and no `aria-label`. Use `midturn_injection_enabled` fixture or declare a second anchor.
+- **Send click needs `force=True`** (MUI overlay intercepts); `platform-banner-close` toast/modal ("Announcing ELITEA 2.0.7") can cover the composer on a fresh session - dismiss it.
+- **Transit flag**: `ChatPage.navigate_to_chat(conversation_id=...)` timed out (15s `wait_for` in a pytest scratch run, 2 attempts) while a plain `page.goto('/app/chat/<id>')` + waiting for `chat-message-input` worked - possible regression/flake (#1847 networkidle class), worth watching.
+
+### ELITEA-2183 addendum (2026-10-20): send after Stop
+- After Stop (restored input), `fill("")` + `fill("hello")` + `send_message("hello")` works: user + assistant reply, no error toast, no `generate a poem` bubble remains. Reply completes ~12s (Copy button).
+- `ChatPage.wait_for_ai_response(initial_count=N)`: N = count BEFORE the send (AI at N+1); `n+1` hangs 60s.
+- `navigate_to_chat(conversation_id=...)` timed out again in scratch runs (3x); `page.goto('.../app/chat/<id>')` fine. Repeat of the 2182 transit flag.
+
+## Regenerate only on last AI response (ELITEA-2184, 2026-10-20)
+- DEV now serves `chat-regenerate-button` (no aria-label). Regenerate and Delete are rendered ONLY on the last message (`ChatMessageWrapper.jsx` isLastMessage gate); earlier AI items have read-out+copy (hover-gated) but regenerate/delete count 0 in DOM. Last item's Regenerate stayed visible with mouse parked at (0,0).
+- Two short exchanges ("Reply with the single word: one") finish in seconds. `ChatPage._is_ai_message(item)` filters AI rows.
+- `navigate_to_chat(conversation_id=)` timed out again (3rd analysis in a row); `page.goto(app_base_url + "/app/chat/<id>")` works (app_base_url lacks `/app`). Playwright MCP chrome was missing this session; scratch pytest used instead.
+
+## Regenerate flow (ELITEA-2185, 2026-10-20)
+- Clicking `chat-regenerate-button` replaces the last AI item IN PLACE (count unchanged; `onRegenerateAnswer` re-sends the stored question with `message_id` = the AI id). During regeneration: `chat-answer-loading-placeholder` (t~0-0.6s) -> `chat-answer-thought-accordion` + model chip + `chat-inject-button` (Stop) -> Copy/Regenerate/Delete/Read-out back (~2s with Haiku 4.5 for a short prompt). Regenerate/Copy absent while generating.
+- User item text is untouched. Output is nondeterministic: never assert new text != old text hard.
+- "New Models are added" toast can cover the Send button on DEV: send with Enter.
+- `navigate_to_chat(conversation_id=...)` still times out on DEV (15s); goto `/app/chat/<id>` directly.
+
+## Regenerate on 3 exchanges (ELITEA-2187, 2026-10-21)
+- Verified live with 3 exchanges: earlier AI items regen 0 / delete 0 / copy 1 / read-out 1; last 1/1/1/1; page-wide regenerate count 1, and still 1 after a regenerate completes. Click -> `chat-inject-button` (Stop) appears then clears; message count unchanged. Classified extend-existing of the ELITEA-2184 spec.
+- `page.goto(app_base_url + "/app/chat/<id>")` + `chat-message-input` wait worked this run.
+
+## Conversation context menu contents (ELITEA-3779, 2026-10-21)
+- Right-click on a conversation item opens NOTHING; the menu is the hover 3-dot `conversation-menu-menu-button` (scope to `chat-conversation-item-{id}`).
+- DEV menu = 7 items in order: rename, move-to, playback, export, share-external, pin, delete (no "Duplicate", no make-public in a private project). Items are `role=menuitem tabindex=-1`, none `aria-disabled`; each has 1 svg (move-to 2). Export label "Export".
+- Keyboard: focus sits on the menu container (DIV, no role); ArrowDown/Tab do not move to items; Enter no-op. Click-away closes the menu (items 0).
+- `navigate_to_chat()` + `wait_for_page_load()` timed out (15s `chat-message-input`) on the blank-chat landing in this run even for the existing export spec (ELITEA-3784); `page.goto("https://dev.elitea.ai/app/chat")` + banner dismiss works. Playwright MCP chrome missing; scratch pytest used (`--reruns 0` overrides rerun addopts; `-p no:rerunfailures` breaks).
+
+## Folder context menu "New chat" (ELITEA-2757, 2026-10-22)
+- Folder 3-dot menu (hover row; button hidden until hover): New chat, Rename, Pin on top, Delete. Right-click on folder opens nothing. Menuitems showed no data-testid in this run (incl. Delete/Rename) - re-verify.
+- "New chat" opens a blank composer at `/app/chat` (no id); folder does NOT expand until first message sent; then POST conversation 201 + PUT folder_id, URL `/chat/<id>?name=...`, folder `data-expanded=true`, entry present with AI-shortened name immediately ("Naming" label not observed). Reload keeps conversation in folder.
+- Live default model: `Anthropic Claude Haiku 4.5` (case text says Sonnet 5 - example only). Platform banner dialog blocks pointer events on first load.
+- Playwright MCP chrome missing on this host; used scripted Python Playwright with the storage state.
+
+### ELITEA-3775 / 3786 addendum (2026-10-22): export content & permissions
+- Export is encrypted server-side (`GET /elitea_core/conversation_export/prompt_lib/{P}/{cid}` -> `application/octet-stream`, `ELITEA-CHAT-ENC/1`); `?summary=true` returns JSON `{messages_count, attachments_count, total_size}` - usable as server-side count oracle. Chat messages: `GET .../conversation/prompt_lib/{P}/{cid}` -> `message_groups[]` (`created_at`, `message_items[].item_details.content`).
+- Sending: `send_message(text, use_enter=True)`; Send-button click sent nothing in a headless probe (platform-banner overlay). `get_message_count()` counts user+AI (2 per exchange). Row testid `chat-conversation-item-{id}`.
+- Export menu item has NO author gating in `ConversationItem.jsx`; only Rename/Delete (disabled), Restrict access, Share externally (hidden) are creator-gated. User B creds absent in sandbox (`TEST_USER_B_*` unset). Non-author API export returned 200 (chat 385, project 470).

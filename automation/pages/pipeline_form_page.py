@@ -6,7 +6,7 @@ URL: /pipelines/create, /pipelines/all/{id}
 """
 
 import logging
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
 from components.mui import Dialog
@@ -156,7 +156,7 @@ class PipelineFormPage(BasePage):
     def fill_form(self, name: str, description: str):
         """Fill in the pipeline create/edit form.
 
-        Uses click() + type() instead of fill() because MUI React forms
+        Name replaces the create form's prefilled default ("Pipeline N"); description uses click() + type() because MUI React forms
         do not recognize programmatic fill() value changes.
 
         Args:
@@ -165,9 +165,9 @@ class PipelineFormPage(BasePage):
         """
         logger.info("Filling pipeline form: name=%s", name)
 
-        # Name field
-        self.name_input.click()
-        self.name_input.type(name)
+        # Name field — the create form pre-fills a default ("Pipeline N"), so
+        # replace it rather than append/lose the typed value.
+        self.replace_name(name)
         self.page.wait_for_timeout(200)
 
         # Description field
@@ -224,6 +224,25 @@ class PipelineFormPage(BasePage):
     # Getters
     # ------------------------------------------------------------------
 
+    def replace_name(self, name: str) -> None:
+        """Replace the (default-prefilled) Name field content with *name*.
+
+        The create form pre-fills Name with a default ("Pipeline N",
+        ``useDefaultPipelineName``), so typing alone appends to it. Uses
+        ``select_text()`` + ``Backspace`` (``Control+a`` is unreliable on
+        MUI fields) then real key events so React onChange fires.
+        """
+        self.name_input.click()
+        self.name_input.select_text()
+        self.page.wait_for_function(
+            """(el) => el.value.length === 0 ||
+               (el.selectionStart === 0 && el.selectionEnd === el.value.length)""",
+            arg=self.name_input.element_handle(),
+            timeout=5000,
+        )
+        self.name_input.press("Backspace")
+        self.name_input.press_sequentially(name, delay=20)
+
     def get_name(self) -> str:
         """Read the current value of the Name field.
 
@@ -231,6 +250,14 @@ class PipelineFormPage(BasePage):
             Current name input value.
         """
         return self.name_input.input_value()
+
+    def wait_for_name_value(self, expected: str, timeout: int = 10000) -> None:
+        """Wait until the Name field holds *expected* (condition wait).
+
+        After Save the detail form first shows the stale create-time default
+        ("Pipeline N") before hydrating the saved name.
+        """
+        expect(self.name_input).to_have_value(expected, timeout=timeout)
 
     def get_description(self) -> str:
         """Read the current value of the Description field.

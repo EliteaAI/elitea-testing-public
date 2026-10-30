@@ -1,0 +1,108 @@
+{
+  "batch": "chat-json-export-3762",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-json-export-3762",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      57.75,
+      75.79,
+      58.36
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-3762",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text says right-click opens a context menu. On DEV right-click does nothing; the menu is the hover 3-dot button.",
+          "ref": "ELITEA-3762 step 2"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case says the file is named Conversation_[Name]_YYYY-MM-DD.json. DEV serves <name>_<YYYY-MM-DD>_<HH-MM-SS>.json.enc.",
+          "ref": "ELITEA-3762 step 9"
+        },
+        {
+          "kind": "question",
+          "note": "DEV exports are AES-256-GCM encrypted (ELITEA-CHAT-ENC/1), so JSON content steps 10-14 (valid JSON, timestamps in ISO 8601, order, sender metadata, no attachments key) cannot be automated. Is there a decrypt key or utility available to tests? If not, the case text needs rewriting, as the 3784 and 3764 analyses already noted.",
+          "ref": "ELITEA-3762 steps 10-14"
+        },
+        {
+          "kind": "note",
+          "note": "ConversationAPI exposes only list, create and delete. Messages must be seeded through the UI with send_message. Wait on wait_for_ai_response(initial_count=N), not a fixed sleep. The success toast is gone by the time a probe reads it after download.save_as, so assert it immediately after the click."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 10-14 (JSON structure, message order, ISO 8601 timestamps, no attachments key) are not observable. DEV export is AES-256-GCM encrypted (.json.enc, header ELITEA-CHAT-ENC/1). Only a size-growth proxy is asserted. The case text also says right-click (DEV uses the hover 3-dot menu) and the filename pattern Conversation_[Name]_YYYY-MM-DD.json (DEV: <name>_<date>_<time>.json.enc). The case n… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-3762"
+        },
+        {
+          "kind": "note",
+          "note": "The sandbox has no .env.test, so tests need APP_PREFIX=/app exported. Without it every chat test times out waiting for chat-message-input."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep run over the full automation diff: git diff main...tests/ELITEA-3762-export-without-attachments -- automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. Result: 0 hits. The diff does not touch automation/pages. Every handle… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_export_download.py"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case, AFS and diff. Case steps 1-9 and 15 map to real assertions in the new test: the Export menu item is visible; the modal is visible and its name contains chat_name; the 'Without attachments' radio is checked; the 'With attachments' radio is disabled; the exact help text; the Export button is enabled; the download is captured; the modal is hidden; the success toast is visible a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_export_download.py:121-206"
+        },
+        {
+          "kind": "note",
+          "note": "Covered-by rows: the 3784 spec (merged to main) really asserts the claimed observables: help text, radios, toast, filename and the ENC header. The 3762 test re-asserts them itself instead of relying on 3784, so the extension is self-sufficient. The covering target is merged to main, so the merged-target rule is satisfied."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 10-14 (valid JSON, messages array, sender metadata, chronological order, ISO 8601 timestamps, no attachments key) are NOT asserted. DEV serves the export AES-256-GCM encrypted (ELITEA-CHAT-ENC/1). The test only proves the file is larger than an empty-chat export, a weak proxy. The AFS and the test comment both disclose this, so it is a declared limitation, not masking. The test's JSON-p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_export-without-attachments-json_ELITEA-3762.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift, all disclosed in the AFS: right-click opens the menu on DEV via a hover 3-dot button; the filename is <name>_<date>_<time>.json(.enc) and not Conversation_[Name]_YYYY-MM-DD.json; the 'green banner' colour is not asserted."
+        },
+        {
+          "kind": "note",
+          "note": "The TMS pair is present: @pytest.mark.tms('ELITEA-3762') plus @allure.issue pointing at chat/ELITEA-3762_export-conversation-without-attachments-json-download.md. That file exists in the sibling TMS clone and its name carries the same id. Steps are wrapped in allure.step. I did not run tms_backwrite.py check; it is the implementer's evidence, not mine.",
+          "ref": "automation/tests/ui/chat/test_chat_export_download.py:122-127"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the module docstring still says it is 'ELITEA-3784' only and does not mention 3762. The step labels 'Step 4-7' and 'Step 9-14' are ordered out of case order, with Step 15 before Step 9. The test seeds 2 messages where the case says at least 5; the AFS justifies this.",
+          "ref": "automation/tests/ui/chat/test_chat_export_download.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: _export_and_read returns (download, bytes) and the first element is discarded. This is harmless. The size comparison is robust because the message chat adds about 3 KB (2 AI exchanges) against a few characters of name-length difference.",
+          "ref": "automation/tests/ui/chat/test_chat_export_download.py:32"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_export-without-attachments-json_ELITEA-3762.md",
+      "branch": "tests/ELITEA-3762-export-without-attachments",
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          57.75,
+          75.79,
+          58.36
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

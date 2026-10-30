@@ -227,3 +227,10 @@ round-trip.
   precondition pipeline via YAML — confirmed working this session (created pipeline
   `6757` with the exact `LLM 1 → HITL 1 → Printer 1 → END` topology this case and
   ELITEA-2015 both need).
+
+## Adjustment (2026-10-24, card #2653) — triage class D (timing/viewport state)
+
+- **Symptom:** Step 8 `get_hitl_node_user_message_type_display()` timed out: testid resolved to a hidden element (0x0 box).
+- **Root cause:** after reload the flow editor fits the view; on the 1366x768 headless viewport the scale lands below 0.6 (`MINI_CARD_ZOOM`), so FlowEditor renders every node as a MINI card and the card's fields have zero size. The testid and element are unchanged (`HITLNode.jsx` -> `SimpleLLMInputItem`, origin/main).
+- **Fix (how only):** Step 8 calls the existing `zoom_in_until_full_cards()` after `wait_for_node_on_canvas` and before reading fields. No handle changed.
+- **Expected-result changes:** none. All assertions, values and markers unchanged.

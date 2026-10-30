@@ -1,0 +1,1 @@
+{"batch":"fix-2654","session":"ea5f0366-37ab-4fed-a80c-bb1d35099324","generatedAt":"2026-10-24","card":2654,"gate":{"n":3,"verdict":"green","detail":"3/3 green on DEV (APP_PREFIX=/app), separate invocations of test_pipeline_decision_node_configuration.py"},"cases":[{"id":"ELITEA-2034","outcome":"automated","triage":"A (UI drift) + D (zoom precondition)","review":"APPROVED"}]}

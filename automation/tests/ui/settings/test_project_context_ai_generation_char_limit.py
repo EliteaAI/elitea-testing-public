@@ -141,36 +141,18 @@ ACTIVATION_DESCRIPTION = "Used for automated test coverage of this project's wor
 EXPECTED_CONSOLE_ERROR_SUBSTRING = "Failed to load resource"
 
 
-@allure.issue(
-    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3252_settings-generate-project-context-respects-2500-char-limit.md",
-    "onetest-ai Test Case link (ELITEA-3252)",
-)
-@allure.issue(
-    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3253_settings-generate-project-context-shows-error-when-exceeds-limit.md",
-    "onetest-ai Test Case link (ELITEA-3253)",
-)
-@allure.issue(
-    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3254_chat-context-builder-generates-content-under-limit.md",
-    "onetest-ai Test Case link (ELITEA-3254)",
-)
-@allure.issue(
-    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3255_settings-edit-with-ai-respects-limit.md",
-    "onetest-ai Test Case link (ELITEA-3255)",
-)
 class TestProjectContextAIGenerationCharLimit:
     """ELITEA-3252/3253/3254/3255 — the Project Context's 2500-char
     server-side limit is enforced identically across Settings create
     (Build with AI), Settings edit (Edit with AI), and the Chat
     ``project_context_builder`` module tool."""
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/chat/build-skills-project-context/"
+        "ELITEA-3252_settings-generate-project-context-respects-2500-char-limit.md",
+        "onetest-ai Test Case link (ELITEA-3252)",
+    )
     @pytest.mark.tms("ELITEA-3252")
     @allure.title("Settings - Build with AI: short prompt stays under 2500 chars, Apply+Save succeeds")
     def test_build_with_ai_short_prompt_under_limit(self, page, clean_project_context):
@@ -248,6 +230,12 @@ class TestProjectContextAIGenerationCharLimit:
         finally:
             console_errors.stop()
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/chat/build-skills-project-context/"
+        "ELITEA-3253_settings-generate-project-context-shows-error-when-exceeds-limit.md",
+        "onetest-ai Test Case link (ELITEA-3253)",
+    )
     @pytest.mark.tms("ELITEA-3253")
     @allure.title("Settings - Build with AI: verbose prompt exceeds 2500 chars, server rejects with 422")
     def test_build_with_ai_verbose_prompt_exceeds_limit(self, page, clean_project_context, project_context_api):
@@ -321,6 +309,12 @@ class TestProjectContextAIGenerationCharLimit:
         finally:
             console_errors.stop()
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/chat/build-skills-project-context/"
+        "ELITEA-3254_chat-context-builder-generates-content-under-limit.md",
+        "onetest-ai Test Case link (ELITEA-3254)",
+    )
     @pytest.mark.tms("ELITEA-3254")
     @allure.title("Chat - project_context_builder tool: generated+saved content stays under 2500 chars")
     def test_chat_project_context_builder_under_limit(self, page, clean_project_context, project_context_api):
@@ -401,6 +395,12 @@ class TestProjectContextAIGenerationCharLimit:
         finally:
             console_errors.stop()
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/chat/build-skills-project-context/"
+        "ELITEA-3255_settings-edit-with-ai-respects-limit.md",
+        "onetest-ai Test Case link (ELITEA-3255)",
+    )
     @pytest.mark.tms("ELITEA-3255")
     @allure.title("Settings - Edit with AI: expanding existing content stays under 2500 chars")
     def test_edit_with_ai_expand_content_under_limit(self, page, clean_project_context, project_context_api):

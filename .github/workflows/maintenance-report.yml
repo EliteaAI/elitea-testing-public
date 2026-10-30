@@ -9,6 +9,14 @@ on:
 
   workflow_dispatch:
 
+# Serialize runs: two run files pushed close together must not race on the same branch push.
+concurrency:
+  group: maintenance-report
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
 jobs:
   generate-report:
     runs-on: ubuntu-latest
@@ -81,10 +89,46 @@ jobs:
 
           print(f"Found {len(groups)} groups: {list(groups.keys())}")
 
+          def iter_run_tests(data):
+              """Yield tests of the latest run in a maintenance file (old list / new {total, details} schema)."""
+              runs = data.get('runs', {})
+              if not runs:
+                  return
+              run_data = runs.get(max(runs.keys()), {})
+              if isinstance(run_data, list):
+                  tests = run_data
+              elif isinstance(run_data, dict):
+                  tests = run_data.get('details', [])
+              else:
+                  tests = []
+              for test in tests:
+                  if isinstance(test, dict):
+                      yield test
+
           # Generate report for each group
           for group_name, files_info in groups.items():
-              # Sort by run_number descending, take latest 10
+              # automation_test_id -> newest known TMS id, across ALL runs of the group.
+              # A run that failed before its TMS mapping existed recorded id=null; once a newer
+              # run resolves it, every row for that test uses the TMS id instead of the automation id.
+              tms_id_by_auto_id = {}
+              for _, _, filepath in sorted(files_info, key=lambda x: x[0]):
+                  try:
+                      with open(filepath, 'r') as f:
+                          data = json.load(f)
+                  except Exception:
+                      continue
+                  for test in iter_run_tests(data):
+                      auto_id = (test.get('automation_test_id') or '').lower()
+                      if auto_id and test.get('id'):
+                          tms_id_by_auto_id[auto_id] = test['id']
+
+              # Sort by run_number descending, keep latest 10 and delete the older run files —
+              # the deletion rides in this job's own commit (pushed with GITHUB_TOKEN, which
+              # never triggers another run), so one new run file = exactly one workflow run.
               files_info.sort(key=lambda x: x[0], reverse=True)
+              for _, _, old_path in files_info[MAX_RUNS:]:
+                  os.remove(old_path)
+                  print(f"Removed: {old_path}")
               files_info = files_info[:MAX_RUNS]
               # Reverse to show oldest to newest (left to right)
               files_info.reverse()
@@ -134,7 +178,9 @@ jobs:
                       run_numbers_order.append(run_key)
 
                   for test in tests:
-                      test_id = test.get('id') or test.get('automation_test_id') or 'UNKNOWN'
+                      auto_id = test.get('automation_test_id') or ''
+                      test_id = (tms_id_by_auto_id.get(auto_id.lower())
+                                 or test.get('id') or auto_id or 'UNKNOWN')
                       resolution = test.get('resolution', 'unknown')
                       tracking_issue = test.get('tracking_issue', '')
                       runs_data[run_key][test_id] = {
@@ -155,7 +201,13 @@ jobs:
               for run_tests in runs_data.values():
                   all_test_ids.update(run_tests.keys())
 
-              all_test_ids = sorted(all_test_ids)
+              # Drop rows still keyed by automation_test_id (no TMS id known in any run) that are
+              # green in the newest run: an unmapped test that stopped failing needs no follow-up.
+              newest_run = run_numbers_order[-1]
+              all_test_ids = sorted(
+                  t for t in all_test_ids
+                  if not (t.startswith('tests.') and t not in runs_data[newest_run])
+              )
 
               # Generate markdown report
               lines = [
@@ -245,11 +297,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add automation/maintenance/*.md
+          # -A stages the regenerated .md reports AND the pruned old .json run files
+          git add -A automation/maintenance/
 
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: update maintenance reports"
+            git commit -m "chore: update maintenance reports (keep last 10 runs)"
             git push origin automation/maintenance
           fi

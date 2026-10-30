@@ -1,0 +1,105 @@
+{
+  "batch": "chat-export-3784",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-export-3784",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      17.76,
+      18.05,
+      17.57
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-3784",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 2 says right-click opens context menu; on DEV right-click opens nothing, the menu is the hover 3-dot button.",
+          "ref": "ELITEA-3784"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case expects JSON file openable (steps 7, 14-15); DEV serves export encrypted: <name>_<date>_<time>.json.enc, body starts ELITEA-CHAT-ENC/1 (AES-256-GCM). Assert download success, nonzero size and header, not content.",
+          "ref": "ELITEA-3784"
+        },
+        {
+          "kind": "note",
+          "note": "Playwright MCP browser failed: Chromium 'chrome' not found at /opt/google/chrome/chrome. Substituted scripted playwright chromium probes. Implementer using MCP will hit the same."
+        },
+        {
+          "kind": "question",
+          "note": "ZIP/with-attachments path (progress indicator 'Exporting chat... N files') not observed; needs a conversation with an attachment. Lead to decide whether to scope it in.",
+          "ref": "ELITEA-3784"
+        },
+        {
+          "kind": "note",
+          "note": "This container has no automation/.env.test and APP_PREFIX is unset, so any UI test lands on the DEV 404 page unless APP_PREFIX=/app is set in the shell. The pin-conversation test also fails without it, so this is an environment issue, not a test issue. The gate agent must set it."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text drift, matching the AFS: step 2 says right-click but the menu opens from the hover 3-dot button; step 7 says JSON but DEV serves an encrypted .json.enc; steps 14-15 cannot open the file as written. ZIP/progress step 8 is not automated.",
+          "ref": "ELITEA-3784"
+        },
+        {
+          "kind": "note",
+          "note": ".venv has no ruff, so lint was not run on the diff."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff of automation/pages and automation/tests: 0 hits. Command: git diff main...tests/ELITEA-3784-export-download -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. Result: (no matches)."
+        },
+        {
+          "kind": "note",
+          "note": "Declarations are compliant. Six are rung-1 testid LocatorDescriptors, all observed on DEV per the AFS. One is a ScopedLocator on css input[type=radio] with suggested_testid=export-chat-modal-option-radio, resolved via .within(wrapper). The css rung is justified because the radio sits inside a testid wrapper. Every added declaration is class-level. The one new method, click_export_and_capture_downl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertions all exist at the step they belong to. Step 3: modal visible and chat name contains the chat's name. Step 4: Export button visible, enabled and text 'Export'. Step 5: Without option's radio checked, With option's radio disabled, description text. Step 6-7: expect_download resolves. Step 9: modal hidden. Step 10: success toast text visible and no 'Failed to export' toast (Axis 2)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_export_download.py"
+        },
+        {
+          "kind": "note",
+          "note": "Masking hunt is clean. No skip, xfail, test.fail, or weakened expectations. Teardown deletes the conversation in a finally block and only logs a warning if the delete fails, which is acceptable. @pytest.mark.tms('ELITEA-3784') is present. Steps are wrapped in allure.step. No sleeps; the timestamp in the chat name is naming only."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift that the AFS declares and the spec docstring repeats. Step 2 says right-click, but the menu opens from the hover 3-dot button. Step 7 expects JSON, but DEV serves .json.enc (encrypted). Steps 14-15 'open the file' are automated as a size and header check.",
+          "ref": "test-specs/chat-interface/l1_export-button-triggers-download_ELITEA-3784.md"
+        },
+        {
+          "kind": "question",
+          "note": "Case step 8 (ZIP progress indicator 'Exporting chat... N files') is not covered. It is marked out-of-scope in the AFS Coverage Map, with a reason (needs an attachment-bearing chat; progress is transient) and an open item, and the spec docstring says the same. This is a declared gap, not silent under-coverage. The lead may want a follow-up case or card for the with-attachments branch. The toast col… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Static review only. I did not execute the spec; the 3x DEV gate must confirm the toast_message.filter(...).first locator and that the radio is truly disabled (to_be_disabled) on DEV. I did not write a reviewer memory entry or daily-log line; nothing durable surfaced."
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_export-button-triggers-download_ELITEA-3784.md",
+      "branch": "tests/ELITEA-3784-export-download",
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          17.76,
+          18.05,
+          17.57
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

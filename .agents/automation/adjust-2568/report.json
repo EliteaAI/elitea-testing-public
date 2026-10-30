@@ -1,0 +1,1 @@
+{"slug":"adjust-2568","card":2568,"cases":[{"id":"ELITEA-2030","outcome":"automated","triage":"A (menu items gained description span; first node on empty canvas also creates END, EL-7154). CI timeout was not reproducible as such locally.","review":"APPROVED","commit_unit":"1d2bceb5"}],"gate":{"n":3,"verdict":"green","detail":"3/3 separate DEV runs green"}}

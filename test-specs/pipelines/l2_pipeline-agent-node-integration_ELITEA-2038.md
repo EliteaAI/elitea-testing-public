@@ -258,3 +258,17 @@ None. All 12 case steps were executed to completion against the live local envir
   — not fixed timeouts.
 - Console-error capture: register `page.on("console", ...)` BEFORE Step 0 (matches the sibling AFSes'
   precedent) — this session's assertion covers the whole flow.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations (visible, and disabled-state where present) are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Page-object members for these toggles that no spec uses any longer were removed.
+
+## Adjustment (#2702, 2026-10-26) — triage class A (UI drift)
+
+DEV (EliteaUI `70072659` EL-7154, "Create pipeline on an empty canvas with node type selector") no
+longer renders the terminal END node on a fresh, empty pipeline canvas; END is created together with the
+first node added. Step 1's canvas check changed from `node ids == ["END"]` to `node ids == []`
+(still an exact-state assertion). Expected-result changes: the fresh-canvas baseline only (END absent →
+canvas empty); every other assertion untouched. Handles unchanged (`.react-flow__node` enumeration via
+the existing `get_node_ids`).

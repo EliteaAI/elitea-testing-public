@@ -122,3 +122,8 @@ None — all 6 case steps were reached and observed live. The close button testi
 - **Case text note:** Case title says "close agent detail modal with X button"; the live product uses a `MUI Dialog` with an `aria-label="close"` `IconButton` at the top-right, functionally equivalent to an "X" button. Automation asserts the live implementation.
 - **Related surfaces:** `AgentHubPage` (`automation/pages/agent_hub_page.py`) — all handles and navigation methods.
 - **Locator policy:** `.agents/testing.md` § Locator policy (testid-only, no fallback ladder).
+
+## Adjustment — 2026-10-23 (card #2641, triage class C: known defect #2537)
+
+- **Symptom:** the "zero console errors" assertions fail deterministically on DEV: CSP violation on dev-vm.elitea.ai default_entity_icons/image_14.png plus 404s on application_icon/*.png (open defect EliteaAI/elitea-testing-public#2537).
+- **Handling:** assertions kept strict and unfiltered; `# Known defect: #2537` comments and an `@allure.issue` link added. Sanctioned RED until the product fix ships.

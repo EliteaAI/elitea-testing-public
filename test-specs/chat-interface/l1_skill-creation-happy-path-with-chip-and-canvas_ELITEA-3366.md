@@ -130,3 +130,15 @@ None. All 5 case steps were executed and observed end-to-end live, 6 independent
 - Step 1's "no clarifying question" assertion: assert on the STRUCTURAL tool-call signal (2× `chat-answer-model-chip` reading `"Elitea Skills: post_elitea_core_skills"`) per Axis 2, not a text-absence check on the prose — more robust against wording changes.
 - Wait strategy: use `wait_for_ai_response()`/`wait_for_message_content_stable()` (existing `ChatPage` methods, same pattern as every other AI-generated-content case in this suite) rather than a fixed sleep — this flow's live response time was consistently 8–10s across all 6 runs ("Thought for N secs" labels observed: 8, 8, 9, 10, 8, 8).
 - Skill-name uniqueness: see § Test Data's `generate-per-test` note — suffix the test-data display name with a per-run unique token to avoid slug collisions on repeated runs without full cleanup.
+
+## Adjustment — 2026-10-21 (#2545, class A UI drift)
+
+Product change (EliteaUI `8e73caa6`, EL-7124): the Skill Instructions section now opens in **Preview** mode by default, and the shared `MarkdownViewToggle` renders new testids. The CodeMirror editor (`skill-instructions-editor-content`) only renders in Edit mode.
+
+| Item | Old | New |
+|---|---|---|
+| Step 4 instructions read | read `skill-instructions-editor-content` directly | click the Edit toggle first, wait for the editor to be visible, then read |
+| Edit toggle handle | `skill-instructions-edit-mode-button` | `markdown-edit-mode-toggle` (rung 1, `testid on DEV ✓`) |
+| Preview toggle handle | `skill-instructions-preview-mode-button` | `markdown-preview-mode-toggle` (rung 1, `testid on DEV ✓`) |
+
+Expected results are unchanged: instructions still contain "standup", "blockers", "decisions" and "action items"; Save disabled; Discard present. Nothing was weakened.

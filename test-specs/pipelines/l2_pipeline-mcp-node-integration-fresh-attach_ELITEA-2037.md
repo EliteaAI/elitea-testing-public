@@ -185,3 +185,25 @@ None. All 12 case steps were executed to completion against the live local envir
 - Test-data fixture: reuse `mcp_toolkit_with_tools` (real MCP, auto torn down) + `PipelineAPI.create_pipeline()` (empty pipeline) — do NOT use `create_pipeline_with_mcp_node()` (that's for the ALREADY-CONFIGURED precondition case, ELITEA-1954).
 - Wait strategy: wait for `PUT .../application/prompt_lib/{project}/{pipeline_id}` (`201`) before reloading/asserting persistence — not a fixed timeout. Also wait for `[data-testid="toolkit-menu-item"]`/`select-option-{name}` to appear in the MCP-attach popper (can take several seconds per the digest's documented popper-loading timing) rather than a fixed sleep.
 - Console-error capture: register `page.on("console", ...)` BEFORE step 2 (not just before Save) — this session's assertion covers the whole flow, matching ELITEA-1954's precedent.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations (visible, and disabled-state where present) are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Page-object members for these toggles that no spec uses any longer were removed.
+
+## Adjustment (#2702, 2026-10-26) — triage class A (UI drift)
+
+DEV (EliteaUI `70072659` EL-7154, "Create pipeline on an empty canvas with node type selector") no
+longer renders the terminal END node on a fresh, empty pipeline canvas; END is created together with the
+first node added. Step 1's canvas check changed from `node ids == ["END"]` to `node ids == []`
+(still an exact-state assertion). Expected-result changes: the fresh-canvas baseline only (END absent →
+canvas empty); every other assertion untouched. Handles unchanged (`.react-flow__node` enumeration via
+the existing `get_node_ids`).
+
+## Adjustment — 2026-10-30 (class A, UI drift, issue #2758)
+
+**Cause:** EliteaUI 359dcdb2 (EL-7159) removed the TOOLS "+ MCP" popper; MCPs are picked in the MCP node's own picker (node config panel, `ProjectToolkitPicker`) and attached to the pipeline on **Save** (`PATCH .../tool/prompt_lib/{project}/` 201). Node Input/Output/Structured output sit in the panel's collapsed-by-default "Advanced" section (EL-7157); node fields need the panel open (also after reload).
+
+**Expected-result changes:** (1) the MCP is picked after the MCP node exists (Steps 5/6 precede 2/3/4 in execution order; step numbers/labels unchanged); (2) the attach PATCH 201 guard moved from select-time to Save (Step 11) — still asserted; (3) "Input mapping (required N)" heading is not rendered in the panel layout — replaced by exact count of required Value fields in the Basic section (same precedent as ELITEA-1954); the pre-toolkit absence check becomes count == 0. No assertion removed or weakened.
+
+**Handles (ladder):** all rung 1 testids on DEV — `pipeline-mcp-node-toolkit-select`, `-select-option`, `-select-menu-search`, `pipeline-node-panel-advanced-section-toggle`, `pipeline-node-panel-basic-section`, `pipeline-tools-section`, `pipeline-tool-card`, `pipeline-node-panel-close`.

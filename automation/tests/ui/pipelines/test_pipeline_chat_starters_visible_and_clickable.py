@@ -68,8 +68,7 @@ def test_pipeline_chat_starters_visible_and_clickable(page, pipeline_api):
         url_path = urlparse(page.url).path
         assert "/pipelines/create" in url_path, f"Should be on the create form, got: {page.url}"
 
-        pipeline_page.name_input.click()
-        pipeline_page.name_input.press_sequentially(pipeline_name, delay=20)
+        pipeline_page.replace_name(pipeline_name)
         assert pipeline_page.get_name() == pipeline_name
 
         pipeline_page.description_input.click()
@@ -126,6 +125,17 @@ def test_pipeline_chat_starters_visible_and_clickable(page, pipeline_api):
         with allure.step(
             'Step 7 — In the chat panel, verify the starter renders as a clickable chip, exactly once'
         ):
+            # Pipelines 2.0: the embedded chat lives in the 'Test Pipeline' side
+            # panel, mounted but hidden until the toolbar button opens it.
+            # The toolbar button stays disabled until a node is connected to End,
+            # so give the (otherwise empty) pipeline one LLM node -> END first.
+            pipeline_page.add_node("LLM")
+            llm_id = pipeline_page.wait_for_node_on_canvas("llm")
+            pipeline_page.fit_view()
+            pipeline_page.wait_for_network()
+            pipeline_page.connect_nodes(llm_id, "END")
+            pipeline_page.wait_for_network()
+            pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
             starter_tiles = pipeline_page.get_chat_starter_tiles()
             starter_tiles.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             assert starter_tiles.count() == 1, (

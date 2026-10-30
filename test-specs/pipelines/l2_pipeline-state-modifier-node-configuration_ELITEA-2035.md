@@ -277,3 +277,14 @@ full `page.reload()` persistence round-trip for every field.
   — normal `.input_value()`-readable Playwright textarea, NOT a
   CodeMirror/Monaco editor, so it needs none of the `.agents/testing.md`
   #579 CodeMirror-line-scoping technique.
+
+## Adjustment
+
+- **Triage class:** A (UI drift). **Date:** 2026-10-25 (card #2671, CI run #320: node count did not increase by exactly 1).
+- **Observed:** the END node now materialises together with the first added node, so total `.react-flow__node` count jumps 0 -> 2.
+- **Old -> new:** step 1 asserted total `get_node_count() == before + 1`; now asserts State-modifier-type count 0 -> 1 via `wait_for_node_type_count("state_modifier", ...)` (testid prefix `rf__node-StateModifier`, added to `NODE_TYPE_DISPLAY_PREFIX`). Intent (exactly one new State modifier node) unchanged.
+- **Expected-result changes:** none.
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `rf__node-StateModifier*` (prefix, under `rf__wrapper`) | n/a | testid on DEV ✓ (node id `StateModifier 1`) |

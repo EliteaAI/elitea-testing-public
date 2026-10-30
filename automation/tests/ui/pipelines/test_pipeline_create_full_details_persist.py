@@ -43,6 +43,16 @@ _EDITOR_NOTES = "Test pipeline for automation"
     "automated-full-regression-ui/pipelines/ELITEA-2021_create-pipeline-full-details.md",
     "onetest-ai Test Case link",
 )
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/ELITEA-2054_pipeline-advanced-settings-step-limit.md",
+    "onetest-ai Test Case link",
+)
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/ELITEA-2055_pipeline-editor-notes.md",
+    "onetest-ai Test Case link",
+)
 @pytest.mark.p2
 def test_create_pipeline_full_details_persist_after_reload(page, pipeline_api, github_toolkit):
     """Create a pipeline with all fields populated; verify persistence after reload."""

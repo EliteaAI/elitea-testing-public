@@ -295,3 +295,19 @@ None.
   (`autotest_2053_chatstarters`, id `8583`) was left in the shared local dev
   DB (see Cleanup) — harmless, same precedent as ELITEA-2052/2021's
   analyst-session pipelines.
+
+## Adjustment (2026-10-23, #2576) — triage class A (UI drift)
+
+Reproduced on DEV (red, then 3/3 green after the fix). Two product changes:
+
+1. **Create form pre-fills Name** with a default ("Pipeline N", `useDefaultPipelineName`
+   in `CreatePipelinePage.jsx`). Typing appended to it
+   (`'Pipeline 3autotest_pipe_chatstar'`). Fix: `PipelineFormPage.replace_name()`
+   selects the existing text and clears it before typing (select_text + Backspace).
+2. **Embedded chat moved into the "Test Pipeline" side panel** (EL-7155), mounted but
+   hidden until the toolbar button opens it; the button stays disabled until a node is
+   connected to End. Fix: after reload, add one LLM node → END via the canvas and call
+   `open_test_pipeline_panel()` before reading the starter chips.
+
+No handle changes (all existing testids). **Expected-result changes: none** — every
+assertion is preserved verbatim.

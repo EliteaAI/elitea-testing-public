@@ -310,3 +310,15 @@ full `page.reload()` persistence round-trip.
 - Wait strategy: wait for the `PUT .../application/prompt_lib/{project}/{pipeline_id}`
   response (201, confirmed) before reloading/asserting persistence — not a
   fixed timeout.
+
+## Adjustment — 2026-10-21 (EL-3872)
+
+- **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
+- **Expected-result changes:** the Interrupt before/after toggle expectations (visible, and disabled-state where present) are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Page-object members for these toggles that no spec uses any longer were removed.
+
+## Adjustment (2026-10-30, CI #2761, triage class A — UI drift)
+
+- **What changed:** Code node config no longer renders inline on the canvas card. It lives in the node config side panel (open right after adding the node; closed after reload — reselect the node). CODE Type/Value are in the Basic section; **Input, Output, Structured output are in the collapsed-by-default "Advanced" accordion** (`NodeConfigSection.jsx`, `defaultExpanded={isBasic}`).
+- **Handles (unchanged, all rung 1 — `testid on DEV ✓`):** `pipeline-code-node-type-select`, `-value`, `-input-select`, `-output-select`, `-structured-output-toggle`; accordion toggle `pipeline-node-panel-advanced-section-toggle` (aria-expanded).
+- **Test change:** page-object helpers `ensure_code_node_panel_open` / `expand_code_node_advanced_section`; code_node_* methods open the panel / expand Advanced first.
+- **Expected-result changes:** none.

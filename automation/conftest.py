@@ -109,6 +109,8 @@ TRACES_DIR.mkdir(parents=True, exist_ok=True)
 
 VIDEOS_DIR = Path(__file__).parent / "reports" / "videos"
 VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+# Failure videos too large to attach to Allure (settings.video_attach_max_mb).
+OVERSIZE_VIDEOS_DIR = Path(__file__).parent / "reports" / "videos-oversize"
 
 # Logger
 logger = logging.getLogger("elitea.automation")
@@ -351,11 +353,29 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
     if failed:
         with allure.step("Failure Evidence"):
             if video_path.exists():
-                allure.attach(
-                    video_path.read_bytes(),
-                    name="Video recording",
-                    attachment_type=allure.attachment_type.WEBM,
-                )
+                size_mb = video_path.stat().st_size / (1024 * 1024)
+                if size_mb <= settings.video_attach_max_mb:
+                    allure.attach(
+                        video_path.read_bytes(),
+                        name="Video recording",
+                        attachment_type=allure.attachment_type.WEBM,
+                    )
+                else:
+                    # Too big for the published report — keep it out of allure-results
+                    # (GitHub rejects >100 MB files) but keep the file for the CI artifact.
+                    OVERSIZE_VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+                    kept = video_path.rename(OVERSIZE_VIDEOS_DIR / video_path.name)
+                    logger.warning(
+                        "Video %.0f MB > %d MB, not attached: %s", size_mb, settings.video_attach_max_mb, kept
+                    )
+                    allure.attach(
+                        f"Video recording not attached: {size_mb:.0f} MB is over the "
+                        f"{settings.video_attach_max_mb} MB limit (VIDEO_ATTACH_MAX_MB).\n"
+                        f"It is in the CI run's 'videos-oversize-*' artifact as {kept.name} "
+                        f"(locally: {kept}).",
+                        name="Video recording — not attached (too large)",
+                        attachment_type=allure.attachment_type.TEXT,
+                    )
             if settings.playwright_traces and trace_path.exists():
                 allure.attach(
                     f"playwright show-trace {trace_path}",

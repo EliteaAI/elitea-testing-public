@@ -67,6 +67,10 @@ def test_llm_node_system_task_chat_history_config(page, pipeline_id):
     with allure.step(
         "Step 3 — Config fields render inline on the node — no click-to-open action needed"
     ):
+        # Live product: CHAT HISTORY / Input / Output / Structured output sit in
+        # the node panel's collapsed-by-default "Advanced" accordion — expand it
+        # (ELITEA-2004 adjust, class A); every visibility assertion below is unchanged.
+        pipeline_page.expand_node_panel_advanced_section()
         assert pipeline_page.llm_node_system_value.is_visible(), (
             "SYSTEM Value field should be visible inline on the canvas card — "
             "no separate click-to-open action needed (live product simplification, "
@@ -78,26 +82,18 @@ def test_llm_node_system_task_chat_history_config(page, pipeline_id):
         )
         assert pipeline_page.llm_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.llm_node_output_select.is_visible(), "Output select should be visible inline"
-        # The remaining 4 of the case's 9 named sections (Trigger, Toolkits,
-        # Interrupt before/after, Structured output) — added to close a gap
-        # the first implementation left unasserted despite the AFS Coverage
-        # Map claiming full coverage (fix-round finding). All 4 genuinely
-        # render for this scenario: the fresh pipeline's first (and only)
-        # node auto-becomes the entry point, so Trigger renders
-        # (FlowEditor.jsx); Toolkits/Interrupt before/Interrupt after/
-        # Structured output are unconditional on the LLM node
-        # (LLMNode.jsx / CommonInterruptSettings.jsx).
+        # The remaining sections (Trigger, Toolkits, Structured output) — added
+        # to close a gap the first implementation left unasserted (fix-round
+        # finding). All render for this scenario: the fresh pipeline's first
+        # (and only) node auto-becomes the entry point, so Trigger renders
+        # (FlowEditor.jsx); Toolkits/Structured output are unconditional on the
+        # LLM node (LLMNode.jsx). The Interrupt before/after toggles were
+        # removed from node cards (EL-3872); dropped per sign-off #2541.
         assert pipeline_page.entry_point_trigger_select.is_visible(), (
             "Trigger select should be visible — this pipeline's first node "
             "auto-becomes the entry point"
         )
         assert pipeline_page.llm_node_toolkits_select.is_visible(), "Toolkits select should be visible inline"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(node_id), (
-            "Interrupt before toggle should be visible inline"
-        )
-        assert pipeline_page.llm_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after toggle should be visible inline"
-        )
         assert pipeline_page.llm_node_structured_output_toggle.is_visible(), (
             "Structured output toggle should be visible inline"
         )

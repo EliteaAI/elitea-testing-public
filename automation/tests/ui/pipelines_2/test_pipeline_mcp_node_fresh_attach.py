@@ -19,7 +19,7 @@ Distinct from the sibling MCP-node cases already automated on this suite:
   node BEFORE any MCP is attached to TOOLS (inverse ordering).
 This case is the "happy path from scratch": attach-to-Tools, then add-node,
 in the case's own step order, with full static-field-presence assertions
-(Interrupt before/after, Structured output) that neither sibling covers.
+(Structured output) that neither sibling covers.
 """
 
 import logging
@@ -79,55 +79,12 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.configuration_tab.is_visible(), (
             "Configuration panel (General section) should be visible after navigating"
         )
-        assert pipeline_page.get_node_ids() == ["END"], (
-            "A fresh pipeline's canvas should show only the END node before any node is added"
+        # Adjusted (#2702, EL-7154): DEV no longer renders the terminal END node on an
+        # empty canvas — it is created together with the first node added. A fresh
+        # pipeline's canvas must therefore hold NO nodes at all (still exact, not weaker).
+        assert pipeline_page.get_node_ids() == [], (
+            "A fresh pipeline's canvas should be empty (no nodes, END included) before any node is added"
         )
-
-    with allure.step('Step 2 — Click TOOLS "+ MCP"; verify the MCP-picker popup opens'):
-        popper = pipeline_page.open_mcp_popper(timeout=UI_ELEMENT_TIMEOUT)
-        assert popper.is_visible(), "'+ MCP' popper should open"
-        assert pipeline_page.get_mcp_popper_search_input_count(popper) > 0, (
-            "'+ MCP' popper should render a toolkit-search-input search field"
-        )
-        # Rows load lazily on the FIRST open (ToolMenu.jsx forceSkip); the
-        # untestid'd "Loading…" placeholder and .count()'s lack of
-        # auto-waiting make this wait the only honest way to reach them.
-        pipeline_page.wait_for_mcp_popper_items(popper, timeout=UI_ELEMENT_TIMEOUT)
-        assert pipeline_page.get_mcp_popper_menu_item_count(popper) > 0, (
-            "'+ MCP' popper should list at least one toolkit-menu-item result row "
-            "(the project's available MCPs, including the freshly-provisioned fixture MCP)"
-        )
-
-    with allure.step("Step 3 — Select the fixture MCP from the popup"):
-        # Regression check for a fix-round finding (2026-08-04): this AFS
-        # originally claimed pipeline-level MCP-attach fires "no persistence
-        # request ... only GET calls" (contradicted by ELITEA-1955's sibling
-        # test using this same page-object method) — corrected in the AFS's
-        # Test Steps step 4 / § Network Behavior. `select_mcp_in_popper()`
-        # hard-blocks on `page.expect_response(... PATCH ... status == 201
-        # ...)` before returning, so it is itself the regression guard: if a
-        # future product change ever stops persisting on attach (reverting to
-        # the originally-claimed GET-only behavior, or vice versa breaking
-        # the immediate PATCH), this call times out and the step fails
-        # loudly instead of silently passing on a stale assumption.
-        attach_response = pipeline_page.select_mcp_in_popper(
-            popper, mcp_display_name, project_id, timeout=UI_ELEMENT_TIMEOUT
-        )
-        assert attach_response is not None, (
-            "MCP attach should return the persisted toolkit payload from the "
-            "immediate PATCH .../tool/prompt_lib/{project}/ 201 response — the "
-            "pipeline Tools-section attach auto-persists on selection, same as "
-            "the agent-level Tools section (#530), not deferred to pipeline Save"
-        )
-
-    with allure.step(
-        "Step 4 — Verify the MCP appears attached in TOOLS as a flat-list card (no MCP sub-tab — "
-        "CLARIFICATION EliteaAI/elitea-testing-public#1149, sibling of #530)"
-    ):
-        assert pipeline_page.is_toolkit_attached(mcp_display_name, timeout=UI_ELEMENT_TIMEOUT), (
-            f"TOOLS section should show a card for the attached MCP {mcp_display_name!r}"
-        )
-        assert not console_errors, f"Attaching the MCP should not introduce console errors: {console_errors}"
 
     with allure.step(
         'Step 5 — Click "Add node" -> "MCP"; a fresh MCP node appears with no auto-created edge'
@@ -144,31 +101,19 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
             "Entry-point Trigger select ('Chat Message') should be visible — the fresh MCP node "
             "is the pipeline's only node, so it auto-becomes the entry point"
         )
+        pipeline_page.ensure_mcp_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.mcp_node_toolkit_select.is_visible(), (
-            "MCP node's Toolkit select should be visible inline on the canvas card"
+            "MCP node's Toolkit select should be visible in the node config panel"
         )
+        pipeline_page.expand_mcp_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.mcp_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.mcp_node_output_select.is_visible(), "Output select should be visible inline"
-        assert pipeline_page.is_node_interrupt_before_toggle_visible(mcp_node_id), (
-            "Interrupt before toggle should be visible inline"
-        )
-        assert pipeline_page.mcp_node_interrupt_after_toggle.is_visible(), (
-            "Interrupt after toggle should be visible inline"
-        )
         assert pipeline_page.mcp_node_structured_output_toggle.is_visible(), (
             "Structured output toggle should be visible inline"
         )
-        # Disabled-state assertions (AFS step 6 — confirmed live): Interrupt
-        # before is disabled because this node is the entry point
-        # (CommonInterruptSettings.jsx entry_point === id gating); Interrupt
-        # after is disabled because the node's default transition is END;
-        # Structured output has no such gating and stays enabled.
-        assert pipeline_page.is_node_interrupt_before_toggle_disabled(mcp_node_id), (
-            "Interrupt before should be disabled — this node is the pipeline's entry point"
-        )
-        assert pipeline_page.mcp_node_interrupt_after_toggle.is_disabled(), (
-            "Interrupt after should be disabled — the node's default transition is END"
-        )
+        # Disabled-state assertion (AFS step 6): Structured output has no
+        # entry/transition gating and stays enabled. (Interrupt before/after
+        # toggles were removed from node cards — EL-3872, sign-off #2541.)
         assert not pipeline_page.mcp_node_structured_output_toggle.is_disabled(), (
             "Structured output should be enabled (no entry/transition gating)"
         )
@@ -180,12 +125,41 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.get_mcp_node_tool_value(timeout=2000) == "", (
             "Tool select should NOT be rendered (or should read empty) before a Toolkit is selected"
         )
-        assert not pipeline_page.is_input_mapping_section_visible(2, timeout=2000), (
-            "INPUT MAPPING (required N) should NOT be rendered before a Toolkit is selected"
+        assert pipeline_page.has_mcp_node_required_input_mapping_count(0, timeout=2000), (
+            "No required Input-mapping fields should be rendered before a Toolkit is selected"
         )
+
+    with allure.step('Step 2 — Open the MCP picker; verify the MCP-picker popup opens'):
+        # EL-7159 (class A, UI drift): TOOLS has no "+ MCP" button any more; MCPs are picked in
+        # the MCP node's own picker (node config panel), so the node from Step 5 is added first.
+        pipeline_page.open_mcp_node_picker(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_mcp_node_picker_search_count() > 0, (
+            "MCP picker should render a search field"
+        )
+        assert pipeline_page.get_mcp_node_picker_option_count() > 0, (
+            "MCP picker should list at least one result row "
+            "(the project's available MCPs, including the freshly-provisioned fixture MCP)"
+        )
+
+    with allure.step("Step 3 — Select the fixture MCP from the picker"):
+        # EL-7159: the pick attaches the MCP to the pipeline in the form; the attach PATCH
+        # (/tool/prompt_lib/ 201) fires on Save (Step 11) — guarded there.
+        pipeline_page.select_mcp_node_toolkit(mcp_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step(
+        "Step 4 — Verify the MCP appears attached in TOOLS as a flat-list card (no MCP sub-tab — "
+        "CLARIFICATION EliteaAI/elitea-testing-public#1149, sibling of #530)"
+    ):
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.ensure_toolkits_section_visible(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_toolkit_attached(mcp_display_name, timeout=UI_ELEMENT_TIMEOUT), (
+            f"TOOLS section should show a card for the attached MCP {mcp_display_name!r}"
+        )
+        assert not console_errors, f"Attaching the MCP should not introduce console errors: {console_errors}"
 
     with allure.step("Step 7 — Select the attached MCP from the Toolkit dropdown"):
         pipeline_page.select_mcp_node_toolkit(mcp_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.ensure_mcp_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_mcp_node_toolkit_value() == mcp_toolkit_name, (
             f"Toolkit select should show {mcp_toolkit_name!r} after selection"
         )
@@ -200,8 +174,8 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.get_mcp_node_tool_value() == "ask_wiki_question", (
             "Tool select should show 'ask_wiki_question' after selection"
         )
-        assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (required 2)' section should appear for ask_wiki_question's "
+        assert pipeline_page.has_mcp_node_required_input_mapping_count(2, timeout=UI_ELEMENT_TIMEOUT), (
+            "Exactly 2 required Input-mapping fields should be listed in the panel for ask_wiki_question's "
             "2 required parameters (repoName, question)"
         )
         assert pipeline_page.is_mcp_node_input_mapping_value_visible(
@@ -219,6 +193,7 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.get_mcp_node_input_mapping_value("question") == _QUESTION_VALUE
 
     with allure.step("Step 10 — Set Input combobox to 'input' and Output combobox to 'messages'"):
+        pipeline_page.expand_mcp_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.select_mcp_node_input_variable("input", timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_mcp_node_input_value() == "input", (
             "Input select should show 'input' after selection"
@@ -229,10 +204,14 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         )
 
     with allure.step("Step 11 — Save; verify 201 + no console errors across the whole flow"):
-        save_response = pipeline_page.save_and_wait_for_update(
-            project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
+        # EL-7159: Save also persists the MCP attachment (deferred from the Step 3 pick) — guard that
+        # PATCH (/tool/prompt_lib/ 201) so a regression in the attach persistence fails here.
+        attach_response = pipeline_page.save_and_wait_for_attach(
+            "/tool/prompt_lib/", project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
         )
-        assert save_response is not None, "Save should return the persisted pipeline version"
+        assert attach_response is not None, (
+            "Save should persist the MCP attachment via PATCH .../tool/prompt_lib/{project}/ 201"
+        )
         assert not console_errors, f"Save should not introduce console errors: {console_errors}"
 
     with allure.step(
@@ -246,14 +225,16 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.is_toolkit_attached(mcp_display_name, timeout=UI_ELEMENT_TIMEOUT), (
             "TOOLS section should still show the attached MCP card after reload"
         )
+        # The node panel is closed after a reload — reopen it to read the node fields.
+        pipeline_page.ensure_mcp_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_mcp_node_toolkit_value() == mcp_toolkit_name, (
             f"Toolkit should persist as {mcp_toolkit_name!r} after reload"
         )
         assert pipeline_page.get_mcp_node_tool_value() == "ask_wiki_question", (
             "Tool should persist as 'ask_wiki_question' after reload"
         )
-        assert pipeline_page.is_input_mapping_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "Input mapping (required 2) section should still be present after reload"
+        assert pipeline_page.has_mcp_node_required_input_mapping_count(2, timeout=UI_ELEMENT_TIMEOUT), (
+            "The 2 required Input-mapping fields should still be present after reload"
         )
         assert pipeline_page.get_mcp_node_input_mapping_value("repoName") == _REPO_NAME_VALUE, (
             "repoName Input-mapping value should persist through reload"
@@ -261,6 +242,7 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.get_mcp_node_input_mapping_value("question") == _QUESTION_VALUE, (
             "question Input-mapping value should persist through reload"
         )
+        pipeline_page.expand_mcp_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_mcp_node_input_value() == "input", (
             "Input should persist as 'input' after reload"
         )

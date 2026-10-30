@@ -121,6 +121,12 @@ class ToolkitDetailPage(BasePage):
     # double quotes (JSON), which would otherwise break the CSS selector.
     SELECT_OPTION = "[data-testid='select-option-{}']"
 
+    # Saved-credential option testid is "select-option-" + the JSON select value. Since
+    # CredentialsSelect.jsx savedRowToSelectValue() appends ``configuration_uuid`` /
+    # ``configuration_project_id`` (row-specific, unknown to the test), match on the
+    # stable leading part (kind, elitea_title, private) with a prefix selector.
+    SELECT_OPTION_PREFIX = "[data-testid^='select-option-{}']"
+
     # Group-header text ("CREATE" / "Saved {type} Credentials", rendered
     # visually uppercase via CSS text-transform) — testid added for
     # ELITEA-1976 (SingleSelect.jsx renderMenuItems, keyed by group.key,
@@ -659,7 +665,9 @@ class ToolkitDetailPage(BasePage):
 
     def get_saved_option(self, elitea_title: str, private: bool) -> Locator:
         """Return the Saved-Credentials option Locator matching *elitea_title*/*private*."""
-        return self.page.locator(self.SELECT_OPTION.format(self._saved_option_value(elitea_title, private)))
+        # Drop the closing "}" so the optional trailing uuid/project-id keys still match.
+        prefix = self._saved_option_value(elitea_title, private)[:-1]
+        return self.page.locator(self.SELECT_OPTION_PREFIX.format(prefix))
 
     def select_saved_credential(
         self, elitea_title: str, private: bool, timeout: int = UI_ELEMENT_TIMEOUT

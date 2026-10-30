@@ -1,0 +1,36 @@
+{
+ "batch": "chat-new-conv-folder-2504",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "cases": [
+  {
+   "id": "ELITEA-2757",
+   "outcome": "automated",
+   "branch": "tests/ELITEA-2757-folder-context-menu-new-chat",
+   "afs": "test-specs/chat-interface/l1_new-conversation-from-folder-context-menu_ELITEA-2757.md",
+   "spec": "tests/ui/chat/test_chat_create_conversation_from_folder_context_menu.py::TestChatCreateConversationFromFolderMenu::test_create_conversation_from_folder_context_menu",
+   "review": "APPROVED",
+   "findings": [
+    {
+     "kind": "clarification",
+     "note": "Case text drifts from DEV: folder expands on first send not on New chat click; right-click opens no folder menu; Naming spinner not reliably observable; default model Haiku 4.5."
+    },
+    {
+     "kind": "note",
+     "note": "Folder dot-menu items carry no data-testid on DEV (cf #1309); test uses role+name."
+    }
+   ]
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "gate": {
+  "runs": 3,
+  "green": 3,
+  "verdict": "green",
+  "by": "lead",
+  "env": "dev",
+  "note": "APP_PREFIX=/app exported (sandbox lacks .env.test); lead fixed unmanaged-handle +1 via fix-only dispatch then re-gated"
+ }
+}

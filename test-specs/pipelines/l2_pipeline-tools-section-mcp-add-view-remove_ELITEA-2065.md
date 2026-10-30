@@ -159,3 +159,13 @@ None.
 - Reuse `PipelineDetailPage.save_and_wait_for_update(project_id, pipeline_id)` (existing, from ELITEA-1954) for step 9.
 - Test-data fixture: `pipeline_id` (empty pipeline) + `mcp_toolkit_with_tools` (real MCP, auto torn down) — same fixtures ELITEA-2037 uses, no new fixture needed.
 - Wait strategy: wait for the attach PATCH-201 (`select_mcp_in_popper`, existing), the disassociate PATCH (`remove_toolkit`, new — added this session, not fixed-timeout), and the Save PUT-201 (`save_and_wait_for_update`, existing) — never a fixed sleep.
+
+## Adjustment (#2704, 2026-10-26) — triage class A (UI drift)
+
+DEV (EliteaUI `70072659` EL-7154, "Create pipeline on an empty canvas with node type selector") no
+longer renders the terminal END node on a fresh, empty pipeline canvas; END is created together with the
+first node added. Step 1's canvas check changed from `node ids == ["END"]` to `node ids == []`
+(still an exact-state assertion). Expected-result changes: the fresh-canvas baseline only (END absent →
+canvas empty); every other assertion untouched. Handles unchanged (`.react-flow__node` enumeration via
+the existing `get_node_ids`). No other END-baseline assumption exists in the spec; the full flow
+(attach, show-tools, remove, save, reload) ran green on DEV.

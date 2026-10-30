@@ -23,8 +23,8 @@ These secrets are baked into git history from commit `64ae42f`. Rotating them is
 
 | # | Secret | Status | Action |
 |---|--------|--------|--------|
-| C1 | ReportPortal API key `rp_9VaiQCgdyoDdHBdhZ6R2q4BapVVaSUbX` | ⚠️ Key removed from source; **still in git history** | Revoke in OneTest/ReportPortal settings if not already done |
-| C2 | Test account password `rokziJ-nuvzo4-hucmih` for `elitea@elitea.ai` on `stage.elitea.ai` | ⚠️ Scrubbed from `PLAYWRIGHT_SETUP.md`; **still in git history** | Rotate password in the auth system if not already done |
+| C1 | ReportPortal API key `rp_9Vai…<REDACTED>` | ⚠️ Key removed from source; **still in git history** | Revoke in OneTest/ReportPortal settings if not already done |
+| C2 | Test account password `rokz…<REDACTED>` for `elitea@elitea.ai` on `stage.elitea.ai` | ⚠️ Scrubbed from `PLAYWRIGHT_SETUP.md`; **still in git history** | Rotate password in the auth system if not already done |
 
 ---
 
@@ -36,8 +36,8 @@ These secrets are baked into git history from commit `64ae42f`. Rotating them is
 
 | Commit | File | Secret |
 |--------|------|--------|
-| `64ae42f` (and several following) | `automation/pytest.ini` | `rp_api_key = rp_9VaiQCgdyoDdHBdhZ6R2q4BapVVaSUbX` |
-| `64ae42f` (and several following) | `PLAYWRIGHT_SETUP.md` | `PASSWORD = "rokziJ-nuvzo4-hucmih"` |
+| `64ae42f` (and several following) | `automation/pytest.ini` | `rp_api_key = rp_9Vai…<REDACTED>` |
+| `64ae42f` (and several following) | `PLAYWRIGHT_SETUP.md` | `PASSWORD = "rokz…<REDACTED>"` |
 
 **Required steps before any public push:**
 
@@ -47,11 +47,11 @@ pip install git-filter-repo
 
 # Remove the RP API key value from all history of pytest.ini
 git filter-repo --path automation/pytest.ini \
-  --replace-text <(echo 'rp_9VaiQCgdyoDdHBdhZ6R2q4BapVVaSUbX==>REDACTED')
+  --replace-text <(echo 'rp_9Vai…<REDACTED>==>REDACTED')
 
 # Remove the password from all history of PLAYWRIGHT_SETUP.md
 git filter-repo --path PLAYWRIGHT_SETUP.md \
-  --replace-text <(echo 'rokziJ-nuvzo4-hucmih==>REDACTED')
+  --replace-text <(echo 'rokz…<REDACTED>==>REDACTED')
 
 # Option B — BFG Repo Cleaner
 # bfg --replace-text secrets.txt  (where secrets.txt lists both values)
@@ -125,7 +125,7 @@ Priority order:
 
 ### 1. Mandatory (blockers)
 
-- [ ] **Rewrite git history** to remove `rp_9VaiQCgdyoDdHBdhZ6R2q4BapVVaSUbX` from `automation/pytest.ini` history and `rokziJ-nuvzo4-hucmih` from `PLAYWRIGHT_SETUP.md` history
+- [ ] **Rewrite git history** to remove `rp_9Vai…<REDACTED>` from `automation/pytest.ini` history and `rokz…<REDACTED>` from `PLAYWRIGHT_SETUP.md` history
 - [ ] **Rotate** the RP API key and test account password if not already done (C1, C2 above)
 - [ ] **Add `LICENSE` file**
 

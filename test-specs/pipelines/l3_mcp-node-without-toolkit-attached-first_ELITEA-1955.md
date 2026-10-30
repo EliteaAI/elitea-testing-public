@@ -435,3 +435,14 @@ rule). Raised to the lead; not filed as a `bug`.
 - **Consolidation opportunity:** if #1890/#1891/#1892 are worked together, moving the wait into
   `open_mcp_popper(..., wait_for_items: bool = True)` is the cleaner end state than three call
   sites. Keeping it additive here is a scope decision, not a technical preference.
+
+## Adjustment — 2026-10-27 (CI run #322, issue #2723) — triage class A (UI drift)
+
+Cause: EliteaUI EL-7157 (a695e4e8) — canvas node cards are view-only summaries; Toolkit/Tool/Input-mapping live in a right-side node panel opened by selecting the node. Same drift as ELITEA-1954 (see its AFS § Adjustment). Supersedes "inline on the canvas card" (Coverage Map row 4) and the `Input mapping (required N)` accordion heading (`pipeline-mcp-node-input-mapping-heading`) wording in Test Steps 11/12.
+
+| Old | New |
+|---|---|
+| Toolkit select visible inline on canvas card | Select node → panel opens (`ensure_mcp_node_panel_open`); panel is closed after reload, reopen before reading persisted values |
+| `Input mapping (required 2)` heading | Heading not rendered; exactly 2 required Value fields (`pipeline-mcp-node-input-mapping-value-<key>`, rung 1, scoped under `pipeline-node-panel-basic-section`) via `has_mcp_node_required_input_mapping_count(2)` |
+
+Expected-result changes: the heading observable is replaced by "exactly 2 required Input-mapping Value fields listed" (same information: required count + names; both fields still asserted visible/filled/saved/persisted). Everything else: none.

@@ -1,0 +1,3 @@
+# Local run without .env.test: APP_PREFIX="" → false 404 "Page Not Found"
+When `automation/.env.test` is absent, `config.py` defaults `app_prefix=""`, navigation goes to https://dev.elitea.ai/pipelines/... and 404s. Symptom: `wait_for_detail_page_load` timeouts. Run with `APP_PREFIX=/app` in the env. (#2717/ELITEA-2004, 2026-10-27)
+Also: LLM node config is in a right-side node panel; Advanced section (Input/Output/CHAT HISTORY) is collapsed by default (`pipeline-node-panel-advanced-section-toggle`); my class-D "mini card" guess was refuted by the implementer's DEV probe — verify the zoom scale before assuming sibling-fix patterns.

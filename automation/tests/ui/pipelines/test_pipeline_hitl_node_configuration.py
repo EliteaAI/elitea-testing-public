@@ -181,6 +181,9 @@ def test_hitl_node_configuration_and_router_mapping(page, pipeline_id):
         pipeline_page.wait_for_detail_page_load()
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("hitl", timeout=UI_ELEMENT_TIMEOUT)
+        # After a reload the canvas fits the view; below zoom 0.6 every node renders as a
+        # MINI card (zero-size fields). Zoom in to full-card scale before reading fields.
+        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
 
         assert pipeline_page.get_hitl_node_user_message_type_display() == "F-String", (
             "USER MESSAGE Type should persist as 'F-String' after reload"

@@ -81,6 +81,7 @@ class TestSkillTestPanelVersionInstructions:
             with allure.step(
                 "Step 2 — Save As Version 'v1' with instructions 'Always say V1'"
             ):
+                detail_page.click_edit_mode()
                 detail_page.fill_instructions("Always say V1")
                 detail_page.save_as_version("v1")
 

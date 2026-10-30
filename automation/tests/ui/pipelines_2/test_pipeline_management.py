@@ -219,6 +219,10 @@ class TestCreatePipeline:
             )
 
         with allure.step("Step 5 — Verify pipeline name on detail page"):
+            # The detail form first renders the stale create-time default
+            # ("Pipeline N") and then hydrates the saved name; wait for
+            # hydration (condition wait) before the unchanged assertion.
+            PipelineFormPage(page).wait_for_name_value(pipeline_name, timeout=UI_ELEMENT_TIMEOUT)
             assert detail_page.get_name() == pipeline_name
 
         with allure.step("Step 6 — Cleanup via API"):
@@ -286,8 +290,9 @@ class TestCreatePipeline:
             form_page.wait_for_page_load()
 
         with allure.step("Step 3 — Fill Name field"):
-            form_page.name_input.click()
-            form_page.name_input.type(pipeline_name)
+            # The create form pre-fills Name with "Pipeline N" (useDefaultPipelineName),
+            # so the default is replaced rather than appended to.
+            form_page.replace_name(pipeline_name)
             assert form_page.get_name() == pipeline_name, (
                 "Name field should hold the typed value"
             )
@@ -418,16 +423,19 @@ class TestEditPipeline:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0851_pipeline-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-0851")
     @pytest.mark.p1
-    def test_pipeline_has_configuration_and_history_tabs(self, page, pipeline_id):
+    def test_pipeline_has_configuration_and_history_tabs(self, page, pipeline_with_llm_id):
         """Pipeline detail page shows configuration panel and history button."""
         with allure.step("Step 1 — Navigate to pipeline detail page"):
             detail_page = PipelineDetailPage(page)
-            detail_page.navigate(pipeline_id)
+            detail_page.navigate(pipeline_with_llm_id)
 
         with allure.step("Step 2 — Verify configuration panel is visible"):
             assert detail_page.configuration_tab.is_visible(), "Configuration panel (General section) should be visible"
 
         with allure.step("Step 3 — Verify history button is visible"):
+            # EL-7155: the run-history button now lives in the Test Pipeline side
+            # panel (display:none until opened) — open it, then assert as before.
+            detail_page.open_test_pipeline_panel()
             assert detail_page.history_tab.is_visible(), "History icon button should be visible"
 
 

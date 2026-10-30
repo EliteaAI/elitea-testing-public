@@ -68,8 +68,11 @@ def test_tools_section_mcp_add_view_remove(page, pipeline_id, mcp_toolkit_with_t
         assert pipeline_page.configuration_tab.is_visible(), (
             "Configuration panel (General section) should be visible after navigating"
         )
-        assert pipeline_page.get_node_ids() == ["END"], (
-            "A fresh pipeline's canvas should show only the END node before any attach"
+        # Adjusted (#2704, EL-7154): DEV no longer renders the terminal END node on an
+        # empty canvas — it is created together with the first node added. A fresh
+        # pipeline's canvas must therefore hold NO nodes at all (still exact, not weaker).
+        assert pipeline_page.get_node_ids() == [], (
+            "A fresh pipeline's canvas should be empty (no nodes, END included) before any attach"
         )
 
     with allure.step('Step 2 — Click TOOLS "+ MCP"; verify the MCP-picker popup opens'):

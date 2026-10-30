@@ -332,6 +332,27 @@ class AgentHubPage(BasePage):
         """Return the Locator for the agent card matching *agent_name* (by visible text)."""
         return self.page.locator(self.AGENT_CARD_PREFIX).filter(has_text=agent_name)
 
+    def wait_for_agent_card(self, agent_name: str, timeout: int = 15000, max_reloads: int = 2) -> None:
+        """Wait until the card for *agent_name* is visible, reloading the Catalog when the list came back empty.
+
+        The Catalog's bulk agents fetch is occasionally answered with HTTP 429 on DEV (rate limiting),
+        which leaves the page on "No agents found" for the whole session (CI run #322, FIX #2743 —
+        environment, not a product-flow change). Reloading re-issues the fetch. This only
+        synchronises on data arriving: the card must still be visible, and a card that is absent
+        while the list is populated fails immediately-style after *timeout*.
+        """
+        card = self.get_agent_card(agent_name).first
+        for attempt in range(max_reloads + 1):
+            try:
+                expect(card).to_be_visible(timeout=timeout)
+                return
+            except AssertionError:
+                if attempt == max_reloads or not self.no_results_title.is_visible():
+                    raise
+                logger.warning("Catalog list empty (attempt %s) — reloading to retry the agents fetch", attempt + 1)
+                self.page.reload()
+                self.wait_for_page_load()
+
     def get_agent_card_count(self) -> int:
         """Return the number of agent cards currently rendered in the main content area."""
         return self.page.locator(self.AGENT_CARD_PREFIX).count()
@@ -918,6 +939,24 @@ class AgentHubPage(BasePage):
             self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
 
+    @action("Search Catalog and capture the search response")
+    def search_and_capture_response(self, query: str, timeout: int = 15000) -> dict:
+        """Same interaction as :meth:`search`, but returns the parsed JSON body
+        of the debounced search response (``{"rows": [...], ...}``) so a test
+        can use the server's own result set as ground truth (ELITEA-2363:
+        the backend matches name OR description, so a name-only substring
+        check on rendered cards is not a valid oracle).
+        """
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/public_applications/prompt_lib/" in r.url and r.request.method == "GET",
+            timeout=timeout,
+        ) as response_info:
+            self.search_input.click()
+            self.search_input.press_sequentially(query, delay=50)
+        self.wait_for_network(timeout=timeout)
+        return response_info.value.json()
+
     @action("Clear Catalog search field")
     def clear_search(self, timeout: int = 15000):
         """Clear the Catalog search field and wait for the debounced
@@ -1034,3 +1073,17 @@ class AgentHubPage(BasePage):
         """
         cards = self.page.locator(self.AGENT_CARD_PREFIX)
         return [(cards.nth(i).text_content() or "").strip() for i in range(cards.count())]
+
+    def get_visible_agent_card_ids(self) -> list[int]:
+        """Return the numeric application id of every rendered agent card
+        (ELITEA-2363), parsed from the ``catalog-agent-card-{id}`` testid
+        suffix of ``AGENT_CARD_PREFIX`` matches — lets a test map rendered
+        cards to API rows exactly, independent of display-name text.
+        """
+        cards = self.page.locator(self.AGENT_CARD_PREFIX)
+        prefix = "catalog-agent-card-"
+        ids = []
+        for i in range(cards.count()):
+            testid = cards.nth(i).get_attribute("data-testid") or ""
+            ids.append(int(testid[len(prefix):]))
+        return ids

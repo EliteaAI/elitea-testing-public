@@ -1,0 +1,22 @@
+{
+ "slug": "adjust-2743",
+ "card": 2743,
+ "cases": [
+  {
+   "id": "ELITEA-2360",
+   "outcome": "automated",
+   "class": "D (env: intermittent HTTP 429 on catalog bulk fetch -> empty list) + known defect #2537",
+   "review": "APPROVED",
+   "spec": "tests.ui.agent_hub.test_agent_hub_start_conversation_creates_new_chat.TestAgentHubStartConversationCreatesNewChat.test_agent_hub_start_conversation_creates_new_chat",
+   "note": "sanctioned RED #2537"
+  }
+ ],
+ "gate": {
+  "verdict": "sanctioned-red",
+  "runs": 3,
+  "detail": "3/3 identical RED at side-channel only (#2537)"
+ },
+ "expected_result_changes": "none",
+ "locator_delta": "declared 1300 (no change), unmanaged 347 (no change)",
+ "gateVerdict": "sanctioned-red"
+}

@@ -260,3 +260,13 @@ persisted) is fully verifiable via the API, which this AFS does.
 - Wait discipline: `wait_for_embedded_chat_response()` for run completion,
   `expect(locator).to_be_visible()` after accordion-expand clicks (same as
   ELITEA-2453).
+
+## Adjustment — 2026-10-27 (class A, UI drift, card #2720)
+The LLM node's config now opens in a right-hand node side panel (`pipeline-node-panel-drawer`) right after
+`add_node`; it overlays the State drawer toggle and the run-node label. `open_state_panel` and
+`open_run_details_panel` now close the panel first via `pipeline-node-panel-close` (testid, rung 1) when it is open.
+Assertions/steps unchanged. Expected-result changes: none.
+Step 8 `metadata` After value is `{}` (LLM answers in prose; deterministic 4/4) — product/model defect, open `bug`
+#2746. Sanctioned-RED (`.agents/testing.md` § Merge gate): that single assertion (non-empty object) is kept but
+recorded as a soft failure (`# Known defect: #2746`), raised once at the end via `pytest.fail()`; the
+`isinstance(dict)` check stays hard and all other steps run. Expected-result changes: none (assertion kept, only soft).

@@ -301,3 +301,8 @@ None. All 9 case steps were executed to completion against the live local enviro
 - Shares Trigger-combobox mechanics with ELITEA-2005/2006 — see ELITEA-2006's Automation Hints
   for the shared-helper suggestion (applies here too, minus the Webhook-specific settle-wait,
   which this modal doesn't need).
+
+## Adjustment — 2026-10-27 (class A, UI drift, card #2720)
+The Trigger select now lives in the node side panel (exists only while the node is selected; closed after reload).
+`select_trigger_type` and the post-reload check (Step 9, one added `ensure_llm_node_panel_open` call) open the panel
+by selecting the node first. Assertions/steps unchanged. Expected-result changes: none.

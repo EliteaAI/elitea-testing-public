@@ -1,0 +1,12 @@
+{
+ "slug": "adjust-1792",
+ "card": 2675,
+ "triage": "A (UI drift)",
+ "cases": [
+  {"id": "ELITEA-1792", "outcome": "automated",
+   "spec": "tests.ui.skills.test_remove_attached_skill_from_agent.TestRemoveAttachedSkillFromAgent.test_remove_attached_skill_from_agent",
+   "review": "APPROVED", "expectedResultChanges": "none"}
+ ],
+ "gate": {"n": 3, "verdict": "green", "reruns": 0, "runs": ["76.03s", "76.05s", "75.78s"]},
+ "locatorDelta": "no automation/pages change; declared 1294 (testid 1228, non-testid 66) unchanged vs origin/main; unmanaged 348 unchanged; ledger +0"
+}

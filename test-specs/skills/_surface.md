@@ -392,7 +392,7 @@ Distinct from the valid-import round trip (ELITEA-3749/1738, above the
   entries each gained `buttonProps: { 'data-testid': '...' }`; no change to
   the shared `TabButtonItem.jsx`/`TabGroupButton.jsx` components. Fixed via
   `add-data-testid`, pushed to `automation/testids` (commit `b6e1c7c9`):
-  `skill-instructions-edit-mode-button`, `skill-instructions-preview-mode-button`,
+  `markdown-edit-mode-toggle`, `markdown-preview-mode-toggle`,
   and `skill-instructions-preview-content` (the preview wrapper `<Box>`,
   wraps either `<Markdown>{instructions}</Markdown>` or the "No
   instructions yet." empty state).

@@ -4,7 +4,7 @@ TMS: ELITEA-2018
 (test-specs/pipelines/l2_pipeline-canvas-delete-node_ELITEA-2018.md)
 
 Seeds a pipeline ``LLM 1 -> Code 1 -> END`` (3 nodes, 2 edges) via the API,
-deletes the middle node (Code 1) via its 3-dot header menu, and confirms
+deletes the middle node (Code 1) via its node-panel footer Delete button, and confirms
 both its edges are removed (with no auto-reconnect of LLM 1 -> END), LLM 1
 and END remain, and the deletion survives Save + full page reload.
 
@@ -33,6 +33,11 @@ UI_ELEMENT_TIMEOUT = 10_000
     "automated-full-regression-ui/pipelines/ELITEA-2018_pipeline-canvas-delete-node.md",
     "onetest-ai Test Case link",
 )
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/ELITEA-2060_pipeline-node-deletion-via-node-menu.md",
+    "onetest-ai Test Case link",
+)
 def test_delete_middle_node_removes_its_edges_and_persists(page, pipeline_llm_code_end):
     """Deleting the middle node (Code 1) removes it + both its edges; LLM 1
     and END remain; the deletion persists after Save + reload."""
@@ -48,7 +53,7 @@ def test_delete_middle_node_removes_its_edges_and_persists(page, pipeline_llm_co
         )
 
     with allure.step(
-        "Step 2/3 — Delete the Code node via its 3-dot header menu -> Delete -> confirm"
+        "Step 2/3 — Delete the Code node via its node-panel footer Delete button -> confirm"
     ):
         pipeline_page.delete_node("Code 1", timeout=UI_ELEMENT_TIMEOUT)
 

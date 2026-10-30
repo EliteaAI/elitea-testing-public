@@ -1,0 +1,1 @@
+{"slug":"adjust-elitea-2011","card":2669,"cases":[{"id":"ELITEA-2011","also":"ELITEA-2070","outcome":"automated","triage":"A (UI drift, EL-7155 Test Pipeline panel)","review":"APPROVED","expected_result_changes":"none"}],"gate":{"runs":3,"result":"3/3 green","target":"DEV, APP_PREFIX=/app"}}
