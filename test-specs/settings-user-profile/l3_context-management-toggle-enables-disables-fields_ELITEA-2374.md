@@ -9,6 +9,40 @@
 - **Analyst**: qa-engineer (Sage), batch `elitea-2374-context-mgmt-toggle`
 - **Status**: ready-for-automation
 
+## Adjustment (2026-10-30, #2789 — UI drift: context management is always-on, EL-6898)
+
+DEV removed the parent "Context Management" toggle and the Max Context Tokens
+input; context management is always on. The TMS case text was updated. Expected
+results changed: the parent toggle / Max Context Tokens are gone and are replaced
+by the "Context window" block (Balanced / Full) plus the "Automatic Summarization"
+toggle, whose fields (Preserve Recent Messages, Target Summary Tokens,
+Summarization Instructions) are `disabled` (real `disabled` prop, NOT unmounted)
+when the toggle is OFF and editable again when ON. The older steps below
+(parent toggle, Max Context Tokens, unmount, round-trip values) are **superseded**
+by this section; Handles Reference here wins.
+
+### Steps (current)
+1. Navigate to Settings -> Memory (Context Management); `context-management-section` visible.
+2. "Context window" block (`memory-context-window-mode`) present with Balanced and Full options.
+3. "Automatic Summarization" toggle present. (Case step 3 text duplicates step 2 — "with options Balanced and Full"; only the toggle's presence is asserted.) If OFF, turn ON first (autosave PUT 200).
+4. Click the toggle OFF (PUT 200) -> Preserve Recent Messages, Target Summary Tokens, Summarization Instructions are disabled.
+5. Click the toggle back ON (PUT 200) -> all three fields enabled again. Cleanup (finally) leaves it ON.
+
+### Handles Reference (verified on DEV)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `context-management-section` | — | testid on DEV ✓ |
+| testid | `memory-context-window-mode` | — | testid on DEV ✓ |
+| testid | `context-window-mode-balanced` | — | testid on DEV ✓ |
+| testid | `context-window-mode-full` | — | testid on DEV ✓ |
+| testid | `automatic-summarization-toggle` | — | testid on DEV ✓ |
+| testid | `preserve-recent-messages-input` | — | testid on DEV ✓ |
+| testid | `target-summary-tokens-input` | — | testid on DEV ✓ |
+| testid | `summarization-instructions-textarea` | — | testid on DEV ✓ |
+
+Retired handles: `context-management-toggle`, `max-context-tokens-input` (removed from DEV).
+
 ## Preconditions
 - User is logged in to the Elitea platform (`auth_state` fixture).
 - No project-level precondition — this is a per-user profile setting.

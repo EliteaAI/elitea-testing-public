@@ -56,6 +56,25 @@ class UserProfileSettingsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Context Management — Context window mode (Balanced / Full radio group)
+    # ------------------------------------------------------------------
+
+    context_window_mode_group = LocatorDescriptor(
+        testid="memory-context-window-mode",
+        description="Context window block (Balanced / Full radio group) in the Context Management section",
+    )
+
+    context_window_balanced_option = LocatorDescriptor(
+        testid="context-window-mode-balanced",
+        description="'Balanced' option of the Context window radio group",
+    )
+
+    context_window_full_option = LocatorDescriptor(
+        testid="context-window-mode-full",
+        description="'Full' option of the Context window radio group",
+    )
+
+    # ------------------------------------------------------------------
     # Context Management — toggle
     # ------------------------------------------------------------------
 

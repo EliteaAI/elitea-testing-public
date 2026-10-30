@@ -1,0 +1,2 @@
+# ELITEA-2374 / #2789 — adjusted for always-on Context Management
+Class A. Test now: Context window (memory-context-window-mode, context-window-mode-balanced/full testids) + Automatic Summarization toggle OFF→fields disabled, ON→enabled. Gate 3/3. Case step 3 text duplicates step 2 (TMS clarification candidate). ELITEA-2378 aria-invalid failed once in a whole-file run — unverified. Playwright MCP chrome missing on this host; probe with python playwright + storage state; export APP_PREFIX=/app.

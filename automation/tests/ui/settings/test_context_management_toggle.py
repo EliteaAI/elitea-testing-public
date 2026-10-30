@@ -1,30 +1,23 @@
-"""UI test for Context Management — toggle enables/disables token fields (ELITEA-2374).
+"""UI test for Context Management — Automatic Summarization toggle disables/enables fields (ELITEA-2374).
 
-Verifies that turning the Context Management toggle OFF conditionally unmounts
-the Max Context Tokens input, Preserve Recent Messages input, and the entire
-Automatic Summarization sub-section from the DOM (not merely disables them),
-and that turning it back ON remounts them with their prior values intact.
+Context management is always-on on DEV (EL-6898): the former parent toggle and
+Max Context Tokens input were removed. The Settings -> Memory page now shows a
+"Context window" block (Balanced / Full) and an "Automatic Summarization" toggle.
+Turning the summarization toggle OFF leaves its fields rendered but ``disabled``;
+turning it back ON makes them editable again.
 
 AFS: test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md
 
-Known case-text vs live-product divergence (not a product defect — see AFS
-Coverage Map + EliteaAI/elitea-testing-public#1238):
-- Case says "Personalization -> DEFAULT CONTEXT MANAGEMENT"; the live route is
-  Settings -> Memory -> "Context Management" (/settings/memory).
-- Case says fields become "grayed out and uneditable"; the live mechanism is
-  a conditional UNMOUNT, not a disabled/grayed-out render. Absence assertions
-  (``to_have_count(0)``) are used instead, per canon ruling #511 (absence
-  assertions count as references).
-- The case's literal default values (Max Context Tokens = 64000, Preserve
-  Recent Messages = 5) are unverifiable against the shared ``${TEST_USER}``
-  account, which already carries persisted values from earlier sessions —
-  this test asserts "non-empty positive integer" instead and round-trips the
-  values read at test start (see AFS § Blocked Steps).
+Known case-text vs live-product notes (see AFS Adjustment section):
+- Case step 1 says "Personalization -> DEFAULT CONTEXT MANAGEMENT"; the live
+  route is Settings -> Memory (/settings/memory).
+- Case step 3 text duplicates step 2 ("options Balanced and Full"); only the
+  toggle's presence is asserted.
 
 Markers:
     - ui: requires browser
     - settings: settings pages tests
-    - p2: medium priority (per case metadata: l3 — this suite's l3 maps to p2, not p3)
+    - p2: medium priority
     - regression
 """
 
@@ -80,139 +73,71 @@ class TestContextManagementToggle:
     )
     @pytest.mark.tms("ELITEA-2374")
     def test_context_management_toggle_enables_disables_fields(self, page):
-        """Toggling Context Management OFF unmounts token fields + summarization; ON restores them.
+        """Context window (Balanced/Full) is present; Automatic Summarization toggle disables/enables its fields.
 
-        Steps map 1:1 to the AFS steps (see module docstring for the AFS path).
+        Context management is always-on (EL-6898): the former parent toggle and
+        Max Context Tokens input no longer exist. The case now verifies the
+        Context window Balanced/Full options, the Automatic Summarization toggle,
+        and that toggling it back ON makes the fields editable again.
+        Case step 3 text ("Automatic Summarization toggle ... with options
+        Balanced and Full") is a copy of step 2; the toggle's presence is asserted.
         """
         profile = UserProfileSettingsPage(page)
 
-        with allure.step(
-            "Step 1 — Navigate to Settings -> Memory and verify the Context "
-            "Management section is visible"
-        ):
+        with allure.step("Step 1 — Navigate to Settings -> Memory (Context Management) and verify it loads"):
             profile.navigate_to_profile()
             expect(profile.context_management_section).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step(
-            "Step 2 — Verify the Context Management toggle is present; if "
-            "OFF, turn it ON first (precondition for the rest of the flow)"
-        ):
-            expect(profile.context_management_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            if profile.is_context_management_enabled():
-                logger.info("Context Management already ON — precondition satisfied, no click needed")
-            else:
-                # Dual PUT+GET wait (not just PUT) — see _is_autosave_get_response
-                # docstring: without waiting out this click's own GET refetch,
-                # step 5's disable-click can race it and read back as still ON.
+        with allure.step('Step 2 — Verify the "Context window" block is present with options Balanced and Full'):
+            expect(profile.context_window_mode_group).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.context_window_balanced_option).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.context_window_balanced_option).to_contain_text("Balanced")
+            expect(profile.context_window_full_option).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.context_window_full_option).to_contain_text("Full")
+
+        with allure.step('Step 3 — Verify the "Automatic Summarization" toggle is present'):
+            expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            if not profile.is_automatic_summarization_enabled():
                 with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
                      page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.enable_context_management()
+                    profile.enable_automatic_summarization()
                 assert put_info.value.status == 200, (
-                    f"Turning Context Management ON (precondition) should "
-                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                    f"Turning Automatic Summarization ON (precondition) should autosave -> 200, "
+                    f"got {put_info.value.status}"
                 )
                 _ = get_info.value
-
-        with allure.step(
-            "Step 3 — With the toggle ON, verify Max Context Tokens and "
-            "Preserve Recent Messages inputs are visible and enabled"
-        ):
-            expect(profile.max_context_tokens_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(profile.max_context_tokens_input).to_be_enabled()
-            expect(profile.preserve_recent_messages_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             expect(profile.preserve_recent_messages_input).to_be_enabled()
-
-        with allure.step(
-            "Step 4 — Read current field values and assert they are "
-            "non-empty positive integers; store for the step-8 round-trip check"
-        ):
-            original_max_tokens = profile.get_max_context_tokens()
-            original_preserve_messages = profile.get_preserve_recent_messages()
-            assert original_max_tokens > 0, (
-                f"Max Context Tokens should be a positive integer, got {original_max_tokens}"
-            )
-            assert original_preserve_messages > 0, (
-                f"Preserve Recent Messages should be a positive integer, got {original_preserve_messages}"
-            )
+            expect(profile.target_summary_tokens_input).to_be_enabled()
 
         try:
-            with allure.step(
-                "Step 5 — Click the Context Management toggle OFF; verify "
-                "the autosave PUT returns 200"
-            ):
+            with allure.step("Step 4 — Click the Automatic Summarization toggle OFF; its token fields become disabled"):
                 with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
                      page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.disable_context_management()
-                autosave_response = put_info.value
-                assert autosave_response.status == 200, (
-                    f"Toggling Context Management OFF should autosave via "
-                    f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {autosave_response.status}"
+                    profile.disable_automatic_summarization()
+                assert put_info.value.status == 200, (
+                    f"Toggling Automatic Summarization OFF should autosave -> 200, got {put_info.value.status}"
                 )
-                # Consumed only to settle the post-toggle refetch race before
-                # reading DOM state below — see _is_autosave_get_response docstring.
                 _ = get_info.value
-                assert not profile.is_context_management_enabled(), (
-                    "Toggle should read OFF/unchecked after the click"
-                )
+                expect(profile.preserve_recent_messages_input).to_be_disabled()
+                expect(profile.target_summary_tokens_input).to_be_disabled()
+                expect(profile.summarization_instructions_textarea).to_be_disabled()
 
-            with allure.step(
-                "Step 6 — Verify Max Context Tokens and Preserve Recent "
-                "Messages inputs are absent from the DOM (conditional "
-                "unmount, not disabled/grayed-out)"
-            ):
-                expect(profile.max_context_tokens_input).to_have_count(0)
-                expect(profile.preserve_recent_messages_input).to_have_count(0)
-
-            with allure.step(
-                "Step 7 — Verify the Automatic Summarization sub-section is "
-                "inactive: its toggle is absent from the DOM"
-            ):
-                expect(profile.automatic_summarization_toggle).to_have_count(0)
-
-            with allure.step(
-                "Step 8 — Click the Context Management toggle back ON; "
-                "verify the autosave PUT returns 200, fields + Automatic "
-                "Summarization reappear, and values equal the originals "
-                "read in step 4 (state preserved, not reset)"
-            ):
+            with allure.step("Step 5 — Click the toggle back ON; both fields and summarization become editable again"):
                 with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
                      page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.enable_context_management()
-                autosave_response = put_info.value
-                assert autosave_response.status == 200, (
-                    f"Toggling Context Management back ON should autosave via "
-                    f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {autosave_response.status}"
+                    profile.enable_automatic_summarization()
+                assert put_info.value.status == 200, (
+                    f"Toggling Automatic Summarization back ON should autosave -> 200, got {put_info.value.status}"
                 )
-                # Consumed only to settle the post-toggle refetch race before
-                # reading DOM state below — see _is_autosave_get_response docstring.
                 _ = get_info.value
-
-                expect(profile.max_context_tokens_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-                expect(profile.max_context_tokens_input).to_be_enabled()
-                expect(profile.preserve_recent_messages_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 expect(profile.preserve_recent_messages_input).to_be_enabled()
-                expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-
-                restored_max_tokens = profile.get_max_context_tokens()
-                restored_preserve_messages = profile.get_preserve_recent_messages()
-                assert restored_max_tokens == original_max_tokens, (
-                    f"Max Context Tokens should be preserved across the "
-                    f"hide/show cycle: expected {original_max_tokens}, got {restored_max_tokens}"
-                )
-                assert restored_preserve_messages == original_preserve_messages, (
-                    f"Preserve Recent Messages should be preserved across "
-                    f"the hide/show cycle: expected {original_preserve_messages}, "
-                    f"got {restored_preserve_messages}"
-                )
+                expect(profile.target_summary_tokens_input).to_be_enabled()
+                expect(profile.summarization_instructions_textarea).to_be_enabled()
         finally:
-            # Safety net (not a case step — no allure.step): if a mid-flow
-            # assertion failed after step 5 left the toggle OFF, restore it
-            # ON so the shared ${TEST_USER} account doesn't stay polluted
-            # for this or a sibling settings-user-profile test. No-op if
-            # already ON (step 8 succeeded normally).
-            if not profile.is_context_management_enabled():
-                logger.info("Cleanup: restoring Context Management to ON after test failure")
-                profile.enable_context_management()
+            # Safety net (not a case step): leave the shared account with summarization ON.
+            if not profile.is_automatic_summarization_enabled():
+                logger.info("Cleanup: restoring Automatic Summarization to ON")
+                profile.enable_automatic_summarization()
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
