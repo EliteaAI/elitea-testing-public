@@ -5644,8 +5644,31 @@ class PipelineDetailPage(PipelineFormPage):
     # (``_fill_node_field_value``, ``_select_multi_select_option_and_close``,
     # ``_wait_for_open_popovers_closed``) the LLM node methods above use.
 
+    def ensure_code_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Code node's config side panel is open (select the node if not).
+
+        ELITEA-2009 (class A, UI drift): node config renders in a side panel that
+        exists only while a node is selected (open right after adding a node,
+        closed after a page reload). No-op when the panel is already open.
+        """
+        self._ensure_node_panel_open(self.code_node_type_select, "code", timeout=timeout)
+
+    def expand_code_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the Code node's panel and expand its collapsed "Advanced" accordion (Input/Output/Structured output).
+
+        ELITEA-2009 (class A, UI drift; NodeConfigSection.jsx ``defaultExpanded={isBasic}``).
+        Idempotent.
+        """
+        self.ensure_code_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
     def get_code_node_type(self, timeout: int = 5000) -> str:
         """Read the Code node's CODE section Type select current value."""
+        self.ensure_code_node_panel_open(timeout=timeout)
         self.code_node_type_select.wait_for(state="visible", timeout=timeout)
         # MUI's empty-select rendering is a zero-width space (U+200B), not
         # an empty string — same gotcha as get_llm_node_section_type.
@@ -5659,6 +5682,7 @@ class PipelineDetailPage(PipelineFormPage):
             type_value: Option display text, e.g. ``"Fixed"``.
             timeout: Maximum wait time for the dropdown / option.
         """
+        self.ensure_code_node_panel_open(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.code_node_type_select.click(timeout=timeout)
         option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
@@ -5682,14 +5706,17 @@ class PipelineDetailPage(PipelineFormPage):
             value: The Python code to type (may be multi-line).
             timeout: Maximum wait time for the field to be visible.
         """
+        self.ensure_code_node_panel_open(timeout=timeout)
         self._fill_node_field_value(self.code_node_value, value, timeout=timeout)
 
     def get_code_node_value(self) -> str:
         """Read the CODE section's Value field current content."""
+        self.ensure_code_node_panel_open()
         return self.code_node_value.input_value()
 
     def open_code_node_input_select(self, timeout: int = 5000) -> None:
-        """Open the Code node's Input dropdown."""
+        """Open the Code node's Input dropdown (expands the panel's Advanced section first)."""
+        self.expand_code_node_advanced_section(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.code_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
@@ -5701,11 +5728,13 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_code_node_input_value(self) -> str:
         """Read the Code node's currently-selected Input display text."""
+        self.expand_code_node_advanced_section()
         text = (self.code_node_input_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def open_code_node_output_select(self, timeout: int = 5000) -> None:
-        """Open the Code node's Output dropdown."""
+        """Open the Code node's Output dropdown (expands the panel's Advanced section first)."""
+        self.expand_code_node_advanced_section(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.code_node_output_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
@@ -5726,6 +5755,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_code_node_output_value(self) -> str:
         """Read the Code node's currently-selected Output display text."""
+        self.expand_code_node_advanced_section()
         text = (self.code_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
