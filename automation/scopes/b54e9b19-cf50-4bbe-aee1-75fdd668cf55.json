@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "session": "b54e9b19-cf50-4bbe-aee1-75fdd668cf55",
+  "intent": "automation",
+  "batch": "fix-2758-scroll-timeout",
+  "cases": [
+    "ELITEA-2010",
+    "ELITEA-2037",
+    "ELITEA-2064"
+  ],
+  "declaredAt": "2026-10-30T06:15:31.624Z",
+  "updatedAt": "2026-10-30T07:00:15.525Z",
+  "outcomes": {
+    "ELITEA-2064": {
+      "outcome": "automated",
+      "at": "2026-10-30T07:00:03.085Z"
+    },
+    "ELITEA-2037": {
+      "outcome": "automated",
+      "at": "2026-10-30T07:00:03.085Z"
+    },
+    "ELITEA-2010": {
+      "outcome": "blocked",
+      "at": "2026-10-30T07:00:03.085Z"
+    }
+  },
+  "closedAt": "2026-10-30T07:00:15.525Z"
+}
