@@ -5,13 +5,14 @@ wait patterns, screenshot helpers, and navigation methods.
 """
 
 import logging
+
+from config import settings
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-
-from config import settings
-from .locator_descriptor import LocatorDescriptor
 from utils.actions import action
+
+from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages")
 
@@ -207,7 +208,7 @@ class BasePage:
             # never reach networkidle.  domcontentloaded is sufficient here;
             # each page object's wait_for_page_load handles the rest.
             logger.debug("networkidle not reached after navigation to %s — continuing", url)
-        
+
         # Wait for any loading spinner to disappear
         spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')
         if spinner.count() > 0:
@@ -356,6 +357,20 @@ class BasePage:
     #: Max wait (ms) for the platform announcement dialog to show up. Short on
     #: purpose: absence is the common case and must stay cheap.
     ANNOUNCEMENT_APPEAR_TIMEOUT = 2500
+
+    def auto_dismiss_announcement_dialog(self) -> None:
+        """Close the platform announcement dialog whenever it blocks an action.
+
+        The dialog can render seconds after navigation — past the short window
+        :meth:`dismiss_announcement_dialog_if_present` waits — and then intercepts
+        the next click. A Playwright locator handler fires right before any
+        actionability check while the dialog is visible, so a late dialog is
+        closed too. Idempotent per page: any earlier handler for the same locator
+        is removed first. Only meaningful on EliteaUI pages (the admin_ui app does not
+        render the dialog).
+        """
+        self.page.remove_locator_handler(self.platform_banner_close)
+        self.page.add_locator_handler(self.platform_banner_close, lambda close: close.click())
 
     def dismiss_announcement_dialog_if_present(self) -> None:
         """Close the platform announcement dialog ("Got it") if it is showing.
