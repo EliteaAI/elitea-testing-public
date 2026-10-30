@@ -2010,12 +2010,39 @@ class PipelineDetailPage(PipelineFormPage):
     # Pipeline info
     # ------------------------------------------------------------------
 
+    def _reveal_information_section(self, timeout: int = 10000) -> None:
+        """Make the left-column Information rows (Pipeline ID / Version ID) readable.
+
+        Adjust (class A, UI drift): an open node side panel collapses the left
+        configuration column (which hosts the Information accordion) and closing
+        the panel leaves it collapsed. Close the node panel, then expand the
+        left column if the Information section is still not rendered.
+        Idempotent: a no-op when the section is already visible.
+        """
+        try:
+            # Normal path: the accordion is (or is about to be) rendered.
+            self.information_section.wait_for(state="visible", timeout=3000)
+            return
+        except PlaywrightTimeoutError:
+            pass
+        self.close_node_panel(timeout=timeout)
+        # Closing the panel can leave the left column collapsed (the form is
+        # unmounted, so the section never renders). Re-check with a short wait
+        # first; click the bidirectional toggle only if it is still absent.
+        try:
+            self.information_section.wait_for(state="visible", timeout=2000)
+            return
+        except PlaywrightTimeoutError:
+            self.config_panel_collapse_button.click(timeout=timeout)
+        self.information_section.wait_for(state="visible", timeout=timeout)
+
     def get_pipeline_id(self) -> str:
         """Read the Pipeline ID from the Information section.
 
         Returns:
             Pipeline ID as string.
         """
+        self._reveal_information_section()
         return self.copy_id_button.text_content().strip()
 
     def get_version_display(self) -> str:
@@ -2054,6 +2081,7 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Version ID as string (e.g. ``"8311"``).
         """
+        self._reveal_information_section()
         return self.copy_version_id_button.text_content().strip()
 
     @action("Click the Information section's 'Show' link")
@@ -3559,15 +3587,26 @@ class PipelineDetailPage(PipelineFormPage):
         # Display label -> internal type key rendered in the item's testid.
         type_key = self.ADD_NODE_TYPE_BY_LABEL.get(node_type, node_type.lower())
         menu_item = self.page.locator(self.ADD_NODE_MENU_ITEM_BY_TYPE.format(type_key))
-        # The canvas can re-render right after a save and swallow the first
-        # click, leaving the menu closed — re-click once if it did not open.
-        self.add_node_button.click()
-        try:
-            menu_item.wait_for(state="visible", timeout=2000)
-        except PlaywrightTimeoutError:
+        # Open the menu with a bounded retry: right after a save the canvas
+        # re-renders and can swallow the click or close the menu again.
+        for attempt in range(3):
             self.add_node_button.click()
-        menu_item.wait_for(state="visible", timeout=timeout)
-        menu_item.click()
+            try:
+                menu_item.wait_for(state="visible", timeout=3000)
+                break
+            except PlaywrightTimeoutError:
+                if attempt == 2:
+                    raise
+                self.page.wait_for_timeout(500)
+        try:
+            menu_item.click(timeout=timeout)
+        except PlaywrightTimeoutError:
+            # The canvas re-rendered mid-click and detached the menu item (flake
+            # also seen on base). Reopen the menu if it closed, then click again.
+            if not menu_item.is_visible():
+                self.add_node_button.click()
+                menu_item.wait_for(state="visible", timeout=timeout)
+            menu_item.click(timeout=timeout)
         self.page.wait_for_timeout(1000)
         logger.info("Added node: %s", node_type)
 
@@ -5602,7 +5641,12 @@ class PipelineDetailPage(PipelineFormPage):
         self._select_multi_select_option_and_close(variable_name, timeout=timeout)
 
     def get_llm_node_output_value(self) -> str:
-        """Read the LLM node's currently-selected Output display text."""
+        """Read the LLM node's currently-selected Output display text.
+
+        Adjust (class A, UI drift): the Output field lives in the node side
+        panel's collapsed "Advanced" section — open/expand it before reading.
+        """
+        self.expand_node_panel_advanced_section()
         text = (self.llm_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
