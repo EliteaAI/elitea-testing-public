@@ -385,6 +385,41 @@ answer → verify runs, plus 1 additional probe run (both-toggles-off control,
 confirmed the silent-degradation finding above) and 1 additional probe run
 (fuller Q1 answer → single-question path, confirmed the finding above).
 
+**Amended during ELITEA-3369 implementation (2026-10-17) — non-determinism is
+WIDER than the above analyst-time sample found, on BOTH axes already
+flagged:**
+- **Question COUNT**: across 8+ implementer live runs of the IDENTICAL
+  ambiguous message + IDENTICAL short Q1 answer (the exact combination
+  Known Defects #3 above called "confirmed deterministic 3/3"), the
+  2-question path and the 1-question path each occurred roughly HALF the
+  time, not as a rare alternate path. The analyst's 3/3 sample size did not
+  reach this. The implemented test does not hardcode a question count (per
+  this AFS's own instruction) — it reads the stepper BEFORE answering
+  anything to learn the run's own total, then loops that many times.
+- **Question/option CONTENT on a 2-question run — NEW finding, not in the
+  analyst pass**: the second question is not reliably the "when to load"
+  Always/When-relevant select this AFS specs. Observed instead, across
+  different runs: the originally-specced "when to load" (Always/When
+  relevant, 2 options); and an "Activation"/"Setup Mode"-headed question
+  with 2-3 differently worded options (e.g. "Generate a draft"/"Use exact
+  text", or "Always"/"When project details matter"/"Custom instruction").
+  The claim above that "option LABELS were stable verbatim across all 3
+  runs" does not hold over a larger sample — it was true only within that
+  session's 3 runs. **Implementation consequence**: the test never selects
+  an option row by label. It answers EVERY question — Q1 and any
+  follow-up — via the card's own free-text input, which the component
+  accepts for a select-type question too (typing clears any radio
+  selection and the typed text becomes the submitted answer instead, per
+  `ClarifyingQuestionControl.jsx`'s `handleCustomChange`). This keeps the
+  test's own pass/fail signal on what actually matters (the card is
+  answered to completion; the created content reflects what was typed)
+  without betting on option wording that turned out not to be stable.
+  `ChatPage.CLARIFYING_QUESTION_OPTION_ROW` / `get_clarifying_question_option_row()`
+  were still added (a future case may legitimately need to exercise the
+  option-select path itself) but this test does not call them.
+- The chat-interface surface digest (`_surface.md`) carries the same
+  finding, attributed to this implementation pass.
+
 ## Automation Hints
 - Framework: Playwright + pytest, ladder locators (`.agents/testing.md`).
 - **Compose, don't rewrite**: this case reuses, UNCHANGED, every piece of
@@ -430,3 +465,18 @@ confirmed the silent-degradation finding above) and 1 additional probe run
   stable verbatim across all 3 runs — safe to assert exactly.
 - No sanctioned-RED / known-defect handling needed — this case's happy path
   is fully clean across every run this session.
+
+## Re-verification 2026-10-30 (batch chat-project-context-3369 analyst pass)
+Re-executed the full flow live on DEV (standalone `sync_playwright` script with the dev storage
+state; MCP browser has no Chrome in this container): new conversation -> `project_context_builder`
++ `ask_user` toggles (existing `ChatPage` methods) -> "Set up project context for this." ->
+`Ask User: ask_user` chip + card (stepper `1/2`, Q1 free-text "Your option", only `Skip` button) ->
+fill Q1 + Continue -> stepper `2/2`, Q2 now a **free-text-style "When should the model load this
+project context?"** question (no Always/When-relevant radios this run - confirms the amended
+non-determinism note) -> fill + Continue -> card gone, `generated-entity-chip` "Project Context"
+present, card did not reappear, 0 console errors. Handles unchanged. Implementation guidance
+stands: read stepper first, answer every question via the free-text input, never select options by label.
+A prior implementation exists UNMERGED on `origin/tests/ELITEA-3369-ask-user-clarification`
+(commit 5643ce3b: ChatPage clarifying-question fields + `test_chat_project_context_ask_user_clarification.py`);
+it is not on main, so this case is still `ready-for-automation` (implementer may reuse/cherry-pick it).
+Intake snapshot `.agents/automation/chat-project-context-3369/cases/ELITEA-3369.md` was missing; read the case from the TMS repo.
