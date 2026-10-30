@@ -143,11 +143,3 @@ None. All 10 case steps were executed to completion against the live local envir
 
 - **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
 - **Expected-result changes:** the Interrupt before/after toggle expectations are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Not executed locally (requires GIT_HUB_TOKEN).
-
-## Adjustment — 2026-10-30 (class A, UI drift, issue #2758) — UNVERIFIED BY RUN
-
-**Cause:** EliteaUI 359dcdb2 (EL-7159) removed TOOLS "+ Toolkit"; the Toolkit node's Toolkit select is now `ProjectToolkitPicker` (rows `pipeline-toolkit-node-toolkit-select-option`), attach persisted on Save. EL-7157: node fields live in the node config panel; Input/Output in collapsed "Advanced". `BaseToolNode.jsx`: required params under Basic; optional params are offered by the Advanced "add optional parameter" menu (`pipeline-toolkit-node-add-optional-parameter` / `-optional-parameter-{key}`), the "Input mapping (required/optional N)" headings only exist in the deprecated (Function) layout.
-
-**Not run:** `GIT_HUB_TOKEN` is unset on this machine, the spec skips; repaired from DEV DOM of the sibling MCP/Agent nodes + EliteaUI source. The Toolkit node uses the same `BaseToolNode` and picker as MCP (verified live for MCP).
-
-**Expected-result changes:** (1) toolkit is attached via node picker; TOOLS-card check executes after the pick (case step 2 card check kept, ordered after Step 5 so Step 4's "nothing before Toolkit chosen" absence checks stay valid); (2) "Input mapping (required 1)" -> count of required Value fields == 1; (3) "Input mapping (optional 2)" heading -> the UNION of optional Value fields already rendered under Advanced (defaulted keys stay in input_mapping) and keys offered by the add-optional-parameter menu (tolerant when the button is absent) == {max_count, repo_name}, default-independent. Assertions are equivalent, not weaker; flagged for lead review.
