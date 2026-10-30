@@ -1,6 +1,6 @@
-{"run":1,"by":"workflow-gate","result":"pass","seconds":46.4}
-{"run":2,"by":"workflow-gate","result":"pass","seconds":41.4}
-{"run":3,"by":"workflow-gate","result":"pass","seconds":39.9}
-{"run":1,"by":"lead","result":"14 passed","seconds":41.55}
-{"run":2,"by":"lead","result":"14 passed","seconds":48.40}
-{"run":3,"by":"lead","result":"14 passed","seconds":48.92}
+{"run":1,"by":"workflow-gate","verdict":"green","result":"PASS","seconds":46.4}
+{"run":2,"by":"workflow-gate","verdict":"green","result":"PASS","seconds":41.4}
+{"run":3,"by":"workflow-gate","verdict":"green","result":"PASS","seconds":39.9}
+{"run":4,"by":"lead","verdict":"green","result":"PASS 14 passed","seconds":41.55}
+{"run":5,"by":"lead","verdict":"green","result":"PASS 14 passed","seconds":48.40}
+{"run":6,"by":"lead","verdict":"green","result":"PASS 14 passed","seconds":48.92}
