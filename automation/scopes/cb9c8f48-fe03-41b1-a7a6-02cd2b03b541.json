@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "session": "cb9c8f48-fe03-41b1-a7a6-02cd2b03b541",
+  "intent": "automation",
+  "batch": "adjust-2760",
+  "cases": [
+    "ELITEA-2019",
+    "ELITEA-2045",
+    "ELITEA-2057"
+  ],
+  "declaredAt": "2026-10-30T07:34:23.975Z",
+  "updatedAt": "2026-10-30T08:04:08.257Z",
+  "outcomes": {
+    "ELITEA-2019": {
+      "outcome": "automated",
+      "at": "2026-10-30T08:04:08.220Z"
+    },
+    "ELITEA-2045": {
+      "outcome": "merged-sanctioned-red",
+      "at": "2026-10-30T08:04:08.220Z"
+    },
+    "ELITEA-2057": {
+      "outcome": "blocked",
+      "at": "2026-10-30T08:04:08.220Z"
+    }
+  },
+  "closedAt": "2026-10-30T08:04:08.257Z"
+}
