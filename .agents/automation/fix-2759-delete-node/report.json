@@ -1,0 +1,6 @@
+{"slug":"fix-2759-delete-node","card":2759,"cases":[
+{"id":"ELITEA-2060","outcome":"automated","class":"A (UI drift): canvas node cards are view-only, header 3-dot menu (node-menu-menu-button) removed; delete is now node config panel footer pipeline-node-panel-delete (EliteaUI NodeConfigFooter.jsx), same confirm dialog","review":"APPROVED","spec":"tests.ui.pipelines.test_pipeline_canvas_delete_node.test_delete_middle_node_removes_its_edges_and_persists"}],
+"gate":{"verdict":"green","runs":3,"detail":"3/3 separate DEV runs green, reruns.json empty each"},"gateVerdict":"green",
+"expected_result_changes":"none — spec assertions untouched; only allure step 2/3 title + docstring reworded",
+"locator_delta":"declared 1310->1311 (+1 testid), non-testid 66 unchanged, unmanaged 347->346, ledger 0 new rows (line-number shifts only)",
+"next":"latent: make_node_entrypoint still uses dead _open_node_header_menu (footer has pipeline-node-panel-make-entrypoint) — own adjust card; TMS case ELITEA-2060 text still says node menu (clarification)"}

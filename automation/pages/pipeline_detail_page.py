@@ -856,6 +856,10 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-node-panel-advanced-section-toggle",
         description="Node side panel's 'Advanced' accordion header (aria-expanded reflects state)"
     )
+    node_panel_delete_button = LocatorDescriptor(
+        testid="pipeline-node-panel-delete",
+        description="Node side panel footer's 'Delete node' icon button (NodeConfigFooter.jsx)"
+    )
     node_panel_close_button = LocatorDescriptor(
         testid="pipeline-node-panel-close",
         description="Node side panel header's close (X) button (NodeConfigPanelHeader.jsx)"
@@ -3861,31 +3865,28 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.locator(self.NODE_HEADER_MENU_BUTTON.format(node_id)).dispatch_event("click")
 
     def delete_node(self, node_id: str, timeout: int = 5000):
-        """Delete a node from the canvas via its three-dot header menu.
+        """Delete a node from the canvas via its config side panel.
 
-        Each node has two header icon buttons (no aria-labels). The
-        second one (the three-dot ⋮ icon) opens a menu containing
-        a Delete item. Clicking Delete shows a confirmation dialog
-        with Cancel / Delete buttons.
+        Canvas cards are view-only (no header menu). Clicking a node opens its
+        config panel whose footer carries the "Delete node" button
+        (``NodeConfigFooter.jsx`` -> ``pipeline-node-panel-delete``); it opens
+        the "Are you sure to delete this node" confirmation dialog.
 
         Args:
             node_id: The data-id of the node to delete.
-            timeout: Maximum wait time for menu / dialog to appear.
+            timeout: Maximum wait time for the panel / dialog to appear.
         """
         logger.info("Deleting node: %s", node_id)
 
-        # Open the node's three-dot header menu (testid on DEV).
-        self._open_node_header_menu(node_id)
-        self.page.wait_for_timeout(300)
-        delete_item = self.page.get_by_role("menuitem", name="Delete")
-        delete_item.wait_for(state="visible", timeout=timeout)
-        delete_item.click()
-        self.page.wait_for_timeout(300)
+        if not self.node_panel_delete_button.is_visible():
+            self.page.locator(self.RF_NODE_TESTID.format(node_id)).click(force=True)
+        self.node_panel_delete_button.wait_for(state="visible", timeout=timeout)
+        self.node_panel_delete_button.click(timeout=timeout)
 
         # Confirm the "Are you sure to delete this node?" dialog
         dialog = Dialog.wait_for(self.page, timeout=timeout)
         Dialog.click_button(dialog, "Delete")
-        self.page.wait_for_timeout(500)
+        self.node_panel_delete_button.wait_for(state="detached", timeout=timeout)
         logger.info("Deleted node: %s", node_id)
 
     def make_node_entrypoint(self, node_id: str, timeout: int = 5000):
