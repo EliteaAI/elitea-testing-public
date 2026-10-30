@@ -83,7 +83,7 @@ def _tool_chip_texts(chat) -> list[str]:
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/chat/build-skills-project-context/"
-    "ELITEA-3370_skills-and-project-context-builder-disabled-prevents-entity-creation.md",
+    "ELITEA-3370_builder-modules-disabled-prevents-creation.md",
     "onetest-ai Test Case link (ELITEA-3370)",
 )
 
