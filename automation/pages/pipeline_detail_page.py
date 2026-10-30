@@ -1523,8 +1523,11 @@ class PipelineDetailPage(PipelineFormPage):
     # AgentDetailPage's Toolkits-section fields, ported here since
     # PipelineFormPage/PipelineDetailPage had no TOOLS-section locators yet.
     toolkits_section = LocatorDescriptor(
-        testid="agent-toolkits-section",
-        description="TOOLS section container (Toolkit/MCP/Agent/Pipeline add buttons + MODULES)"
+        testid="pipeline-tools-section",
+        description=(
+            "Pipeline TOOLS section container (PipelineToolsSection.jsx, EL-7159: read-only list of "
+            "what the nodes use + MODULES; replaced the shared agent-toolkits-section)"
+        ),
     )
     add_mcp_button = LocatorDescriptor(
         testid="agent-add-mcp-button",
@@ -1664,6 +1667,17 @@ class PipelineDetailPage(PipelineFormPage):
     # template constant per .agents/testing.md § Locator policy, formatted
     # with test-generated data only at the call site.
     MCP_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-mcp-node-input-mapping-value-{}"]'
+
+    # Node-level project pickers (EL-7159, EliteaUI 359dcdb2): toolkits / MCPs /
+    # agents / pipelines are now picked inside the node config panel
+    # (ProjectToolkitPicker / ProjectAgentPicker). Menu rows carry
+    # `{node-select-testid}-option`, the menu's search field `-menu-search`.
+    AGENT_NODE_PICKER_OPTION = '[data-testid="pipeline-agent-node-agent-select-option"]'
+    AGENT_NODE_PICKER_SEARCH = '[data-testid="pipeline-agent-node-agent-select-menu-search"]'
+    MCP_NODE_PICKER_OPTION = '[data-testid="pipeline-mcp-node-toolkit-select-option"]'
+    MCP_NODE_PICKER_SEARCH = '[data-testid="pipeline-mcp-node-toolkit-select-menu-search"]'
+    TOOLKIT_NODE_PICKER_OPTION = '[data-testid="pipeline-toolkit-node-toolkit-select-option"]'
+    TOOLKIT_NODE_PICKER_SEARCH = '[data-testid="pipeline-toolkit-node-toolkit-select-menu-search"]'
     # Required input-mapping Value fields inside the node panel's Basic section
     # (ELITEA-1954 adjust: the 'Input mapping (required N)' heading no longer
     # renders in the panel layout; required params are listed directly under Basic).
@@ -1679,6 +1693,14 @@ class PipelineDetailPage(PipelineFormPage):
     # MCP_NODE_INPUT_MAPPING_VALUE above, gated to nodeType==toolkit in
     # BaseToolNode.jsx (ELITEA-2010).
     TOOLKIT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-toolkit-node-input-mapping-value-{}"]'
+    # Panel layout (EL-7157/EL-7159, BaseToolNode.jsx): required params are listed under
+    # Basic; optional ones are offered by the Advanced section's "add optional parameter" menu.
+    TOOLKIT_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES = (
+        '[data-testid="pipeline-node-panel-basic-section"] '
+        '[data-testid^="pipeline-toolkit-node-input-mapping-value-"]'
+    )
+    TOOLKIT_NODE_ADD_OPTIONAL_PARAMETER = '[data-testid="pipeline-toolkit-node-add-optional-parameter"]'
+    TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS = '[data-testid^="pipeline-toolkit-node-optional-parameter-"]'
     TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
 
     # Same mechanism, gated to nodeType==custom in DefaultNode.jsx (ELITEA-2036).
@@ -4641,6 +4663,19 @@ class PipelineDetailPage(PipelineFormPage):
         self._select_node(node_id)
         self.mcp_node_toolkit_select.wait_for(state="visible", timeout=timeout)
 
+    def expand_mcp_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the MCP node's panel and expand its "Advanced" accordion (Input/Output/Structured output).
+
+        EL-7157 (class A, UI drift): in the node config panel those fields sit in a
+        collapsed-by-default "Advanced" section. Idempotent.
+        """
+        self.ensure_mcp_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
     def get_mcp_node_toolkit_value(self, timeout: int = 5000) -> str:
         """Read the MCP node's currently-selected Toolkit display text.
 
@@ -4799,9 +4834,127 @@ class PipelineDetailPage(PipelineFormPage):
                 cleaned display name as rendered in the option list).
             timeout: Maximum wait time for the dropdown / option.
         """
-        self.open_mcp_node_toolkit_select(timeout=timeout)
-        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
-        option.click(timeout=timeout)
+        # EL-7159 (class A, UI drift): the node's MCP select is now the project picker
+        # (ProjectToolkitPicker) — rows are `...-toolkit-select-option`, and picking one
+        # attaches the MCP to the pipeline (persisted on Save).
+        if self.page.locator(self.MCP_NODE_PICKER_OPTION).count() == 0:
+            self.open_mcp_node_picker(timeout=timeout)
+        self._click_node_picker_option(
+            self.page.locator(self.MCP_NODE_PICKER_OPTION),
+            self.page.locator(self.MCP_NODE_PICKER_SEARCH),
+            toolkit_name,
+            timeout=timeout,
+        )
+
+    def open_mcp_node_picker(self, timeout: int = 10000) -> None:
+        """Open the MCP node's project MCP picker and wait for its rows (EL-7159)."""
+        self.ensure_mcp_node_panel_open(timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.mcp_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.MCP_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
+
+    def get_mcp_node_picker_search_count(self) -> int:
+        """Count of the search field in the open MCP node picker menu."""
+        return self.page.locator(self.MCP_NODE_PICKER_SEARCH).count()
+
+    def get_mcp_node_picker_option_count(self) -> int:
+        """Count of rows currently listed in the open MCP node picker menu."""
+        return self.page.locator(self.MCP_NODE_PICKER_OPTION).count()
+
+    def _click_node_picker_option(
+        self, options: Locator, search: Locator, name: str, timeout: int = 10000
+    ) -> None:
+        """Pick the row whose text contains *name* in an open node project picker menu."""
+        options.first.wait_for(state="visible", timeout=timeout)
+        if search.count() > 0 and search.first.is_visible():
+            search.first.fill(name)
+        match = options.filter(has_text=name).first
+        match.wait_for(state="visible", timeout=timeout)
+        match.click(timeout=timeout)
+        logger.info("Picked '%s' in node picker", name)
+
+    def _ensure_node_panel_open(self, select_locator, node_type: str, timeout: int = 10000) -> None:
+        """Select the first *node_type* node if its config panel field is not visible yet."""
+        if select_locator.is_visible():
+            return
+        node_id = self.wait_for_node_on_canvas(node_type, timeout=timeout)
+        self._select_node(node_id)
+        select_locator.wait_for(state="visible", timeout=timeout)
+
+    def ensure_agent_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Agent node's config side panel is open (EL-7157/EL-7159)."""
+        self._ensure_node_panel_open(self.agent_node_agent_select, "agent", timeout=timeout)
+
+    def ensure_toolkit_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Toolkit node's config side panel is open (EL-7157/EL-7159)."""
+        self._ensure_node_panel_open(self.toolkit_node_toolkit_select, "toolkit", timeout=timeout)
+
+    def open_agent_node_picker(self, timeout: int = 10000) -> None:
+        """Open the Agent node's "Agents & Pipelines" project picker and wait for its rows (EL-7159)."""
+        self.ensure_agent_node_panel_open(timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_agent_select.click(timeout=timeout)
+        self.page.locator(self.AGENT_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
+
+    def close_node_panel(self, timeout: int = 10000) -> None:
+        """Close the node config side panel if open and wait until it is gone (restores the left TOOLS column)."""
+        if self.node_panel_close_button.count() > 0:
+            self.node_panel_close_button.click(timeout=timeout)
+        self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
+
+    def wait_for_agent_node_agent_value(self, expected: str, timeout: int = 10000) -> str:
+        """Wait until the Agent node's picker shows *expected* (the pick resolves the agent details async)."""
+        self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
+        expect(self.agent_node_agent_select).to_contain_text(expected, timeout=timeout)
+        return self.get_agent_node_agent_value(timeout=timeout)
+
+    def pick_agent_node_application(self, name: str, timeout: int = 10000) -> None:
+        """Pick an agent or pipeline in the Agent node's project picker (EL-7159).
+
+        The row is attached to the pipeline's TOOLS list immediately, but it is
+        persisted (``application_relation`` PATCH) only on Save.
+        """
+        if self.page.locator(self.AGENT_NODE_PICKER_OPTION).count() == 0:
+            self.open_agent_node_picker(timeout=timeout)
+        self._click_node_picker_option(
+            self.page.locator(self.AGENT_NODE_PICKER_OPTION),
+            self.page.locator(self.AGENT_NODE_PICKER_SEARCH),
+            name,
+            timeout=timeout,
+        )
+
+    def save_and_wait_for_attach(
+        self, attach_path: str, project_id: str, pipeline_id: int, timeout: int = 15000
+    ) -> dict:
+        """Click Save; wait for BOTH the deferred attach PATCH and the pipeline PUT (201).
+
+        EL-7159: picking a toolkit/MCP/agent/pipeline in a node attaches it on Save.
+
+        Args:
+            attach_path: URL fragment of the attach endpoint, e.g.
+                ``/tool/prompt_lib/`` (toolkit/MCP) or ``/application_relation/prompt_lib/``
+                (agent/pipeline).
+            project_id: Project id scoping the URL match.
+            pipeline_id: The pipeline's numeric id.
+            timeout: Maximum wait per response in milliseconds.
+
+        Returns:
+            Parsed JSON body of the attach PATCH's ``201`` response.
+        """
+        with self.page.expect_response(
+            lambda r: f"{attach_path}{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as attach_info:
+            with self.page.expect_response(
+                lambda r: f"/application/prompt_lib/{project_id}/{pipeline_id}" in r.url
+                and r.request.method == "PUT"
+                and r.status == 201,
+                timeout=timeout,
+            ):
+                self.save_button.evaluate("el => el.click()")
+        return attach_info.value.json()
 
     def select_mcp_node_tool(self, tool_name: str, timeout: int = 5000) -> None:
         """Open the Tool dropdown and select *tool_name*.
@@ -5827,9 +5980,67 @@ class PipelineDetailPage(PipelineFormPage):
                 ``select-option-{toolkit_name}``).
             timeout: Maximum wait time for the dropdown / option.
         """
-        self.open_toolkit_node_toolkit_select(timeout=timeout)
-        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
-        option.click(timeout=timeout)
+        # EL-7159 (class A, UI drift): project picker (ProjectToolkitPicker) rows.
+        if self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION).count() == 0:
+            self.open_toolkit_node_picker(timeout=timeout)
+        self._click_node_picker_option(
+            self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION),
+            self.page.locator(self.TOOLKIT_NODE_PICKER_SEARCH),
+            toolkit_name,
+            timeout=timeout,
+        )
+
+    def expand_toolkit_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the Toolkit node's panel and expand its "Advanced" accordion (Input/Output/optional params).
+
+        EL-7157 (class A, UI drift): collapsed by default in the node config panel. Idempotent.
+        """
+        self.ensure_toolkit_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
+    def has_toolkit_node_required_input_mapping_count(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check the node panel's Basic section lists exactly *required_count* required Value fields.
+
+        Replaces the retired 'Input mapping (required N)' heading check (panel layout has no heading).
+        """
+        fields = self.page.locator(self.TOOLKIT_NODE_PANEL_BASIC_INPUT_MAPPING_VALUES)
+        try:
+            expect(fields).to_have_count(required_count, timeout=timeout)
+            return True
+        except AssertionError:
+            return False
+
+    def get_toolkit_node_addable_optional_parameters(self, timeout: int = 10000) -> list[str]:
+        """Open the Advanced section's "add optional parameter" menu; return the offered parameter keys; close it.
+
+        Replaces the retired 'Input mapping (optional N)' heading: optional parameters are no longer
+        listed up front, they are offered by this menu (BaseToolNode.jsx ``addableOptionalParameters``).
+        """
+        self.expand_toolkit_node_advanced_section(timeout=timeout)
+        button = self.page.locator(self.TOOLKIT_NODE_ADD_OPTIONAL_PARAMETER)
+        button.wait_for(state="visible", timeout=timeout)
+        button.click(timeout=timeout)
+        options = self.page.locator(self.TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS)
+        options.first.wait_for(state="visible", timeout=timeout)
+        prefix = "pipeline-toolkit-node-optional-parameter-"
+        keys = sorted(
+            (options.nth(i).get_attribute("data-testid") or "").removeprefix(prefix)
+            for i in range(options.count())
+        )
+        self.page.keyboard.press("Escape")
+        options.first.wait_for(state="detached", timeout=timeout)
+        return keys
+
+    def open_toolkit_node_picker(self, timeout: int = 10000) -> None:
+        """Open the Toolkit node's project toolkit picker and wait for its rows (EL-7159)."""
+        self.ensure_toolkit_node_panel_open(timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.toolkit_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
 
     def open_toolkit_node_tool_select(self, timeout: int = 5000) -> None:
         """Open the Toolkit node's Tool dropdown."""
@@ -6142,6 +6353,13 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
+        # EL-7159/EL-7157 (class A, UI drift): an open node config panel collapses the left
+        # configuration column (unmounting TOOLS); close the panel and, if the column is still
+        # collapsed, expand it again before looking for the section.
+        if self.toolkits_section.count() == 0:
+            self.close_node_panel(timeout=timeout)
+            if self.toolkits_section.count() == 0:
+                self.toggle_config_panel_collapse(timeout=timeout)
         self.toolkits_section.scroll_into_view_if_needed()
         self.toolkits_section.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(500)  # Animation settle

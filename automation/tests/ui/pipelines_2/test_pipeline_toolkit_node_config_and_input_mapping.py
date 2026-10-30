@@ -77,13 +77,6 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
             "Configuration panel (General section) should be visible after navigating"
         )
 
-    with allure.step('Step 2 — Attach the toolkit via TOOLS "+ Toolkit"; verify it appears'):
-        popper = pipeline_page.open_toolkit_popper(timeout=UI_ELEMENT_TIMEOUT)
-        pipeline_page.select_toolkit_in_popper(popper, toolkit_name, timeout=TOOLKIT_POPPER_TIMEOUT)
-        assert pipeline_page.is_toolkit_attached(toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
-            f"Toolkit {toolkit_name!r} should appear as a card in the TOOLS section"
-        )
-
     with allure.step('Step 3 — Add a Toolkit node via the canvas "+" menu; verify it appears'):
         pipeline_page.add_node("Toolkit")
         node_id = pipeline_page.wait_for_node_on_canvas("toolkit", timeout=UI_ELEMENT_TIMEOUT)
@@ -92,11 +85,12 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
     with allure.step(
         "Step 4 — Base fields render inline; Tool select + INPUT MAPPING are absent before a Toolkit is chosen"
     ):
+        pipeline_page.ensure_toolkit_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.toolkit_node_toolkit_select.is_visible(), (
-            "Toolkit node's Toolkit select should be visible inline on the canvas card — "
-            "no separate click-to-open action needed (live product simplification, "
-            "see AFS Coverage Map row 3)"
+            "Toolkit node's Toolkit select should be visible in the node config panel "
+            "(canvas cards are view-only summaries since EL-7157)"
         )
+        pipeline_page.expand_toolkit_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.toolkit_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.toolkit_node_output_select.is_visible(), "Output select should be visible inline"
         # Structured output — added to close a gap the first implementation
@@ -116,8 +110,8 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
         assert not pipeline_page.is_toolkit_node_tool_select_visible(timeout=2000), (
             "Tool select should NOT be rendered before a Toolkit is selected"
         )
-        assert not pipeline_page.is_toolkit_node_input_mapping_section_visible(1, timeout=2000), (
-            "INPUT MAPPING (required N) should NOT be rendered before a Toolkit is selected"
+        assert pipeline_page.has_toolkit_node_required_input_mapping_count(0, timeout=2000), (
+            "No required Input-mapping fields should be rendered before a Toolkit is selected"
         )
 
     with allure.step("Step 5 — Select the attached toolkit; Toolkit combobox shows its name"):
@@ -126,6 +120,18 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
             f"Toolkit select should show {toolkit_name!r} after selection"
         )
 
+    with allure.step("Step 5b (case step 2) — The picked toolkit is attached: it appears as a card in TOOLS"):
+        # EL-7159 (class A, UI drift): TOOLS has no "+ Toolkit" button any more. The attach happens
+        # when the toolkit is picked in the Toolkit node's picker (Step 5; persisted on Save,
+        # Step 9) and the toolkit then shows up as a TOOLS card — verified here, after the pick,
+        # so the "nothing rendered before a Toolkit is chosen" absence checks in Step 4 stay valid.
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.ensure_toolkits_section_visible(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_toolkit_attached(toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
+            f"Toolkit {toolkit_name!r} should appear as a card in the TOOLS section"
+        )
+        pipeline_page.ensure_toolkit_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
+
     with allure.step(
         "Step 6 — Select 'search_issues' Tool; INPUT MAPPING (required 1) appears with SEARCH QUERY"
     ):
@@ -133,14 +139,16 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
         assert pipeline_page.get_toolkit_node_tool_value() == "search_issues", (
             "Tool select should show 'search_issues' after selection"
         )
-        assert pipeline_page.is_toolkit_node_input_mapping_section_visible(1, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (required 1)' section should appear for search_issues's "
+        assert pipeline_page.has_toolkit_node_required_input_mapping_count(1, timeout=UI_ELEMENT_TIMEOUT), (
+            "Exactly 1 required Input-mapping field should be listed in the panel for search_issues's "
             "1 required parameter (search_query)"
         )
-        assert pipeline_page.is_toolkit_node_input_mapping_optional_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (optional 2)' section should appear for search_issues's "
-            "2 optional parameters (max_count, repo_name)"
-        )
+        # The optional-mapping accordion heading is gone (panel layout); the 2 optional
+        # parameters are now offered by the Advanced section's "add optional parameter" menu.
+        assert pipeline_page.get_toolkit_node_addable_optional_parameters(timeout=UI_ELEMENT_TIMEOUT) == [
+            "max_count",
+            "repo_name",
+        ], "search_issues's 2 optional parameters (max_count, repo_name) should be offered in the panel"
         # The now-expanded node's INPUT MAPPING row can land directly under
         # ReactFlow's own pinned bottom-left canvas controls (live-confirmed:
         # a coordinate-based click on the SEARCH QUERY Type select silently
@@ -161,6 +169,7 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
         )
 
     with allure.step("Step 8 — Set Input combobox to 'input' and Output combobox to 'messages'"):
+        pipeline_page.expand_toolkit_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.select_toolkit_node_input_variable("input", timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_toolkit_node_input_value() == "input", (
             "Input select should show 'input' after selection"
@@ -186,14 +195,16 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("toolkit", timeout=UI_ELEMENT_TIMEOUT)
 
+        # The node panel is closed after a reload — reopen it to read the node fields.
+        pipeline_page.ensure_toolkit_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_toolkit_node_toolkit_value() == toolkit_name, (
             f"Toolkit should persist as {toolkit_name!r} after reload"
         )
         assert pipeline_page.get_toolkit_node_tool_value() == "search_issues", (
             "Tool should persist as 'search_issues' after reload"
         )
-        assert pipeline_page.is_toolkit_node_input_mapping_section_visible(1, timeout=UI_ELEMENT_TIMEOUT), (
-            "Input mapping (required 1) section should still be present after reload"
+        assert pipeline_page.has_toolkit_node_required_input_mapping_count(1, timeout=UI_ELEMENT_TIMEOUT), (
+            "The 1 required Input-mapping field should still be present after reload"
         )
         assert pipeline_page.get_toolkit_node_input_mapping_value(_SEARCH_QUERY_PARAM) == _SEARCH_QUERY_VALUE, (
             "SEARCH QUERY Input-mapping value should persist through reload"
@@ -202,6 +213,7 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
         # mapping in its Expected Final State — also assert Input/Output
         # survive, matching the same regression class already flagged for
         # the sibling LLM-node case (ELITEA-2004 AFS).
+        pipeline_page.expand_toolkit_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_toolkit_node_input_value() == "input", (
             "Input should persist as 'input' after reload"
         )

@@ -113,3 +113,18 @@ None. All 6 case steps were executed to completion against the live local enviro
 - Test-data fixture: reuse `pipeline_id` (Pipeline A) + inline `pipeline_api.create_pipeline()`/`delete_pipeline()` for Pipeline B (no existing fixture provisions a second pipeline — see Test Data). Precedent: `test_pipeline_management.py::test_delete_pipeline_via_api`.
 - Wait strategy: wait for `PATCH .../application_relation/prompt_lib/{project}/{pipeline_B_id}/{pipeline_B_version_id}` (`201`) before asserting the card/proceeding — not a fixed timeout, same discipline as `select_agent_in_popper()`.
 - Console-error capture: register `page.on("console", ...)` BEFORE step 2 (before the picker opens), matching ELITEA-2037/2038's precedent.
+
+## Adjustment — 2026-10-30 (class A, UI drift, issue #2758)
+
+**Cause:** EliteaUI 359dcdb2 (EL-7159) — the pipeline TOOLS section (`pipeline-tools-section`) is now a read-only list of what the nodes use; the "+ Toolkit/+ MCP/+ Agent/+ Pipeline" buttons are gone. Agents/pipelines are picked in the Agent node's "Agents & Pipelines" picker (node config panel) and are persisted on **Save** (not on select).
+
+**Expected-result changes:** none in what is verified (pipeline B attached as a flat-list TOOLS card; `application_relation/prompt_lib` PATCH 201; Save disabled afterwards; card survives reload; no console errors). Only the trigger changed: Step 2/3 use the Agent node picker; the PATCH 201 is now awaited together with the pipeline PUT 201 in Step 5 (Save) instead of on selection.
+
+**Handles (ladder):**
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `pipeline-agent-node-agent-select` (trigger) | — | testid on DEV ✓ |
+| testid | `pipeline-agent-node-agent-select-option` / `-menu-search` | — | testid on DEV ✓ |
+| testid | `pipeline-tools-section`, `pipeline-tool-card` | — | testid on DEV ✓ |
+| testid | `pipeline-node-panel-close` | — | testid on DEV ✓ |
