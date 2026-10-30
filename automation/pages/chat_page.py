@@ -863,6 +863,172 @@ class ChatPage(BasePage):
         logger.info("Opened generated-entity chip (label filter=%r)", entity_label)
 
     # ------------------------------------------------------------------
+    # Clarifying-question HITL card (ClarifyingQuestionControl.jsx,
+    # ELITEA-3369) — the `ask_user` tool's stepper-based question flow.
+    # Confirmed via full source read: the card's own container is a plain
+    # Box with NO data-testid/role/aria-label anywhere — every declaration
+    # below targets a CHILD element instead (AFS Concrete Handles table).
+    # ------------------------------------------------------------------
+
+    clarifying_question_custom_input = LocatorDescriptor(
+        css='input[placeholder="Your option"]',
+        suggested_testid="chat-clarifying-question-custom-input",
+        description=(
+            "The clarifying-question card's always-present free-text "
+            "input (TextField, placeholder='Your option'). NO testid, NO "
+            "aria-label, NO real <label> — confirmed live via "
+            "get_by_label('Your option') returning 0 matches and via "
+            "source read (ClarifyingQuestionControl.jsx: placeholder prop "
+            "only). Doubles as the card's own presence/absence signal "
+            "since the container itself carries no testid (count() > 0 "
+            "== card visible, count() == 0 == card closed)."
+        ),
+    )
+
+    clarifying_question_stepper = LocatorDescriptor(
+        css=r':text-matches("^\\d+/\\d+$")',
+        suggested_testid="chat-clarifying-question-stepper",
+        description=(
+            "The 'N/total' stepper label Typography (any total — a 3- or 5-question run renders '1/3'/'1/5') — only rendered "
+            "when the question set has MORE THAN ONE entry (`total > 1` "
+            "in source, ClarifyingQuestionControl.jsx). A single-question "
+            "flow renders no stepper at all; assert its TEXT within a "
+            "test that has already confirmed a multi-question run, never "
+            "assert mere presence as a flow invariant. The regex "
+            "matches any N/total (ELITEA-3369 Known Defects #3) — NOT "
+            "asserted as a general invariant of the `ask_user` tool, which can also "
+            "produce a single-question (no-stepper) run for a different "
+            "Q1 answer. Playwright's `:text-is()` pseudo-class is an exact "
+            "own-text match, not a positional/structural selector."
+        ),
+    )
+
+    # The Skip/Continue submit button is a SAME-element, conditional-text
+    # pair (ACCESSIBLE NAME toggles between the two based on the `answered`
+    # boolean, source: ClarifyingQuestionControl.jsx — no aria-pressed/
+    # data-* state attribute exists, so the name itself is the only
+    # differentiator). Both names are declared, canon ruling #277 shape
+    # (a); get_clarifying_question_submit_button() picks whichever one is
+    # CURRENTLY rendered, never a positional pick among the two
+    # header-stepper nav buttons. Flagged as a `question` for the lead/
+    # testid-migrator per the AFS (ELITEA-3369 Concrete Handles) — a real
+    # testid would retire the state-dependent-name ambiguity.
+    CLARIFYING_QUESTION_SUBMIT_BUTTON_SKIP = ScopedLocator(
+        role="button",
+        name="Skip",
+        exact=True,
+        suggested_testid="chat-clarifying-question-submit-button",
+    )
+    CLARIFYING_QUESTION_SUBMIT_BUTTON_CONTINUE = ScopedLocator(
+        role="button",
+        name="Continue",
+        exact=True,
+        suggested_testid="chat-clarifying-question-submit-button",
+    )
+
+    CLARIFYING_QUESTION_OPTION_ROW = ScopedLocator(
+        css=':text-is("{}")',
+        suggested_testid="chat-clarifying-question-option-{}",
+        description=(
+            "A clarifying-question option row, resolved by its exact "
+            "visible label text. The row Box has no testid and no "
+            "accessible name of its own (the nested MUI radio/checkbox "
+            "control has `pointerEvents: 'none'` and no `aria-label` — "
+            "only the sibling Typography carries the visible text, "
+            "confirmed live + via source: ClarifyingQuestionControl.jsx's "
+            "`optionRow` click handler sits on the row Box, not the "
+            "control). `:text-is()` resolves the Typography by its exact "
+            "own text — the resulting click event bubbles to the row "
+            "Box's onClick (confirmed live), so no extra ancestor walk is "
+            "needed."
+        ),
+    )
+
+    def get_clarifying_question_option_row(self, option_label: str):
+        """Return the Locator for a clarifying-question option row by its
+        exact visible label text (e.g. "When relevant").
+        """
+        return self.CLARIFYING_QUESTION_OPTION_ROW.within(self.page, option_label)
+
+    def get_clarifying_question_submit_button(self):
+        """Return the Locator for the clarifying card's Skip/Continue
+        button, resolved by whichever accessible name is CURRENTLY
+        rendered (never a positional pick).
+        """
+        continue_btn = self.CLARIFYING_QUESTION_SUBMIT_BUTTON_CONTINUE.within(self.page)
+        if continue_btn.count() > 0:
+            return continue_btn
+        return self.CLARIFYING_QUESTION_SUBMIT_BUTTON_SKIP.within(self.page)
+
+    def wait_for_clarifying_question_card(self, timeout: int = 30000):
+        """Wait for the clarifying-question card to render (its custom-text
+        input becomes visible — the card's own presence signal, since the
+        container carries no testid).
+        """
+        self.clarifying_question_custom_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Clarifying-question card visible")
+
+    def wait_for_clarifying_question_card_closed(self, timeout: int = 15000):
+        """Wait for the clarifying-question card to disappear (its
+        custom-text input is no longer attached).
+        """
+        self.clarifying_question_custom_input.wait_for(state="hidden", timeout=timeout)
+        logger.info("Clarifying-question card closed")
+
+    def get_clarifying_question_stepper_text(self, timeout: int = 10000) -> str:
+        """Return the stepper label's text (e.g. "1/2"), or "" if the
+        current question set has only one entry (no stepper rendered).
+        """
+        stepper = self.clarifying_question_stepper
+        if stepper.count() == 0:
+            return ""
+        stepper.first.wait_for(state="visible", timeout=timeout)
+        return (stepper.first.text_content() or "").strip()
+
+    @action("Answer one clarifying question (free text or option select)")
+    def answer_clarifying_question(
+        self,
+        custom_text: str | None = None,
+        option_label: str | None = None,
+        timeout: int = 10000,
+    ):
+        """Answer the clarifying card's CURRENT question and click submit.
+
+        Mutually exclusive per the component's own semantics
+        (``handleCustomChange``/``handleRowClick`` in
+        ``ClarifyingQuestionControl.jsx`` — typing text clears any radio
+        selection and vice versa): pass exactly one of ``custom_text`` /
+        ``option_label``.
+
+        Args:
+            custom_text: Free-text answer — fills the "Your option" input.
+            option_label: Exact option-row label to click (e.g.
+                "When relevant").
+            timeout: Maximum wait time in milliseconds.
+        """
+        if bool(custom_text) == bool(option_label):
+            raise ValueError(
+                "answer_clarifying_question() requires exactly one of "
+                "custom_text / option_label"
+            )
+
+        if custom_text:
+            self.clarifying_question_custom_input.click()
+            self.clarifying_question_custom_input.press_sequentially(custom_text, delay=20)
+        else:
+            row = self.get_clarifying_question_option_row(option_label)
+            row.wait_for(state="visible", timeout=timeout)
+            row.click()
+
+        submit_button = self.get_clarifying_question_submit_button()
+        submit_button.wait_for(state="visible", timeout=timeout)
+        submit_button.click()
+        logger.info(
+            "Answered clarifying question (custom_text=%r, option_label=%r)",
+            bool(custom_text), option_label,
+        )
+
+    # ------------------------------------------------------------------
     # HITL sensitive-action authorization card — direct toolkit call, no
     # agent (ELITEA-2211..2214). Same underlying ChatHitlActions.jsx
     # component AgentDetailPage already has locators for; ChatPage had none
