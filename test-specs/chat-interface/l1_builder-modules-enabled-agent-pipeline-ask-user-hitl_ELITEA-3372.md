@@ -4,7 +4,7 @@
 - **TMS ID**: ELITEA-3372
 - **Linked Story**: `EliteaAI/elitea_issues#6239`
 - **Priority**: l1 (case priority: `critical`; pytest marker `@pytest.mark.p0`)
-- **Status**: **ready-for-automation**
+- **Status**: **blocked** (re-analysis 2026-10-30, batch agent-pipeline-builder-skills-2502-r2 — see § Re-analysis; prior status was ready-for-automation)
 - **Environment Explored**: DEV as deployed (`https://dev.elitea.ai/app`,
   project `Private`, API project id `575`). Driven via a direct
   `sync_playwright` scratch script through the existing `ChatPage` /
@@ -369,3 +369,28 @@ No positional handles were used or needed.
   Skill/Project-Context disabled-path negative check) — not a target for
   `already-covered`/`extend-existing` against it, and vice versa; keep as
   separate specs, per that AFS's own closing note.
+
+
+## Re-analysis 2026-10-30 (batch agent-pipeline-builder-skills-2502-r2) — BLOCKED
+
+Lead ordered a retry: re-verify whether the case's own prompts reliably reach the Ask User card.
+Scripted headless probe (fresh UI-created conversation each run, all four modules enabled via
+`ensure_module_toggle_checked`, literal case prompts, 120s window):
+
+| Prompt | Runs | Card | Chip directly (no card) |
+|---|---|---|---|
+| `Create an agent for customer support` | 3 | 0 | 3 (9-13s) |
+| `Create a pipeline for data processing` | 3 | 3 | 0 (card in 6-7s) |
+
+Combined with the prior analysis (agent 0/5, pipeline 4/5): agent prompt 0/8, pipeline 7/8.
+Step 3 expects Ask User on the agent prompt; the model essentially never asks. A bounded
+fresh-conversation retry (max 3) cannot reach the card for step 3 (P(card) ~ 0), so the
+sanctioned retry does not preserve the case's claim. Branching (card OR chip) would weaken
+step 3's expected result and needs sign-off; rewriting the prompt likewise. No product defect
+proven (LLM routing); pipeline half (steps 6-8) and HITL (9-12) are automatable once the lead rules.
+Options for the lead: (a) sign off on a branching step 3 (declared); (b) sign off on a different
+agent prompt that reliably triggers the card (earlier phrasings like "Create an agent" gave 3/4);
+(c) case-text clarification to the TMS author.
+Transit note: `/app/chat/<api-created-conversation-id>` returned the 404 page on DEV today
+(conversation_id fixture + navigate_to_chat fails at chat-message-input); a possible regression
+affecting every fixture-based chat test. UI-created conversations work.
