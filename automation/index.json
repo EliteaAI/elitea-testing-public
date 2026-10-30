@@ -1160,6 +1160,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.chat.test_builder_modules_disabled.TestBuilderModulesDisabledPreventsEntityCreation.test_builder_modules_disabled_prevents_entity_creation",
+      "markers": [
+        "chat",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-3370"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3370_builder-modules-disabled-prevents-creation.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.chat.test_chat_create_conversation_from_folder_context_menu.TestChatCreateConversationFromFolderMenu.test_create_conversation_from_folder_context_menu",
       "markers": [
         "chat",
