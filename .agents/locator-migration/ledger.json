@@ -169,6 +169,42 @@
       "updated": "2026-10-19",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.CLARIFYING_QUESTION_OPTION_ROW": {
+      "file": "pages/chat_page.py",
+      "line": 929,
+      "kind": "css",
+      "selector": ":text-is(\"{}\")",
+      "suggested_testid": "chat-clarifying-question-option-{}",
+      "description": "A clarifying-question option row, resolved by its exact visible label text. The row Box has no testid and no accessible name of its own (the nested MUI radio/checkbox control has `pointerEvents: 'none'` and no `aria-label` — only the sibling Typography carries the visible text, confirmed live + via source: ClarifyingQuestionControl.jsx's `optionRow` click handler sits on the row Box, not the control). `:text-is()` resolves the Typography by its exact own text — the resulting click event bubbles to the row Box's onClick (confirmed live), so no extra ancestor walk is needed.",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.CLARIFYING_QUESTION_SUBMIT_BUTTON_CONTINUE": {
+      "file": "pages/chat_page.py",
+      "line": 922,
+      "kind": "role",
+      "selector": "button[name='Continue']",
+      "suggested_testid": "chat-clarifying-question-submit-button",
+      "description": "",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.CLARIFYING_QUESTION_SUBMIT_BUTTON_SKIP": {
+      "file": "pages/chat_page.py",
+      "line": 916,
+      "kind": "role",
+      "selector": "button[name='Skip']",
+      "suggested_testid": "chat-clarifying-question-submit-button",
+      "description": "",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_DELETE_BUTTON": {
       "file": "pages/chat_page.py",
       "line": 833,
@@ -213,7 +249,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
-      "line": 6934,
+      "line": 7100,
       "kind": "xpath",
       "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
       "suggested_testid": "chat-participant-attention-card-{}",
@@ -225,7 +261,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
       "file": "pages/chat_page.py",
-      "line": 6923,
+      "line": 7089,
       "kind": "css",
       "selector": "svg path",
       "suggested_testid": "chat-participant-icon-path",
@@ -249,7 +285,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
       "file": "pages/chat_page.py",
-      "line": 6912,
+      "line": 7078,
       "kind": "xpath",
       "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
       "suggested_testid": "chat-participants-section-title-{}",
@@ -273,7 +309,7 @@
     },
     "pages/chat_page.py::ChatPage.USER_MESSAGE_AVATAR": {
       "file": "pages/chat_page.py",
-      "line": 1487,
+      "line": 1653,
       "kind": "xpath",
       "selector": ".//*[contains(@class, 'MuiAvatar-root')]",
       "suggested_testid": "chat-message-user-avatar",
@@ -283,9 +319,33 @@
       "updated": "2026-10-22",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.clarifying_question_custom_input": {
+      "file": "pages/chat_page.py",
+      "line": 873,
+      "kind": "css",
+      "selector": "input[placeholder=\"Your option\"]",
+      "suggested_testid": "chat-clarifying-question-custom-input",
+      "description": "The clarifying-question card's always-present free-text input (TextField, placeholder='Your option'). NO testid, NO aria-label, NO real <label> — confirmed live via get_by_label('Your option') returning 0 matches and via source read (ClarifyingQuestionControl.jsx: placeholder prop only). Doubles as the card's own presence/absence signal since the container itself carries no testid (count() > 0 == card visible, count() == 0 == card closed).",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.clarifying_question_stepper": {
+      "file": "pages/chat_page.py",
+      "line": 888,
+      "kind": "css",
+      "selector": ":text-matches(\"^\\\\d+/\\\\d+$\")",
+      "suggested_testid": "chat-clarifying-question-stepper",
+      "description": "The 'N/total' stepper label Typography (any total — a 3- or 5-question run renders '1/3'/'1/5') — only rendered when the question set has MORE THAN ONE entry (`total > 1` in source, ClarifyingQuestionControl.jsx). A single-question flow renders no stepper at all; assert its TEXT within a test that has already confirmed a multi-question run, never assert mere presence as a flow invariant. The regex matches any N/total (ELITEA-3369 Known Defects #3) — NOT asserted as a general invariant of the `ask_user` tool, which can also produce a single-question (no-stepper) run for a different Q1 answer. Playwright's `:text-is()` pseudo-class is an exact own-text match, not a positional/structural selector.",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.conversation_menu_item_icon": {
       "file": "pages/chat_page.py",
-      "line": 1260,
+      "line": 1426,
       "kind": "css",
       "selector": "svg",
       "suggested_testid": "chat-conversation-menu-item-icon",
@@ -297,7 +357,7 @@
     },
     "pages/chat_page.py::ChatPage.export_chat_modal_option_radio": {
       "file": "pages/chat_page.py",
-      "line": 1243,
+      "line": 1409,
       "kind": "css",
       "selector": "input[type=\"radio\"]",
       "suggested_testid": "export-chat-modal-option-radio",
@@ -309,7 +369,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_items": {
       "file": "pages/chat_page.py",
-      "line": 1442,
+      "line": 1608,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "chat-folder-menu-item-{}",
@@ -321,7 +381,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_new_chat_item": {
       "file": "pages/chat_page.py",
-      "line": 1448,
+      "line": 1614,
       "kind": "role",
       "selector": "menuitem[name='New chat']",
       "suggested_testid": "chat-folder-menu-new-chat-menuitem",
@@ -333,7 +393,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_own_menu_button": {
       "file": "pages/chat_page.py",
-      "line": 1459,
+      "line": 1625,
       "kind": "xpath",
       "selector": ".//*[@data-testid=\"conversation-menu-menu-button\"][not(ancestor::*[starts-with(@data-testid, \"chat-conversation-item-\")])]",
       "suggested_testid": "chat-folder-menu-button",
@@ -345,7 +405,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 6871,
+      "line": 7037,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -357,7 +417,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 6840,
+      "line": 7006,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -369,7 +429,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 6832,
+      "line": 6998,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -381,7 +441,7 @@
     },
     "pages/chat_page.py::ChatPage.speaking_mode_button": {
       "file": "pages/chat_page.py",
-      "line": 1480,
+      "line": 1646,
       "kind": "role",
       "selector": "button[name='enter speaking mode']",
       "suggested_testid": "chat-speaking-mode-button",
@@ -393,7 +453,7 @@
     },
     "pages/chat_page.py::ChatPage.voice_input_button": {
       "file": "pages/chat_page.py",
-      "line": 1497,
+      "line": 1663,
       "kind": "role",
       "selector": "button[name='start voice input']",
       "suggested_testid": "chat-voice-input-button",
@@ -401,6 +461,150 @@
       "state": "raw",
       "added": "2026-10-22",
       "updated": "2026-10-22",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.EMPTY_TOOLKIT_DELETE": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 103,
+      "kind": "xpath",
+      "selector": ".//div[p and button][not(following-sibling::*//*[@role='button'])]/button",
+      "suggested_testid": "admin-guardrails-empty-toolkit-delete-button",
+      "description": "Trash button in the header row (toolkit-name p + button) of a toolkit block that holds no tool chip (admin_ui); the button has no accessible name",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.FIELD_CARD": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 88,
+      "kind": "xpath",
+      "selector": "//p[normalize-space()='{0}']/ancestor::div[.//input][not(.//div[.//input][.//p[normalize-space()='{0}']])]",
+      "suggested_testid": "admin-guardrails-field-card-{}",
+      "description": "Field card = nearest ancestor of the title Typography holding the field input, expressed without positions (admin_ui); no role/label/stable css",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.FIELD_CHIP": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 116,
+      "kind": "role",
+      "selector": "button[name='{}']",
+      "suggested_testid": "admin-guardrails-field-chip-{}",
+      "description": "",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.FIELD_CHIP_LABEL": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 109,
+      "kind": "xpath",
+      "selector": ".//div[@role='button']/span",
+      "suggested_testid": "admin-guardrails-field-chip-label",
+      "description": "Label span of every deletable chip (div[role=button]) in a field card (admin_ui); enumerates all chips, so it needs no accessible name",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.FIELD_RELOAD_CHIP": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 120,
+      "kind": "xpath",
+      "selector": ".//*[normalize-space()='Reload required']",
+      "suggested_testid": "admin-guardrails-field-reload-chip-{}",
+      "description": "Reload required chip label searched inside the field card (admin_ui); Chip has no role/name of its own",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.FIELD_TITLE": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 83,
+      "kind": "xpath",
+      "selector": "//p[normalize-space()='{}']",
+      "suggested_testid": "admin-guardrails-field-title-{}",
+      "description": "Field title is a bare body2 Typography (admin_ui); no role/label/stable css",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.TOOLKIT_BLOCK": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 97,
+      "kind": "xpath",
+      "selector": ".//p[normalize-space()='{0}']/ancestor::div[.//input][not(.//div[.//input][.//p[normalize-space()='{0}']])]",
+      "suggested_testid": "admin-guardrails-toolkit-block-{}",
+      "description": "Toolkit block inside a field card (admin_ui); no role/label/stable css",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.reload_snackbar_alert": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 69,
+      "kind": "xpath",
+      "selector": "//*[@role='alert'][contains(normalize-space(), 'Reload required')]",
+      "suggested_testid": "admin-config-reload-snackbar-alert",
+      "description": "Warning snackbar after a save that returned requires_restart (admin_ui); role=alert has no content-derived name",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.restart_bar_label": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 76,
+      "kind": "xpath",
+      "selector": "//span[normalize-space()='Reload required:']",
+      "suggested_testid": "admin-config-restart-bar-label",
+      "description": "Restart bar caption (admin_ui); no role/label/stable css - it is a bare Typography span",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.save_button": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 49,
+      "kind": "role",
+      "selector": "button[name='Save']",
+      "suggested_testid": "admin-config-save-button",
+      "description": "Configuration footer Save button",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.save_failure_alert": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 64,
+      "kind": "xpath",
+      "selector": "//*[@role='alert'][contains(normalize-space(), 'Failed to save')]",
+      "suggested_testid": "admin-config-save-failure-alert",
+      "description": "Save failure snackbar (admin_ui); role=alert has no content-derived name",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
+      "history": []
+    },
+    "pages/guardrails_admin_page.py::GuardrailsAdminPage.save_success_alert": {
+      "file": "pages/guardrails_admin_page.py",
+      "line": 57,
+      "kind": "xpath",
+      "selector": "//*[@role='alert'][contains(normalize-space(), 'Configuration saved')]",
+      "suggested_testid": "admin-config-save-success-alert",
+      "description": "Save success snackbar (admin_ui); also carries the 'Reload required' variant. MUI Alert role=alert has no content-derived accessible name, and the action-bar warning Alert shares the role, so role+name cannot isolate it",
+      "state": "raw",
+      "added": "2026-10-30",
+      "updated": "2026-10-30",
       "history": []
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
@@ -814,20 +1018,20 @@
   },
   "last_sync": "2026-10-30",
   "metric": {
-    "declared_total": 1315,
+    "declared_total": 1332,
     "declared_testid": 1249,
-    "declared_non_testid": 66,
-    "non_testid_with_hint": 45,
+    "declared_non_testid": 83,
+    "non_testid_with_hint": 62,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 11,
+      "css": 14,
       "fallback": 20,
       "locator": 1,
-      "role": 22,
+      "role": 26,
       "testid": 1249,
-      "xpath": 12
+      "xpath": 22
     },
-    "locator_debt": 0.0502,
-    "unmanaged_handles": 339
+    "locator_debt": 0.0623,
+    "unmanaged_handles": 318
   }
 }

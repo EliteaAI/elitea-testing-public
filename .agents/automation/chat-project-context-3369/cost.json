@@ -1,0 +1,318 @@
+{
+ "v": 1,
+ "batch": "chat-project-context-3369",
+ "generatedAt": "2026-10-30T10:39:46.909Z",
+ "sources": {
+  "window": {
+   "start": "2026-10-19T13:30:37.014Z",
+   "end": "2026-10-31T10:39:45.427Z",
+   "source": "scopes"
+  },
+  "sessions": 1,
+  "sessionIds": [
+   "claude:239128ab-c7aa-4531-a006-7687bd8ad2fb"
+  ],
+  "hosts": [
+   "claude"
+  ],
+  "users": [
+   "automation-factory"
+  ],
+  "costSources": [
+   "ccusage-metered"
+  ],
+  "models": [
+   "1_eu.anthropic.claude-sonnet-5-5",
+   "<synthetic>"
+  ]
+ },
+ "totals": {
+  "costUsd": 10.5,
+  "tokens": 19676930,
+  "tokensSplit": {
+   "input": 124625,
+   "output": 84292,
+   "cacheRead": 16758391,
+   "cacheWrite": 2709622
+  },
+  "tokensByModel": {
+   "1_eu.anthropic.claude-sonnet-5-5": {
+    "input": 124625,
+    "output": 84292,
+    "cacheRead": 16758391,
+    "cacheWrite": 2709622
+   },
+   "<synthetic>": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   }
+  },
+  "activeMin": 99,
+  "dispatches": 15,
+  "sessions": 1,
+  "turns": 38,
+  "toolCalls": 163,
+  "toolErrors": 8,
+  "skills": [
+   "test-automation-workflow"
+  ]
+ },
+ "byRole": {
+  "qa-engineer": {
+   "costUsd": 3.09,
+   "tokens": 5592206,
+   "tok": {
+    "input": 51590,
+    "output": 35630,
+    "cacheRead": 4754716,
+    "cacheWrite": 750270
+   },
+   "activeMin": 10,
+   "dispatches": 7,
+   "toolCalls": 55,
+   "toolErrors": 3
+  },
+  "test-automation-engineer": {
+   "costUsd": 3.21,
+   "tokens": 8330688,
+   "tok": {
+    "input": 50755,
+    "output": 30432,
+    "cacheRead": 7544902,
+    "cacheWrite": 704599
+   },
+   "activeMin": 32,
+   "dispatches": 8,
+   "toolCalls": 72,
+   "toolErrors": 5
+  },
+  "test-automation-lead": {
+   "costUsd": 4.19,
+   "tokens": 5754036,
+   "tok": {
+    "input": 22280,
+    "output": 18230,
+    "cacheRead": 4458773,
+    "cacheWrite": 1254753
+   },
+   "activeMin": 57,
+   "dispatches": 0,
+   "toolCalls": 36,
+   "toolErrors": 0
+  }
+ },
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": 5.44,
+  "sharePct": 52,
+  "lead": {
+   "costUsd": 4.19,
+   "tokens": 5754036,
+   "tok": {
+    "input": 22280,
+    "output": 18230,
+    "cacheRead": 4458773,
+    "cacheWrite": 1254753
+   },
+   "activeMin": 57,
+   "dispatches": 0,
+   "toolCalls": 36,
+   "toolErrors": 0
+  },
+  "stages": {
+   "costUsd": 1.25,
+   "tokens": 1707788,
+   "tok": {
+    "input": 25480,
+    "output": 9950,
+    "cacheRead": 1330417,
+    "cacheWrite": 341941
+   },
+   "activeMin": 4,
+   "dispatches": 5,
+   "toolCalls": 18,
+   "toolErrors": 3
+  },
+  "byStage": {
+   "triage": {
+    "costUsd": 0.33,
+    "tokens": 213502,
+    "tok": {
+     "input": 8585,
+     "output": 378,
+     "cacheRead": 97740,
+     "cacheWrite": 106799
+    },
+    "activeMin": 0,
+    "dispatches": 2,
+    "toolCalls": 2,
+    "toolErrors": 1
+   },
+   "gate": {
+    "costUsd": 0.49,
+    "tokens": 1145751,
+    "tok": {
+     "input": 8456,
+     "output": 3166,
+     "cacheRead": 1017034,
+     "cacheWrite": 117095
+    },
+    "activeMin": 3,
+    "dispatches": 1,
+    "toolCalls": 12,
+    "toolErrors": 1
+   },
+   "report": {
+    "costUsd": 0.44,
+    "tokens": 348535,
+    "tok": {
+     "input": 8439,
+     "output": 6406,
+     "cacheRead": 215643,
+     "cacheWrite": 118047
+    },
+    "activeMin": 1,
+    "dispatches": 2,
+    "toolCalls": 4,
+    "toolErrors": 1
+   }
+  }
+ },
+ "rework": {
+  "costUsd": 0.56,
+  "tokens": 1960696,
+  "tok": {
+   "input": 8469,
+   "output": 7084,
+   "cacheRead": 1850110,
+   "cacheWrite": 95033
+  },
+  "activeMin": 11,
+  "dispatches": 1,
+  "toolCalls": 16,
+  "toolErrors": 0,
+  "note": "fix-round dispatches — the batch's rework bill (already inside per-case direct; shown here as its own lever)"
+ },
+ "outcomes": {
+  "automated": 1
+ },
+ "delivered": 1,
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   46.4,
+   41.4,
+   39.9
+  ],
+  "failures": [],
+  "lead_gate": {
+   "runs": 3,
+   "result": "14 passed x3, --reruns 0, separate invocations, DEV",
+   "seconds": [
+    41.55,
+    48.4,
+    48.92
+   ]
+  }
+ },
+ "records": {
+  "note": "script-authored gate verdicts (gate-runs.jsonl) + declared session outcomes (work-scope) vs the receipt — drift means report.json needs a write-back, records never overwrite it",
+  "gateRuns": {
+   "count": 6,
+   "latest": {
+    "at": null,
+    "consecutiveGreen": 0
+   }
+  },
+  "declaredOutcomes": {
+   "ELITEA-3369": "automated"
+  },
+  "gateDrift": {
+   "receipt": "green",
+   "at": null
+  }
+ },
+ "cases": [
+  {
+   "id": "ELITEA-3369",
+   "outcome": "automated",
+   "findings": 18,
+   "direct": {
+    "costUsd": 5.05,
+    "tokens": 12215106,
+    "tok": {
+     "input": 76865,
+     "output": 56112,
+     "cacheRead": 10969201,
+     "cacheWrite": 1112928
+    },
+    "activeMin": 38,
+    "dispatches": 10,
+    "fixRounds": 1,
+    "toolCalls": 109,
+    "toolErrors": 5
+   },
+   "loaded": {
+    "costUsd": 10.49,
+    "tokens": 19676930,
+    "activeMin": 99
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": {
+   "avg": 5.05,
+   "median": 5.05,
+   "min": 5.05,
+   "max": 5.05,
+   "n": 1
+  },
+  "directTokens": {
+   "avg": 12215106,
+   "median": 12215106,
+   "min": 12215106,
+   "max": 12215106,
+   "n": 1
+  },
+  "directActiveMin": {
+   "avg": 38,
+   "median": 38,
+   "min": 38,
+   "max": 38,
+   "n": 1
+  },
+  "loadedCostUsd": {
+   "avg": 10.49,
+   "median": 10.49,
+   "min": 10.49,
+   "max": 10.49,
+   "n": 1
+  },
+  "loadedActiveMin": {
+   "avg": 99,
+   "median": 99,
+   "min": 99,
+   "max": 99,
+   "n": 1
+  }
+ },
+ "averages": {
+  "totalPerDelivered": {
+   "costUsd": 10.5,
+   "note": "whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)"
+  },
+  "directPerCase": {
+   "costUsd": 5.05,
+   "note": "avg direct spend of an attributed case — excludes batch overhead"
+  }
+ },
+ "coverage": {
+  "casesAttributed": 1,
+  "casesUnattributed": [],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

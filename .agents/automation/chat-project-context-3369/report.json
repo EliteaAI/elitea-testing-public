@@ -1,0 +1,135 @@
+{
+  "batch": "chat-project-context-3369",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-project-context-3369",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      46.4,
+      41.4,
+      39.9
+    ],
+    "failures": [],
+    "lead_gate": {
+      "runs": 3,
+      "result": "14 passed x3, --reruns 0, separate invocations, DEV",
+      "seconds": [
+        41.55,
+        48.4,
+        48.92
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "ELITEA-3369",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The intake snapshot .agents/automation/chat-project-context-3369/cases/ELITEA-3369.md is missing. The case was read from the TMS repo sibling clone at tests/automated-full-regression-ui/chat/build-skills-project-context/ELITEA-3369_project-context-with-ask-user-clarification.md."
+        },
+        {
+          "kind": "note",
+          "note": "The second clarifying question is non-deterministic. It can be Always/When-relevant radios or a free-text 'When should the model load...' question. The implementer should read the stepper total first, answer every question through the free-text input, and never select options by label."
+        },
+        {
+          "kind": "note",
+          "note": "The AFS metadata cites the snapshot at .agents/automation/chat-project-context-builder/cases/ELITEA-3369.md, which is the wrong slug for this batch. It is harmless, but the path is stale."
+        },
+        {
+          "kind": "note",
+          "note": "Playwright MCP has no Chrome in this container. It needs a standalone sync_playwright script, as in ELITEA-3368."
+        },
+        {
+          "kind": "note",
+          "note": "The container has no automation/.env.test, and APP_PREFIX is unset. Without APP_PREFIX=/app every chat test lands on 404 Page Not Found (screenshot automation/screenshots/test_send_button_visibility_toggle_and_clear_on_send_FAIL_20261030_102732.png). The gate and any later run must export APP_PREFIX=/app."
+        },
+        {
+          "kind": "note",
+          "note": "The Ask User flow is non-deterministic in both question count (1 or 2, about half each) and Q2 content/options. The test reads the stepper first and answers every question via the free-text input. This is documented in the AFS and the surface digest.",
+          "ref": "ELITEA-3369"
+        },
+        {
+          "kind": "question",
+          "note": "The Skip/Continue submit button has a state-dependent accessible name and no testid. It is declared as two ScopedLocators sharing one suggested_testid. A real testid would retire this.",
+          "ref": "chat-clarifying-question-submit-button"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case text names scope options (current project only / all conversations / specific Agent or Pipeline). The live card instead asks for project background and when to load the context. The test asserts the live contract, and the TMS case wording is stale.",
+          "ref": "ELITEA-3369"
+        },
+        {
+          "kind": "note",
+          "note": "The intake snapshot .agents/automation/chat-project-context-3369/cases/ELITEA-3369.md is missing. I read the case from the TMS repo at tests/automated-full-regression-ui/chat/build-skills-project-context/."
+        },
+        {
+          "kind": "note",
+          "note": "The stepper handle is css=':text-matches(\"^\\\\d+/\\\\d+$\")' with no scope. Any element on the page whose own text is N/M, such as a date fragment, would match, and the code reads it with .first. Step 3 and the per-question advance checks would then fail loudly, which is a false-red risk, not a masking risk. It is declared with suggested_testid and the description explains it. Consider scoping it unde\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:clarifying_question_stepper"
+        },
+        {
+          "kind": "note",
+          "note": "The Skip vs Continue pick uses count() on Continue with no wait. This is safe because the typed text flips the label to Continue and the Continue button's own wait_for(visible) follows. If the label flip lags, the helper returns the Skip locator, which is a stale handle once the button re-renders, and could click the Skip path. It is a latent race, not a defect. Waiting for Continue explicitly wou\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:get_clarifying_question_submit_button"
+        },
+        {
+          "kind": "note",
+          "note": "This parametrized unit test re-implements the regex inline instead of exercising ChatPage's selector, so it is tautological. It is harmless and carries no tms marker, which is correct for a non-case test. Low value; it could be dropped.",
+          "ref": "automation/tests/ui/chat/test_chat_project_context_ask_user_clarification.py:test_stepper_pattern_covers_any_total"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case text says the card asks about scope with scope options (current project, all conversations, specific Agent or Pipeline). The live card asks for project background plus a load-timing question, and its question and option content varies per run. The AFS records this as a clarification, not a defect, and the spec asserts the live contract. The wording of case steps 1-2 is stale and should be\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-3369 steps 1-2"
+        },
+        {
+          "kind": "note",
+          "note": "I checked each row against the spec. Each row maps to a real assertion at its step. Preconditions: Step 1 asserts both toggles checked. Step 1 of the case: Step 2 asserts the card is visible, the Ask User chip is present, and there is no entity chip yet. Step 3 of the case: Step 4 answers all N questions, asserts the stepper advances, and asserts the card closes. Step 4 of the case: Step 5 asserts\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS Coverage Map Axis 1"
+        },
+        {
+          "kind": "note",
+          "note": "No skip, xfail or test.fail. Assertions are not weakened. The content check was tightened in review round 1, and the no-stepper path falls back to total=1 deliberately. The MAX_QUESTIONS=5 ceiling asserts and does not clamp. The console-error assertion and the stop() in the finally block are present. Reruns are by global policy only. The test carries pytest.mark.new, which is the sanctioned marker\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "masking hunt"
+        },
+        {
+          "kind": "note",
+          "note": "Command: git diff main...tests/ELITEA-3369-ask-user-clarification-impl -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. It returned 2 hits. Both are compliant. Hit 1, at diff line 24, is prose inside a description= string \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "mechanical locator grep"
+        },
+        {
+          "kind": "note",
+          "note": "The class carries both @pytest.mark.tms('ELITEA-3369') and an @allure.issue link to ELITEA-3369_project-context-with-ask-user-clarification.md. tms_backwrite.py check printed 'TMS links OK' (291 UI tests, 253 linked cases). I could not run ruff because .venv/bin/ruff is missing. The code looks well-formed, and a few lines exceed 120 characters (a long f-string and an assertion message). The ruff E\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "TMS pair check"
+        },
+        {
+          "kind": "note",
+          "note": "The intake snapshot .agents/automation/chat-project-context-3369/cases/ELITEA-3369.md is missing. I triangulated against the TMS repo's case file directly, which matches the AFS's quoted steps. The AFS's own Re-verification note says the same. This is static review, so I did not execute the spec. I committed a reviewer daily log, docs(memory) 58989937, on the branch under review.",
+          "ref": "process"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_project-context-ambiguous-request-ask-user-clarification_ELITEA-3369.md",
+      "branch": "tests/ELITEA-3369-ask-user-clarification-impl",
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          46.4,
+          41.4,
+          39.9
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
