@@ -384,36 +384,43 @@
     {
       "work_item_ref": "T-chat-project-context-3369",
       "work_item_level": "feature",
-      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 0 delivered.",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
       "maturity": "pilot",
       "sessions": 1,
-      "turns": 18,
-      "subagent_dispatches": 0,
-      "orchestrator_cost_pct": 100,
+      "turns": 41,
+      "subagent_dispatches": 15,
+      "orchestrator_cost_pct": 40.5,
       "tokens": {
-        "input": 12146,
-        "output": 7844,
-        "cache_read": 1922619,
-        "cache_create": 179266
+        "input": 124631,
+        "output": 84956,
+        "cache_read": 17354652,
+        "cache_create": 2712818
       },
       "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
       "models_used": [
-        "1_eu.anthropic.claude-sonnet-5-5"
+        "1_eu.anthropic.claude-sonnet-5-5",
+        "<synthetic>"
       ],
       "tokens_by_model": {
         "1_eu.anthropic.claude-sonnet-5-5": {
-          "input": 12146,
-          "output": 7844,
-          "cache_read": 1922619,
-          "cache_create": 179266
+          "input": 124631,
+          "output": 84956,
+          "cache_read": 17354652,
+          "cache_create": 2712818
+        },
+        "<synthetic>": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_create": 0
         }
       },
-      "cost_api_equivalent_usd": 0.82,
-      "cache_read_share_pct": 41.1,
+      "cost_api_equivalent_usd": 10.61,
+      "cache_read_share_pct": 30.6,
       "scenarios_authored": 1,
-      "scenarios_automated": 0,
+      "scenarios_automated": 1,
       "scenarios_executed": 1,
-      "notes": "gate not-run; outcomes: blocked 1. Telemetry cohort: reconstructed from .agents/automation/chat-project-context-3369/cost.json (v1); batch slug 'chat-project-context-3369'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+      "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/chat-project-context-3369/cost.json (v1); batch slug 'chat-project-context-3369'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     },
     {
       "work_item_ref": "T-chat-project-context-3368",
