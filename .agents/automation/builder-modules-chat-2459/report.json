@@ -1,0 +1,15 @@
+{
+ "batch": "builder-modules-chat-2459",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-builder-modules-chat-2459",
+ "gate": {"verdict": "green", "runs": 3, "by": "lead",
+  "note": "3 separate pytest invocations on trunk @653a070b, APP_PREFIX=/app HEADLESS=true, 6 passed each (297.7s, 152.2s, 138.8s). Earlier gates at 60s AI wait: 3/6 flaky on slow streaming; one run exposed an over-strict any-chip assertion; both fixed and re-reviewed APPROVED.",
+  "specs": ["tests/ui/chat/test_builder_modules_disabled.py", "tests/unit/test_platform_release_banner_dismissal.py"]},
+ "cases": [
+  {"id": "ELITEA-3370", "outcome": "automated", "review": "APPROVED",
+   "node": "tests.ui.chat.test_builder_modules_disabled.TestBuilderModulesDisabledPreventsEntityCreation.test_builder_modules_disabled_prevents_entity_creation",
+   "findings": [{"kind": "note", "note": "Declared improvisation: steps 3/5 narrowed from 'no tool chip at all' to 'no Skills / Project Context builder chip' because the model once called an unrelated toolkit and created nothing. Entity-level checks intact. AFS wording (no chat-answer-tool-chip) should be amended.", "ref": "ELITEA-3370"}]},
+  {"id": "ELITEA-3372", "outcome": "blocked", "note": "Belongs to card #2459 (human: ignore #2459). Only its AFS is on the trunk; no code landed."}
+ ]
+}

@@ -788,6 +788,35 @@ class ChatPage(BasePage):
         )
     )
 
+    # Created-entity chip/link rendered inside an AI message only when a
+    # chat-builder module (Skill / Project Context / Agent / Pipeline)
+    # actually created or persisted an entity — ELITEA-3370. Rung 1: the
+    # testid already exists on DEV (confirmed live during analysis); only
+    # the page-object declaration is new work. Scoped — resolved inside a
+    # specific message locator (``ScopedLocator.within(message)``), since
+    # the chip only renders on the message whose tool call actually created
+    # something, not on every AI message.
+    MESSAGE_GENERATED_ENTITY_CHIP = ScopedLocator(
+        testid="generated-entity-chip",
+        description=(
+            "Renders inside an AI message only when a chat-builder module "
+            "(Skill/Project Context/Agent/Pipeline) actually created or "
+            "persisted an entity; absent when the owning module is disabled "
+            "or the AI never attempted the tool call."
+        ),
+    )
+
+    def message_has_generated_entity_chip(self, message_locator) -> bool:
+        """Return True if *message_locator* (a ``chat-message-item`` ``<li>``)
+        renders a ``generated-entity-chip`` — i.e. the AI's tool call in that
+        message actually created/persisted an entity (ELITEA-3370).
+
+        Args:
+            message_locator: the message ``<li>`` Locator to check, e.g.
+                ``self.messages_container.nth(ai_response_index)``.
+        """
+        return self.MESSAGE_GENERATED_ENTITY_CHIP.within(message_locator).count() > 0
+
     # Chat-area conversation-starter tile (NewConversationView.jsx's call site
     # onto the shared EllipsisTextWithTooltip, ELITEA-2369 — the new-
     # conversation landing view this case's flow actually renders through,
@@ -4033,6 +4062,14 @@ class ChatPage(BasePage):
                 is not visible
         """
         logger.info("Opening modules menu via plus menu")
+
+        # Dismiss the platform release-notes modal if present — on a cold
+        # chat page this session, it is a full-screen overlay that
+        # intercepts the plus-menu click below (ELITEA-3370 gate finding,
+        # 2026-10-19). Belt-and-suspenders with BasePage.navigate()'s own
+        # dismiss_popups() call: callers that skip navigate() (already on
+        # /chat) or reach this page via a raw page.goto() still get it.
+        self.dismiss_platform_release_banner_if_present()
 
         # Step 1: Open plus menu
         if not self.plus_menu_button.is_visible():
