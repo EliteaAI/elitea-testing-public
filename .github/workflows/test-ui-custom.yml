@@ -724,6 +724,18 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      # Failure videos over VIDEO_ATTACH_MAX_MB (conftest.py) are kept out of
+      # allure-results so the published report stays pushable; this keeps them
+      # downloadable. The Allure report names the file in a text note instead.
+      - name: Upload oversize failure videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: videos-oversize-${{ steps.env.outputs.name }}-user${{ matrix.suffix }}-${{ github.run_number }}
+          path: automation/reports/videos-oversize/*.webm
+          retention-days: 7
+          if-no-files-found: ignore
+
   publish:
     name: Publish Allure report to GitHub Pages
     needs: [prepare, test]
@@ -835,6 +847,9 @@ jobs:
           # IN THE TREE: actions/checkout rewrites every file's mtime to checkout
           # time, so the filesystem cannot tell us how old a published run is.
           date +%s > "$DEST/.published-at"
+          # Where the full allure-results live — the budget step below points any
+          # attachment it has to drop at this run's artifacts.
+          echo "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > "$DEST/.run-url"
 
       # Retention. The previous version of this step pruned only the working tree
       # and then made an ordinary commit, so every deleted report stayed reachable
@@ -960,6 +975,22 @@ jobs:
               print(f"::warning::gh-pages content is {size_mb:.0f} MB, above the "
                     f"{WARN_MB:.0f} MB tripwire. Check that retention is still "
                     f"working (KEEP_RUNS / MAX_AGE_DAYS / .published-at stamps).")
+
+      # Hard limits, enforced before the push. GitHub rejects a push containing
+      # any file over 100 MB — run 329's 200 MB failure video got its whole report
+      # rejected, so the URL 404'd — and GitHub Pages caps a site at 1 GB. Videos
+      # are ~90% of the weight, so the script drops videos (never the report):
+      # every file over 95 MB, then oldest-run-first until the tree fits 900 MB,
+      # this run's videos last. Each dropped attachment becomes a text note in the
+      # report naming the run whose allure-results artifact still has it.
+      - name: Fit reports into GitHub Pages limits
+        env:
+          CURRENT: ${{ needs.prepare.outputs.env-name }}/${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          python3 repo/automation/scripts/pages_budget.py gh-pages \
+            --current "$CURRENT" --max-file-mb 95 --budget-mb 900 >> "$GITHUB_STEP_SUMMARY"
+          tail -n 20 "$GITHUB_STEP_SUMMARY"
 
       # Publish as a SINGLE PARENTLESS COMMIT and force-push. gh-pages carries no
       # history by design: it is generated output, every commit of it is ~3-330 MB
