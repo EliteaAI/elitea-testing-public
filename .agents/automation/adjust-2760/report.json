@@ -1,0 +1,6 @@
+{"slug":"adjust-2760","card":2760,"cases":[
+{"id":"ELITEA-2019","outcome":"automated","class":"A (UI drift): canvas control panel redesigned; rf__controls + button[title] -> pipeline-canvas-* testids","review":"APPROVED","spec":"tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_zoom_pan_and_fit_view"},
+{"id":"ELITEA-2045","outcome":"merged-sanctioned-red","class":"A (shared Fit View handle) + C (known bug #2746 persists, soft-asserted)","review":"APPROVED","spec":"tests.ui.pipelines_2.test_pipeline_llm_structured_output_state_variables.test_llm_structured_output_parses_into_state_variables"},
+{"id":"ELITEA-2057","outcome":"blocked","class":"A + product removed 'Toggle cards size' button; needs human decision","review":"n/a","spec":"tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange","findings":["question #2782"]}],
+"gate":{"verdict":"green","runs":3,"detail":"3/3 separate DEV runs: ELITEA-2019 PASSED 3/3; ELITEA-2045 identical sanctioned RED 3/3 (soft-assert #2746 only)"},
+"expected_result_changes":"none","locator_delta":"declared 1311->1315, non-testid 66 (no change), unmanaged 346->339 (-7), ledger 14 line churn (sync-ledger added 0)","gateVerdict":"green"}

@@ -506,13 +506,28 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     canvas_controls = LocatorDescriptor(
-        testid="rf__controls",
-        description=(
-            "ReactFlow canvas zoom/fit-view control panel (bottom-left, pinned "
-            "overlay) — real app testid on the panel container; its individual "
-            "buttons are ReactFlow's own third-party internal render (#579 "
-            "sanctioned exception, see fit_canvas_view())"
-        )
+        testid="pipeline-canvas-controls",
+        description="Pipeline canvas control panel (bottom-left overlay)",
+    )
+
+    canvas_zoom_in_button = LocatorDescriptor(
+        testid="pipeline-canvas-zoom-in",
+        description="Canvas control panel — Zoom in",
+    )
+
+    canvas_zoom_out_button = LocatorDescriptor(
+        testid="pipeline-canvas-zoom-out",
+        description="Canvas control panel — Zoom out",
+    )
+
+    canvas_fit_view_button = LocatorDescriptor(
+        testid="pipeline-canvas-fit-view",
+        description="Canvas control panel — Fit view",
+    )
+
+    canvas_lock_button = LocatorDescriptor(
+        testid="pipeline-canvas-lock",
+        description="Canvas control panel — Lock/Unlock canvas (node dragging); aria-pressed when locked",
     )
 
     yaml_editor = LocatorDescriptor(
@@ -3170,7 +3185,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Fit View"]').click(timeout=timeout)
+        self.canvas_fit_view_button.click(timeout=timeout)
         self.page.wait_for_timeout(500)  # pan/zoom transition settle
 
     def zoom_in_canvas(self, timeout: int = 5000) -> None:
@@ -3191,7 +3206,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Zoom In"]').click(timeout=timeout)
+        self.canvas_zoom_in_button.click(timeout=timeout)
         self.page.wait_for_timeout(300)  # zoom transition settle
 
     def zoom_out_canvas(self, timeout: int = 5000) -> None:
@@ -3206,7 +3221,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Zoom Out"]').click(timeout=timeout)
+        self.canvas_zoom_out_button.click(timeout=timeout)
         self.page.wait_for_timeout(300)  # zoom transition settle
 
     def is_control_panel_fully_visible(self, timeout: int = 5000) -> bool:
@@ -3264,7 +3279,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('button[title="Toggle Interactivity"]').click(timeout=timeout)
+        self.canvas_lock_button.click(timeout=timeout)
         self.page.wait_for_timeout(300)  # state settle
 
     def toggle_canvas_cards_size(self, timeout: int = 5000) -> None:
@@ -7596,24 +7611,21 @@ class PipelineDetailPage(PipelineFormPage):
         )
 
     def fit_view(self):
-        """Click the ReactFlow 'Fit View' zoom control."""
-        btn = self.page.locator('button[title="Fit View"]')
-        if btn.count() > 0:
-            btn.click()
+        """Click the canvas control panel's 'Fit view' button."""
+        if self.canvas_fit_view_button.count() > 0:
+            self.canvas_fit_view_button.click()
             self.page.wait_for_timeout(500)
 
     def zoom_in(self):
-        """Click the ReactFlow 'Zoom In' control."""
-        btn = self.page.locator('button[title="Zoom In"]')
-        if btn.count() > 0:
-            btn.click()
+        """Click the canvas control panel's 'Zoom in' button."""
+        if self.canvas_zoom_in_button.count() > 0:
+            self.canvas_zoom_in_button.click()
             self.page.wait_for_timeout(300)
 
     def zoom_out(self):
-        """Click the ReactFlow 'Zoom Out' control."""
-        btn = self.page.locator('button[title="Zoom Out"]')
-        if btn.count() > 0:
-            btn.click()
+        """Click the canvas control panel's 'Zoom out' button."""
+        if self.canvas_zoom_out_button.count() > 0:
+            self.canvas_zoom_out_button.click()
             self.page.wait_for_timeout(300)
 
     def _select_node(self, node_id: str):

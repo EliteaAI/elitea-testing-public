@@ -251,3 +251,6 @@ rounds):**
   px (`get_node_layout_height` = on-screen height / viewport scale), since each toggle re-fits.
 - Expected-result changes: none. Same three assertions (compact < expanded/2; restored == expanded
   within 1px; no console errors / no pipeline requests).
+
+## Adjustment note (2026-10-30, card #2760)
+PARKED on question #2782. DEV removed the "Toggle cards size" control (canvas panel now exposes `pipeline-canvas-zoom-in/-zoom-out/-fit-view/-lock/-arrange/-minimap-toggle`); a human decides whether that step is dropped. Handles/assertions for this case are intentionally unchanged and stay honestly red until then.
