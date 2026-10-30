@@ -59,6 +59,7 @@ Usage:
 """
 
 import logging
+import re
 
 import allure
 import pytest
@@ -102,6 +103,42 @@ FOLLOWUP_ANSWER = "When relevant, for this project."
 MAX_QUESTIONS = 5  # generous ceiling — observed live max this session was 2
 
 PROJECT_CONTEXT_ENTITY_LABEL = "Project Context"
+
+_BACKGROUND_SUBJECT = re.compile(r"\bpython\b")
+_BACKGROUND_DOMAIN = re.compile(r"\b(?:rest(?:ful)?\s+api|order\s+management)\b")
+
+
+def reflects_background_answer(text: str) -> bool:
+    """True only if the content echoes BOTH the submitted answer's tech
+    (word-bounded "python") AND its domain ("REST API" / "order management").
+    Whole-word, multi-word match: bare 'rest'/'order' substrings (interest,
+    restore, 'in order to') must not satisfy it."""
+    lowered = text.lower()
+    return bool(_BACKGROUND_SUBJECT.search(lowered) and _BACKGROUND_DOMAIN.search(lowered))
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("A Python REST API for order management", True),
+        ("python restful api service", True),
+        ("Python service. Order management module.", True),
+        ("We restrict access in order to protect interest in the forest", False),
+        ("Python project; restore data", False),
+        ("Generic template: describe your project here", False),
+    ],
+)
+def test_reflects_background_answer_is_strict(text, expected):
+    assert reflects_background_answer(text) is expected
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [("1/2", True), ("2/2", True), ("1/3", True), ("3/5", True), ("12/2025", True), ("a/b", False), ("1/", False)],
+)
+def test_stepper_pattern_covers_any_total(label, expected):
+    # Same regex as ChatPage.clarifying_question_stepper's text-matches rung.
+    assert bool(re.fullmatch(r"\d+/\d+", label)) is expected
 
 
 @allure.issue(
@@ -270,10 +307,9 @@ class TestChatProjectContextAskUserClarification:
                     f"{created_body}"
                 )
                 created_content = (created_body.get("content") or "").lower()
-                assert any(kw in created_content for kw in ("python", "rest", "order")), (
+                assert reflects_background_answer(created_content), (
                     f"Expected the created content to be topically consistent "
-                    f"with the submitted background answer (mentioning "
-                    f"python/rest/order), got: {created_content[:200]!r}"
+                    f"with the submitted background answer (python + REST API/order management), got: {created_content[:200]!r}"
                 )
 
                 chat.open_generated_entity_chip(
@@ -286,7 +322,7 @@ class TestChatProjectContextAskUserClarification:
                     state="visible", timeout=UI_ELEMENT_TIMEOUT
                 )
                 reopened_text = (context_page.editor_content.text_content() or "").lower()
-                assert any(kw in reopened_text for kw in ("python", "rest", "order")), (
+                assert reflects_background_answer(reopened_text), (
                     f"Expected the reopened Canvas content to be topically "
                     f"consistent with the submitted background answer, got: "
                     f"{reopened_text[:200]!r}"

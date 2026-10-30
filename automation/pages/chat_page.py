@@ -886,18 +886,17 @@ class ChatPage(BasePage):
     )
 
     clarifying_question_stepper = LocatorDescriptor(
-        css=r':text-is("1/2"), :text-is("2/2")',
+        css=r':text-matches("^\\d+/\\d+$")',
         suggested_testid="chat-clarifying-question-stepper",
         description=(
-            "The '1/2'/'2/2' stepper label Typography — only rendered "
+            "The 'N/total' stepper label Typography (any total — a 3- or 5-question run renders '1/3'/'1/5') — only rendered "
             "when the question set has MORE THAN ONE entry (`total > 1` "
             "in source, ClarifyingQuestionControl.jsx). A single-question "
             "flow renders no stepper at all; assert its TEXT within a "
             "test that has already confirmed a multi-question run, never "
-            "assert mere presence as a flow invariant. The 2-member list "
-            "covers this AFS's own confirmed-live, reproducible 2-question "
-            "path (ELITEA-3369 Known Defects #3) — NOT asserted as a "
-            "general invariant of the `ask_user` tool, which can also "
+            "assert mere presence as a flow invariant. The regex "
+            "matches any N/total (ELITEA-3369 Known Defects #3) — NOT "
+            "asserted as a general invariant of the `ask_user` tool, which can also "
             "produce a single-question (no-stepper) run for a different "
             "Q1 answer. Playwright's `:text-is()` pseudo-class is an exact "
             "own-text match, not a positional/structural selector."
