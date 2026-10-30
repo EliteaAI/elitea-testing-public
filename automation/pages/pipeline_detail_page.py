@@ -2019,10 +2019,20 @@ class PipelineDetailPage(PipelineFormPage):
         left column if the Information section is still not rendered.
         Idempotent: a no-op when the section is already visible.
         """
-        if self.information_section.is_visible():
+        try:
+            # Normal path: the accordion is (or is about to be) rendered.
+            self.information_section.wait_for(state="visible", timeout=3000)
             return
+        except PlaywrightTimeoutError:
+            pass
         self.close_node_panel(timeout=timeout)
-        if not self.information_section.is_visible():
+        # Closing the panel can leave the left column collapsed (the form is
+        # unmounted, so the section never renders). Re-check with a short wait
+        # first; click the bidirectional toggle only if it is still absent.
+        try:
+            self.information_section.wait_for(state="visible", timeout=2000)
+            return
+        except PlaywrightTimeoutError:
             self.config_panel_collapse_button.click(timeout=timeout)
         self.information_section.wait_for(state="visible", timeout=timeout)
 
@@ -3577,15 +3587,26 @@ class PipelineDetailPage(PipelineFormPage):
         # Display label -> internal type key rendered in the item's testid.
         type_key = self.ADD_NODE_TYPE_BY_LABEL.get(node_type, node_type.lower())
         menu_item = self.page.locator(self.ADD_NODE_MENU_ITEM_BY_TYPE.format(type_key))
-        # The canvas can re-render right after a save and swallow the first
-        # click, leaving the menu closed — re-click once if it did not open.
-        self.add_node_button.click()
-        try:
-            menu_item.wait_for(state="visible", timeout=2000)
-        except PlaywrightTimeoutError:
+        # Open the menu with a bounded retry: right after a save the canvas
+        # re-renders and can swallow the click or close the menu again.
+        for attempt in range(3):
             self.add_node_button.click()
-        menu_item.wait_for(state="visible", timeout=timeout)
-        menu_item.click()
+            try:
+                menu_item.wait_for(state="visible", timeout=3000)
+                break
+            except PlaywrightTimeoutError:
+                if attempt == 2:
+                    raise
+                self.page.wait_for_timeout(500)
+        try:
+            menu_item.click(timeout=timeout)
+        except PlaywrightTimeoutError:
+            # The canvas re-rendered mid-click and detached the menu item (flake
+            # also seen on base). Reopen the menu if it closed, then click again.
+            if not menu_item.is_visible():
+                self.add_node_button.click()
+                menu_item.wait_for(state="visible", timeout=timeout)
+            menu_item.click(timeout=timeout)
         self.page.wait_for_timeout(1000)
         logger.info("Added node: %s", node_type)
 
