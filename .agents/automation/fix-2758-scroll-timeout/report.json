@@ -1,0 +1,8 @@
+{"slug":"fix-2758-scroll-timeout","card":2758,"cases":[
+{"id":"ELITEA-2064","outcome":"automated","class":"A (UI drift): pipeline TOOLS section read-only; pipeline picked in node panel, persisted on Save (EliteaUI EL-7159)","review":"APPROVED","spec":"tests.ui.pipelines.test_pipeline_attach_pipeline_as_tool.test_attach_pipeline_as_tool"},
+{"id":"ELITEA-2037","outcome":"automated","class":"A (UI drift): MCP picked in node panel, persisted on Save; required-count replaces deprecated heading","review":"APPROVED","spec":"tests.ui.pipelines_2.test_pipeline_mcp_node_fresh_attach.test_mcp_node_fresh_attach"},
+{"id":"ELITEA-2010","outcome":"blocked","class":"A (UI drift) diagnosed; repair reverted — spec skips here (GIT_HUB_TOKEN unset), cannot be run/gated; reviewed APPROVED statically","review":"APPROVED (static)","spec":"tests.ui.pipelines_2.test_pipeline_toolkit_node_config_and_input_mapping"}],
+"gate":{"verdict":"green","runs":3,"detail":"3/3 separate DEV runs of 2064+2037 green; 2010 skipped (no GIT_HUB_TOKEN)"},"gateVerdict":"green",
+"expected_result_changes":"2064/2037: attach PATCH awaited at Save not select; Save-disabled checked after Save; heading assertions -> exact required Value-field counts; 2037 step execution order 5,6,2,3,4. No assertions dropped/weakened.",
+"locator_delta":"declared 1300->1309 (+9 testid), non-testid 66 unchanged, unmanaged 347 unchanged, ledger 0 new rows",
+"next":"2010 needs a run with GIT_HUB_TOKEN available (repair is in branch history tests/adjust-2758-pipeline-tools-section a7a19c76/33c8ea5b); 1955 and 2065 and ~5 other specs still call removed +MCP/+Toolkit poppers and are red from the same cause"}

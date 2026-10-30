@@ -199,3 +199,11 @@ first node added. Step 1's canvas check changed from `node ids == ["END"]` to `n
 (still an exact-state assertion). Expected-result changes: the fresh-canvas baseline only (END absent →
 canvas empty); every other assertion untouched. Handles unchanged (`.react-flow__node` enumeration via
 the existing `get_node_ids`).
+
+## Adjustment — 2026-10-30 (class A, UI drift, issue #2758)
+
+**Cause:** EliteaUI 359dcdb2 (EL-7159) removed the TOOLS "+ MCP" popper; MCPs are picked in the MCP node's own picker (node config panel, `ProjectToolkitPicker`) and attached to the pipeline on **Save** (`PATCH .../tool/prompt_lib/{project}/` 201). Node Input/Output/Structured output sit in the panel's collapsed-by-default "Advanced" section (EL-7157); node fields need the panel open (also after reload).
+
+**Expected-result changes:** (1) the MCP is picked after the MCP node exists (Steps 5/6 precede 2/3/4 in execution order; step numbers/labels unchanged); (2) the attach PATCH 201 guard moved from select-time to Save (Step 11) — still asserted; (3) "Input mapping (required N)" heading is not rendered in the panel layout — replaced by exact count of required Value fields in the Basic section (same precedent as ELITEA-1954); the pre-toolkit absence check becomes count == 0. No assertion removed or weakened.
+
+**Handles (ladder):** all rung 1 testids on DEV — `pipeline-mcp-node-toolkit-select`, `-select-option`, `-select-menu-search`, `pipeline-node-panel-advanced-section-toggle`, `pipeline-node-panel-basic-section`, `pipeline-tools-section`, `pipeline-tool-card`, `pipeline-node-panel-close`.
