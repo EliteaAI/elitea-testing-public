@@ -1531,8 +1531,11 @@ class PipelineDetailPage(PipelineFormPage):
         description='"+ MCP" button in the TOOLS section (ToolMenu.jsx)'
     )
     toolkit_card = LocatorDescriptor(
-        testid="agent-toolkit-card",
-        description="An attached toolkit/MCP card in the TOOLS section"
+        testid="pipeline-tool-card",
+        description=(
+            "An attached toolkit/MCP card in the pipeline TOOLS section "
+            "(PipelineToolCard.jsx; replaced the shared agent-toolkit-card)"
+        ),
     )
 
     # Scoped sub-selectors for a specific attached card (ELITEA-2065) — each
@@ -1543,8 +1546,8 @@ class PipelineDetailPage(PipelineFormPage):
     # already used by `AgentDetailPage.remove_toolkit`); the other two were
     # added this session (`BaseCardBody.jsx`/`EnhancedCardToolActions.jsx`,
     # on-`automation/testids` only — `EliteaAI/EliteaUI@c45f1611`).
-    TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="agent-toolkit-delete-button"]'
-    TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="toolkit-card-tools-toggle"]'
+    TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="pipeline-tool-card-remove"]'
+    TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="pipeline-tool-card-show-tools"]'
     TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
 
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
@@ -5443,7 +5446,21 @@ class PipelineDetailPage(PipelineFormPage):
         Automation Hints' recommended fixture shape — so the test only ever
         READS the resulting chip, never opens the select to change it).
         """
+        # ELITEA-2059 (class A, UI drift): canvas node cards are view-only
+        # summaries; the Toolkits select renders in the node config side panel,
+        # which exists only while the node is selected (see ELITEA-1954).
+        opened_here = False
+        if not self.llm_node_toolkits_select.is_visible():
+            node_id = self.wait_for_node_on_canvas("llm")
+            self._select_node(node_id)
+            self.llm_node_toolkits_select.wait_for(state="visible", timeout=10000)
+            opened_here = True
         text = (self.llm_node_toolkits_select.text_content() or "").replace("​", "")
+        if opened_here:
+            # An open node panel collapses the left config column (TOOLS/MODULES);
+            # close it so later steps can reach the Attachments switch.
+            self.node_panel_close_button.click(timeout=10000)
+            self.node_panel_close_button.wait_for(state="detached", timeout=10000)
         return text.strip()
 
     # ------------------------------------------------------------------
@@ -7497,6 +7514,11 @@ class PipelineDetailPage(PipelineFormPage):
         mapping fix, which does require Save).
         """
         toggle = self.get_tools_module_toggle("attachments")
+        # ELITEA-2059 (class A, UI drift): opening the Test Pipeline panel now
+        # auto-collapses the left config column, unmounting the MODULES switches;
+        # expand it again before reaching for the switch.
+        if toggle.count() == 0:
+            self.toggle_config_panel_collapse(timeout=timeout)
         toggle.wait_for(state="attached", timeout=timeout)
         toggle.click()
 
