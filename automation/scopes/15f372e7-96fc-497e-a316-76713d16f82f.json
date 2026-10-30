@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "15f372e7-96fc-497e-a316-76713d16f82f",
+  "intent": "automation",
+  "batch": "builder-modules-chat-2459",
+  "cases": [
+    "ELITEA-3370"
+  ],
+  "declaredAt": "2026-10-30T11:47:20.921Z",
+  "updatedAt": "2026-10-30T11:47:21.001Z",
+  "outcomes": {
+    "ELITEA-3370": {
+      "outcome": "automated",
+      "at": "2026-10-30T11:47:20.958Z"
+    }
+  },
+  "closedAt": "2026-10-30T11:47:21.001Z"
+}
