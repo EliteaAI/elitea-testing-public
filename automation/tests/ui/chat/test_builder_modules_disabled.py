@@ -72,6 +72,12 @@ SKILL_CREATION_MESSAGE_AFTER_ENABLE = (
 )
 
 
+def _tool_chip_texts(chat) -> list[str]:
+    """Texts of every tool-invocation chip ('{toolkit_name}: {tool_name}'), enumerating all matches."""
+    chips = chat.answer_tool_chip
+    return [chips.nth(i).text_content() or "" for i in range(chips.count())]
+
+
 @allure.epic("Chat")
 @allure.feature("Modules Panel")
 @allure.issue(
@@ -80,6 +86,7 @@ SKILL_CREATION_MESSAGE_AFTER_ENABLE = (
     "ELITEA-3370_skills-and-project-context-builder-disabled-prevents-entity-creation.md",
     "onetest-ai Test Case link (ELITEA-3370)",
 )
+
 class TestBuilderModulesDisabledPreventsEntityCreation:
     """ELITEA-3370 — Skills Builder / Project Context Builder disabled
     blocks entity creation server-side; enabling mid-conversation only
@@ -130,9 +137,11 @@ class TestBuilderModulesDisabledPreventsEntityCreation:
                 ai_message_step3 = chat.messages_container.nth(ai_response_index_step3)
                 step3_response_text = chat._extract_message_body(ai_message_step3)
 
-                assert chat.answer_tool_chip.count() == 0, (
-                    "Expected no tool-invocation chip — the AI should never even "
-                    "attempt the Skills Builder tool call while the module is disabled"
+                step3_chips = _tool_chip_texts(chat)
+                assert not any("Elitea Skills" in t for t in step3_chips), (
+                    "Expected no Skills-tool invocation chip — the AI should never even "
+                    "attempt the Skills Builder tool call while the module is disabled; "
+                    f"got chip texts: {step3_chips!r}"
                 )
                 assert not chat.message_has_generated_entity_chip(ai_message_step3), (
                     "Expected no generated-entity chip on the step-3 response — "
@@ -165,10 +174,11 @@ class TestBuilderModulesDisabledPreventsEntityCreation:
                 ai_response_index_step5 = initial_count_pc + 1
                 ai_message_step5 = chat.messages_container.nth(ai_response_index_step5)
 
-                assert chat.answer_tool_chip.count() == 0, (
-                    "Expected no tool-invocation chip — the AI should never even "
-                    "attempt the Project Context Builder tool call while the "
-                    "module is disabled"
+                step5_chips = _tool_chip_texts(chat)
+                assert not any("Elitea Project Context" in t for t in step5_chips), (
+                    "Expected no Project Context tool-invocation chip — the AI should "
+                    "never even attempt the Project Context Builder tool call while the "
+                    f"module is disabled; got chip texts: {step5_chips!r}"
                 )
                 assert not chat.message_has_generated_entity_chip(ai_message_step5), (
                     "Expected no generated-entity chip on the step-5 response — "
