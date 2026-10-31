@@ -496,11 +496,15 @@ class UserProfileSettingsPage(BasePage):
         logger.info("Setting target summary tokens to %d", value)
         field = self.target_summary_tokens_input
 
-        # Clear the field and type the new value character by character —
-        # reliably triggers React's onChange for MUI inputs (fill() does not).
+        # Enter the value ATOMICALLY (one input event). Typing it key by key
+        # passes through intermediate values that are themselves valid — e.g.
+        # "4097" -> "409" — and the form commits a save on such a prefix,
+        # firing a PUT for a value the test never meant to submit (CI run
+        # 41160918419, #2802). The field is a plain controlled text input
+        # whose onChange strips non-digits, so a single fill() event is read
+        # correctly by React.
         field.click()
-        field.fill("")
-        field.type(str(value), delay=50)
+        field.fill(str(value))
 
         # Press Tab to blur — this is what triggers useFormikAutoSaveOnBlur's
         # validate-then-maybe-submit flow.

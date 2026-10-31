@@ -1,0 +1,16 @@
+{
+  "slug": "adjust-2802",
+  "card": 2802,
+  "cases": [
+    {
+      "id": "ELITEA-2378",
+      "outcome": "automated",
+      "triage": "D (robustness/flake: field.type(delay=50) of '4097' passes through valid prefix '409' and autosave PUTs target_summary_tokens=409; ~50% local reproduction, CI run 41160918419 same signature). Not product bug: useFormikAutoSaveOnBlur validates before submit. Not drift.",
+      "node": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_target_summary_tokens_range_validation",
+      "review": "APPROVED",
+      "expected_result_changes": "none"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations"},
+  "batch": "adjust-2802"
+}
