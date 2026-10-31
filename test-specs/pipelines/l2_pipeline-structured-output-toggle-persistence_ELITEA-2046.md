@@ -41,7 +41,7 @@
    **Expected**: pipeline is open with the node visible. Confirmed live via
    `pipeline_id` fixture + `add_node("LLM")` + `wait_for_node_on_canvas("llm")`
    — identical mechanism to ELITEA-2004/ELITEA-2045.
-2. Verify "Structured output" switch is disabled by default.
+2. Expand the node panel's Advanced section; verify "Structured output" switch is disabled by default.
    **Expected**: toggle shows disabled (unchecked) state. Confirmed live this
    session on a freshly-added LLM node, before any interaction:
    `pipeline-llm-node-structured-output-toggle`'s inner `<input>` reports
@@ -70,6 +70,16 @@
    after re-enabling+saving, it rendered `structured_output: true` — both
    read directly off `.cm-content` text, no truncation observed in either
    state.
+
+## Adjustment (class A — UI drift, #2812)
+The LLM node's "Structured output" switch now lives inside the node side panel's
+collapsed-by-default **Advanced** accordion (`NodeConfigSection.jsx`: only Basic is
+`defaultExpanded`). Handle unchanged (`pipeline-llm-node-structured-output-toggle`,
+rung 1); the test now calls `PipelineDetailPage.expand_node_panel_advanced_section()`
+before each first use of the toggle (steps 2, 3 after reload, 4 before click, 4 after
+reload) — accordion/panel state does not persist across reload or view switches.
+**Expected-result changes: none.** Steps 2-4 below: "visible/disabled by default" means
+once the Advanced section is expanded.
 
 ## Expected Final State
 The LLM node's Structured output toggle starts disabled by default, and both

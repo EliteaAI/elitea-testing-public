@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2812",
+  "card": 2812,
+  "cases": [
+    {
+      "id": "ELITEA-2046",
+      "outcome": "automated",
+      "triage": "A (UI drift, EL-7157: Structured output toggle moved into node side panel's collapsed Advanced section; testid unchanged)",
+      "node": "tests.ui.pipelines_2.test_pipeline_structured_output_toggle_persistence.test_pipeline_structured_output_toggle_persistence",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations, reruns {}"},
+  "batch": "adjust-2812"
+}

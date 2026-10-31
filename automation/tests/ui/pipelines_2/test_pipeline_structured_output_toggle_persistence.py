@@ -70,6 +70,10 @@ def test_pipeline_structured_output_toggle_persistence(page, pipeline_id):
         assert node_id, "LLM node should be present on the canvas with a non-empty data-id"
 
     with allure.step('Step 2 — Verify "Structured output" switch is disabled by default'):
+        # Structured output lives in the node side panel's "Advanced" accordion,
+        # which is collapsed by default (only Basic is defaultExpanded). The
+        # helper is idempotent and re-opens the panel if needed.
+        pipeline_page.expand_node_panel_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.llm_node_structured_output_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.llm_node_structured_output_toggle).to_be_checked(
             checked=False, timeout=UI_ELEMENT_TIMEOUT
@@ -91,6 +95,8 @@ def test_pipeline_structured_output_toggle_persistence(page, pipeline_id):
         pipeline_page.wait_for_detail_page_load()
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
+        # Panel/accordion state does not survive the reload — re-expand Advanced.
+        pipeline_page.expand_node_panel_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
 
         expect(pipeline_page.llm_node_structured_output_toggle).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
 
@@ -109,6 +115,8 @@ def test_pipeline_structured_output_toggle_persistence(page, pipeline_id):
         "Step 4 — Toggle to disabled — save — reload — verify switch remains unchecked; "
         "YAML shows structured_output: false (case step 5, disabled state)"
     ):
+        # Panel may have closed after switch_to_flow_view — re-expand Advanced.
+        pipeline_page.expand_node_panel_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.llm_node_structured_output_toggle.click(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.llm_node_structured_output_toggle).to_be_checked(
             checked=False, timeout=UI_ELEMENT_TIMEOUT
@@ -123,6 +131,7 @@ def test_pipeline_structured_output_toggle_persistence(page, pipeline_id):
         pipeline_page.wait_for_detail_page_load()
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.expand_node_panel_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
 
         expect(pipeline_page.llm_node_structured_output_toggle).to_be_checked(
             checked=False, timeout=UI_ELEMENT_TIMEOUT
