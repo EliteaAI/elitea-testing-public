@@ -59,6 +59,9 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
         assert pipeline_page.get_entrypoint_node_id() == llm_node_id, (
             "Pipeline should be ready with the LLM node as the single entry-point node"
         )
+        # EL-7157 (class A drift): the Trigger select renders only in the node side
+        # panel (Basic section), which exists only while the node is selected.
+        pipeline_page.ensure_llm_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.trigger_select.is_visible(), (
             "Trigger select should render on the entry-point node's card"
         )
@@ -202,6 +205,8 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
         # currentTriggerType falls back to its "chat_message" default while
         # the post-reload GET .../trigger refetch is still in flight — poll
         # instead of reading same-tick (AFS § Quirks, same as ELITEA-2005).
+        # The Trigger select lives in the node side panel, closed after reload (class A drift).
+        pipeline_page.ensure_llm_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.trigger_select).to_have_text("Webhook", timeout=UI_ELEMENT_TIMEOUT)
 
     # Full-flow checks (AFS Pass/Fail — "all steps complete without errors"):

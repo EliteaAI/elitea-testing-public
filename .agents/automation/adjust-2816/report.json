@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2816",
+  "card": 2816,
+  "cases": [
+    {
+      "id": "ELITEA-2006",
+      "outcome": "automated",
+      "triage": "A (UI drift, EL-7157: Trigger select renders only in the node side panel Basic section; panel closed on fresh load/reload)",
+      "node": "tests.ui.pipelines_2.test_pipeline_webhook_trigger_settings_modal.test_webhook_trigger_settings_modal",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations, reruns {}; known defect #2415 (still OPEN) soft-check did not fire in any run"},
+  "batch": "adjust-2816"
+}

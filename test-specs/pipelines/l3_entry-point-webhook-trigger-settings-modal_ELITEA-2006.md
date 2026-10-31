@@ -314,3 +314,19 @@ drift adjustments, which do carry a TMS PR per Step 8 of `adjust-automated-test`
 
 No locator, handle, or Concrete-Handles-table change. No new fixture. No scope change to any
 other AFS step.
+
+## Adjustment — 2026-10-31 (card #2816, class A UI drift, EL-7157)
+
+CI failure: `Trigger select should render on the entry-point node's card` at Step 1.
+Cause: the Trigger select (`TriggerTypeSelector`) now renders ONLY inside the node side
+panel Basic section (EliteaUI `NodeConfigSection.jsx`, `showTrigger = isBasic && isEntrypoint`),
+and the panel exists only while the node is selected (closed after fresh load and after reload).
+
+Change (test only, no page-object change): `pipeline_page.ensure_llm_node_panel_open()` is called
+before the Step 1 `trigger_select` visibility assertion and before the Step 7 post-reload
+`to_have_text("Webhook")` check. `select_trigger_type` already self-heals. Step 6 (after Apply)
+needed no change (panel stays open, verified green live).
+
+Expected-result changes: none. No assertion removed or weakened; markers, TMS pair and allure
+steps unchanged. The #2415 soft-aggregated GitLab-radio check is untouched; on this DEV run it
+did not fire (test green) although #2415 is still OPEN — reported to the lead, not weakened.
