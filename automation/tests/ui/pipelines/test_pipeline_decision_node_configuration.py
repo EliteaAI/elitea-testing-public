@@ -128,16 +128,17 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
         )
 
     with allure.step(
-        "Step 2 — Decision node config renders inline on the canvas card "
-        "(Input, Description, Decision outputs all present, "
-        "no click-to-open action)"
+        "Step 2 — Decision node config renders in the node side panel "
+        "(Input, Description, Decision outputs all present)"
     ):
-        assert pipeline_page.decision_node_input_select.is_visible(), "Input select should be visible inline"
+        # EL-7157: node cards are view-only; config lives in the side panel (Input under Advanced).
+        pipeline_page.expand_decision_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.decision_node_input_select.is_visible(), "Input select should be visible in the node panel"
         assert pipeline_page.decision_node_description_input.is_visible(), (
-            "Description textarea should be visible inline"
+            "Description textarea should be visible in the node panel"
         )
         assert pipeline_page.decision_node_outputs_container.is_visible(), (
-            "Decision outputs container should be visible inline"
+            "Decision outputs container should be visible in the node panel"
         )
         # Interrupt before/after toggles were removed from node cards
         # (EliteaUI EL-3872); their expectations were dropped per human
@@ -164,6 +165,8 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
     ):
         # Expanded node cards push the Printer targets out of the visible pane; Fit View
         # brings every handle on-screen so the drag has real pixels to start/end on.
+        # The side panel overlaps the canvas, so close it for the drags.
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.fit_canvas_view(timeout=UI_ELEMENT_TIMEOUT)
         for target_name in _OUTPUT_TARGETS:
             pipeline_page.connect_nodes(
@@ -176,9 +179,12 @@ def test_decision_node_configuration_and_edge_wiring(page, pipeline_id):
             assert pipeline_page.is_decision_node_output_chip_present(target_name), (
                 f"A '{target_name}' chip should appear under Decision outputs immediately after connecting"
             )
+            # Reading the outputs opens the side panel, which covers the canvas; close it for the next drag.
+            pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_decision_node_output_chip_count() == len(_OUTPUT_TARGETS), (
             f"Exactly {len(_OUTPUT_TARGETS)} Decision output chips should be present"
         )
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 6 — Save the pipeline; verify no console errors and a 201 Created response"):
         save_response = pipeline_page.save_and_wait_for_update(

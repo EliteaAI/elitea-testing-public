@@ -871,6 +871,10 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-node-panel-advanced-section-toggle",
         description="Node side panel's 'Advanced' accordion header (aria-expanded reflects state)"
     )
+    node_panel_name_input = LocatorDescriptor(
+        testid="pipeline-node-panel-name-input",
+        description="Node side panel's Name input (NodeConfigPanel; node cards are view-only since EL-7157)"
+    )
     node_panel_delete_button = LocatorDescriptor(
         testid="pipeline-node-panel-delete",
         description="Node side panel footer's 'Delete node' icon button (NodeConfigFooter.jsx)"
@@ -1216,10 +1220,15 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     decision_node_outputs_container = LocatorDescriptor(
-        testid="pipeline-decision-node-outputs-container",
-        description="Decision node's DECISION OUTPUTS chip-list container"
+        testid="pipeline-decision-node-outputs-select",
+        description="Decision node side panel's Decision outputs multi-select (EL-7157: replaced the card chip list)"
     )
 
+
+    decision_node_outputs_combobox = LocatorDescriptor(
+        testid="pipeline-decision-node-outputs-select-combobox",
+        description="Combobox element of the Decision outputs multi-select (keyboard-openable)"
+    )
 
     decision_node_output_handle = LocatorDescriptor(
         testid="pipeline-decision-node-output-handle",
@@ -1274,6 +1283,8 @@ class PipelineDetailPage(PipelineFormPage):
     # policy: an exact-match template for a known value, and a prefix
     # selector (same convention as SELECT_OPTION / SELECT_OPTION_PREFIX
     # below) for enumerating every rendered chip regardless of value.
+    # Options of the OPEN Decision-outputs multi-select that are currently selected (aria-selected state filter).
+    SELECT_OPTION_SELECTED = '[data-testid^="select-option-"][aria-selected="true"]'
     DECISION_NODE_OUTPUT_CHIP = '[data-testid="pipeline-decision-node-output-chip-{}"]'
     DECISION_NODE_OUTPUT_CHIP_PREFIX = '[data-testid^="pipeline-decision-node-output-chip-"]'
 
@@ -4624,33 +4635,21 @@ class PipelineDetailPage(PipelineFormPage):
             The node's new data-id after the rename.
         """
         logger.info("Editing node %s name to '%s'", node_id, new_name)
-        node = self.page.locator(f'[data-id="{node_id}"]')
-
-        # Double-click the name label to activate inline editing
-        name_label = node.locator(self.NODE_NAME_TESTID)
-        name_label.dblclick()
-        self.page.wait_for_timeout(300)
-
-        # The first input[type="text"] inside the node holds the name.
-        # NOTE (ELITEA-2033 fix): `press("Control+a")` does NOT select-all in
-        # this environment (Chromium/macOS) — live-confirmed via direct DOM
-        # inspection that selectionStart/selectionEnd don't change after the
-        # keypress, so the prior implementation only Backspace-deleted the
-        # LAST character before typing, producing "Printer approve" instead
-        # of "approve" for a "Printer 1" -> "approve" rename. Uses
-        # `select_text()` + `_wait_for_field_selection_applied` instead — the
-        # same reliable, OS-independent clear pattern `_fill_node_field_value`
-        # already relies on.
-        name_input = node.locator('input[type="text"]').first
+        # EL-7157 (class A, UI drift): node cards are view-only; the name is edited in the
+        # node side panel's Name input, which exists only while the node is selected.
+        self._select_node(node_id)
+        name_input = self.node_panel_name_input
+        name_input.wait_for(state="visible", timeout=10000)
+        name_input.click()
+        # select_text + Backspace clears reliably (Control+a does not select-all here)
         name_input.select_text()
         self._wait_for_field_selection_applied(name_input)
         name_input.press("Backspace")
         name_input.type(new_name)
+        # Commit on blur, then close the panel so it does not cover the canvas
+        name_input.press("Tab")
         self.page.wait_for_timeout(300)
-
-        # Click outside the input to commit the edit
-        self._deselect_all()
-        self.page.wait_for_timeout(300)
+        self.close_node_panel()
 
         # Find the node's new data-id (renaming changes it). Prefer an exact
         # verbatim match on new_name first — live-confirmed (ELITEA-2033)
@@ -9376,11 +9375,28 @@ class PipelineDetailPage(PipelineFormPage):
     # Decision node inline config (ELITEA-2034)
     # ------------------------------------------------------------------
 
+    def ensure_decision_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Decision node's config side panel is open (EL-7157, class A).
+
+        Decision config left the canvas card; it lives in the node side panel, which
+        exists only while the node is selected (open right after adding, closed after reload).
+        """
+        self._ensure_node_panel_open(self.decision_node_description_input, "decision", timeout=timeout)
+
+    def expand_decision_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the Decision panel and expand its collapsed-by-default "Advanced" accordion (Input)."""
+        self.ensure_decision_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+        self.decision_node_input_select.wait_for(state="visible", timeout=timeout)
+
     def open_decision_node_input_select(self, timeout: int = 5000) -> None:
-        """Open the Decision node's tool-agnostic Input dropdown."""
+        """Open the Decision node's tool-agnostic Input dropdown (in the panel's Advanced section)."""
+        self.expand_decision_node_advanced_section(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
-        # Mini cards (viewport zoom < 0.6) hide the card body — ELITEA-2016.
-        self._input_select_view_changed = self.ensure_full_cards()
         self.decision_node_input_select.scroll_into_view_if_needed(timeout=timeout)
         self.decision_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
@@ -9401,13 +9417,10 @@ class PipelineDetailPage(PipelineFormPage):
             self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
         self.page.keyboard.press("Escape")
         self._wait_for_open_popovers_closed(timeout=timeout)
-        # open_decision_node_input_select may have zoomed in to full cards
-        # (ELITEA-2016); restore the whole-graph view only in that case.
-        self.restore_graph_view(getattr(self, "_input_select_view_changed", False))
-        self._input_select_view_changed = False
 
     def get_decision_node_input_value(self) -> str:
         """Read the Decision node's currently-selected Input display text."""
+        self.expand_decision_node_advanced_section()
         text = (self.decision_node_input_select.text_content() or "").replace("​", "")
         return text.strip()
 
@@ -9420,26 +9433,45 @@ class PipelineDetailPage(PipelineFormPage):
         events (.claude/rules/mui-patterns.md). Starts empty on a
         freshly-added node, so no clear-before-type step is needed.
         """
-        # Mini cards (viewport zoom < 0.6) hide the card body — ELITEA-2016.
-        changed = self.ensure_full_cards()
+        self.ensure_decision_node_panel_open(timeout=timeout)
         self.decision_node_description_input.scroll_into_view_if_needed(timeout=timeout)
         self.decision_node_description_input.wait_for(state="visible", timeout=timeout)
         self.decision_node_description_input.click()
         self.decision_node_description_input.press_sequentially(text, delay=20)
-        # Restore the whole-graph view (only if zoomed in above) for later connects.
-        self.restore_graph_view(changed)
 
     def get_decision_node_description(self) -> str:
         """Read the Decision node's Description textarea current value."""
+        self.ensure_decision_node_panel_open()
         return self.decision_node_description_input.input_value()
 
+    def get_decision_node_selected_outputs(self, timeout: int = 10000) -> list[str]:
+        """Return the Decision outputs currently selected (EL-7157, class A).
+
+        The panel's Decision-outputs multi-select shows selections as untagged chips, so the
+        selection is read from the open dropdown's options (``aria-selected="true"``), then closed.
+        """
+        self.ensure_decision_node_panel_open(timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        # Open by keyboard on the combobox: a pointer click can land on a chip, whose delete icon
+        # removes that output.
+        self.decision_node_outputs_combobox.focus(timeout=timeout)
+        self.decision_node_outputs_combobox.press("Enter", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+        selected = [
+            (el.get_attribute("data-testid") or "").removeprefix("select-option-")
+            for el in self.page.locator(self.SELECT_OPTION_SELECTED).all()
+        ]
+        self.page.keyboard.press("Escape")
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        return selected
+
     def is_decision_node_output_chip_present(self, value: str) -> bool:
-        """Check whether a DECISION OUTPUTS chip labeled *value* is present."""
-        return self.page.locator(self.DECISION_NODE_OUTPUT_CHIP.format(value)).count() > 0
+        """Check whether *value* is a selected Decision output."""
+        return value in self.get_decision_node_selected_outputs()
 
     def get_decision_node_output_chip_count(self) -> int:
-        """Return the number of DECISION OUTPUTS chips currently rendered."""
-        return self.page.locator(self.DECISION_NODE_OUTPUT_CHIP_PREFIX).count()
+        """Return the number of selected Decision outputs."""
+        return len(self.get_decision_node_selected_outputs())
 
     def wait_for_edge_present(self, source_id: str, target_id: str, timeout: int = 10000) -> None:
         """Poll until an edge from *source_id* to *target_id* appears, tolerating both shapes.
