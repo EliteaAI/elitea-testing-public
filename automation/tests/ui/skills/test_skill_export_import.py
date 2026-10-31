@@ -13,6 +13,7 @@ ELITEA-3749 — see test-specs/skills/l3_import_skill_base_version_ELITEA-3749.m
 ELITEA-3750 — see test-specs/skills/l3_import-skill-non-base-version_ELITEA-3750.md
 """
 
+import json
 import logging
 import tempfile
 import uuid
@@ -177,8 +178,15 @@ class TestSkillExportImport:
             assert frontmatter.get("description") == skill_description, (
                 "Exported frontmatter description should match the source skill"
             )
-            assert frontmatter.get("tags") == [skill_tag], (
-                f"Exported frontmatter tags mismatch: {frontmatter.get('tags')!r}"
+            # Tags moved (EL-7183, Agent Skills spec alignment) from top-level
+            # `tags` to metadata["elitea-tags"], a JSON-like string e.g. '["a"]'.
+            metadata = frontmatter.get("metadata") or {}
+            raw_tags = metadata.get("elitea-tags")
+            assert raw_tags is not None, (
+                f"Exported frontmatter metadata lacks 'elitea-tags': {metadata!r}"
+            )
+            assert json.loads(raw_tags) == [skill_tag], (
+                f"Exported frontmatter metadata elitea-tags mismatch: {raw_tags!r}"
             )
             # No explicit 'version' key is expected in the frontmatter — this is
             # expected live behavior (case-text drift clarification #21), not a bug.

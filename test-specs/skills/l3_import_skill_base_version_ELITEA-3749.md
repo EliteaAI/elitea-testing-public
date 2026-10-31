@@ -262,3 +262,12 @@ up during this analysis).
   Edit mode (`click_edit_mode()`), waits for the editor, and reads the
   frontmatter-stripped body via `get_instructions_body()` (strict `==` kept).
 - Expected-result changes: none.
+
+## Adjustment (adjust-automated-test, class A — exported frontmatter schema, ELITEA-3749 / #2817)
+
+- Old: Step 5 asserted top-level `frontmatter["tags"] == [skill_tag]`.
+- New: DEV export (frontend EL-7183, "Align skill frontmatter with the Agent Skills spec")
+  moved tags to `frontmatter["metadata"]["elitea-tags"]`, a JSON-like string
+  (`'["regression"]'`). The test parses it with `json.loads` and asserts exact equality
+  `== [skill_tag]` (no substring/`in`).
+- Expected-result changes: none — same value, new location.
