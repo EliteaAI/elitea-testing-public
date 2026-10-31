@@ -1156,7 +1156,7 @@ class PipelineDetailPage(PipelineFormPage):
     # has a single HITL node on canvas.
     hitl_node_input_select = LocatorDescriptor(
         testid="pipeline-hitl-node-input-select",
-        description="HITL node's tool-agnostic Input state-variable select (inline on canvas card)"
+        description="HITL node's tool-agnostic Input state-variable select (node side panel, Advanced section)"
     )
 
     hitl_node_user_message_type_select = LocatorDescriptor(
@@ -5348,35 +5348,42 @@ class PipelineDetailPage(PipelineFormPage):
     # Sections rendered inside the node panel's collapsed-by-default "Advanced" accordion.
     _LLM_NODE_ADVANCED_SECTIONS = ("chat_history",)
 
-    def ensure_llm_node_panel_open(self, timeout: int = 5000) -> None:
-        """Make sure the LLM node's side panel is open (select the node if it is not).
+    def ensure_node_panel_open(self, node_type: str = "llm", timeout: int = 5000) -> None:
+        """Make sure the side panel of the *node_type* node is open (select the node if not).
 
-        ELITEA-2004 (class A): node config renders in a side panel that exists
-        only while a node is selected (it is open right after adding a node,
+        ELITEA-2004 / ELITEA-2014 (class A): node config renders in a side panel that
+        exists only while a node is selected (it is open right after adding a node,
         closed after a page reload). No-op when the panel is already open.
         """
         if self.node_panel_advanced_toggle.is_visible():
             return
-        node_id = self.wait_for_node_on_canvas("llm", timeout=timeout)
+        node_id = self.wait_for_node_on_canvas(node_type, timeout=timeout)
         self._select_node(node_id)
         self.node_panel_advanced_toggle.wait_for(state="visible", timeout=timeout)
 
-    def expand_node_panel_advanced_section(self, timeout: int = 5000) -> None:
+    def ensure_llm_node_panel_open(self, timeout: int = 5000) -> None:
+        """Make sure the LLM node's side panel is open (see ``ensure_node_panel_open``)."""
+        self.ensure_node_panel_open("llm", timeout=timeout)
+
+    def expand_node_panel_advanced_section(self, timeout: int = 5000, node_type: str = "llm") -> None:
         """Expand the selected node's side-panel "Advanced" accordion if it is collapsed.
 
-        ELITEA-2004 (class A, UI drift): the LLM node config moved from the
-        canvas card into a node side panel whose "Advanced" section
-        (CHAT HISTORY, Input, Output, Structured output) is collapsed until
+        ELITEA-2004 / ELITEA-2014 (class A, UI drift): node config moved from the
+        canvas card into a node side panel whose "Advanced" section (LLM: CHAT
+        HISTORY, Input, Output, Structured output; HITL: Input) is collapsed until
         opened (``NodeConfigSection.jsx``: ``defaultExpanded={isBasic}``).
         Idempotent: a strict no-op when already expanded.
         """
-        self.ensure_llm_node_panel_open(timeout=timeout)
+        self.ensure_node_panel_open(node_type, timeout=timeout)
         toggle = self.node_panel_advanced_toggle
         toggle.wait_for(state="visible", timeout=timeout)
         if toggle.get_attribute("aria-expanded") != "true":
             toggle.click(timeout=timeout)
             expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
-            self.llm_node_chat_history_type_select.wait_for(state="visible", timeout=timeout)
+            if node_type == "llm":
+                self.llm_node_chat_history_type_select.wait_for(state="visible", timeout=timeout)
+            elif node_type == "hitl":
+                self.hitl_node_input_select.wait_for(state="visible", timeout=timeout)
 
     def _llm_node_type_select_locator(self, section: str) -> Locator:
         """Return the class-level Type-select LocatorDescriptor for *section*."""
@@ -9177,6 +9184,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def open_hitl_node_input_select(self, timeout: int = 5000) -> None:
         """Open the HITL node's tool-agnostic Input select."""
+        self.expand_node_panel_advanced_section(timeout=timeout, node_type="hitl")
         self.hitl_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -9202,10 +9210,12 @@ class PipelineDetailPage(PipelineFormPage):
         checking whether a given variable is selected use substring
         containment against this text.
         """
+        self.expand_node_panel_advanced_section(node_type="hitl")
         return (self.hitl_node_input_select.text_content() or "").strip()
 
     def open_hitl_node_user_message_type_select(self, timeout: int = 5000) -> None:
         """Open the HITL node's USER MESSAGE Type select."""
+        self.ensure_node_panel_open("hitl")
         self.hitl_node_user_message_type_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -9222,6 +9232,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_hitl_node_user_message_type_display(self, timeout: int = 5000) -> str:
         """Read the USER MESSAGE Type select's current display text."""
+        self.ensure_node_panel_open("hitl")
         self.hitl_node_user_message_type_select.wait_for(state="visible", timeout=timeout)
         # MUI's empty-select rendering is a zero-width space (U+200B) — same
         # gotcha as get_mcp_node_toolkit_value.
@@ -9234,6 +9245,7 @@ class PipelineDetailPage(PipelineFormPage):
         Uses click + press_sequentially — MUI/React fields need real keyboard
         events for onChange to fire (.claude/rules/mui-patterns.md).
         """
+        self.ensure_node_panel_open("hitl")
         self.hitl_node_user_message_value_input.wait_for(state="visible", timeout=timeout)
         self.hitl_node_user_message_value_input.click()
         self.hitl_node_user_message_value_input.press("Control+a")
@@ -9242,6 +9254,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_hitl_node_user_message_value(self) -> str:
         """Read the USER MESSAGE Value textarea's current value."""
+        self.ensure_node_panel_open("hitl")
         return self.hitl_node_user_message_value_input.input_value()
 
     def open_hitl_node_route_select(self, action: str, timeout: int = 5000) -> None:
@@ -9251,6 +9264,7 @@ class PipelineDetailPage(PipelineFormPage):
             action: One of ``"approve"``, ``"edit"``, ``"reject"``.
             timeout: Maximum wait time in milliseconds.
         """
+        self.ensure_node_panel_open("hitl")
         select = self.page.locator(self.HITL_NODE_ROUTE_SELECT.format(action))
         select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
@@ -9274,6 +9288,7 @@ class PipelineDetailPage(PipelineFormPage):
             action: One of ``"approve"``, ``"edit"``, ``"reject"``.
             timeout: Maximum wait time in milliseconds.
         """
+        self.ensure_node_panel_open("hitl")
         select = self.page.locator(self.HITL_NODE_ROUTE_SELECT.format(action))
         select.wait_for(state="visible", timeout=timeout)
         text = (select.text_content() or "").replace("​", "")
@@ -9290,6 +9305,7 @@ class PipelineDetailPage(PipelineFormPage):
             action: One of ``"approve"``, ``"edit"``, ``"reject"``.
             timeout: Maximum wait time in milliseconds.
         """
+        self.ensure_node_panel_open("hitl")
         combobox = self.page.locator(self.HITL_NODE_ROUTE_SELECT_COMBOBOX.format(action))
         combobox.wait_for(state="visible", timeout=timeout)
         return combobox.get_attribute("aria-disabled") == "true"
@@ -9309,6 +9325,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def open_hitl_node_edit_state_key_select(self, timeout: int = 5000) -> None:
         """Open the HITL node's EDIT STATE KEY Value select."""
+        self.ensure_node_panel_open("hitl")
         self.hitl_node_edit_state_key_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -9319,6 +9336,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_hitl_node_edit_state_key_value(self, timeout: int = 5000) -> str:
         """Read the EDIT STATE KEY Value select's current display text."""
+        self.ensure_node_panel_open("hitl")
         self.hitl_node_edit_state_key_select.wait_for(state="visible", timeout=timeout)
         text = (self.hitl_node_edit_state_key_select.text_content() or "").replace("​", "")
         return text.strip()

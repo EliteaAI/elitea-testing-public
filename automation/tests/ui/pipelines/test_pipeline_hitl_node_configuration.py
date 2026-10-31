@@ -87,8 +87,10 @@ def test_hitl_node_configuration_and_router_mapping(page, pipeline_id):
     with allure.step(
         "Step 2 — HITL node config renders inline on the canvas card (no click-to-open action)"
     ):
-        # Live product simplification (AFS Coverage Map row 2): there is no
-        # separate panel to open — every listed section is always inline.
+        # Live product (EL-7157): node cards are view-only; the config renders in the node
+        # side panel (open right after adding the node). Input lives in the panel's
+        # collapsed-by-default Advanced section, so expand it before the visibility checks.
+        pipeline_page.expand_node_panel_advanced_section(timeout=UI_ELEMENT_TIMEOUT, node_type="hitl")
         assert pipeline_page.hitl_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.hitl_node_user_message_type_select.is_visible(), (
             "USER MESSAGE Type select should be visible inline"
