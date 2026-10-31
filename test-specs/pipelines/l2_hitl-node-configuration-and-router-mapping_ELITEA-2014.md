@@ -234,3 +234,23 @@ round-trip.
 - **Root cause:** after reload the flow editor fits the view; on the 1366x768 headless viewport the scale lands below 0.6 (`MINI_CARD_ZOOM`), so FlowEditor renders every node as a MINI card and the card's fields have zero size. The testid and element are unchanged (`HITLNode.jsx` -> `SimpleLLMInputItem`, origin/main).
 - **Fix (how only):** Step 8 calls the existing `zoom_in_until_full_cards()` after `wait_for_node_on_canvas` and before reading fields. No handle changed.
 - **Expected-result changes:** none. All assertions, values and markers unchanged.
+
+## Adjustment (2026-10-31, card #2801) — triage class A (UI drift: config moved into node side panel)
+
+- **Symptom:** Step 2 `hitl_node_input_select.is_visible()` was False ("Input select should be visible inline").
+- **Root cause (EliteaUI `origin/main` `HITLNode.jsx`, EL-7157):** node cards are view-only; HITL config renders in the node side panel. The Input select sits in `NodeConfigSection section=advanced`, collapsed by default (`NodeConfigSection.jsx`: `defaultExpanded={isBasic}`). USER MESSAGE, ROUTER MAPPING and EDIT STATE KEY are in the always-expanded basic section of the same panel.
+- **Fix (how only):** new generic `ensure_node_panel_open(node_type)` (the LLM helper delegates to it) and `expand_node_panel_advanced_section(node_type=...)`; HITL page-object methods open the panel (and Advanced for Input) before touching fields; Step 2 expands Advanced before the visibility checks. After reload (Step 8) the panel is reopened by selecting the HITL node.
+
+| Rung | Handle | suggested_testid | Provenance |
+|---|---|---|---|
+| testid | `pipeline-hitl-node-input-select` | n/a | testid on DEV ✓ — now inside panel Advanced section |
+| testid | `pipeline-hitl-node-user-message-type-select` | n/a | testid on DEV ✓ — panel |
+| testid | `pipeline-hitl-node-user-message-value-input` | n/a | testid on DEV ✓ — panel |
+| testid | `pipeline-hitl-node-router-mapping-section` | n/a | testid on DEV ✓ — panel |
+| testid | `pipeline-hitl-node-route-select-{approve,edit,reject}` | n/a | testid on DEV ✓ — panel |
+| testid | `pipeline-hitl-node-edit-state-key-select` | n/a | testid on DEV ✓ — panel |
+| testid | `pipeline-node-panel-advanced-section-toggle` (`aria-expanded`) | n/a | testid on DEV ✓ — reused from ELITEA-2004 |
+
+(The "needs-adding" rows in Concrete Handles above are historical; all those testids are deployed.)
+
+- **Expected-result changes:** none. All assertions, step titles and markers unchanged (only the stale "inline on card" comment was corrected).
