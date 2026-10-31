@@ -1,0 +1,18 @@
+{
+  "slug": "adjust-2805",
+  "card": 2805,
+  "cases": [
+    {
+      "id": "ELITEA-1866",
+      "outcome": "automated",
+      "triage": "B + A. (B) DEV toolkit type picker 404s application_tool_icon/dataverse.svg -> console error trips the case's own 'no console errors' side-channel (CI run 41160918419); filed #2827, narrow known-defect filter keyed on ConsoleMessage.location url, all other console errors still fail. (A) separate UI drift surfaced behind it: Test Toolkit tool picker is now a searchable chip list (Steps 25-28 re-pointed, assertions preserved).",
+      "node": "tests.ui.toolkits.test_toolkit_creation_create_bucket_verify_list_files.TestToolkitCreationCreateBucketVerifyListFiles.test_create_artifact_toolkit_creates_bucket_verify_list_files",
+      "review": "APPROVED (after 1 fix round: @action decorator split restored)",
+      "expected_result_changes": "none",
+      "findings": ["#2827 dataverse.svg 404 (product asset defect, open)"]
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations; an earlier attempt had run 3 red on a Step-1 navigation precondition timeout (known networkidle flake class), full 3x re-gate then 3/3 green"},
+  "locators": {"declared_delta": 0, "unmanaged_handles_delta": 0, "ledger": "no new rows"},
+  "batch": "adjust-2805"
+}
