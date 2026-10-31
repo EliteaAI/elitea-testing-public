@@ -130,6 +130,8 @@ class TestToolkitCredentialIndicators:
                 logger.info("Status indicator verified: %s", status_tooltip)
 
             with allure.step("Step 5 — Verify warning message"):
+                # Known defect: #2828 — pipeline TOOLS card (EL-7159) no longer renders the credential
+                # warning banner / refresh button; assertions stay as the case specifies (natural fail).
                 warning = toolkit_page.get_authentication_warning(timeout=5000)
                 assert warning and any(
                     err in warning for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
@@ -321,25 +323,12 @@ class TestPipelineCredentialIndicators:
                 pipeline_id = pipeline["id"]
                 logger.info("Created pipeline: %s", pipeline_id)
 
-            with allure.step("Step 4 — Navigate to pipeline and add toolkit"):
+            with allure.step("Step 4 — Navigate to pipeline and add toolkit (via Toolkit node picker)"):
                 pipeline_page = PipelineDetailPage(page)
                 pipeline_page.navigate(pipeline_id)
 
-                add_toolkit_btn = page.locator('div[data-tour="agent-tools"] button').first
-                add_toolkit_btn.wait_for(state="visible", timeout=10000)
-                add_toolkit_btn.click()
-                page.wait_for_timeout(500)
-
-                popper = page.locator('.MuiPopper-root').first  # Use .first to avoid strict mode violation
-                popper.wait_for(state="visible", timeout=5000)
-                search_input = popper.locator('input')
-                if search_input.count() > 0:
-                    search_input.first.fill(toolkit_name)
-                    page.wait_for_timeout(500)
-                toolkit_option = popper.locator(f'li:has-text("{toolkit_name}")')
-                toolkit_option.first.click()
-                page.wait_for_timeout(2000)
-                logger.info("Added toolkit to pipeline via TOOLS panel")
+                pipeline_page.attach_toolkit_via_toolkit_node(toolkit_name)
+                logger.info("Added toolkit to pipeline via Toolkit node picker")
 
             with allure.step("Step 5 — Verify warning message"):
                 assert pipeline_page.has_toolkit_warning_message(timeout=15000), (

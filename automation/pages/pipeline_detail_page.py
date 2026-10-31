@@ -8980,6 +8980,24 @@ class PipelineDetailPage(PipelineFormPage):
         toolkit_item.wait_for(state="visible", timeout=timeout)
         return toolkit_item
 
+    def attach_toolkit_via_toolkit_node(self, toolkit_name: str, timeout: int = 10000) -> None:
+        """Attach a project toolkit to the pipeline through a Toolkit node's picker, then Save.
+
+        EL-7159 (class A, UI drift): the TOOLS panel is read-only ("Tools you select in nodes will
+        appear here"); toolkits are attached by picking them in a Toolkit node, and the TOOLS card
+        appears once the pipeline is saved.
+
+        Args:
+            toolkit_name: Display name of the project toolkit.
+            timeout: Maximum wait time per UI action.
+        """
+        self.wait_for_canvas()
+        self.add_node("Toolkit", timeout=timeout)
+        self.wait_for_node_on_canvas("toolkit", timeout=timeout)
+        self.select_toolkit_node_toolkit(toolkit_name, timeout=timeout)
+        self.click_save(timeout=timeout)
+        self.close_node_panel(timeout=timeout)
+
     def hover_toolkit_item(self, toolkit_name: str, timeout: int = 10000):
         """Hover over a toolkit item in the left panel to reveal action icons.
 
