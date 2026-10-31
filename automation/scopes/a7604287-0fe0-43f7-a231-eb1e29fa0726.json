@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "a7604287-0fe0-43f7-a231-eb1e29fa0726",
+  "intent": "automation",
+  "batch": "adjust-2810",
+  "cases": [
+    "ELITEA-2007"
+  ],
+  "declaredAt": "2026-10-31T08:13:23.342Z",
+  "updatedAt": "2026-10-31T08:17:33.428Z",
+  "outcomes": {
+    "ELITEA-2007": {
+      "outcome": "blocked",
+      "at": "2026-10-31T08:17:33.428Z"
+    }
+  }
+}
