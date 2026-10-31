@@ -4035,30 +4035,65 @@ class PipelineDetailPage(PipelineFormPage):
         self.trigger_select.wait_for(state="visible", timeout=timeout)
         return (self.trigger_select.text_content() or "").strip()
 
-    def get_trigger_control_count_for_node(self, node_id: str) -> int:
-        """Count the Trigger control(s) rendered inside a SPECIFIC node's own card.
+    def open_node_panel(self, node_id: str, timeout: int = 10000) -> None:
+        """Open *node_id*'s config side panel and wait until it is bound to THAT node.
 
-        Scoping-gap fix (ELITEA-2041): :attr:`trigger_select` is page-wide by
-        design (single-entry-point-node assumption, per its class-level
-        docstring) — insufficient to assert the Trigger control's ABSENCE on
-        one particular non-entry node while other nodes coexist on canvas.
-        Scopes via the ReactFlow-injected ``rf__node-{id}`` container
-        (:data:`RF_NODE_TESTID`) as the parent, then :data:`TRIGGER_SELECT_TESTID`
-        within it — same mechanism as
-        :meth:`get_printer_node_value_for_node`.
+        Canvas cards are view-only since EL-7157; the per-node config (incl. the
+        entry point's Trigger control) lives only in the side panel. Closes a
+        panel left open for ANOTHER node first (it docks over the canvas and
+        would swallow the click / show the wrong node), clicks the node, then
+        waits STATE-driven until the panel's Name input shows ``node_id``
+        (node data-id == node name).
 
         Args:
-            node_id: The data-id of the node to scope the check to.
+            node_id: The data-id of the node whose panel to open.
+            timeout: Maximum wait for the previous panel to close and the new
+                one to bind.
+        """
+        if self.node_panel_close_button.is_visible():
+            self.node_panel_close_button.click()
+            self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
+        self.page.locator(self.RF_NODE_TESTID.format(node_id)).click(force=True)
+        expect(self.node_panel_name_input).to_have_value(node_id, timeout=timeout)
+
+    def get_trigger_control_count_for_node(self, node_id: str) -> int:
+        """Count the Trigger control(s) rendered in a SPECIFIC node's config side panel.
+
+        EL-7157 made canvas cards view-only: ``TriggerTypeSelector`` is rendered
+        ONLY inside the node side panel's Basic section, and only for the
+        entry-point node (``NodeConfigSection.jsx``:
+        ``showTrigger = isBasic && panelContext?.isEntrypoint``). Only one panel
+        is open at a time, so this opens *node_id*'s panel
+        (:meth:`open_node_panel`) and counts :data:`TRIGGER_SELECT_TESTID` on the
+        page — which, with that node's panel bound, is exactly that node's
+        Trigger control (canvas cards no longer carry any).
+
+        Args:
+            node_id: The data-id of the node to check.
 
         Returns:
-            0 if the node is not the entry point (no Trigger control renders
-            there); 1 if it is.
+            0 if the node is not the entry point (no Trigger control in its
+            panel); 1 if it is.
         """
-        return (
-            self.page.locator(self.RF_NODE_TESTID.format(node_id))
-            .locator(self.TRIGGER_SELECT_TESTID)
-            .count()
-        )
+        self.open_node_panel(node_id)
+        return self.page.locator(self.TRIGGER_SELECT_TESTID).count()
+
+    def get_trigger_type_value_for_node(self, node_id: str, timeout: int = 5000) -> str:
+        """Open *node_id*'s (entry-point) side panel, read its Trigger select's value, close the panel.
+
+        The panel is closed afterwards and the Information section re-revealed
+        (:meth:`_reveal_information_section`): while open the panel collapses the
+        left column hosting ``information-trigger-row``, and closing it leaves
+        that column collapsed — callers read the Information row next.
+
+        Args:
+            node_id: The data-id of the entry-point node.
+            timeout: Maximum wait for the Trigger select to be visible.
+        """
+        self.open_node_panel(node_id)
+        value = self.get_trigger_type_value(timeout=timeout)
+        self._reveal_information_section()
+        return value
 
     def _trigger_select_state(self) -> str:
         """One-line Trigger-select state summary for open_trigger_select's failures.

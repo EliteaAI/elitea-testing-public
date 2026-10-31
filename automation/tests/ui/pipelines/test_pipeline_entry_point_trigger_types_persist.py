@@ -247,10 +247,8 @@ def test_entry_point_trigger_shown_only_on_entry_point_node(page, pipeline_with_
         "Step 2 — Add a Code node (non-entry); verify entry point unchanged and its own "
         "card shows NO Trigger control"
     ):
-        # No click needed to "open" either node's panel (AFS Coverage Map row 2/4
-        # CLARIFICATION): NodeCard.jsx renders every node fully expanded by default
-        # (isExpanded initial state True) -- clicking the header TOGGLES expand/
-        # collapse, which would risk hiding the very field this step observes.
+        # EL-7157: cards are view-only; the Trigger control lives only in a node's
+        # side panel, which get_trigger_control_count_for_node() opens per node.
         pipeline_page.add_node("Code")
         code_node_id = pipeline_page.wait_for_node_on_canvas("code", timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_entrypoint_node_id() == llm_node_id, (
@@ -278,7 +276,13 @@ def test_entry_point_trigger_shown_only_on_entry_point_node(page, pipeline_with_
             "The entry-point LLM node's Trigger control should survive unaffected by its "
             "non-entry siblings coexisting on the same canvas"
         )
-        assert pipeline_page.trigger_select.count() == 1, (
+        # One side panel at a time (EL-7157): "across all 3 nodes" is the SUM of
+        # each node's own panel count, not a single page-wide count.
+        total_trigger_controls = sum(
+            pipeline_page.get_trigger_control_count_for_node(node_id)
+            for node_id in (llm_node_id, code_node_id, printer_node_id)
+        )
+        assert total_trigger_controls == 1, (
             "Exactly one Trigger control should exist across all 3 nodes -- the entry "
             "point's own"
         )
@@ -287,7 +291,7 @@ def test_entry_point_trigger_shown_only_on_entry_point_node(page, pipeline_with_
         'Step 5 — Verify the Information section shows "Trigger:<value>" matching the entry '
         "node's own current Trigger selection"
     ):
-        entry_trigger_value = pipeline_page.get_trigger_type_value()
+        entry_trigger_value = pipeline_page.get_trigger_type_value_for_node(llm_node_id)
         expect(pipeline_page.information_trigger_row).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
         # Declared improvisation (role-overrides.md reverse-masking guard,
         # confirmed live this session): the row's DOM textContent concatenates

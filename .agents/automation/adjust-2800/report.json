@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2800",
+  "card": 2800,
+  "cases": [
+    {
+      "id": "ELITEA-2041",
+      "outcome": "automated",
+      "triage": "A (UI drift, EL-7157: Trigger select moved from node card into node side panel)",
+      "node": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_shown_only_on_entry_point_node",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations"},
+  "batch": "adjust-2800"
+}

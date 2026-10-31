@@ -216,3 +216,30 @@ node + Code + Printer non-entry nodes, plus the Information section cross-check)
   — matches the covering spec's existing `pytestmark`.
 - Test-data fixture: `pipeline_with_llm_id` (existing, shared with the covering spec's own test
   function in the same file). No new fixture needed.
+
+## Adjustment — 2026-10-31 (card #2800, class A UI drift, EL-7157)
+
+**What changed in the product:** EL-7157 made canvas node cards view-only. `TriggerTypeSelector`
+(testid `pipeline-entry-point-trigger-select`, unchanged) now renders ONLY in the node side panel's
+Basic section, for the entry point only (`node-panel/NodeConfigSection.jsx`:
+`showTrigger = isBasic && panelContext?.isEntrypoint`). Cards carry no Trigger control; the panel
+shows one node at a time and, while open, collapses the left column hosting the Information section.
+
+**What changed in the test (HOW only):**
+- New `PipelineDetailPage.open_node_panel(node_id)` — close any open panel, click `rf__node-{id}`,
+  wait (state-driven) until `pipeline-node-panel-name-input` == node_id.
+- `get_trigger_control_count_for_node(node_id)` now opens THAT node's panel and counts
+  `TRIGGER_SELECT_TESTID` (entry node = 1, Code/Printer = 0 — verified live on DEV).
+- Step 4 "only one across all 3 nodes": `trigger_select.count() == 1` (page-wide) becomes the SUM of
+  the per-node counts over LLM/Code/Printer == 1 (one panel at a time).
+- Step 5: new `get_trigger_type_value_for_node(node_id)` opens the entry panel, reads the value,
+  then re-reveals the Information section (`_reveal_information_section`) before the unchanged
+  `information-trigger-row` assertions.
+- Step 2 no-click CLARIFICATION (coverage rows 2/4) is superseded: the panel IS now opened by click.
+
+| Element | rung | handle | suggested_testid | provenance |
+|---|---|---|---|---|
+| Node panel name input | testid | `pipeline-node-panel-name-input` | — | testid on DEV ✓ |
+| Trigger select (in panel) | testid | `pipeline-entry-point-trigger-select` | — | testid on DEV ✓ |
+
+**Expected-result changes: none.**
