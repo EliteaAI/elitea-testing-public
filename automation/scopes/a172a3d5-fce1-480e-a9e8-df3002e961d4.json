@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "session": "a172a3d5-fce1-480e-a9e8-df3002e961d4",
+  "intent": "investigation",
+  "cases": [
+    "ELITEA-1182"
+  ],
+  "declaredAt": "2026-10-31T07:34:50.005Z",
+  "updatedAt": "2026-10-31T07:34:50.042Z",
+  "outcomes": {
+    "ELITEA-1182": {
+      "outcome": "blocked",
+      "at": "2026-10-31T07:34:50.042Z"
+    }
+  }
+}
