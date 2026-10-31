@@ -163,8 +163,27 @@ KNOWN_NONGATING_CONSOLE_SIGNATURES = (
 )
 
 
+# Known defect: #2827 — DEV's toolkit type picker requests
+# /app/application_tool_icon/dataverse.svg, which 404s (product asset defect).
+# The console text carries no URL, so match on ConsoleMessage.location. Scoped
+# to this exact resource: any other 404 / console error still fails the test.
+KNOWN_DEFECT_2827_TEXT = "Failed to load resource"
+KNOWN_DEFECT_2827_STATUS = "status of 404"
+KNOWN_DEFECT_2827_URL = "application_tool_icon/dataverse.svg"
+
+
 def _is_known_nongating_console_error(text: str) -> bool:
     return any(sig in text for sig in KNOWN_NONGATING_CONSOLE_SIGNATURES)
+
+
+def _is_known_defect_2827(msg) -> bool:
+    """Known defect: #2827 — dataverse.svg toolkit-type icon 404."""
+    url = (msg.location or {}).get("url", "") or ""
+    return (
+        KNOWN_DEFECT_2827_TEXT in msg.text
+        and KNOWN_DEFECT_2827_STATUS in msg.text
+        and KNOWN_DEFECT_2827_URL in url
+    )
 
 
 def _find_toolkit_id_by_name(toolkit_api, name: str):
@@ -271,7 +290,9 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
         page.on(
             "console",
             lambda msg: console_errors.append(msg)
-            if msg.type == "error" and not _is_known_nongating_console_error(msg.text)
+            if msg.type == "error"
+            and not _is_known_nongating_console_error(msg.text)
+            and not _is_known_defect_2827(msg)
             else None,
         )
 

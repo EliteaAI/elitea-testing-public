@@ -1442,3 +1442,21 @@ ruling out a generic serialization change) and against the case's own empty-buck
 observable (Steps 32–39, re-verified unaffected); no new testid, no handle change, no
 product defect found; the fix widens an exact-match literal to pin a new field rather
 than relaxing anything; nothing masked.
+
+## Adjustment 2026-10-31
+
+**Class B — known product defect (EliteaAI/elitea-testing-public#2827, OPEN).** The
+"no console errors" side-channel checks (steps 1-19 and later) failed with
+`Failed to load resource: the server responded with a status of 404 ()`. Cause: DEV's
+toolkit type picker requests `/app/application_tool_icon/dataverse.svg`, which 404s —
+a product asset defect, not test drift.
+
+**Change (test file only):** a narrowly-scoped known-defect filter next to
+`KNOWN_NONGATING_CONSOLE_SIGNATURES` (`# Known defect: #2827`). A console error is
+ignored ONLY when its text is a "Failed to load resource ... status of 404" AND
+`ConsoleMessage.location["url"]` contains `application_tool_icon/dataverse.svg`
+(the text carries no URL, so `location` is required). Any other 404 or console error
+still fails. The `assert not console_errors` assertions are unchanged.
+
+**Expected-result changes:** none. Markers, `@allure.issue` and `allure.step` structure
+preserved verbatim. Remove the filter when #2827 is fixed.
