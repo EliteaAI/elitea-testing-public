@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2818",
+  "card": 2818,
+  "cases": [
+    {
+      "id": "ELITEA-3750",
+      "outcome": "automated",
+      "triage": "A (EL-7183: exported skill tags/version moved from top-level frontmatter 'tags'/'elitea_version' to metadata['elitea-tags'] (JSON string) / metadata['elitea-version']; same values, new location; Expected-result changes: none)",
+      "node": "tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations, ~54s each"},
+  "batch": "adjust-2818"
+}

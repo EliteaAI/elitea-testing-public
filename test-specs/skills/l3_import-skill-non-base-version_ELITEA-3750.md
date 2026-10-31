@@ -343,3 +343,16 @@ case's own steps.
   version id) rather than a fixed sleep. After the final Save in step 8,
   wait for the Save button to return to `disabled` state, mirroring
   ELITEA-3749's `wait_for_form_validation()` guidance.
+
+## Adjustment — 2026-10-31 (card #2818, triage class A: UI/product drift)
+
+Product change EL-7183 (Agent Skills spec alignment) moved exported skill
+metadata out of top-level frontmatter keys into `metadata`:
+
+| Old assertion | New assertion (same strength) |
+|---|---|
+| `frontmatter["tags"] == [skill_tag]` | `json.loads(frontmatter["metadata"]["elitea-tags"]) == [skill_tag]` |
+| `frontmatter["elitea_version"] == "ver_1"` | `frontmatter["metadata"]["elitea-version"] == "ver_1"` |
+
+Both keys verified live on DEV (second one surfaced only after the first was fixed).
+Expected-result changes: none. Sibling: ELITEA-3749 (commit e1e90e51).

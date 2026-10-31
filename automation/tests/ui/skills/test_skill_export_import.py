@@ -461,13 +461,21 @@ class TestSkillExportImportNonBaseVersion:
             assert frontmatter.get("description") == skill_description, (
                 "Exported frontmatter description should match the source skill"
             )
-            assert frontmatter.get("tags") == [skill_tag], (
-                f"Exported frontmatter tags mismatch: {frontmatter.get('tags')!r}"
+            # Tags moved (EL-7183, Agent Skills spec alignment) from top-level
+            # `tags` to metadata["elitea-tags"], a JSON-like string e.g. '["a"]'.
+            metadata = frontmatter.get("metadata") or {}
+            raw_tags = metadata.get("elitea-tags")
+            assert raw_tags is not None, (
+                f"Exported frontmatter metadata lacks 'elitea-tags': {metadata!r}"
+            )
+            assert json.loads(raw_tags) == [skill_tag], (
+                f"Exported frontmatter metadata elitea-tags mismatch: {raw_tags!r}"
             )
             # Non-base version exports carry an explicit elitea_version key
             # (Axis 2 addition — unlike base exports, which have no such key).
-            assert frontmatter.get("elitea_version") == version_name, (
-                f"Exported frontmatter elitea_version mismatch: {frontmatter.get('elitea_version')!r}"
+            # Moved with tags (EL-7183): now metadata["elitea-version"].
+            assert metadata.get("elitea-version") == version_name, (
+                f"Exported frontmatter metadata elitea-version mismatch: {metadata.get('elitea-version')!r}"
             )
             assert instructions_body == ver1_instructions, (
                 "Exported instructions body should match the ver_1 instructions, not base"
