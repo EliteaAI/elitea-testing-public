@@ -1,0 +1,23 @@
+{
+ "slug": "adjust-2819",
+ "card": 2819,
+ "cases": [
+  {
+   "id": "ELITEA-2357",
+   "outcome": "automated",
+   "triage": "D (DEV Catalog bulk agents fetch intermittently empty/late -> immediate is_visible in Step 2 flaked; reload-on-empty wait via AgentHubPage.wait_for_agent_card, sibling of 2fc409b1; Expected-result changes: none). Side-channel step stays strict, sanctioned RED on #2537.",
+   "node": "tests.ui.agent_hub.test_agent_hub_close_agent_detail_modal.TestAgentHubCloseAgentDetailModal.test_agent_hub_close_agent_detail_modal",
+   "review": "APPROVED",
+   "note": "sanctioned RED #2537"
+  }
+ ],
+ "gate": {
+  "verdict": "sanctioned-red",
+  "runs": 3,
+  "detail": "3/3 identical RED at side-channel only (#2537: CSP img-src + 10x 404); steps 1-6 pass; no 429"
+ },
+ "batch": "adjust-2819",
+ "gateVerdict": "sanctioned-red",
+ "expected_result_changes": "none",
+ "locator_delta": "no page-object change: declared unchanged, non-testid 78, unmanaged 316 (unchanged)"
+}
