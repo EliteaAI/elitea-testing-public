@@ -288,3 +288,16 @@ full `page.reload()` persistence round-trip for every field.
 | rung | handle | suggested_testid | provenance |
 |---|---|---|---|
 | testid | `rf__node-StateModifier*` (prefix, under `rf__wrapper`) | n/a | testid on DEV ✓ (node id `StateModifier 1`) |
+
+## Adjustment (3)
+
+- **Triage class:** A (UI drift). **Date:** 2026-10-31 (card #2811, CI run 41160918419).
+- **Observed:** since EL-7157 canvas cards are view-only. The State modifier config renders in the node side panel (open right after adding a node, closed after reload). Jinja Template and Variables to clean are in the always-visible section; **Input and Output are in the panel's collapsed-by-default "Advanced" accordion**.
+- **Old -> new:** new `ensure_state_modifier_node_panel_open()` and `expand_state_modifier_node_advanced_section()`; all State modifier accessors call them (so Step 8 after reload works). Test Step 2 expands Advanced before the unchanged four visibility assertions.
+- **Expected-result changes:** none (wording "inline on the canvas card" now means "in the node side panel"; every assertion unchanged).
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `pipeline-node-panel-advanced-section-toggle` | n/a | testid on DEV ✓ |
+| testid | `pipeline-state-modifier-node-input-select` / `-output-select` (Advanced section) | n/a | testid on DEV ✓ |
+| testid | `pipeline-state-modifier-node-template-input` / `-variables-to-clean-select` (panel, basic section) | n/a | testid on DEV ✓ |

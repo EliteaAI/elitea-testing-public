@@ -95,6 +95,9 @@ def test_state_modifier_node_configuration_and_persistence(page, pipeline_id):
         "Step 2 — 'Verify State modifier node panel shows' is checked inline: config renders "
         "directly on the canvas card, no click-to-open action exists"
     ):
+        # Node config now lives in the node side panel (EL-7157); Input/Output sit in its
+        # collapsed-by-default "Advanced" section — open both before the visibility checks.
+        pipeline_page.expand_state_modifier_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.state_modifier_node_template.is_visible(), "Jinja Template field should be visible inline"
         assert pipeline_page.state_modifier_node_variables_to_clean_select.is_visible(), (
             "Variables to clean field should be visible inline"

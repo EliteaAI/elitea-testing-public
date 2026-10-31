@@ -6003,6 +6003,29 @@ class PipelineDetailPage(PipelineFormPage):
         self.ensure_printer_node_panel_open()
         return self.printer_node_final_message_input.input_value()
 
+    def ensure_state_modifier_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the State modifier node's config side panel is open (select the node if not).
+
+        ELITEA-2035 (class A, UI drift; EL-7157): canvas cards are view-only; the Jinja
+        Template / Variables to clean fields live in the node side panel, which is open
+        right after adding a node and closed after a page reload. No-op when already open.
+        """
+        self._ensure_node_panel_open(self.state_modifier_node_template, "state_modifier", timeout=timeout)
+
+    def expand_state_modifier_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the State modifier panel and expand its collapsed-by-default "Advanced" accordion.
+
+        ELITEA-2035 (class A, UI drift): Input / Output sit in the panel's "Advanced"
+        section. Idempotent.
+        """
+        self.ensure_state_modifier_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+        self.state_modifier_node_input_select.wait_for(state="visible", timeout=timeout)
+
     def fill_state_modifier_node_template(self, value: str, timeout: int = 5000) -> None:
         """Fill the State modifier node's Jinja Template field.
 
@@ -6020,10 +6043,12 @@ class PipelineDetailPage(PipelineFormPage):
             value: The Jinja template text to type (may be multi-line).
             timeout: Maximum wait time for the field to be visible.
         """
+        self.ensure_state_modifier_node_panel_open()
         self._fill_node_field_value(self.state_modifier_node_template, value, timeout=timeout)
 
     def get_state_modifier_node_template(self) -> str:
         """Read the State modifier node's Jinja Template field current content."""
+        self.ensure_state_modifier_node_panel_open()
         return self.state_modifier_node_template.input_value()
 
     def open_state_modifier_node_variables_to_clean_select(self, timeout: int = 5000) -> None:
@@ -6036,6 +6061,7 @@ class PipelineDetailPage(PipelineFormPage):
         it is a plain combobox that opens a dropdown like every other
         Input/Output select in this node family.
         """
+        self.ensure_state_modifier_node_panel_open(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.state_modifier_node_variables_to_clean_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
@@ -6047,12 +6073,15 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_state_modifier_node_variables_to_clean_value(self) -> str:
         """Read the State modifier node's currently-selected 'Variables to clean' display text."""
+        self.ensure_state_modifier_node_panel_open()
         text = (self.state_modifier_node_variables_to_clean_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def open_state_modifier_node_input_select(self, timeout: int = 5000) -> None:
         """Open the State modifier node's Input dropdown."""
+        self.expand_state_modifier_node_advanced_section(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_input_select.scroll_into_view_if_needed(timeout=timeout)
         self.state_modifier_node_input_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -6072,12 +6101,15 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_state_modifier_node_input_value(self) -> str:
         """Read the State modifier node's currently-selected Input display text."""
+        self.expand_state_modifier_node_advanced_section()
         text = (self.state_modifier_node_input_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def open_state_modifier_node_output_select(self, timeout: int = 5000) -> None:
         """Open the State modifier node's Output dropdown."""
+        self.expand_state_modifier_node_advanced_section(timeout=timeout)
         self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_output_select.scroll_into_view_if_needed(timeout=timeout)
         self.state_modifier_node_output_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
@@ -6097,6 +6129,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def get_state_modifier_node_output_value(self) -> str:
         """Read the State modifier node's currently-selected Output display text."""
+        self.expand_state_modifier_node_advanced_section()
         text = (self.state_modifier_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 

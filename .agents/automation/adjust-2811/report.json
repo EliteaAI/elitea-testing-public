@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2811",
+  "card": 2811,
+  "cases": [
+    {
+      "id": "ELITEA-2035",
+      "outcome": "automated",
+      "triage": "A (UI drift, EL-7157: State modifier config moved into node side panel; Input/Output in collapsed Advanced section)",
+      "node": "tests.ui.pipelines_2.test_pipeline_state_modifier_node_configuration.test_state_modifier_node_configuration_and_persistence",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations"},
+  "batch": "adjust-2811"
+}
