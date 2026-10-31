@@ -65,9 +65,9 @@ class TestAgentHubCloseAgentDetailModal:
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
         with allure.step(f"Step 2 — Click on the {CATALOG_AGENT_NAME!r} agent card to open the detail modal"):
-            assert agent_hub.get_agent_card(CATALOG_AGENT_NAME).first.is_visible(), (
-                f"Agent card {CATALOG_AGENT_NAME!r} should be visible on the Catalog page"
-            )
+            # Catalog list loads asynchronously (bulk agents fetch can be rate-limited on DEV);
+            # wait for the card (reloading on an empty list) — it must still be visible.
+            agent_hub.wait_for_agent_card(CATALOG_AGENT_NAME, timeout=NAVIGATION_TIMEOUT)
             agent_hub.open_agent_by_name(CATALOG_AGENT_NAME, timeout=NAVIGATION_TIMEOUT)
 
         with allure.step("Step 3 — Verify the agent detail modal is displayed as an overlay"):
