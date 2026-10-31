@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2801",
+  "card": 2801,
+  "cases": [
+    {
+      "id": "ELITEA-2014",
+      "outcome": "automated",
+      "triage": "A (UI drift, EL-7157: HITL Input select moved into the node side panel's collapsed Advanced accordion)",
+      "node": "tests.ui.pipelines.test_pipeline_hitl_node_configuration.test_hitl_node_configuration_and_router_mapping",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), separate invocations, reruns {} each. An earlier gate set was discarded: run 3 passed only after a rerun (transient 15s wait_for_function timeout at detail-page load); re-gated 3/3 clean."},
+  "batch": "adjust-2801"
+}
