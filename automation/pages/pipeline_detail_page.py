@@ -3943,8 +3943,16 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Deleting node: %s", node_id)
 
-        if not self.node_panel_delete_button.is_visible():
-            self.page.locator(self.RF_NODE_TESTID.format(node_id)).click(force=True)
+        # Always select the target node: a panel left open for ANOTHER node (e.g. the
+        # entry-point node after a Trigger read) would otherwise make "Delete node"
+        # remove that node instead of ``node_id``.
+        if self.node_panel_close_button.is_visible():
+            self.node_panel_close_button.click()
+            self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
+        self.page.locator(self.RF_NODE_TESTID.format(node_id)).click(force=True)
+        # The panel re-binds asynchronously; wait until it shows THIS node's name
+        # (node data-id == node name) before touching "Delete node".
+        expect(self.node_panel_name_input).to_have_value(node_id, timeout=timeout)
         self.node_panel_delete_button.wait_for(state="visible", timeout=timeout)
         self.node_panel_delete_button.click(timeout=timeout)
 
@@ -4183,6 +4191,11 @@ class PipelineDetailPage(PipelineFormPage):
             # zoom/pan can leave it outside the viewport).
             self.fit_view()
         if entry_point_node_id:
+            # A side panel left open for another node (EL-7157 panel docks over the
+            # right of the canvas) can cover the entry-point card and swallow the click.
+            if self.node_panel_close_button.is_visible():
+                self.node_panel_close_button.click()
+                self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
             self._select_node(entry_point_node_id)
             # With several nodes on the canvas, Fit View settles below
             # MINI_CARD_ZOOM (0.6, EliteaUI nodeCard.helpers.js isMiniCardZoom),

@@ -58,8 +58,13 @@ SAVE_RESPONSE_TIMEOUT = 15_000
 # actual mapping means that option was not rendered at all, which fails the
 # comparison the same way a wrong state does — so each assertion covers both
 # "all three options are offered" and "these are the selectable ones".
-ALL_THREE_ENABLED = {"chat_message": True, "schedule": True, "webhook": True}
-CHAT_MESSAGE_ONLY_ENABLED = {"chat_message": True, "schedule": False, "webhook": False}
+# EL-7011 (EliteaAI/EliteaUI@c483cc2d, main 2026-10-27): Schedule is no longer a selectable
+# Trigger option (schedules moved to their own feature; TriggerTypeSelector.jsx only lists a
+# disabled Schedule for a version that already STORES one). The dropdown therefore offers
+# Chat Message + Webhook; dict equality also asserts Schedule is absent. The restriction
+# (Webhook greyed out, Chat Message selectable) is unchanged.
+ALL_OFFERED_ENABLED = {"chat_message": True, "webhook": True}
+CHAT_MESSAGE_ONLY_ENABLED = {"chat_message": True, "webhook": False}
 
 
 @pytest.mark.tms("ELITEA-2008")
@@ -74,15 +79,15 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
     console_errors = collect_console_errors(page)
 
     with allure.step(
-        "Step 1 — Navigate to the fresh pipeline; verify baseline: all 3 trigger options present and ENABLED"
+        "Step 1 — Navigate to the fresh pipeline; verify baseline: both trigger options (Chat Message, Webhook) present and ENABLED"
     ):
         pipeline_page = _navigate_to_canvas(page, pipeline_with_llm_id)
         llm_node_id = pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
         baseline_states = pipeline_page.get_trigger_option_states(
             timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
         )
-        assert baseline_states == ALL_THREE_ENABLED, (
-            f"Baseline (no restricting elements) should offer all 3 trigger types with all 3 "
+        assert baseline_states == ALL_OFFERED_ENABLED, (
+            f"Baseline (no restricting elements) should offer both trigger types with both "
             f"SELECTABLE, got {baseline_states!r}"
         )
 
@@ -107,9 +112,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         pre_save_states = pipeline_page.get_trigger_option_states(
             timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
         )
-        assert pre_save_states == ALL_THREE_ENABLED, (
+        assert pre_save_states == ALL_OFFERED_ENABLED, (
             "Restriction should NOT apply before Save — the unsaved Printer node on the live "
-            f"canvas should leave all 3 trigger types selectable, got {pre_save_states!r}"
+            f"canvas should leave both trigger types selectable, got {pre_save_states!r}"
         )
 
     with allure.step("Step 4 — Save the pipeline"):
@@ -119,15 +124,15 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         assert save_response is not None, "Save should return the updated pipeline version"
 
     with allure.step(
-        "Step 5 — Open the Trigger dropdown again; verify Schedule + Webhook are DISABLED in place "
+        "Step 5 — Open the Trigger dropdown again; verify Webhook is DISABLED in place "
         "and Chat Message stays selectable, immediately (no reload needed) AND after a reload"
     ):
         post_save_states = pipeline_page.get_trigger_option_states(
             timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
         )
         assert post_save_states == CHAT_MESSAGE_ONLY_ENABLED, (
-            f"With the Printer node saved, all 3 options should still be listed but only Chat "
-            f"Message selectable (Schedule + Webhook aria-disabled), got {post_save_states!r}"
+            f"With the Printer node saved, both options should still be listed but only Chat "
+            f"Message selectable (Webhook aria-disabled), got {post_save_states!r}"
         )
 
         canonical_url = page.url
@@ -157,7 +162,7 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
             timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
         )
         assert hitl_states == CHAT_MESSAGE_ONLY_ENABLED, (
-            f"With a saved HITL node present, Schedule + Webhook should be disabled and only Chat "
+            f"With a saved HITL node present, Webhook should be disabled and only Chat "
             f"Message selectable, got {hitl_states!r}"
         )
 
@@ -179,13 +184,13 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
             timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
         )
         assert interrupt_states == CHAT_MESSAGE_ONLY_ENABLED, (
-            f"With a saved non-empty interrupt list, Schedule + Webhook should be disabled and only "
+            f"With a saved non-empty interrupt list, Webhook should be disabled and only "
             f"Chat Message selectable, got {interrupt_states!r}"
         )
 
     with allure.step(
         "Step 8 — Remove all HITL/Printer/interrupt configuration; Save; reload; "
-        "verify all 3 trigger types are available AND ENABLED again"
+        "verify both trigger types are available AND ENABLED again"
     ):
         pipeline_page.clear_interrupt_before_via_yaml()
         pipeline_page.delete_node(code_node_id)
@@ -204,9 +209,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
             timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
         )
         # The ENABLED half is the whole discriminating content of this step:
-        # post-EL-6128 a still-restricted pipeline lists the same 3 options.
-        assert restored_states == ALL_THREE_ENABLED, (
-            f"Removing every restricting element and saving should re-enable all 3 trigger types "
+        # post-EL-6128 a still-restricted pipeline lists the same options.
+        assert restored_states == ALL_OFFERED_ENABLED, (
+            f"Removing every restricting element and saving should re-enable both trigger types "
             f"(no option left aria-disabled), got {restored_states!r}"
         )
 
