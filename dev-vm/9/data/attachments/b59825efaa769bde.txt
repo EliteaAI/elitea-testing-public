@@ -1,0 +1,34 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Save current edits as a new version — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skill-save-as-version-button")
+    - locator resolved to <button disabled tabindex="-1" type="button" data-testid="skill-save-as-version-button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-elitea MuiButton-eliteaSecondary MuiButton-sizeMedium MuiButton-eliteaSizeMedium MuiButton-colorSecondary css-j27ouf">Save As Version</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    19 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
+ERROR    elitea.steps:actions.py:49 Step failed: Save current edits as a new version — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skill-save-as-version-button")
+    - locator resolved to <button disabled tabindex="-1" type="button" data-testid="skill-save-as-version-button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-elitea MuiButton-eliteaSecondary MuiButton-sizeMedium MuiButton-eliteaSizeMedium MuiButton-colorSecondary css-j27ouf">Save As Version</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    19 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms

@@ -1,0 +1,1 @@
+WARNING  elitea.pages.pipeline_detail:pipeline_detail_page.py:2302 close_versions_menu: VERSION dropdown still open after Escape (attempt 1/3) — retrying

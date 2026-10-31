@@ -1,0 +1,2 @@
+This attachment (88ef5d78e14c682c.webm, 2.1 MB) was removed from the GitHub Pages copy of this report: the GitHub Pages site is kept under 900 MB and videos are dropped oldest-run-first.
+The original is in the allure-results artifact of the CI run that produced this report.
