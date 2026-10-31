@@ -140,6 +140,7 @@ BUCKET_NAME = "new-bucket"
 EMPTY_LIST_FILES_RESULT = {"total": 0, "rows": [], "truncated": False}
 SEARCH_TERM = "art"
 TOOL_KEY = "list_files"
+TOOL_DISPLAY_NAME = "List files"  # chip label on the Test-Tools empty state
 
 # Confirmed live (ELITEA-1866 exploration): the 16 tools an Artifact
 # toolkit's TOOLS section renders, all selected by default.
@@ -627,9 +628,15 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 # UI CHANGE: Model selector only appears AFTER selecting a tool.
                 # The panel initially shows EMPTY STATE with empty_state_tool_select.
                 # Model selector check moved to after Step 28 (tool selection).
-                expect(test_settings.empty_state_tool_select).to_be_visible(
+                # UI DRIFT (2026-10-31): the empty state's 'Select Tool' popover
+                # was replaced by a searchable list of tool chips
+                # (ToolkitTestEmptyState.jsx). Same observable: the tool-selection
+                # entry point is shown, with no tool selected yet (the Test
+                # Settings panel's Tool dropdown is absent).
+                expect(test_settings.start_search).to_be_visible(
                     timeout=UI_ELEMENT_TIMEOUT,
                 )
+                expect(test_settings.tool_select).to_have_count(0)
                 # UI CHANGE (#1616): the pre-run welcome message was RELOCATED
                 # and REWORDED — it was NOT removed from the product.
                 # ToolkitTestResults.jsx:29 early-returns `null` while `messages`
@@ -665,7 +672,9 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 # carried forward — the observable still exists in the product.
 
             with allure.step("Step 26 — Click the Tool dropdown"):
-                test_settings.empty_state_tool_select.click()
+                # UI DRIFT: no dropdown to open any more — the tool list is always
+                # expanded; focus its search entry point instead.
+                test_settings.start_search.click()
 
             with allure.step(
                 f"Step 27 — Verify the tool list shows all tools including 'List files'"
@@ -680,17 +689,17 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 # - Current behavior: shows selectable tools only (no group headers in count)
                 #
                 # Actual tool count is verified; "List files" presence is the functional check.
-                options = test_settings.get_tool_options()
+                options = test_settings.get_tool_chips()
                 actual_count = options.count()
                 assert actual_count > 0, "Tool dropdown should show at least one tool"
 
                 # Verify "List files" is present (the functional requirement)
                 expect(
-                    test_settings.get_tool_option(TOOL_KEY)
+                    test_settings.get_tool_chip(TOOL_DISPLAY_NAME)
                 ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step("Step 28 — Select 'List files' from the Tool dropdown"):
-                test_settings.get_tool_option(TOOL_KEY).click()
+                test_settings.get_tool_chip(TOOL_DISPLAY_NAME).click()
                 expect(test_settings.tool_select).to_contain_text(
                     "List files", timeout=UI_ELEMENT_TIMEOUT,
                 )

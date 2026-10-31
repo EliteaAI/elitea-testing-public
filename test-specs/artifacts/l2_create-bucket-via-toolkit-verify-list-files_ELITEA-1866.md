@@ -1460,3 +1460,30 @@ still fails. The `assert not console_errors` assertions are unchanged.
 
 **Expected-result changes:** none. Markers, `@allure.issue` and `allure.step` structure
 preserved verbatim. Remove the filter when #2827 is fixed.
+
+### Adjustment 2026-10-31 (b) — class A UI drift, Steps 25-28
+
+DEV's Test Toolkit panel empty state changed from a 'Select Tool' popover
+(`toolkit-test-empty-tool-select` + `select-option-{key}` options) to a searchable list:
+a 'Search tools...' input plus one chip button per tool, grouped Read / Create & update /
+Delete (ToolkitTestEmptyState.jsx). Only *how* the tool is reached/identified changed.
+
+| Step | Old | New |
+|---|---|---|
+| 25 | empty-state select visible | `start_search` visible AND `tool_select` (Test Settings panel's Tool dropdown) count 0 = entry point shown, no tool selected |
+| 26 | click the Tool dropdown | click the search entry point (no dropdown to open) |
+| 27 | `select-option-*` count > 0, `list_files` option visible | tool chips count > 0, chip "List files" visible |
+| 28 | click `list_files` option; `tool_select` contains "List files" | click chip "List files"; same `tool_select` assertion |
+
+Handles (no new declarations; all pre-existing in `ToolkitTestSettingsPage`, added by #2683):
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| 1 testid | `toolkit-test-start-search` | n/a | testid on DEV ✓ (search input) |
+| 1 testid | `toolkit-test-start-tool-chip` (filtered by tool display-name text) | n/a | testid on DEV ✓ |
+| 1 testid | `toolkit-test-tool-select` | n/a | testid on DEV ✓ |
+
+Page object: two additive Locator-returning helpers `get_tool_chips()` / `get_tool_chip(name)`.
+
+**Expected-result changes:** none — every assertion keeps its meaning; Step 25 is asserted
+on the equivalent new UI. Gate: node-id green once locally (1 passed).
