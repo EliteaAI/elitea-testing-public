@@ -5020,6 +5020,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def wait_for_agent_node_agent_value(self, expected: str, timeout: int = 10000) -> str:
         """Wait until the Agent node's picker shows *expected* (the pick resolves the agent details async)."""
+        self.ensure_agent_node_panel_open(timeout=timeout)
         self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
         expect(self.agent_node_agent_select).to_contain_text(expected, timeout=timeout)
         return self.get_agent_node_agent_value(timeout=timeout)
@@ -5218,7 +5219,12 @@ class PipelineDetailPage(PipelineFormPage):
     # ------------------------------------------------------------------
 
     def get_agent_node_agent_value(self, timeout: int = 5000) -> str:
-        """Read the Agent node's currently-selected Agent display text."""
+        """Read the Agent node's currently-selected Agent display text.
+
+        EL-7157/EL-7159 (class A, UI drift): the Agent select lives in the node's side panel, which
+        is closed on a fresh canvas load -- open it (idempotent) before reading.
+        """
+        self.ensure_agent_node_panel_open(timeout=max(timeout, 10000))
         self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
         text = (self.agent_node_agent_select.text_content() or "").replace("​", "")
         return text.strip()
