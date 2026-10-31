@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2798",
+  "card": 2798,
+  "cases": [
+    {
+      "id": "ELITEA-2034",
+      "outcome": "automated",
+      "triage": "A (UI drift, EL-7157/EL-7159)",
+      "node": "tests.ui.pipelines.test_pipeline_decision_node_configuration.test_decision_node_configuration_and_edge_wiring",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app), 0 reruns"},
+  "batch": "adjust-2798"
+}
