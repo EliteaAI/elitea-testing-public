@@ -1314,11 +1314,10 @@ def _build_parent_child_state_isolation_parent_instructions(child_pipeline_name:
     CODE1 sets BOTH ``state_1`` AND ``state_2`` (unlike
     :func:`pipeline_parent_child_state_sharing`'s parent, which sets only
     ``state_1``), then transitions to AGENT1, an ``agent``-type node whose
-    ``tool:`` field names the already-created child pipeline. Same Tools
-    -section attach precondition as the sibling fixture (AFS ELITEA-2444
-    § Preconditions, confirmed live) -- the bare ``tool:`` field alone does
-    not resolve the child; the test itself still performs the "+ Pipeline"
-    popper attach.
+    ``tool:`` is deliberately NOT pre-set (EL-7159, class A drift): the Agent
+    node's picker now stages the attach and Save persists it, and re-picking
+    a ``tool:`` the YAML already names is a no-op that stages nothing. The
+    test performs the attach through the Agent-node picker.
 
     Args:
         child_pipeline_name: Exact ``name`` of the already-created child
@@ -1355,7 +1354,6 @@ nodes:
       chat_history:
         type: fixed
         value: []
-    tool: {child_pipeline_name}
     transition: END
 """
 

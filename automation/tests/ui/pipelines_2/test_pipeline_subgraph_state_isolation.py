@@ -99,31 +99,36 @@ def test_subgraph_state_sharing_non_common_state_isolation(page, pipeline_parent
         node_ids = pipeline_page.get_node_ids()
         assert "CODE1" in node_ids, f"Canvas should render the parent's CODE1 node, got {node_ids!r}"
         assert "AGENT1" in node_ids, f"Canvas should render the parent's AGENT1 node, got {node_ids!r}"
-        assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == "", (
+        # EL-7159: Agent-node config lives in the node side panel; open it to read the combobox.
+        # An unattached picker renders the "Select" placeholder (was an empty string).
+        pipeline_page.ensure_agent_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == "Select", (
             "Agent node's Agent combobox should be EMPTY before the Tools-section attach -- the "
             "YAML `tool:` field alone does not resolve the child pipeline reference (AFS Preconditions)"
         )
 
-    with allure.step('Step 2 — Click TOOLS "+ Pipeline"; select the child pipeline from the popper'):
-        popper = pipeline_page.open_pipeline_popper(timeout=UI_ELEMENT_TIMEOUT)
-        assert popper.is_visible(), "'+ Pipeline' popper should open"
-
-        # Regression guard: hard-blocks on the attach's own PATCH-201 response
-        # (same endpoint/mechanism as ELITEA-2443/2064) -- confirmed live.
-        attach_response = pipeline_page.select_pipeline_in_popper(
-            popper, child_name, project_id, timeout=UI_ELEMENT_TIMEOUT
-        )
-        assert attach_response is not None, (
-            "Pipeline attach should return the persisted relation payload from the immediate "
-            "PATCH .../application_relation/prompt_lib/{project}/{child_id}/{version_id} 201 response"
-        )
-        page.keyboard.press("Escape")
+    with allure.step(
+        'Step 2 — Attach the child pipeline: open the Agent node\'s "Agents & Pipelines" picker and select it '
+        '(TOOLS "+ Pipeline" button removed, EL-7159)'
+    ):
+        pipeline_page.open_agent_node_picker(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.pick_agent_node_application(child_name, timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step(
-        "Step 3 — Re-inspect the Agent node: the child pipeline now resolves in the Agent combobox"
+        "Step 3 — Re-inspect the Agent node: the child pipeline now resolves in the Agent combobox; "
+        "Save persists the attach (application_relation PATCH 201 + pipeline PUT 201)"
     ):
-        assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == child_name, (
+        assert pipeline_page.wait_for_agent_node_agent_value(child_name, timeout=UI_ELEMENT_TIMEOUT) == child_name, (
             f"Agent combobox should show the attached child pipeline name {child_name!r} after attach"
+        )
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
+        # EL-7159 (class A): the picker no longer auto-persists; Save writes the attach. Endpoint guard kept.
+        attach_response = pipeline_page.save_and_wait_for_attach(
+            "/application_relation/prompt_lib/", project_id, parent_id, timeout=UI_ELEMENT_TIMEOUT
+        )
+        assert attach_response is not None, (
+            "Pipeline attach should return the persisted relation payload from the "
+            "PATCH .../application_relation/prompt_lib/{project}/{child_id}/{version_id} 201 response"
         )
         assert not console_errors, f"Attaching the child pipeline should not introduce console errors: {console_errors}"
 
