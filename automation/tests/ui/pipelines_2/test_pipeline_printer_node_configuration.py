@@ -63,6 +63,7 @@ def test_printer_node_configuration_and_persistence(page, pipeline_id):
         "Step 2 — Verify Printer node panel shows: PRINTER section (Type + Value), "
         "Final Message field, Output handle at bottom"
     ):
+        pipeline_page.ensure_printer_node_panel_open()  # config lives in the node side panel (EL-7157)
         assert pipeline_page.printer_node_type_select.is_visible(), "PRINTER Type select should be visible inline"
         assert pipeline_page.printer_node_value.is_visible(), "PRINTER Value field should be visible inline"
         assert pipeline_page.printer_node_final_message_input.is_visible(), (
@@ -135,6 +136,7 @@ def test_printer_node_configuration_and_persistence(page, pipeline_id):
     with allure.step(
         "Step 8 — Note: Printer node has only Output handle (no Input combobox visible in panel)"
     ):
+        pipeline_page.ensure_printer_node_panel_open()  # absence must be checked with the panel open
         assert pipeline_page.printer_node_input_select.count() == 0, (
             "Printer node should render zero Input state-variable comboboxes"
         )

@@ -5887,8 +5887,19 @@ class PipelineDetailPage(PipelineFormPage):
     # (``_fill_node_field_value``, ``_wait_for_open_popovers_closed``) the
     # LLM/Code node methods above use.
 
+    def ensure_printer_node_panel_open(self, timeout: int = 10000) -> None:
+        """Make sure the Printer node's config side panel is open (select the node if not).
+
+        ELITEA-2039 (class A, UI drift; EL-7157): canvas cards are view-only, the
+        PRINTER Type/Value and Final Message fields live in the node side panel,
+        which is open right after adding a node and closed after a page reload.
+        No-op when the panel is already open.
+        """
+        self._ensure_node_panel_open(self.printer_node_type_select, "printer", timeout=timeout)
+
     def get_printer_node_type(self, timeout: int = 5000) -> str:
         """Read the Printer node's PRINTER section Type select current value."""
+        self.ensure_printer_node_panel_open()
         self.printer_node_type_select.wait_for(state="visible", timeout=timeout)
         # MUI's empty-select rendering is a zero-width space (U+200B), not
         # an empty string — same gotcha as get_code_node_type.
@@ -5902,6 +5913,7 @@ class PipelineDetailPage(PipelineFormPage):
             type_value: Option display text, e.g. ``"F-String"``.
             timeout: Maximum wait time for the dropdown / option.
         """
+        self.ensure_printer_node_panel_open()
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.printer_node_type_select.click(timeout=timeout)
         option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
@@ -5923,10 +5935,12 @@ class PipelineDetailPage(PipelineFormPage):
             value: The f-string/text value to type.
             timeout: Maximum wait time for the field to be visible.
         """
+        self.ensure_printer_node_panel_open()
         self._fill_node_field_value(self.printer_node_value, value, timeout=timeout)
 
     def get_printer_node_value(self) -> str:
         """Read the PRINTER section's Value field current content."""
+        self.ensure_printer_node_panel_open()
         return self.printer_node_value.input_value()
 
     def fill_printer_node_value_for_node(self, node_id: str, value: str, timeout: int = 5000) -> None:
@@ -5981,10 +5995,12 @@ class PipelineDetailPage(PipelineFormPage):
             value: The final-message text to type.
             timeout: Maximum wait time for the field to be visible.
         """
+        self.ensure_printer_node_panel_open()
         self._fill_node_field_value(self.printer_node_final_message_input, value, timeout=timeout)
 
     def get_printer_node_final_message(self) -> str:
         """Read the Printer node's Final Message field current content."""
+        self.ensure_printer_node_panel_open()
         return self.printer_node_final_message_input.input_value()
 
     def fill_state_modifier_node_template(self, value: str, timeout: int = 5000) -> None:

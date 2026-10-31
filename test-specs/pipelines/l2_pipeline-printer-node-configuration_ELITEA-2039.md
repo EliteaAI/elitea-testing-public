@@ -261,3 +261,17 @@ live) against the live local environment.
 | rung | handle | suggested_testid | provenance |
 |---|---|---|---|
 | testid | `rf__node-Printer*` (prefix, under `rf__wrapper`) | n/a | testid on DEV ✓ |
+
+## Adjustment (2)
+
+- **Triage class:** A (UI drift). **Date:** 2026-10-31 (card #2809).
+- **Observed:** since EL-7157 canvas node cards are view-only; the Printer node's PRINTER Type/Value and Final Message fields render only in the node side panel (open right after adding a node, closed after a reload). The inline-on-canvas assumption in steps 2-5, 7 and 8 no longer holds.
+- **Old -> new:** page-object Printer accessors (`get/select/fill_printer_node_*`) and the test's Step 2 / Step 8 checks now call `ensure_printer_node_panel_open()` first (selects the Printer node if its panel is not open). Step 8's zero Input/Output combobox assertion is made with the panel open, so the absence check stays meaningful. Step 2's two connection-handle testids remain visible and the handle count stays 2 (unchanged).
+- **Expected-result changes:** none. The "renders fully inline on the canvas card" wording in Expected Results is now "in the node side panel"; every assertion is unchanged.
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `pipeline-printer-node-type-select` (in node side panel) | n/a | testid on DEV ✓ |
+| testid | `pipeline-printer-node-value` (in node side panel) | n/a | testid on DEV ✓ |
+| testid | `pipeline-printer-node-final-message-input` (in node side panel) | n/a | testid on DEV ✓ |
+| testid | `pipeline-printer-node-target-handle` / `-source-handle` (canvas card) | n/a | testid on DEV ✓ |
