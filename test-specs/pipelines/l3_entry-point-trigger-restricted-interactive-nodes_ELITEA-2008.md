@@ -707,3 +707,18 @@ trigger cluster uses; it is the method #1806 will fix.
 - **Cause (verified on DEV + EliteaUI `origin/main`):** with 2+ nodes Fit View settles below `MINI_CARD_ZOOM` (0.6, `nodeCard.helpers.js isMiniCardZoom`); `NodeCard` then renders every card as a mini card and its body (holding the Trigger select) is `display:none`.
 - **Fix:** `PipelineDetailPage.open_trigger_select` fits the view and zooms in until full cards render (`zoom_in_until_full_cards`) before clicking. No handle changed.
 - **Expected-result changes:** none.
+
+## Adjustment 2026-10-31 (issue #2799, CI run #331) — triage class A (UI drift)
+
+- **What changed:** EL-7011 (EliteaUI `c483cc2d`, main 2026-10-27, `TriggerTypeSelector.jsx`): Schedule is
+  no longer a selectable Trigger option (schedules moved to their own Schedules section; a disabled
+  Schedule is listed only for a version that already stores one). The dropdown offers
+  **Chat Message + Webhook**. Verified live on DEV: baseline `{chat_message: True, webhook: True}`.
+- **Unchanged:** the restriction itself (Printer/HITL/interrupts, saved version only) — Chat Message
+  enabled, Webhook disabled; lifts after removal + Save + reload.
+- **Expected-result changes:** the option set is now 2 (Schedule absent) — case text "all three trigger types" →
+  "Chat Message and Webhook". Assertions still compare the full `{value: enabled}` dict, so Schedule
+  reappearing would fail. No assertion deleted or weakened.
+- **Page-object robustness (class D, no assertion change):** `delete_node` now closes any open panel and selects the
+  target node (it previously deleted the node whose panel was open); `open_trigger_select` closes a docked
+  side panel that covers the entry-point card.
