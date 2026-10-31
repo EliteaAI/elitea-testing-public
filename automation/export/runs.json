@@ -2485,6 +2485,40 @@
       "scenarios_automated": 1,
       "scenarios_executed": 1,
       "notes": "gate green (1 passed x3 on DEV (APP_PREFIX=/app), separate invocations, reruns {} each. An earlier gate set was discarded: run 3 passed only after a rerun (transient 15s wait_for_function timeout at detail-page load); re-gated 3/3 clean.x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-2801/cost.json (v1); batch slug 'adjust-2801'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-adjust-2802",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 41,
+      "subagent_dispatches": 1,
+      "orchestrator_cost_pct": 79.3,
+      "tokens": {
+        "input": 22024,
+        "output": 22243,
+        "cache_read": 5115894,
+        "cache_create": 356177
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 22024,
+          "output": 22243,
+          "cache_read": 5115894,
+          "cache_create": 356177
+        }
+      },
+      "cost_api_equivalent_usd": 1.84,
+      "cache_read_share_pct": 46.9,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate green (1 passed x3 on DEV (APP_PREFIX=/app), separate invocationsx); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-2802/cost.json (v1); batch slug 'adjust-2802'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
