@@ -272,3 +272,18 @@ first node added. Step 1's canvas check changed from `node ids == ["END"]` to `n
 (still an exact-state assertion). Expected-result changes: the fresh-canvas baseline only (END absent →
 canvas empty); every other assertion untouched. Handles unchanged (`.react-flow__node` enumeration via
 the existing `get_node_ids`).
+
+## Adjustment — 2026-10-31 (#2794, triage class A: UI drift, EliteaUI EL-7159)
+
+Product change (`359dcdb2`, read on `origin/main`): toolkits/MCPs/agents are now picked **inside pipeline nodes**.
+- TOOLS `+ Agent` button (`agent-add-agent-button`) is gone; the section is read-only ("Tools you select in nodes will appear here.").
+- Agent attach = Agent node → "Agents & Pipelines" picker (`pipeline-agent-node-agent-select`, rows `pipeline-agent-node-agent-select-option`). Selection no longer auto-persists; the `application_relation` PATCH (201) fires **on Save**, together with the pipeline PUT (201).
+- Input/Output selects live in the node panel's collapsed **Advanced** accordion (`pipeline-node-panel-advanced-section-toggle`, `aria-expanded`).
+- The "Input mapping (required 1)" accordion is replaced by the bare TASK field (`pipeline-agent-node-input-mapping-value-task`), rendered only once an Agent is bound.
+- After reload the node panel is closed; reopen the node to read Agent/Input/Output.
+
+Flow now: Add node → Agent (Step 5/6 checks) → pick agent in node picker (steps 2/3/7) → TOOLS card shows it (step 4) → Input/Output (Advanced) → TASK → Save (PATCH+PUT 201) → reload.
+
+Handles: all rung 1 (`testid on DEV ✓`); no new declarations.
+
+**Expected-result changes:** none weakened. Equivalent assertions only: the attach-persistence assertion moved from "on select" to "on Save" (same endpoint, same 201); the "Input mapping (required 1)" heading check became presence of the TASK field (same condition: appears only after Agent selection). The TMS case text (steps 2–3 mention TOOLS "+ Agent") needs a human-reviewed update — TMS PR to follow.

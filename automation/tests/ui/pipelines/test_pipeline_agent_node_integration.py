@@ -99,35 +99,6 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
             "A fresh pipeline's canvas should be empty (no nodes, END included) before any node is added"
         )
 
-    with allure.step('Step 2 — Click TOOLS "+ Agent"; select the fixture agent from the popper'):
-        popper = pipeline_page.open_agent_popper(timeout=UI_ELEMENT_TIMEOUT)
-        assert popper.is_visible(), "'+ Agent' popper should open"
-
-        # Regression guard: the Agent picker auto-persists via a DIFFERENT
-        # endpoint from the sibling Toolkit/MCP pickers
-        # (/application_relation/prompt_lib/, not /tool/prompt_lib/) —
-        # select_agent_in_popper() hard-blocks on that specific PATCH-201
-        # response before returning, so a future regression that reverts to
-        # the wrong endpoint (or stops persisting on select) times out this
-        # step instead of silently passing.
-        attach_response = pipeline_page.select_agent_in_popper(
-            popper, agent_name, project_id, timeout=UI_ELEMENT_TIMEOUT
-        )
-        assert attach_response is not None, (
-            "Agent attach should return the persisted relation payload from the immediate "
-            "PATCH .../application_relation/prompt_lib/{project}/{agent_id}/{version_id} 201 response"
-        )
-        page.keyboard.press("Escape")
-
-    with allure.step(
-        "Step 4 — Verify the agent appears attached in TOOLS as a flat-list card (no 'sub-tab' — "
-        "same root cause as EliteaAI/elitea-testing-public#1149/#530)"
-    ):
-        assert pipeline_page.is_toolkit_attached(agent_name, timeout=UI_ELEMENT_TIMEOUT), (
-            f"TOOLS section should show a card for the attached agent {agent_name!r}"
-        )
-        assert not console_errors, f"Attaching the agent should not introduce console errors: {console_errors}"
-
     with allure.step('Step 5 — Click "Add node" -> "Agent"; a fresh Agent node appears'):
         pipeline_page.add_node("Agent", timeout=UI_ELEMENT_TIMEOUT)
         agent_node_id = pipeline_page.wait_for_node_on_canvas("agent", timeout=UI_ELEMENT_TIMEOUT)
@@ -144,6 +115,8 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         assert pipeline_page.agent_node_agent_select.is_visible(), (
             "Agent node's Agent select should be visible inline on the canvas card"
         )
+        # EL-7159: Input/Output live in the node panel's collapsed "Advanced" section
+        pipeline_page.expand_agent_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.agent_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.agent_node_output_select.is_visible(), "Output select should be visible inline"
         # Interrupt before/after toggles (and their disabled-state checks)
@@ -161,16 +134,34 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         # documented rather than asserted in-test: no compliant testid-only
         # locator exists to check its absence against.
 
-    with allure.step("Step 7 — Select the attached agent from the Agent dropdown"):
-        pipeline_page.select_agent_node_agent(agent_name, timeout=UI_ELEMENT_TIMEOUT)
-        assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == agent_name, (
+    with allure.step(
+        'Step 7 (case steps 2, 3, 7) — Attach the agent: the TOOLS "+ Agent" button was removed (EL-7159); open the Agent '
+        'node\'s "Agents & Pipelines" picker and select the fixture agent'
+    ):
+        pipeline_page.open_agent_node_picker(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.pick_agent_node_application(agent_name, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.wait_for_agent_node_agent_value(agent_name, timeout=UI_ELEMENT_TIMEOUT) == agent_name, (
             f"Agent select should show {agent_name!r} after selection"
         )
         assert pipeline_page.is_agent_node_input_mapping_section_visible(1, timeout=UI_ELEMENT_TIMEOUT), (
-            "'Input mapping (required 1)' section should appear once an Agent is selected"
+            "TASK input-mapping field should appear once an Agent is selected"
         )
+        # EL-7159 (class A, UI drift): the picker no longer auto-persists on select; the attachment
+        # is written on Save (asserted in Step 11 via the same application_relation endpoint).
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step(
+        "Step 4 — Verify the agent appears attached in TOOLS as a flat-list card (no 'sub-tab' — "
+        "same root cause as EliteaAI/elitea-testing-public#1149/#530)"
+    ):
+        pipeline_page.ensure_toolkits_section_visible(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_toolkit_attached(agent_name, timeout=UI_ELEMENT_TIMEOUT), (
+            f"TOOLS section should show a card for the attached agent {agent_name!r}"
+        )
+        assert not console_errors, f"Attaching the agent should not introduce console errors: {console_errors}"
 
     with allure.step("Step 8 — Set Input combobox — add 'normalized_issue', 'kb_results'"):
+        pipeline_page.expand_agent_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.select_agent_node_input_variable(_INPUT_VARIABLE_1, timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.select_agent_node_input_variable(_INPUT_VARIABLE_2, timeout=UI_ELEMENT_TIMEOUT)
         input_value = pipeline_page.get_agent_node_input_value()
@@ -199,10 +190,12 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         )
 
     with allure.step("Step 11 — Save; verify 201 + no console errors across the whole flow"):
-        save_response = pipeline_page.save_and_wait_for_update(
-            project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
+        # EL-7159: the agent attach is persisted by Save (PATCH application_relation 201 + pipeline PUT 201).
+        # Endpoint regression guard retained: /application_relation/, not /tool/.
+        save_response = pipeline_page.save_and_wait_for_attach(
+            "/application_relation/prompt_lib/", project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
         )
-        assert save_response is not None, "Save should return the persisted pipeline version"
+        assert save_response is not None, "Save should return the persisted relation payload (PATCH 201)"
         assert not console_errors, f"Save should not introduce console errors: {console_errors}"
 
     with allure.step(
@@ -216,6 +209,8 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         assert pipeline_page.is_toolkit_attached(agent_name, timeout=UI_ELEMENT_TIMEOUT), (
             "TOOLS section should still show the attached agent card after reload"
         )
+        # EL-7159: the node panel is closed after a reload; reopen it (Input/Output sit in Advanced)
+        pipeline_page.expand_agent_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == agent_name, (
             f"Agent should persist as {agent_name!r} after reload"
         )

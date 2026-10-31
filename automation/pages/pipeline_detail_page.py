@@ -4952,6 +4952,19 @@ class PipelineDetailPage(PipelineFormPage):
         self.agent_node_agent_select.click(timeout=timeout)
         self.page.locator(self.AGENT_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
 
+    def expand_agent_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Open the Agent node's panel and expand its "Advanced" accordion (Input/Output/extra mappings).
+
+        EL-7159 (class A, UI drift): Input/Output sit in the node panel's collapsed-by-default
+        "Advanced" section. Idempotent.
+        """
+        self.ensure_agent_node_panel_open(timeout=timeout)
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
     def close_node_panel(self, timeout: int = 10000) -> None:
         """Close the node config side panel if open and wait until it is gone (restores the left TOOLS column)."""
         if self.node_panel_close_button.count() > 0:
@@ -5215,20 +5228,24 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     def is_agent_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
-        """Check whether the Agent node's "Input mapping (required N)" accordion is visible.
+        """Check whether the Agent node's required Input-mapping field (TASK) is rendered.
+
+        EL-7159 (class A, UI drift): the "Input mapping (required N)" accordion was replaced by the
+        TASK field rendered directly in the node panel (``InputMappingFields``); it exists only
+        once an Agent is bound to the node. The Agent node's schema has exactly one required key.
 
         Args:
-            required_count: Expected N in the accordion title (always 1 —
-                the Agent node's schema has exactly one required key, TASK).
+            required_count: Expected number of required keys (always 1 — TASK).
             timeout: Maximum wait time.
         """
-        heading = self.agent_node_input_mapping_required_heading
+        if required_count != 1:
+            return False
+        field = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_VALUE.format("task"))
         try:
-            heading.wait_for(state="visible", timeout=timeout)
+            field.wait_for(state="visible", timeout=timeout)
         except Exception:
             return False
-        text = (heading.text_content() or "").strip()
-        return text == f"Input mapping (required {required_count})"
+        return True
 
     def get_agent_node_input_mapping_type(self, param_name: str = "task", timeout: int = 5000) -> str:
         """Read the current Type select display value of the TASK Input-mapping row.
