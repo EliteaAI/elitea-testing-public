@@ -182,6 +182,16 @@ class ToolkitTestSettingsPage(BasePage):
         self.empty_state_tool_select.click()
         logger.info("Opened the Test-Tools empty-state tool select")
 
+    def get_tool_chips(self):
+        """Return the Locator matching every tool chip on the Test-Tools empty state."""
+        return self.start_tool_chip
+
+    def get_tool_chip(self, tool_name: str):
+        """Return the Locator for the chip labelled *tool_name* (substring, case-insensitive)."""
+        return self.start_tool_chip.filter(
+            has_text=re.compile(re.escape(tool_name), re.IGNORECASE)
+        )
+
     @action("Pick a tool chip on the Test-Tools empty state")
     def select_tool_chip_by_name(self, tool_name: str, timeout: int = 10000) -> None:
         """Search for *tool_name* on the empty state and click its chip.
