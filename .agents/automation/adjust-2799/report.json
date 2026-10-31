@@ -1,0 +1,15 @@
+{
+  "slug": "adjust-2799",
+  "card": 2799,
+  "cases": [
+    {
+      "id": "ELITEA-2008",
+      "outcome": "automated",
+      "triage": "A (UI drift, EL-7011 Schedule removed from Trigger select) + D (delete_node/open_trigger_select side-panel robustness)",
+      "node": "tests.ui.pipelines.test_pipeline_entry_point_trigger_restricted_interactive_nodes.test_entry_point_trigger_restricted_interactive_nodes",
+      "review": "APPROVED"
+    }
+  ],
+  "gate": {"n": 3, "verdict": "green", "runs": "1 passed x3 on DEV (APP_PREFIX=/app); test_pipeline_canvas_delete_node.py also green"},
+  "batch": "adjust-2799"
+}
