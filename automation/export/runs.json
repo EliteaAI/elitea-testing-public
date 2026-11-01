@@ -2893,6 +2893,40 @@
       "scenarios_automated": 2,
       "scenarios_executed": 2,
       "notes": "gate green (3x); outcomes: automated 2. Telemetry cohort: reconstructed from .agents/automation/adjust-2836/cost.json (v1); batch slug 'adjust-2836'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-adjust-2837",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 28,
+      "subagent_dispatches": 2,
+      "orchestrator_cost_pct": 49.4,
+      "tokens": {
+        "input": 31839,
+        "output": 30161,
+        "cache_read": 6984753,
+        "cache_create": 487047
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 31839,
+          "output": 30161,
+          "cache_read": 6984753,
+          "cache_create": 487047
+        }
+      },
+      "cost_api_equivalent_usd": 2.53,
+      "cache_read_share_pct": 46.9,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-2837/cost.json (v1); batch slug 'adjust-2837'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
