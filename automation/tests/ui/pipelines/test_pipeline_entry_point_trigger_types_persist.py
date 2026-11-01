@@ -3,16 +3,18 @@
 TMS: ELITEA-2005
 (test-specs/pipelines/l3_entry-point-trigger-types-persist_ELITEA-2005.md)
 
-Verifies the entry-point node's Trigger dropdown exposes exactly the three
-trigger types (Chat Message default, Schedule, Webhook), that every
+Verifies the entry-point node's Trigger dropdown exposes exactly the two
+selectable trigger types (Chat Message default, Webhook — Schedule was removed
+from the select by EL-7011), that every
 trigger-type change persists through its own dedicated endpoint (independent
 of the pipeline's general Save) and survives a full page reload, and that the
-same Trigger control (with all 3 options) is available on ANY node type
+same Trigger control (with both options) is available on ANY node type
 promoted to entry point.
 
-This case's own Webhook/Schedule steps stay intentionally shallow (open ->
-default -> Apply -> persisted); the modals' own field internals are
-ELITEA-2006 (Webhook)/ELITEA-2007 (Schedule)'s job, not re-litigated here.
+This case's own Webhook step stays intentionally shallow (open -> default ->
+Apply -> persisted); the modal's own field internals are ELITEA-2006's job,
+not re-litigated here. Schedule steps were removed with the product feature
+(ELITEA-2005 adjustment, see AFS § Adjustment).
 
 Also covers TMS ELITEA-2041 (extend-existing, second test function below):
 verifies the Trigger control is EXCLUSIVE to the entry-point node's own card
@@ -85,18 +87,21 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
         )
 
     with allure.step('Step 2 — Click the entry-point node; verify Trigger defaults to "Chat Message"'):
+        # EL-7157: canvas cards are view-only; the Trigger select renders only in
+        # the entry-point node's side panel, which opens on node click.
+        pipeline_page.open_node_panel(llm_node_id)
         assert pipeline_page.trigger_select.is_visible(), (
-            "Trigger select should render on the entry-point node's card"
+            "Trigger select should render in the entry-point node's side panel"
         )
         assert pipeline_page.get_trigger_type_value() == "Chat Message", (
             "Trigger should default to 'Chat Message'"
         )
 
-    with allure.step("Step 3 — Open the Trigger dropdown; verify exactly 3 options in order"):
+    with allure.step("Step 3 — Open the Trigger dropdown; verify exactly 2 options in order (Schedule removed, EL-7011)"):
         pipeline_page.open_trigger_select(timeout=UI_ELEMENT_TIMEOUT)
         option_names = pipeline_page.get_open_listbox_option_names()
-        assert option_names == ["Chat Message", "Schedule", "Webhook"], (
-            f"Trigger dropdown should list exactly these 3 options in order, got {option_names!r}"
+        assert option_names == ["Chat Message", "Webhook"], (
+            f"Trigger dropdown should list exactly these 2 options in order, got {option_names!r}"
         )
         page.keyboard.press("Escape")
 
@@ -133,52 +138,18 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
         pipeline_page.wait_for_detail_page_load()
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
+        # The side panel is closed after a reload (EL-7157) — reopen it.
+        pipeline_page.open_node_panel(llm_node_id)
 
         # currentTriggerType falls back to its "chat_message" default while
         # the post-reload GET .../trigger refetch is still in flight — poll
         # instead of reading same-tick (AFS § Quirks).
         expect(pipeline_page.trigger_select).to_have_text("Webhook", timeout=UI_ELEMENT_TIMEOUT)
 
-    with allure.step('Step 6 — Select "Schedule"; Apply with the modal default; verify Trigger updates'):
-        schedule_response = pipeline_page.select_trigger_type("schedule", timeout=UI_ELEMENT_TIMEOUT)
-        assert schedule_response is None, (
-            "Selecting Schedule should NOT auto-save (no PUT until the modal's own Apply)"
-        )
-        pipeline_page.wait_for_schedule_settings_loaded(timeout=MODAL_TIMEOUT)
-
-        schedule_apply_response = pipeline_page.apply_schedule_settings(timeout=MODAL_TIMEOUT)
-        assert schedule_apply_response is not None and schedule_apply_response.get("type") == "schedule", (
-            f"Apply should persist type=schedule server-side, got {schedule_apply_response!r}"
-        )
-        assert not pipeline_page.schedule_modal.is_visible(), "Schedule modal should be closed after Apply"
-        expect(pipeline_page.trigger_select).to_have_text("Schedule", timeout=MODAL_TIMEOUT)
-
-    with allure.step(
-        "Step 7 — Reload; verify Trigger shows 'Schedule'; the clock icon reopens the Schedule modal"
-    ):
-        canonical_url = page.url
-        page.goto(canonical_url)
-        pipeline_page.wait_for_detail_page_load()
-        pipeline_page.wait_for_canvas()
-        pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
-
-        expect(pipeline_page.trigger_select).to_have_text("Schedule", timeout=UI_ELEMENT_TIMEOUT)
-
-        # Confirms the saved CRON round-trips, not just the trigger `type`
-        # string (only rendered while currentTriggerType === "schedule").
-        pipeline_page.trigger_schedule_edit_button.click(timeout=UI_ELEMENT_TIMEOUT)
-        pipeline_page.wait_for_schedule_settings_loaded(timeout=MODAL_TIMEOUT)
-        summary_text = pipeline_page.get_schedule_summary_text()
-        assert "00:00" in summary_text and "Saturday" in summary_text, (
-            f"Reopened Schedule modal should show the round-tripped default cron, got {summary_text!r}"
-        )
-        pipeline_page.schedule_modal_cancel_button.click(timeout=UI_ELEMENT_TIMEOUT)
-        pipeline_page.schedule_modal.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
-
-    with allure.step('Step 8 — Switch back to "Chat Message" from a genuinely different current value'):
+    with allure.step('Step 6 — Switch back to "Chat Message" from a genuinely different current value (persisted Webhook)'):
         # Axis 2 addition (AFS): TriggerTypeSelector.jsx's handleTriggerTypeChange
         # short-circuits as a no-op when newType === currentTriggerType — driving
-        # this from the CONFIRMED-Schedule state (right after Step 7's reload)
+        # this from the CONFIRMED-Webhook state (right after Step 5's reload)
         # guarantees a real state transition, not a silent no-op.
         chat_message_response = pipeline_page.select_trigger_type("chat_message", timeout=UI_ELEMENT_TIMEOUT)
         assert chat_message_response is not None and chat_message_response.get("type") == "chat_message", (
@@ -187,7 +158,7 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
         expect(pipeline_page.trigger_select).to_have_text("Chat Message", timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step(
-        "Step 9 — Add a Code node, make it the entry point; verify the same Trigger + 3 options render there"
+        "Step 7 — Add a Code node, make it the entry point; verify the same Trigger + 2 options render there"
     ):
         pipeline_page.add_node("Code")
         code_node_id = pipeline_page.wait_for_node_on_canvas("code", timeout=UI_ELEMENT_TIMEOUT)
@@ -201,13 +172,13 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
             "node's (LLM) copy must disappear when a different node becomes the entry point"
         )
         assert pipeline_page.get_trigger_type_value() == "Chat Message", (
-            "Code node's Trigger should show the persisted 'Chat Message' value from Step 8"
+            "Code node's Trigger should show the persisted 'Chat Message' value from Step 6"
         )
 
         pipeline_page.open_trigger_select(timeout=UI_ELEMENT_TIMEOUT)
         code_option_names = pipeline_page.get_open_listbox_option_names()
-        assert code_option_names == ["Chat Message", "Schedule", "Webhook"], (
-            "Trigger dropdown should list the same 3 options regardless of entry-point node "
+        assert code_option_names == ["Chat Message", "Webhook"], (
+            "Trigger dropdown should list the same 2 options regardless of entry-point node "
             f"type, got {code_option_names!r}"
         )
         page.keyboard.press("Escape")
