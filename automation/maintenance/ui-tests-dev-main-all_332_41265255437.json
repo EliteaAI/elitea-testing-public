@@ -1,0 +1,113 @@
+{
+  "runs": {
+    "20261101032921": {
+      "total": 272,
+      "details": [
+        {
+          "id": "ELITEA-0858",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMakeEntrypoint.test_make_node_entrypoint",
+          "resolution": "to_rerun",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2834",
+          "failure_type": "element-not-found",
+          "failure_summary": "Canvas layout problem - source handle covered by overlay element at current zoom level",
+          "reasoning": "Error explicitly states 'This is a canvas LAYOUT problem' and 'a longer timeout or a retry cannot fix it' but this is typical of flaky environmental issues. The element IS present but temporarily obscured. Retrying should allow the test to proceed when layout stabilizes."
+        },
+        {
+          "id": "ELITEA-2057",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2795"
+        },
+        {
+          "id": "ELITEA-2055",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_create_full_details_persist.test_create_pipeline_full_details_persist_after_reload",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2796"
+        },
+        {
+          "id": "ELITEA-2036",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2797"
+        },
+        {
+          "id": "ELITEA-2016",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_decision_node_execution.test_decision_node_routes_execution_to_correct_branch",
+          "resolution": "to_rerun",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2835",
+          "failure_type": "timeout",
+          "failure_summary": "Timeout waiting for element scroll_into_view_if_needed (10000ms exceeded)",
+          "reasoning": "Multiple retries (3 failures) with consistent timeout error. This is characteristic of intermittent infrastructure delays rather than a deterministic bug. Retrying should resolve this flaky timeout."
+        },
+        {
+          "id": "ELITEA-2005",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_types_persist",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2836",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Trigger select component not rendering on entry-point node card",
+          "reasoning": "Specific assertion failure indicating the trigger select UI element is missing or not rendering. This suggests a real product issue with trigger UI persistence, not a timeout or flaky element locator issue."
+        },
+        {
+          "id": "ELITEA-0852",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_empty_pipeline_execution",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2837",
+          "failure_type": "assertion-failure",
+          "failure_summary": "UI element expected to be enabled but is disabled",
+          "reasoning": "Assertion 'Locator expected to be enabled' indicates a button or control that should be clickable is disabled. This suggests a product behavior issue where the empty pipeline execution state is not properly enabling expected controls."
+        },
+        {
+          "id": "ELITEA-2051",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2838",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Forked pipeline attribution icon-link not shown in dashboard",
+          "reasoning": "Assertion specifically states dashboard should show 'Forked from' attribution but doesn't. This indicates a feature not working correctly (fork attribution not being applied/displayed), requiring investigation into the fork functionality."
+        },
+        {
+          "id": "ELITEA-2056",
+          "automation_test_id": "tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section",
+          "resolution": "to_fix",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2839",
+          "failure_type": "assertion-failure",
+          "failure_summary": "Mermaid diagram rendering issues - show-link modal contains no Mermaid nodes",
+          "reasoning": "Multiple soft assertion failures related to Mermaid diagram not rendering properly. While a known defect #2367 exists for Mermaid race conditions, the test is also catching the lack of any nodes. This indicates a real rendering or data issue that should be investigated."
+        },
+        {
+          "id": "ELITEA-0143",
+          "automation_test_id": "tests.ui.chat.test_agent_with_toolkit_chat.TestAgentWithToolkitInChat.test_agent_with_toolkit_executes_in_chat",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2803"
+        },
+        {
+          "id": null,
+          "automation_test_id": "tests.ui.chat.test_chat_streaming_response.TestStreamingResponse.test_streaming_response_displayed_progressively",
+          "resolution": "id_mapping_error",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2840",
+          "failure_type": "TMS Mapping Missing",
+          "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+        },
+        {
+          "id": "ELITEA-1182",
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestPipelineCredentialIndicators.test_pipeline_credential_indicators_e2e",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2806"
+        },
+        {
+          "id": "ELITEA-1182",
+          "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestAgentCredentialIndicators.test_agent_credential_indicators_e2e",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2806"
+        },
+        {
+          "id": "ELITEA-3754",
+          "automation_test_id": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTour.test_sidebar_interactive_tour_completes_via_next",
+          "resolution": "already_in_progress",
+          "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2808"
+        }
+      ]
+    }
+  }
+}
