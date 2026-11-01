@@ -1,0 +1,16 @@
+{
+ "slug": "adjust-2837",
+ "card": 2837,
+ "batch": "adjust-2837",
+ "cases": [
+  {"id": "ELITEA-0852", "outcome": "automated",
+   "triage": "A/D (fixture drift): DEV frontend (pipelineReadiness.helpers.js) disables Test Pipeline/Send unless entry point connects to END; bare pipeline_id fixture had no connection. New fixture pipeline_entry_to_end_id (empty Printer node, entry->END, editor-normalized YAML) - declared improvisation. Expected-result changes: none.",
+   "node": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_empty_pipeline_execution",
+   "review": "APPROVED"}
+ ],
+ "gate": {"verdict": "green", "runs": 3, "detail": "3/3 passed on DEV, separate invocations"},
+ "gateVerdict": "green",
+ "expected_result_changes": "none",
+ "locator_delta": "none (no pages/ changes)",
+ "findings": ["sandbox has no automation/.env.test; runs need APP_PREFIX=/app else every page 404s", "other users of bare pipeline_id may hit the same disabled Test Pipeline if they execute without wiring entry->END; triage separately if red"]
+}

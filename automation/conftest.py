@@ -48,6 +48,7 @@ from fixtures.data_fixtures import (
     midturn_injection_enabled,
     agent_id,
     pipeline_id,
+    pipeline_entry_to_end_id,
     pipeline_with_llm_id,
     pipeline_with_fstring_llm_id,
     pipeline_with_variable_task_llm_id,
@@ -257,6 +258,7 @@ def attach_screenshot(page: Page, name: str, description: str = "") -> Path:
 # - conversation_id: Fresh conversation per test
 # - agent_id: Fresh agent per test
 # - pipeline_id: Fresh empty pipeline per test
+# - pipeline_entry_to_end_id: Fresh pipeline, entry point wired straight to END
 # - pipeline_with_llm_id: Fresh executable pipeline with LLM node
 
 # ===========================================================================

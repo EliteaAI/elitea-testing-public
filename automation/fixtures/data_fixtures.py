@@ -12,6 +12,8 @@ Fixtures:
 - conversation_id: Fresh conversation per test
 - agent_id: Fresh agent per test
 - pipeline_id: Fresh empty pipeline per test
+- pipeline_entry_to_end_id: Fresh pipeline with no processing nodes, entry point wired
+  straight to END (the only state in which DEV enables Test Pipeline)
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
 - pipeline_with_variable_task_llm_id: Fresh executable pipeline with LLM node,
   TASK mapped ``type: variable, value: input`` (forwards the user's message,
@@ -216,6 +218,48 @@ def pipeline_id(pipeline_api: PipelineAPI, request):
         logger.info("Deleted pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_entry_to_end_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with no processing nodes whose entry point goes straight to END.
+
+    DEV disables the Test Pipeline button unless the entry point has a path to
+    END (``getTestBlockReason`` in the frontend's pipelineReadiness helpers), so
+    the bare ``pipeline_id`` pipeline (no nodes, no connections) cannot be
+    executed. This variant keeps the pipeline "empty" in the TMS sense (no LLM
+    or Code node) but connects the entry point to END: a single empty Printer
+    node with ``transition: END``. The YAML is stored in the editor's
+    normalized form (explicit Printer ``input_mapping``); otherwise the editor
+    normalizes it on load, marks the draft unsaved and disables Send.
+
+    Yields:
+        int: Numeric pipeline ID
+    """
+    name = f"autotest_{request.node.name}"[:32]  # API enforces 32-char max
+    description = f"Auto-created entry-to-END pipeline for test {request.node.name}"
+    instructions = (
+        "entry_point: Printer 1\n"
+        "nodes:\n"
+        "  - id: Printer 1\n"
+        "    type: printer\n"
+        "    input_mapping:\n"
+        "      printer:\n"
+        "        type: fixed\n"
+        "        value: ''\n"
+        "    transition: END\n"
+    )
+    pipeline = pipeline_api.create_pipeline(name, description, instructions)
+    pid = pipeline["id"]
+    logger.info("Created entry-to-END pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted entry-to-END pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete entry-to-END pipeline %s: %s", pid, exc)
 
 
 @pytest.fixture

@@ -152,10 +152,10 @@ class TestPipelineExecutionEdgeCases:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-0852_pipeline-execution-edge-cases.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     @pytest.mark.tms("ELITEA-0852")
-    def test_empty_pipeline_execution(self, page, pipeline_id):
+    def test_empty_pipeline_execution(self, page, pipeline_entry_to_end_id):
         """PIPE-015: Executing a pipeline with no nodes (only END)."""
         with allure.step("Step 1 — Navigate to empty pipeline detail page"):
-            pipelines = _navigate_to_pipeline_detail(page, pipeline_id)
+            pipelines = _navigate_to_pipeline_detail(page, pipeline_entry_to_end_id)
             initial_count = pipelines.get_embedded_chat_message_count()
 
         with allure.step("Step 2 — Send message to empty pipeline"):
