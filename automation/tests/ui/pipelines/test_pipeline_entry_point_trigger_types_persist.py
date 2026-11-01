@@ -1,4 +1,4 @@
-"""UI test — Entry Point Node: Trigger Types (Chat Message, Schedule, Webhook).
+"""UI test — Entry Point Node: Trigger Types (Chat Message, Webhook).
 
 TMS: ELITEA-2005
 (test-specs/pipelines/l3_entry-point-trigger-types-persist_ELITEA-2005.md)
@@ -39,27 +39,6 @@ UI_ELEMENT_TIMEOUT = 10_000
 MODAL_TIMEOUT = 10_000
 
 
-def _is_known_1021_warning(msg) -> bool:
-    """Filter the react-js-cron/antd console noise the Schedule modal emits on open.
-
-    Filed as EliteaAI/elitea-testing-public#1021: opening the Schedule
-    settings modal deterministically fires two React console warnings
-    entirely inside the third-party ``react-js-cron`` library's own antd
-    ``Select`` usage (an antd-version prop mismatch: ``popupClassName``
-    deprecation + an unrecognized ``dropdownAlign`` DOM prop) — not from any
-    app-authored JSX in ``PipelineScheduleModal.jsx``. The modal's own
-    functionality (cron defaults, Apply, persistence) is unaffected. Filtered
-    like #291/#554 (background noise unrelated to this case's own flow)
-    rather than soft-tracked, per the same precedent established in
-    ``test_credential_search_by_name.py``.
-    """
-    text = msg.text
-    return (
-        "popupClassName" in text
-        or ("dropdownAlign" in text and "does not recognize" in text)
-    )
-
-
 @pytest.mark.tms("ELITEA-2005")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
@@ -67,11 +46,11 @@ def _is_known_1021_warning(msg) -> bool:
     "onetest-ai Test Case link",
 )
 def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
-    """All 3 trigger types are listed, selectable, persist, and travel with the entry point."""
+    """Both trigger types (Chat Message, Webhook) are listed, selectable, persist, and travel with the entry point."""
     console_errors = []
 
     def _on_console(msg):
-        if msg.type == "error" and not _is_known_1021_warning(msg):
+        if msg.type == "error":
             console_errors.append(msg)
 
     page.on("console", _on_console)
@@ -97,7 +76,9 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
             "Trigger should default to 'Chat Message'"
         )
 
-    with allure.step("Step 3 — Open the Trigger dropdown; verify exactly 2 options in order (Schedule removed, EL-7011)"):
+    with allure.step(
+        "Step 3 — Open the Trigger dropdown; verify exactly 2 options in order (Schedule removed, EL-7011)"
+    ):
         pipeline_page.open_trigger_select(timeout=UI_ELEMENT_TIMEOUT)
         option_names = pipeline_page.get_open_listbox_option_names()
         assert option_names == ["Chat Message", "Webhook"], (
@@ -146,7 +127,9 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
         # instead of reading same-tick (AFS § Quirks).
         expect(pipeline_page.trigger_select).to_have_text("Webhook", timeout=UI_ELEMENT_TIMEOUT)
 
-    with allure.step('Step 6 — Switch back to "Chat Message" from a genuinely different current value (persisted Webhook)'):
+    with allure.step(
+        'Step 6 — Switch back to "Chat Message" from a genuinely different current value (persisted Webhook)'
+    ):
         # Axis 2 addition (AFS): TriggerTypeSelector.jsx's handleTriggerTypeChange
         # short-circuits as a no-op when newType === currentTriggerType — driving
         # this from the CONFIRMED-Webhook state (right after Step 5's reload)
