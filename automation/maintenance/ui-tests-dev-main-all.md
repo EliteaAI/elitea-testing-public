@@ -13,82 +13,82 @@
 
 ## Test Results Matrix
 
-| Test Case | #293 | #294 | #295 | #300 | #304 | #319 | #321 | #326 | #327 | #329 | Tracking Issue |
+| Test Case | #294 | #295 | #300 | #304 | #319 | #321 | #326 | #327 | #329 | #332 | Tracking Issue |
 |-----------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|----------------|
-| ELITEA-0143 | 🔴 | 🟠 | 🟠 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟢 | 🟡 | [#2779](https://github.com/EliteaAI/elitea-testing-public/issues/2779) |
-| ELITEA-0679 | 🟡 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-0851 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-0852 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🔴 | 🟢 | 🟢 | 🟠 | [#2709](https://github.com/EliteaAI/elitea-testing-public/issues/2709) |
-| ELITEA-0858 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-0864 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟠 | [#2721](https://github.com/EliteaAI/elitea-testing-public/issues/2721) |
-| ELITEA-1182 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | [#2777](https://github.com/EliteaAI/elitea-testing-public/issues/2777) |
-| ELITEA-1866 | 🟠 | 🟢 | 🟠 | 🟢 | 🔴 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | [#2776](https://github.com/EliteaAI/elitea-testing-public/issues/2776) |
-| ELITEA-1954 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | [#2722](https://github.com/EliteaAI/elitea-testing-public/issues/2722) |
-| ELITEA-1955 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | [#2723](https://github.com/EliteaAI/elitea-testing-public/issues/2723) |
-| ELITEA-2004 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2005 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟠 | [#2708](https://github.com/EliteaAI/elitea-testing-public/issues/2708) |
-| ELITEA-2006 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2775](https://github.com/EliteaAI/elitea-testing-public/issues/2775) |
-| ELITEA-2007 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2771](https://github.com/EliteaAI/elitea-testing-public/issues/2771) |
-| ELITEA-2008 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2766](https://github.com/EliteaAI/elitea-testing-public/issues/2766) |
-| ELITEA-2009 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2761](https://github.com/EliteaAI/elitea-testing-public/issues/2761) |
-| ELITEA-2010 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2758](https://github.com/EliteaAI/elitea-testing-public/issues/2758) |
-| ELITEA-2013 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2774](https://github.com/EliteaAI/elitea-testing-public/issues/2774) |
-| ELITEA-2014 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2768](https://github.com/EliteaAI/elitea-testing-public/issues/2768) |
-| ELITEA-2016 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟠 | [#2707](https://github.com/EliteaAI/elitea-testing-public/issues/2707) |
-| ELITEA-2019 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2760](https://github.com/EliteaAI/elitea-testing-public/issues/2760) |
-| ELITEA-2020 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2026 | 🟢 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2034 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2765](https://github.com/EliteaAI/elitea-testing-public/issues/2765) |
-| ELITEA-2035 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2768](https://github.com/EliteaAI/elitea-testing-public/issues/2768) |
-| ELITEA-2036 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟠 | 🟢 | 🟢 | 🟠 | [#2691](https://github.com/EliteaAI/elitea-testing-public/issues/2691) |
-| ELITEA-2037 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🔴 | 🟢 | 🟢 | 🟡 | [#2758](https://github.com/EliteaAI/elitea-testing-public/issues/2758) |
-| ELITEA-2038 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🔴 | 🟢 | 🟢 | 🟡 | [#2756](https://github.com/EliteaAI/elitea-testing-public/issues/2756) |
-| ELITEA-2039 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2770](https://github.com/EliteaAI/elitea-testing-public/issues/2770) |
-| ELITEA-2041 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2767](https://github.com/EliteaAI/elitea-testing-public/issues/2767) |
-| ELITEA-2045 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | [#2760](https://github.com/EliteaAI/elitea-testing-public/issues/2760) |
-| ELITEA-2046 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2772](https://github.com/EliteaAI/elitea-testing-public/issues/2772) |
-| ELITEA-2050 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟠 | 🟢 | 🟢 | 🟡 | [#2763](https://github.com/EliteaAI/elitea-testing-public/issues/2763) |
-| ELITEA-2051 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🔴 | 🟢 | 🟢 | 🟠 | [#2711](https://github.com/EliteaAI/elitea-testing-public/issues/2711) |
-| ELITEA-2052 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2055 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟠 | 🟢 | 🟢 | 🟠 | [#2690](https://github.com/EliteaAI/elitea-testing-public/issues/2690) |
-| ELITEA-2056 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2057 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2760](https://github.com/EliteaAI/elitea-testing-public/issues/2760) |
-| ELITEA-2058 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🔴 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2059 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2757](https://github.com/EliteaAI/elitea-testing-public/issues/2757) |
-| ELITEA-2060 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2759](https://github.com/EliteaAI/elitea-testing-public/issues/2759) |
-| ELITEA-2061 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2063 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2763](https://github.com/EliteaAI/elitea-testing-public/issues/2763) |
-| ELITEA-2064 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2758](https://github.com/EliteaAI/elitea-testing-public/issues/2758) |
-| ELITEA-2065 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟠 | [#2704](https://github.com/EliteaAI/elitea-testing-public/issues/2704) |
-| ELITEA-2067 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2763](https://github.com/EliteaAI/elitea-testing-public/issues/2763) |
-| ELITEA-2072 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2764](https://github.com/EliteaAI/elitea-testing-public/issues/2764) |
-| ELITEA-2350 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2781](https://github.com/EliteaAI/elitea-testing-public/issues/2781) |
-| ELITEA-2352 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2781](https://github.com/EliteaAI/elitea-testing-public/issues/2781) |
-| ELITEA-2353 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2781](https://github.com/EliteaAI/elitea-testing-public/issues/2781) |
-| ELITEA-2356 | 🔴 | 🔴 | 🔴 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | [#2781](https://github.com/EliteaAI/elitea-testing-public/issues/2781) |
-| ELITEA-2357 | 🔴 | 🔴 | 🔴 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | [#2688](https://github.com/EliteaAI/elitea-testing-public/issues/2688) |
-| ELITEA-2360 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | [#2743](https://github.com/EliteaAI/elitea-testing-public/issues/2743) |
-| ELITEA-2363 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | [#2742](https://github.com/EliteaAI/elitea-testing-public/issues/2742) |
-| ELITEA-2367 | 🔴 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | [#2744](https://github.com/EliteaAI/elitea-testing-public/issues/2744) |
-| ELITEA-2374 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | [#2772](https://github.com/EliteaAI/elitea-testing-public/issues/2772) |
-| ELITEA-2378 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2778](https://github.com/EliteaAI/elitea-testing-public/issues/2778) |
-| ELITEA-2440 | 🟠 | 🟠 | 🟠 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-2443 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | [#2769](https://github.com/EliteaAI/elitea-testing-public/issues/2769) |
-| ELITEA-2444 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | [#2769](https://github.com/EliteaAI/elitea-testing-public/issues/2769) |
-| ELITEA-2446 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2763](https://github.com/EliteaAI/elitea-testing-public/issues/2763) |
-| ELITEA-2447 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2763](https://github.com/EliteaAI/elitea-testing-public/issues/2763) |
-| ELITEA-2448 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2762](https://github.com/EliteaAI/elitea-testing-public/issues/2762) |
-| ELITEA-2449 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2763](https://github.com/EliteaAI/elitea-testing-public/issues/2763) |
-| ELITEA-2878 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | [#2780](https://github.com/EliteaAI/elitea-testing-public/issues/2780) |
-| ELITEA-3316 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-3750 | 🔴 | 🟠 | 🟠 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
-| ELITEA-3754 | 🔴 | 🟢 | 🟠 | 🟢 | 🟠 | 🟡 | 🟠 | 🟢 | 🟢 | 🟡 | [#2769](https://github.com/EliteaAI/elitea-testing-public/issues/2769) |
-| **Total executed** | 251 | 226 | 251 | 202 | 264 | 271 | 188 | 271 | 271 | 271 | - |
+| ELITEA-0143 | 🟠 | 🟠 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟢 | 🟡 | 🟠 | [#2803](https://github.com/EliteaAI/elitea-testing-public/issues/2803) |
+| ELITEA-0851 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-0852 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🔴 | 🟢 | 🟢 | 🟠 | 🔴 | [#2837](https://github.com/EliteaAI/elitea-testing-public/issues/2837) |
+| ELITEA-0858 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟡 | [#2834](https://github.com/EliteaAI/elitea-testing-public/issues/2834) |
+| ELITEA-0864 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-1182 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | 🟠 | [#2806](https://github.com/EliteaAI/elitea-testing-public/issues/2806) |
+| ELITEA-1866 | 🟢 | 🟠 | 🟢 | 🔴 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-1954 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-1955 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-2004 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-2005 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟠 | 🔴 | [#2836](https://github.com/EliteaAI/elitea-testing-public/issues/2836) |
+| ELITEA-2006 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2007 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2008 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2009 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2010 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2013 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2014 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2016 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟠 | 🟡 | [#2835](https://github.com/EliteaAI/elitea-testing-public/issues/2835) |
+| ELITEA-2019 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2020 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-2026 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-2034 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2035 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2036 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟠 | 🟢 | 🟢 | 🟠 | 🟠 | [#2797](https://github.com/EliteaAI/elitea-testing-public/issues/2797) |
+| ELITEA-2037 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🔴 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2038 | 🟢 | 🟢 | 🟢 | 🔴 | 🟡 | 🔴 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2039 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2041 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2045 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2046 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2050 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟠 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2051 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🔴 | 🟢 | 🟢 | 🟠 | 🔴 | [#2838](https://github.com/EliteaAI/elitea-testing-public/issues/2838) |
+| ELITEA-2052 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-2055 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟠 | 🟢 | 🟢 | 🟠 | 🟠 | [#2796](https://github.com/EliteaAI/elitea-testing-public/issues/2796) |
+| ELITEA-2056 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 | [#2839](https://github.com/EliteaAI/elitea-testing-public/issues/2839) |
+| ELITEA-2057 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟠 | [#2795](https://github.com/EliteaAI/elitea-testing-public/issues/2795) |
+| ELITEA-2058 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-2059 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2060 | 🟢 | 🔴 | 🟢 | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2061 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-2063 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2064 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2065 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-2067 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2072 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2350 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2352 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2353 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2356 | 🔴 | 🔴 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2357 | 🔴 | 🔴 | 🟢 | 🔴 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-2360 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-2363 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-2367 | 🟠 | 🟠 | 🟢 | 🟠 | 🟡 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | - |
+| ELITEA-2374 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2378 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2440 | 🟠 | 🟠 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-2443 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2444 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟠 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2446 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2447 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2448 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2449 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-2878 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟡 | 🟢 | - |
+| ELITEA-3316 | 🟢 | 🟢 | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-3750 | 🟠 | 🟠 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | - |
+| ELITEA-3754 | 🟢 | 🟠 | 🟢 | 🟠 | 🟡 | 🟠 | 🟢 | 🟢 | 🟡 | 🟠 | [#2808](https://github.com/EliteaAI/elitea-testing-public/issues/2808) |
+| tests.ui.chat.test_chat_streaming_response.TestStreamingResponse.test_streaming_response_displayed_progressively | 🟢 | 🟢 | 🟢 | 🟢 | 🟣 | 🟢 | 🟢 | 🟢 | 🟢 | 🟣 | [#2840](https://github.com/EliteaAI/elitea-testing-public/issues/2840) |
+| **Total executed** | 226 | 251 | 202 | 264 | 271 | 188 | 271 | 271 | 271 | 272 | - |
 
 ## Summary
 
 - **Runs Shown:** 10 (max 10)
 - **Total Test Cases:** 68
-- **With Tracking Issues:** 55
+- **With Tracking Issues:** 13
 
 *Generated automatically from maintenance files*
