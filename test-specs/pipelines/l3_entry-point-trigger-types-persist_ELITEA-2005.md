@@ -324,3 +324,14 @@ single LLM-entry-point pipeline plus a second entry-point-swap (Code node) verif
   their assertions differ meaningfully (this case: option availability + cross-node-type +
   persistence; 2006: modal field inventory + webhook-type URL switching; 2007: cron widget
   Default/Advanced mode + dynamic summary).
+
+## Adjustment (2026-11-01, #2836) — triage class A (UI drift)
+
+Red on CI run #332: `Trigger select should render on the entry-point node's card`. Two product changes, both read from EliteaUI `origin/main`:
+
+1. **EL-7157** — canvas cards are view-only; the Trigger select renders only in the entry-point node's **side panel** (`NodeConfigSection.jsx`). The panel is closed after a reload. Test now calls `open_node_panel(<node>)` before Step 2 and after each reload.
+2. **EL-7011** (EliteaUI `c483cc2d`) — **Schedule is no longer selectable** in the Trigger select (`TriggerTypeSelector.jsx`: "Schedule is no longer selectable"; only shown, disabled, when a version already stores one). Options are now `Chat Message`, `Webhook`.
+
+**Expected-result changes (human sign-off needed, TMS PR):** option set 3 → 2 (Step 3, Step 9 Code-node check); original Steps 6–7 (Select/Apply/persist Schedule) removed because the capability no longer exists — not a weakening to hide a bug, the product feature was deliberately removed. Step 8 ("switch back to Chat Message") now starts from persisted Webhook (still a real state transition). Test step numbers renumbered 1–7.
+
+Handles: no new locators; `trigger_select` stays `testid on DEV ✓` (`pipeline-entry-point-trigger-select`). Same pattern as ELITEA-2008 / ELITEA-2041 adjustments.
