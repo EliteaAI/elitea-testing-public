@@ -199,6 +199,10 @@ def test_decision_node_routes_execution_to_correct_branch(page, pipeline_id):
         "Step 4 — Connect the remaining edges: each branch node -> END, and Decision's "
         "Default output handle -> END"
     ):
+        # Since EL-7157 the Decision config lives in a side panel that stays docked
+        # over the right of the canvas after Step 3 and covers the branch nodes'
+        # source handles -- close it before dragging more edges.
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
         for target_name in _TARGET_NODE_NAMES:
             pipeline_page.connect_nodes(target_name, "END", timeout=UI_ELEMENT_TIMEOUT)
             pipeline_page.wait_for_edge_present(target_name, "END", timeout=UI_ELEMENT_TIMEOUT)

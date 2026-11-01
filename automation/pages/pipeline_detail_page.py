@@ -974,16 +974,6 @@ class PipelineDetailPage(PipelineFormPage):
         description="Printer node's PRINTER section Value field (f-string/text textarea)"
     )
 
-    # Scoped sub-selector for the SAME "pipeline-printer-node-value" testid,
-    # used by fill_printer_node_value_for_node()/get_printer_node_value_for_node()
-    # (ELITEA-2016) — needed once >1 Printer node is on canvas simultaneously,
-    # since the field above is page-wide by design (see class docstring
-    # above) and would first-match-ambiguous. Class-level string constant
-    # per .agents/testing.md § Locator policy scoped-selector convention —
-    # chained off RF_NODE_TESTID (the sanctioned #579 ReactFlow-injected
-    # `rf__node-{id}` container `move_node()` already uses for per-node
-    # scoping), not a second ad-hoc pattern.
-    PRINTER_NODE_VALUE_TESTID = '[data-testid="pipeline-printer-node-value"]'
     printer_node_final_message_input = LocatorDescriptor(
         testid="pipeline-printer-node-final-message-input",
         description="Printer node's Final Message field"
@@ -1347,7 +1337,7 @@ class PipelineDetailPage(PipelineFormPage):
     # multiple nodes coexist on canvas, since the field above is page-wide by
     # design (see docstring above). Class-level string constant per
     # .agents/testing.md § Locator policy scoped-selector convention —
-    # chained off RF_NODE_TESTID, same mechanism as PRINTER_NODE_VALUE_TESTID.
+    # chained off RF_NODE_TESTID, same mechanism as other RF_NODE_TESTID-scoped helpers.
     TRIGGER_SELECT_TESTID = '[data-testid="pipeline-entry-point-trigger-select"]'
 
     # The three trigger types the entry-point Trigger select offers, by their
@@ -5955,13 +5945,11 @@ class PipelineDetailPage(PipelineFormPage):
     def fill_printer_node_value_for_node(self, node_id: str, value: str, timeout: int = 5000) -> None:
         """Fill the Value field of the SPECIFIC Printer node *node_id*.
 
-        Scoping-gap fix (ELITEA-2016): :meth:`fill_printer_node_value` /
-        :attr:`printer_node_value` are page-wide by design (single-Printer-
-        node-on-canvas assumption, per the class-level docstring above) —
-        first-match-ambiguous once more than one Printer node exists
-        simultaneously. Scopes via the ReactFlow-injected ``rf__node-{id}``
-        container (:data:`RF_NODE_TESTID`) as the parent, then the
-        :data:`PRINTER_NODE_VALUE_TESTID` testid within it.
+        Since EL-7157 canvas cards are view-only: the PRINTER Value textarea
+        renders only in the node's side config panel. Opens *node_id*'s panel
+        (:meth:`open_node_panel` — bound to that node via its Name input, so
+        the page-wide :attr:`printer_node_value` is unambiguous), fills it, and
+        closes the panel so later canvas drags/connects are not covered.
 
         Args:
             node_id: The data-id of the target Printer node (e.g. the
@@ -5969,30 +5957,27 @@ class PipelineDetailPage(PipelineFormPage):
             value: The f-string/text value to type.
             timeout: Maximum wait time for the field to be visible.
         """
-        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
-            self.PRINTER_NODE_VALUE_TESTID
-        )
-        # With several nodes on the canvas Fit View settles below
-        # MINI_CARD_ZOOM (0.6, EliteaUI nodeCard.helpers.js isMiniCardZoom) and
-        # every card renders as a MINI card whose body (holding the Value
-        # textarea) is display:none (ELITEA-2016, class D). Zoom back in until
-        # cards render full size, then bring the field into view.
-        changed = self.ensure_full_cards()
-        value_field.scroll_into_view_if_needed(timeout=timeout)
-        self._fill_node_field_value(value_field, value, timeout=timeout)
-        # Restore the whole-graph view so later drags/connects see every node.
-        self.restore_graph_view(changed)
+        self.open_node_panel(node_id, timeout=max(timeout, 10000))
+        self._fill_node_field_value(self.printer_node_value, value, timeout=timeout)
+        self._close_node_panel_if_open(timeout=max(timeout, 10000))
 
     def get_printer_node_value_for_node(self, node_id: str) -> str:
         """Read the Value field content of the SPECIFIC Printer node *node_id*.
 
-        Sibling of :meth:`fill_printer_node_value_for_node` — see its
-        docstring for the scoping-gap rationale.
+        Sibling of :meth:`fill_printer_node_value_for_node` — opens the node's
+        side panel, reads the field, closes the panel.
         """
-        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
-            self.PRINTER_NODE_VALUE_TESTID
-        )
-        return value_field.input_value()
+        self.open_node_panel(node_id)
+        self.printer_node_value.wait_for(state="visible", timeout=10000)
+        value = self.printer_node_value.input_value()
+        self._close_node_panel_if_open()
+        return value
+
+    def _close_node_panel_if_open(self, timeout: int = 10000) -> None:
+        """Close the node side panel if one is open (state-driven wait)."""
+        if self.node_panel_close_button.is_visible():
+            self.node_panel_close_button.click()
+            self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
 
     def fill_printer_node_final_message(self, value: str, timeout: int = 5000) -> None:
         """Fill the Printer node's Final Message field.

@@ -257,3 +257,11 @@ None.
 - Cause: with 4+ nodes Fit View settles below MINI_CARD_ZOOM (0.6, EliteaUI `nodeCard.helpers.js isMiniCardZoom`), so cards render as mini cards and the body fields (Printer Value, Decision Input/Description) are `display:none`. A node drag could also leave ReactFlow's "create new node" dropdown open, whose backdrop blocked the next rename.
 - Fix (page object only): `fill_printer_node_value_for_node`, `open_decision_node_input_select`, `fill_decision_node_description` fit the view, zoom in to full cards and scroll the field into view, then restore Fit View; `move_node` dismisses a stray connection dropdown.
 - Expected results / assertions: unchanged.
+
+## Adjustment — 2026-11-01 (issue #2835, class A UI drift)
+
+- Cause: since EL-7157 canvas cards are view-only. The PRINTER Value field (`pipeline-printer-node-value`) renders only in the node's side config panel (the card body shows "—"), and a panel left open (Decision, Step 3) docks over the canvas and covers branch-node source handles.
+- Old -> new:
+  - `fill_printer_node_value_for_node` / `get_printer_node_value_for_node`: card-scoped `rf__node-<id>` + `PRINTER_NODE_VALUE_TESTID` with zoom/scroll logic -> `open_node_panel(node_id)`, act on the panel's `printer_node_value`, close the panel. The zoom-in / restore-Fit-View logic and the card-scoped constant are removed.
+  - Spec Step 4: closes the Decision side panel (`close_node_panel`) before dragging the branch -> END edges.
+- Expected-result changes: none (all assertions, counts, steps and markers unchanged).
