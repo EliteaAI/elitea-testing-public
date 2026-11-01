@@ -1,0 +1,19 @@
+{
+ "slug": "adjust-2834",
+ "card": 2834,
+ "batch": "adjust-2834",
+ "cases": [
+  {"id": "ELITEA-0858", "outcome": "automated",
+   "triage": "A (UI drift, two layers: adding a node auto-opens the config side panel which covers the source handle; node cards are view-only (EL-7157) so the three-dot Make entrypoint menu is gone -> panel 'Make Entrypoint' button, testid pipeline-node-panel-make-entrypoint, on DEV). Masking try/except pytest.skip removed (strengthening). Expected-result changes: none.",
+   "node": "tests.ui.pipelines.test_pipeline_advanced.TestMakeEntrypoint.test_make_node_entrypoint",
+   "review": "APPROVED"}
+ ],
+ "gate": {"verdict": "green", "runs": 3, "detail": "3/3 passed on DEV, separate invocations, --reruns 0"},
+ "gateVerdict": "green",
+ "expected_result_changes": "none",
+ "locator_delta": "declared 1335->1336 (testid 1257->1258), non-testid 78->78, debt 5.84%->5.84%, unmanaged 316->315",
+ "findings": [
+  "test_pipeline_entry_point_trigger_types_persist fails on base at line 88 (Trigger select no longer on the node card; now in side panel) - separate adjust card needed",
+  "CI note: sandbox has no automation/.env.test; runs need APP_PREFIX=/app else every page 404s"
+ ]
+}

@@ -269,10 +269,14 @@ class TestMakeEntrypoint:
         with allure.step("Step 2 — Add first LLM node"):
             pipelines.add_node("LLM")
             llm1_id = pipelines.wait_for_node_on_canvas("llm")
+            # Adding a node auto-opens the node-config side panel, which covers
+            # the canvas; close it so the node handles are hittable.
+            pipelines.close_node_panel()
             pipelines._deselect_all()
 
         with allure.step("Step 3 — Add second LLM node"):
             pipelines.add_node("LLM")
+            pipelines.close_node_panel()
             node_ids = pipelines.get_node_ids()
             llm_ids = [nid for nid in node_ids if "LLM" in nid]
             assert len(llm_ids) >= 2, "Should have at least 2 LLM nodes"
@@ -284,13 +288,7 @@ class TestMakeEntrypoint:
             pipelines.connect_nodes(llm1_id, "END")
 
         with allure.step("Step 5 — Make second LLM node the entrypoint"):
-            try:
-                pipelines.make_node_entrypoint(llm2_id)
-            except Exception:
-                pytest.skip(
-                    "Make entrypoint menu item not available — "
-                    "feature may not be exposed for this pipeline state"
-                )
+            pipelines.make_node_entrypoint(llm2_id)
             pipelines.wait_for_network()
 
         with allure.step("Step 6 — Verify second LLM is now entrypoint"):

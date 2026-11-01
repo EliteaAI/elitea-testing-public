@@ -879,6 +879,10 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-node-panel-delete",
         description="Node side panel footer's 'Delete node' icon button (NodeConfigFooter.jsx)"
     )
+    node_panel_make_entrypoint_button = LocatorDescriptor(
+        testid="pipeline-node-panel-make-entrypoint",
+        description="Node side panel footer's 'Make Entrypoint' button (NodeConfigFooter.jsx)"
+    )
     node_panel_close_button = LocatorDescriptor(
         testid="pipeline-node-panel-close",
         description="Node side panel header's close (X) button (NodeConfigPanelHeader.jsx)"
@@ -3963,7 +3967,7 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Deleted node: %s", node_id)
 
     def make_node_entrypoint(self, node_id: str, timeout: int = 5000):
-        """Set a node as the pipeline entrypoint via its three-dot menu.
+        """Set a node as the pipeline entrypoint via its side panel's "Make Entrypoint" button.
 
         Args:
             node_id: The data-id of the node.
@@ -3971,14 +3975,19 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Making node '%s' the entrypoint", node_id)
 
-        # Open the node's three-dot header menu (testid on DEV).
-        self._open_node_header_menu(node_id)
-        self.page.wait_for_timeout(300)
-
-        entrypoint_item = self.page.get_by_role("menuitem", name="Make entrypoint")
-        entrypoint_item.wait_for(state="visible", timeout=timeout)
-        entrypoint_item.click()
-        self.page.wait_for_timeout(500)
+        # Node cards are view-only (EL-7157): the entrypoint is set from the node
+        # side panel footer. Bind the panel to THIS node first (a panel left open
+        # for another node would make the wrong node the entrypoint).
+        if not (
+            self.node_panel_name_input.count() > 0
+            and self.node_panel_name_input.input_value() == node_id
+        ):
+            if self.node_panel_close_button.count() > 0:
+                self.close_node_panel()
+            self._select_node(node_id)
+        expect(self.node_panel_name_input).to_have_value(node_id, timeout=timeout)
+        self.node_panel_make_entrypoint_button.click(timeout=timeout)
+        self.node_panel_make_entrypoint_button.wait_for(state="detached", timeout=timeout)
         logger.info("Node '%s' set as entrypoint", node_id)
 
     def get_entrypoint_node_id(self) -> str | None:
