@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "session": "b2ae3037-7fab-4dc8-a0f4-a339f15f1db0",
+  "intent": "automation",
+  "batch": "adjust-2844",
+  "cases": [
+    "ELITEA-2055"
+  ],
+  "declaredAt": "2026-11-02T03:53:27.706Z",
+  "updatedAt": "2026-11-02T03:53:27.706Z"
+}
