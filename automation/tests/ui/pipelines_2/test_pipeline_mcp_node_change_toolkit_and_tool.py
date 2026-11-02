@@ -97,15 +97,15 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         )
 
     with allure.step("Step 4 — Open Toolkit dropdown; verify it lists every MCP attached in TOOLS"):
-        pipeline_page.open_mcp_node_toolkit_select()
-        listed_toolkits = set(pipeline_page.get_open_listbox_option_names())
-        assert listed_toolkits == {initial_toolkit_name, new_toolkit_name}, (
-            f"Toolkit dropdown should list exactly the 2 attached MCPs "
-            f"{{{initial_toolkit_name!r}, {new_toolkit_name!r}}}, got {listed_toolkits!r}"
-        )
+        # EL-7159 (class A, UI drift): the node's MCP control is now the project picker.
+        pipeline_page.open_mcp_node_picker(timeout=UI_ELEMENT_TIMEOUT)
+        for expected in (initial_toolkit_name, new_toolkit_name):
+            assert pipeline_page.is_mcp_node_picker_listing(expected, timeout=UI_ELEMENT_TIMEOUT), (
+                f"MCP picker should list the attached MCP {expected!r}"
+            )
         # Close by selecting the new toolkit directly (step 5) rather than a
         # separate close action — the AFS steps 4→5 are one continuous flow.
-        pipeline_page.select_open_listbox_option(new_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.select_mcp_node_toolkit(new_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 5 — Select the other MCP; Toolkit combobox shows the new name"):
         new_toolkit_value = pipeline_page.get_mcp_node_toolkit_value()

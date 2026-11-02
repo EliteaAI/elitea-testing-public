@@ -4959,6 +4959,23 @@ class PipelineDetailPage(PipelineFormPage):
         """Count of the search field in the open MCP node picker menu."""
         return self.page.locator(self.MCP_NODE_PICKER_SEARCH).count()
 
+    def is_mcp_node_picker_listing(self, name: str, timeout: int = 10000) -> bool:
+        """Whether the open MCP node picker lists a row containing *name* (EL-7159).
+
+        The picker is a lazily loaded project-wide list, so the row is looked up through the
+        picker's own search field and waited for rather than read from a point-in-time snapshot.
+        """
+        search = self.page.locator(self.MCP_NODE_PICKER_SEARCH)
+        if search.count() > 0 and search.first.is_visible():
+            search.first.fill(name)
+        try:
+            self.page.locator(self.MCP_NODE_PICKER_OPTION).filter(has_text=name).first.wait_for(
+                state="visible", timeout=timeout
+            )
+        except Exception:
+            return False
+        return True
+
     def get_mcp_node_picker_option_count(self) -> int:
         """Count of rows currently listed in the open MCP node picker menu."""
         return self.page.locator(self.MCP_NODE_PICKER_OPTION).count()
