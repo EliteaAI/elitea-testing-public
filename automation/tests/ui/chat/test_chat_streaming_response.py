@@ -113,4 +113,6 @@ class TestStreamingResponse:
             expect(ChatPage.delete_action_button.resolve(ai_msg)).to_be_visible()
 
         with allure.step("Step 9 — Input field is active again"):
-            assert chat.message_input.is_editable(), "Input must be editable after streaming completes"
+            expect(chat.message_input, "Input must be editable after streaming completes").to_be_editable(
+                timeout=15_000
+            )
