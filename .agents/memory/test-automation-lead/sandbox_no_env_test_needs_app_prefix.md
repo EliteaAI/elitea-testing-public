@@ -1,6 +1,9 @@
 ---
-name: sandbox without automation/.env.test needs APP_PREFIX=/app
-description: Factory sandbox may lack .env.test; every DEV page 404s unless APP_PREFIX=/app is exported for pytest runs
+name: sandbox without .env.test needs APP_PREFIX=/app
+description: In the factory sandbox automation/.env.test is absent; APP_PREFIX defaults to "" so every DEV navigation 404s — prefix pytest with APP_PREFIX=/app. Also gate-runs.jsonl needs a "verdict" key.
 type: feedback
 ---
-When `automation/.env.test` is missing, `settings.app_prefix` defaults to "" and every page is a 404 (all tests red at detail-page load - looks like mass drift but is env). Run with `APP_PREFIX=/app HEADLESS=true pytest ... --reruns 0` (the `-p no:rerunfailures` flag breaks addopts). Seen on #2834 (ELITEA-0858). Also: gate-runs.jsonl lines need a `verdict` key or work-scope close reports GATE DRIFT.
+- Local pytest runs fail with 404 / `agent-information-section` timeouts unless `APP_PREFIX=/app` is set (ELITEA_URL, creds come from shell env). Tell implementers in every dispatch.
+- `work-scope.mjs close` reads `verdict` from the last line of `gate-runs.jsonl` (`{"verdict":"green",...}`); `{"run":1,"result":"pass"}` lines cause a GATE DRIFT warning.
+- A page-object-only landing touches no `tests/ui/**`, so `build-test-index` does not fire; TMS case already correct → no back-write needed (#2865, adjust-2865, f534d941).
+- #2866 (adjust-2866): publish_validate 422 in CI = AI content gate flaking on test-looking seed text (description mentioning "disposable"/ticket id). Probe the endpoint with body `{"version_name": ...}` (not `name`) on N fresh agents to measure rate; fix = realistic seed content, never accept 422. Reviewer-noted residual risk: gate is non-deterministic, recurrence → product ticket, not test change.

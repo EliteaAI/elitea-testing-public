@@ -370,3 +370,13 @@ the Menu subtree, so their absence is what proves the backdrop is gone.
 
 **Handles.** No new testid. `agent-version-selector-trigger-combobox` is
 `SingleSelect.jsx:663`'s `SelectDisplayProps` testid — PROVENANCE: `on-main ✓`.
+
+## Adjustment (#2866, class D — test-data robustness)
+
+The seeded agent's description/instructions read as a test artefact ("Disposable agent for ELITEA-1891 …", ticket id in
+instructions, empty welcome_message/conversation_starters). The AI `publish_validate` gate is non-deterministic on such
+content: in CI ~2 of 10 fresh agents returned 422 (one Critical issue on `description`: references an internal test
+identifier / labels the agent "disposable" / no purpose or audience). The seed now reads as a genuine marketplace agent
+(user-facing description with purpose, audience and use cases; real welcome_message; 3 conversation_starters; instructions
+without ticket references). Agent NAME unchanged. Probe: 15/15 `publish_validate` = 200. Assertions untouched.
+**Expected-result changes: none.**
