@@ -773,7 +773,23 @@ class AgentFormPage(BasePage):
         cm_content.click()
         self.page.keyboard.press("Control+a")
         self.page.keyboard.type(text)
-        self.page.wait_for_timeout(500)
+        # Condition wait: CodeMirror applies keystrokes (and its max-length filter)
+        # asynchronously; wait until the rendered text stops changing before any read.
+        cm_content.evaluate(
+            """el => new Promise((resolve, reject) => {
+                let last = -1, since = performance.now();
+                const deadline = since + 15000;
+                const tick = () => {
+                    const now = performance.now();
+                    const len = el.innerText.length;
+                    if (len !== last) { last = len; since = now; }
+                    if (now - since >= 400) return resolve(len);
+                    if (now > deadline) return reject(new Error('editor text never settled'));
+                    setTimeout(tick, 100);
+                };
+                tick();
+            })"""
+        )
 
     def get_welcome_message_fullscreen_value(self) -> str:
         """Get the current text value from the welcome message fullscreen dialog.
