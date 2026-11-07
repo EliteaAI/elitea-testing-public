@@ -1,0 +1,12 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Send test message — Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-input") to be visible
+    14 × locator resolved to hidden <textarea autocomplete="off" spellcheck="false" aria-invalid="false" id="standard-multiline-static" data-testid="chat-message-input" placeholder="Type your message..." class="MuiInputBase-input MuiInput-input MuiInputBase-inputMultiline css-k1r0x6"></textarea>
+ERROR    elitea.steps:actions.py:49 Step failed: Send test message — Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-input") to be visible
+    14 × locator resolved to hidden <textarea autocomplete="off" spellcheck="false" aria-invalid="false" id="standard-multiline-static" data-testid="chat-message-input" placeholder="Type your message..." class="MuiInputBase-input MuiInput-input MuiInputBase-inputMultiline css-k1r0x6"></textarea>
+ERROR    elitea.steps:actions.py:49 Step failed: Send test message — Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-input") to be visible
+    14 × locator resolved to hidden <textarea autocomplete="off" spellcheck="false" aria-invalid="false" id="standard-multiline-static" data-testid="chat-message-input" placeholder="Type your message..." class="MuiInputBase-input MuiInput-input MuiInputBase-inputMultiline css-k1r0x6"></textarea>

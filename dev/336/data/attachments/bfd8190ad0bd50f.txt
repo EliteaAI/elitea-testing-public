@@ -1,0 +1,1 @@
+WARNING  urllib3.connectionpool:connectionpool.py:874 Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='dev.elitea.ai', port=443): Read timed out. (read timeout=60.0)")': /api/v2/elitea_core/applications/prompt_lib/577
