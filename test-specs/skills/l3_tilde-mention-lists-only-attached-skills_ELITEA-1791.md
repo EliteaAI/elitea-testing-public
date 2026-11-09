@@ -404,3 +404,19 @@ successfully.
   divergent agent-setup pattern to this file area. Not a hard rule — a future
   pass could switch this one call to `agent_api.create_agent()` if setup speed
   becomes a real constraint.
+
+## Adjustment — #2896 (2026-11-09): Instructions Edit/Preview toggle
+
+Step 2 ('Navigate to the Agent Instructions field') must click `markdown-edit-mode-toggle` first; only then is `agent-instructions-input` present and focusable. Steps 3-4 (typing `~`) and the later clear step (`clear_instructions_field`) run in Edit mode; `.clear()` must become select-all + Delete on the contenteditable. The TMS case already says Edit mode in Step 2.
+
+### Handles Reference (verified on DEV)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| 1 | `testid=markdown-edit-mode-toggle` (aria-label "Edit mode"; Instructions accordion header, shared MarkdownViewToggle) | n/a | testid on DEV ✓ (probed 2026-11-09; EliteaUI `MarkdownViewToggle.jsx`) |
+| 1 | `testid=markdown-preview-mode-toggle` (aria-label "Preview mode") | n/a | testid on DEV ✓ |
+| 1 | `testid=agent-instructions-input` — **exists only in Edit mode**; a contenteditable `div[role=textbox]` (CodeMirror), NOT a textarea | n/a | testid on DEV ✓ (count 0 in Preview, 1 after Edit click) |
+| 1 | `testid=agent-instructions-preview` — Preview-mode rendered Markdown; readable via `inner_text()`; holds instructions text when not editing | n/a | testid on DEV ✓ |
+
+**Entry/exit:** the accordion opens in **Preview** on existing agents/skills; click `markdown-edit-mode-toggle` to enter Edit (a client-side `useState` swap; no save, no network). Switch back with `markdown-preview-mode-toggle`. Saving is the page Save/Save-as-version, independent of the toggle. Create flow opens already in Edit mode. A version switch or reload re-mounts in Preview.
+**Implementer note:** `input_value()`, `.clear()` and `expect(...).to_have_value()` no longer work on `agent-instructions-input` (it is a div, not a textarea): use `inner_text()` / `to_have_text` in Edit mode, or `agent-instructions-preview` text in Preview mode. Skill pages already have `SkillFormPage.click_edit_mode()` (testid toggle).

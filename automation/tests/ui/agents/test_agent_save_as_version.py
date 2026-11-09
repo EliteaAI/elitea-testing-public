@@ -133,6 +133,7 @@ class TestAgentSaveAsVersion:
                 # confirmed live.
 
             with allure.step("Step 2 — Append a word to the Instructions field"):
+                detail_page.click_edit_mode()
                 detail_page.instructions_input.click()
                 detail_page.instructions_input.press(
                     "ControlOrMeta+End"
@@ -231,7 +232,10 @@ class TestAgentSaveAsVersion:
                 # polls the page object's `instructions_input` LocatorDescriptor
                 # field directly (no raw selector, no wait_for_function/
                 # document.querySelector) until it settles or times out.
-                expect(detail_page.instructions_input).to_have_value(
+                # Version switch re-mounts the accordion in Preview (#2896):
+                # re-enter Edit mode, then poll the editor's text.
+                detail_page.click_edit_mode()
+                expect(detail_page.instructions_input).to_have_text(
                     original_instructions, timeout=UI_ELEMENT_TIMEOUT
                 )
                 assert detail_page.get_instructions() == original_instructions, (

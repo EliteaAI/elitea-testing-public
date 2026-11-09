@@ -297,3 +297,23 @@ comment was posted to #524 by this run since it was not re-triggered.
 ## Blocked Steps
 
 None. All 7 case steps executed and verified live, no defects encountered.
+
+## Adjustment — #2896 (2026-11-09): Instructions Edit/Preview toggle
+
+Editing Instructions before Save-as-version needs Edit mode first. After switching back to the base version the section re-mounts in Preview, so the 'instructions revert to original' assertion must read `agent-instructions-preview` (or re-enter Edit and use `to_have_text`), not `to_have_value`.
+
+### Handles Reference (verified on DEV)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| 1 | `testid=markdown-edit-mode-toggle` (aria-label "Edit mode"; Instructions accordion header, shared MarkdownViewToggle) | n/a | testid on DEV ✓ (probed 2026-11-09; EliteaUI `MarkdownViewToggle.jsx`) |
+| 1 | `testid=markdown-preview-mode-toggle` (aria-label "Preview mode") | n/a | testid on DEV ✓ |
+| 1 | `testid=agent-instructions-input` — **exists only in Edit mode**; a contenteditable `div[role=textbox]` (CodeMirror), NOT a textarea | n/a | testid on DEV ✓ (count 0 in Preview, 1 after Edit click) |
+| 1 | `testid=agent-instructions-preview` — Preview-mode rendered Markdown; readable via `inner_text()`; holds instructions text when not editing | n/a | testid on DEV ✓ |
+
+**Entry/exit:** the accordion opens in **Preview** on existing agents/skills; click `markdown-edit-mode-toggle` to enter Edit (a client-side `useState` swap; no save, no network). Switch back with `markdown-preview-mode-toggle`. Saving is the page Save/Save-as-version, independent of the toggle. Create flow opens already in Edit mode. A version switch or reload re-mounts in Preview.
+**Implementer note:** `input_value()`, `.clear()` and `expect(...).to_have_value()` no longer work on `agent-instructions-input` (it is a div, not a textarea): use `inner_text()` / `to_have_text` in Edit mode, or `agent-instructions-preview` text in Preview mode. Skill pages already have `SkillFormPage.click_edit_mode()` (testid toggle).
+
+### Implementer fix-round note — `VERSION_CONVERGED_JS` (#2896, 2026-11-09)
+
+Declared improvisation: no sanctioned shape for a collapsed Information panel; chose `textContent` in `VERSION_CONVERGED_JS` because live evidence (DEV probe at the timeout) showed `copy-version-id` present with `textContent` = the new id (e.g. `3381`) but `innerText` = `''`, `checkVisibility()` = false, every ancestor `visibility:hidden` and the accordion root `overflow:hidden` height 0 (panel collapsed after Save As Version). With `innerText` reverted, 1888 fails deterministically. The stale-id guard is not relaxed: the id must still equal the URL's new version segment, and the spec still asserts `new_version_id != previous_version_id`.

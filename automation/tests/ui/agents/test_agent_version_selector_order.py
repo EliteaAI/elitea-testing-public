@@ -248,6 +248,7 @@ class TestAgentVersionSelectorOrder:
                 'Precondition — edit Instructions, click "Save As Version" '
                 f'to create Draft version {V1_NAME!r}'
             ):
+                detail_page.click_edit_mode()
                 detail_page.instructions_input.click()
                 detail_page.instructions_input.press("ControlOrMeta+End")
                 detail_page.instructions_input.press_sequentially(

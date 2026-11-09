@@ -137,6 +137,7 @@ class TestAgentRemoveVariable:
             with allure.step(
                 "Step 2 — Type instructions containing two {{variable}} references"
             ):
+                detail_page.click_edit_mode()
                 detail_page.instructions_input.click()
                 detail_page.instructions_input.press("ControlOrMeta+a")
                 detail_page.instructions_input.press_sequentially(
@@ -180,6 +181,7 @@ class TestAgentRemoveVariable:
                 "Step 4 — Remove the {{department}} token; verify its row disappears "
                 "immediately, client-side, before any Save"
             ):
+                detail_page.click_edit_mode()
                 detail_page.instructions_input.click()
                 detail_page.instructions_input.press("ControlOrMeta+a")
                 detail_page.instructions_input.press_sequentially(
