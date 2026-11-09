@@ -3063,6 +3063,40 @@
       "scenarios_automated": 6,
       "scenarios_executed": 6,
       "notes": "gate green (3x6 passed on DEVx); outcomes: automated 6. Telemetry cohort: reconstructed from .agents/automation/adjust-2896/cost.json (v1); batch slug 'adjust-2896'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-adjust-2897",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 2 TMS case(s) through analyse → implement → review → merge → gate; 2 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 19,
+      "subagent_dispatches": 2,
+      "orchestrator_cost_pct": 33.9,
+      "tokens": {
+        "input": 31779,
+        "output": 34884,
+        "cache_read": 8410315,
+        "cache_create": 679222
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 31779,
+          "output": 34884,
+          "cache_read": 8410315,
+          "cache_create": 679222
+        }
+      },
+      "cost_api_equivalent_usd": 3.27,
+      "cache_read_share_pct": 44.4,
+      "scenarios_authored": 2,
+      "scenarios_automated": 2,
+      "scenarios_executed": 2,
+      "notes": "gate green (3x6 passed on DEV, reruns 0x); outcomes: automated 2. Telemetry cohort: reconstructed from .agents/automation/adjust-2897/cost.json (v1); batch slug 'adjust-2897'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }

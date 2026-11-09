@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "session": "fb5b2bae-d4e9-4e93-ae63-8d90ba716912",
+  "intent": "automation",
+  "batch": "adjust-2897",
+  "cases": [
+    "ELITEA-2440",
+    "ELITEA-2442"
+  ],
+  "declaredAt": "2026-11-09T13:25:19.308Z",
+  "updatedAt": "2026-11-09T13:56:50.667Z",
+  "closedAt": "2026-11-09T13:56:50.667Z",
+  "outcomes": {
+    "ELITEA-2440": {
+      "outcome": "automated",
+      "at": "2026-11-09T13:56:50.632Z"
+    },
+    "ELITEA-2442": {
+      "outcome": "automated",
+      "at": "2026-11-09T13:56:50.632Z"
+    }
+  }
+}
