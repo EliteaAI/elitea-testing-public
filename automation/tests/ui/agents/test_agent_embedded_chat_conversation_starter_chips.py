@@ -325,6 +325,7 @@ class TestConversationStarterChipsVisibleAndClickable:
                 "Step 5 — Verify both starter chips are visible in the chat panel "
                 "before any message is sent"
             ):
+                detail_page.open_test_agent_panel()
                 detail_page.get_chat_starter_tiles().first.wait_for(
                     state="visible", timeout=NAVIGATION_TIMEOUT
                 )

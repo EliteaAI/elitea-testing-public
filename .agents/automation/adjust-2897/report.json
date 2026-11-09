@@ -1,0 +1,14 @@
+{
+ "slug": "adjust-2897",
+ "issue": 2897,
+ "triage": "A (UI drift: Skill/Agent test panel opens only after clicking Test Skill / Test Agent toolbar button; ELITEA-2442 also: chat-copy-button split into chat-copy-markdown/text buttons, toast now 'Text copied to clipboard.')",
+ "cases": [
+  {"id": "ELITEA-2440", "outcome": "automated", "spec": "tests/ui/skills/test_skill_test_panel_version_instructions.py"},
+  {"id": "ELITEA-2442", "outcome": "automated", "spec": "tests/ui/skills/test_skill_test_panel_response_actions.py"}
+ ],
+ "also_fixed_specs": ["test_agent_embedded_chat_send_message", "test_agent_embedded_chat_shift_enter", "test_agent_embedded_chat_conversation_starter_chips", "shared send_chat_message path (artifacts multi-file, guardrails live reload, github toolkit - last two not runnable here)"],
+ "review": "APPROVED (fresh session)",
+ "gate": {"verdict": "green", "n": 3, "runs": "3x6 passed on DEV, reruns 0"},
+ "expected_result_changes": "ELITEA-2442 only: copy toast substring 'copied to the clipboard' -> 'copied to clipboard'; click targets chat-copy-text-button (DEV split the copy button). Others: none",
+ "findings": ["guardrails_live_reload and github_toolkit specs not runnable locally (credentials); covered via shared send_chat_message only"]
+}

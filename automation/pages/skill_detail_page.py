@@ -9,7 +9,7 @@ Handles: /skills/all/{skill_id}
 import re
 import logging
 import time
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from playwright.sync_api import Download
 
@@ -50,6 +50,11 @@ class SkillDetailPage(SkillFormPage):
     test_panel = LocatorDescriptor(
         testid="skill-test-panel",
         description="SkillTestPanel container"
+    )
+
+    test_skill_button = LocatorDescriptor(
+        testid="skill-test-button",
+        description="Toolbar 'Test Skill' button (SkillEditorWorkspace.jsx) — opens the SkillTestPanel",
     )
 
     # ------------------------------------------------------------------
@@ -132,6 +137,12 @@ class SkillDetailPage(SkillFormPage):
     copy_action_button = LocatorDescriptor(
         testid="chat-copy-button",
         description="Copy-to-clipboard button on the test-panel AI response",
+    )
+    # DEV split the single copy button into "Copy markdown" / "Copy text"
+    # (ApplicationAnswerActions.jsx, EL-5838); `chat-copy-button` is gone.
+    copy_text_button = LocatorDescriptor(
+        testid="chat-copy-text-button",
+        description="Copy-as-text button on the test-panel AI response (replaces chat-copy-button)",
     )
     # Voice mini player — appears after clicking Read out (Layer 2 proof).
     # Mirrors ChatPage.voice_mini_player (OptionalLocatorDescriptor since the
@@ -472,6 +483,20 @@ class SkillDetailPage(SkillFormPage):
         """
         return self._test_panel_messages().count()
 
+    @action("Open the Test Skill panel")
+    def open_test_skill_panel(self, timeout: int = 10000):
+        """Open the SkillTestPanel via the toolbar 'Test Skill' button.
+
+        Idempotent: no-op when the panel is already visible. Waits for the
+        button to be enabled first.
+        """
+        if self.test_panel.is_visible():
+            return
+        self.test_skill_button.wait_for(state="visible", timeout=timeout)
+        expect(self.test_skill_button).to_be_enabled(timeout=timeout)
+        self.test_skill_button.click()
+        self.test_panel.wait_for(state="visible", timeout=timeout)
+
     @action("Send test message")
     def send_test_message(self, message: str, timeout: int = 5000):
         """Type and send a message in the SkillTestPanel.
@@ -484,6 +509,7 @@ class SkillDetailPage(SkillFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending test message: %r", message[:60])
+        self.open_test_skill_panel()
         chat_input = self.page.get_by_test_id("chat-message-input")
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
