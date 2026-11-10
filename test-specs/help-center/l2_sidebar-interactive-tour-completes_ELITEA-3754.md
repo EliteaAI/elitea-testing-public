@@ -265,3 +265,15 @@ Done confirmed live, 0 console errors.
   `locator.bounding_box()` on `interactive-tour-spotlight` before/after each
   "Next" click and assert the tuple changed — this is the testable proxy for
   "highlighted sidebar element changes accordingly" (see Coverage Map Axis 2).
+
+
+## Adjustment (#2906, 2026-11-10) — triage class A (UI drift)
+
+- **What changed:** DEV's Help Center "INTERACTIVE TOURS" card shows "No links configured" (links are CMS-served), so
+  `help-center-tour-link-sidebar-interactive-tour` no longer exists. Help Center is opened via the sidebar "?" icon.
+- **Verified on DEV:** `?tour=sidebar` (consumed by `useTourFromUrl`, EliteaUI `origin/main`) starts the tour at 1 / 17 in the same tab.
+- **Declared improvisation:** no clickable link is available, so the tour is started via the deep link after confirming the
+  Interactive Tours card is visible. Chosen because it is exactly what the CMS link resolves to.
+- **Handles added:** `label="Help Center"` (sidebar icon, `suggested_testid=sidebar-help-center-button`);
+  `css=[data-tour="resources-interactive-tours-card"]` (`suggested_testid=help-center-interactive-tours-card`) — ladder, no testid on DEV.
+- **Expected-result changes:** step 1 of the case — "click Sidebar Interactive Tour" no longer applies; tour is started via deep link. All tour assertions (steps 2-13) unchanged.

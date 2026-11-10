@@ -1,0 +1,3 @@
+{"run":1,"node":"tests/ui/help_center/test_help_center_sidebar_tour.py::TestHelpCenterSidebarTour::test_sidebar_interactive_tour_completes_via_next","result":"pass"}
+{"run":2,"result":"pass"}
+{"run":3,"result":"pass"}

@@ -547,6 +547,30 @@
       "updated": "2026-10-30",
       "history": []
     },
+    "pages/help_center_page.py::HelpCenterPage.interactive_tours_card": {
+      "file": "pages/help_center_page.py",
+      "line": 38,
+      "kind": "css",
+      "selector": "[data-tour=\"resources-interactive-tours-card\"]",
+      "suggested_testid": "help-center-interactive-tours-card",
+      "description": "INTERACTIVE TOURS resource card (data-tour hook; no testid on DEV)",
+      "state": "raw",
+      "added": "2026-11-10",
+      "updated": "2026-11-10",
+      "history": []
+    },
+    "pages/help_center_page.py::HelpCenterPage.sidebar_help_icon": {
+      "file": "pages/help_center_page.py",
+      "line": 33,
+      "kind": "label",
+      "selector": "Help Center",
+      "suggested_testid": "sidebar-help-center-button",
+      "description": "'?' Help Center icon in the sidebar footer, next to Support Bot",
+      "state": "raw",
+      "added": "2026-11-10",
+      "updated": "2026-11-10",
+      "history": []
+    },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
       "line": 1795,
@@ -956,22 +980,23 @@
       "history": []
     }
   },
-  "last_sync": "2026-11-09",
+  "last_sync": "2026-11-10",
   "metric": {
-    "declared_total": 1342,
+    "declared_total": 1344,
     "declared_testid": 1264,
-    "declared_non_testid": 78,
-    "non_testid_with_hint": 57,
+    "declared_non_testid": 80,
+    "non_testid_with_hint": 59,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 11,
+      "css": 12,
       "fallback": 20,
+      "label": 1,
       "locator": 1,
       "role": 24,
       "testid": 1264,
       "xpath": 22
     },
-    "locator_debt": 0.0581,
+    "locator_debt": 0.0595,
     "unmanaged_handles": 315
   }
 }
