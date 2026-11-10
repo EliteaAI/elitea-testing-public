@@ -212,7 +212,7 @@ class TestAgentHubFilterMultipleCategories:
 
             with allure.step("Step 7 — Verify zero console errors during the multi-click filter interaction"):
                 # Known defect: #2537 — Step 7 stays red until fixed (sanctioned RED, deterministic):
-                # dev-vm.elitea.ai default-icon CSP violation + application_icon 404s on Catalog cards.
+                # application_icon 404s (the default-icon CSP violation seen earlier is gone on DEV as of 2026-11-10) on Catalog cards.
                 # Assertion intentionally stays strict (no filtering of these errors).
                 # Known defect: elitea-testing-public#1434 — the app-wide Montserrat
                 # webfont CDN 404 (see _is_known_1434_montserrat_font_404 docstring

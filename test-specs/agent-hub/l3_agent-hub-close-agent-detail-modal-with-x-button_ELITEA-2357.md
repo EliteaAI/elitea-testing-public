@@ -127,3 +127,7 @@ None — all 6 case steps were reached and observed live. The close button testi
 
 - **Symptom:** the "zero console errors" assertions fail deterministically on DEV: CSP violation on dev-vm.elitea.ai default_entity_icons/image_14.png plus 404s on application_icon/*.png (open defect EliteaAI/elitea-testing-public#2537).
 - **Handling:** assertions kept strict and unfiltered; `# Known defect: #2537` comments and an `@allure.issue` link added. Sanctioned RED until the product fix ships.
+
+## Adjustment 2026-11-10 (#2899, class C)
+
+DEV re-checked: the #2537 CSP violation (default_entity_icons/image_14.png) is GONE. Remaining console error: `Failed to load resource: 404` for `https://dev.elitea.ai/app/application_icon/413/c204f142-95d2-4c5d-a74d-f5dbe90368a5.png` (application_icon, 2nd #2537 symptom). Console assertion stays strict, errors not filtered. Expected-result changes: none. Catalog data re-verified: categories incl. Business Analyst, agents User Story Creator (id 172) and Business Analyst (id 31) exist; no hard-coded name changes needed.

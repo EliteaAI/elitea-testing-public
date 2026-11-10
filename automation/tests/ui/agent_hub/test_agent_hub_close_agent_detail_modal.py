@@ -42,7 +42,7 @@ class TestAgentHubCloseAgentDetailModal:
     )
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/2537",
-        "Known defect — dev-vm.elitea.ai default-icon CSP violation + application_icon 404s (console errors)",
+        "Known defect — application_icon 404s (the default-icon CSP violation seen earlier is gone on DEV as of 2026-11-10) (console errors)",
     )
     @pytest.mark.p2
     def test_agent_hub_close_agent_detail_modal(self, page: Page):

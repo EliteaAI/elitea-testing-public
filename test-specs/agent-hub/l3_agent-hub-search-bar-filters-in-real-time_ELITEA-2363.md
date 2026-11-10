@@ -155,3 +155,7 @@ None — all 6 case steps were reached and observed live.
 - **Expected-result change:** matching scope "name contains term" -> "name or description contains term". **Case-text clarification** for the TMS case (case text says matching agents by name); TMS repo not edited here.
 - **Page object:** added `AgentHubPage.search_and_capture_response()` and `get_visible_agent_card_ids()` (reuse `AGENT_CARD_PREFIX`; no new locators).
 - **Step 7:** console errors are the known defect #2537 (dev-vm default-icon CSP + 404s); assertion stays strict, test linked to #2537 via `@allure.issue` (sanctioned RED, same pattern as siblings ELITEA-2356/2357).
+
+## Adjustment 2026-11-10 (#2899, class C)
+
+DEV re-checked: the #2537 CSP violation (default_entity_icons/image_14.png) is GONE. Remaining console error: `Failed to load resource: 404` for `https://dev.elitea.ai/app/application_icon/413/c204f142-95d2-4c5d-a74d-f5dbe90368a5.png` (application_icon, 2nd #2537 symptom). Console assertion stays strict, errors not filtered. Expected-result changes: none. Catalog data re-verified: categories incl. Business Analyst, agents User Story Creator (id 172) and Business Analyst (id 31) exist; no hard-coded name changes needed.
