@@ -980,16 +980,19 @@ jobs:
       # any file over 100 MB — run 329's 200 MB failure video got its whole report
       # rejected, so the URL 404'd — and GitHub Pages caps a site at 1 GB. Videos
       # are ~90% of the weight, so the script drops videos (never the report):
-      # every file over 95 MB, then oldest-run-first until the tree fits 900 MB,
+      # every file over 95 MB, then oldest-run-first until the tree fits 450 MB,
       # this run's videos last. Each dropped attachment becomes a text note in the
       # report naming the run whose allure-results artifact still has it.
+      # 450, not the 1 GB hard cap: the Pages deploy has a 10-minute sync timeout,
+      # and at ~800-900 MB it timed out (runs 338 and 341 — the push landed but the
+      # site kept serving the previous build, so the new report URL 404'd).
       - name: Fit reports into GitHub Pages limits
         env:
           CURRENT: ${{ needs.prepare.outputs.env-name }}/${{ github.run_number }}
         run: |
           set -euo pipefail
           python3 repo/automation/scripts/pages_budget.py gh-pages \
-            --current "$CURRENT" --max-file-mb 95 --budget-mb 900 >> "$GITHUB_STEP_SUMMARY"
+            --current "$CURRENT" --max-file-mb 95 --budget-mb 450 >> "$GITHUB_STEP_SUMMARY"
           tail -n 20 "$GITHUB_STEP_SUMMARY"
 
       # Publish as a SINGLE PARENTLESS COMMIT and force-push. gh-pages carries no
