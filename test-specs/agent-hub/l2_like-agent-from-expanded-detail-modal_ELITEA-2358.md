@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — like an agent from the expanded detail modal
+# Test Case: Catalog — like an agent from the expanded detail modal
 
 ## Metadata
 - **TMS ID**: ELITEA-2358
@@ -8,7 +8,7 @@
 - **User set**: `${TEST_USER}` — on localhost, `auth_state`/`VITE_DEV_TOKEN` skips explicit Keycloak login
 - **Analyst**: qa-engineer (Sage), analyst slot
 - **Status**: **ready-for-automation** — case executed end-to-end live via Playwright MCP. All 6 case steps reproduced live:
-  1. Navigated to Agent Hub (Catalog)
+  1. Navigated to Catalog
   2. Clicked agent card to open detail modal
   3. Located heart icon (like button) in modal header showing current like count
   4. Clicked the heart icon to toggle like state
@@ -21,7 +21,7 @@
 
 ## Dedup check
 
-This is fresh coverage targeting the **Agent Hub Catalog modal's like feature** (modal opened from agent card click on `/elitea-catalog`), distinct from:
+This is fresh coverage targeting the **Catalog Catalog modal's like feature** (modal opened from agent card click on `/elitea-catalog`), distinct from:
 - **ELITEA-2354** (`test_agent_hub_like_button.py`): covers like buttons on the **card-list view** (`catalog-agent-like-button-{id}`) — different UI surface (cards vs. modal), different testids, different entry point
 - **ELITEA-2356** (`test_agent_hub_open_agent_detail_modal.py`): opens the modal and asserts its visibility + structure (icon, name, owner, description, sections, start chat button), but does NOT click the like button or assert like count changes
 - **ELITEA-2357** (`test_agent_hub_close_modal_with_x_button.py`): closes the modal by clicking the X button, does NOT interact with the like button
@@ -31,7 +31,7 @@ This case specifically exercises: like button click → like state toggle → co
 ## Preconditions
 
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
-- Agent Hub Catalog page is accessible (`/elitea-catalog`).
+- Catalog Catalog page is accessible (`/elitea-catalog`).
 - At least one published Catalog agent exists with a non-zero or zero like count. Confirmed live: **"Business Analyst"** (application id 31, author "Levon Dadayan", like count 8 at start of case, pre-existing liked status by `${TEST_USER}`).
 
 ## Test Data
@@ -44,7 +44,7 @@ This case specifically exercises: like button click → like state toggle → co
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible (pre-existing, `AgentHubPage.page_heading`).
 
 2. Click on any agent card to open the detail modal (e.g., "Business Analyst").
@@ -80,7 +80,7 @@ This case specifically exercises: like button click → like state toggle → co
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Click on any agent card to open the detail modal | Control responds; expected next state is shown | step 2 | modal overlay visible, agent-details GET fires 200 | asserted |
 | 3 Locate the heart icon in the modal header showing the current like count | Action completes without error and produces the expected UI state | step 3 | `catalog-agent-modal-like-button` visible with like count text | asserted |
 | 4 Click the heart icon | Control responds; expected next state is shown | step 4 | button click succeeds, state toggles | asserted |

@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — filter agents by multiple categories simultaneously
+# Test Case: Catalog — filter agents by multiple categories simultaneously
 
 ## Metadata
 - **TMS ID**: ELITEA-2353
@@ -13,7 +13,7 @@
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
 - Active project context is "Private" (this project's default `${TEST_USER}` project on localhost).
-- Agent Hub (Catalog) page freshly navigated to (no category filters pre-selected) — the filter state (`selectedTagNames` in `AgentsTab.jsx`) must start empty to properly test the accumulation behavior. Each chip click adds to the selected set, not replaces it.
+- Catalog page freshly navigated to (no category filters pre-selected) — the filter state (`selectedTagNames` in `AgentsTab.jsx`) must start empty to properly test the accumulation behavior. Each chip click adds to the selected set, not replaces it.
 
 ## Test Data
 
@@ -25,7 +25,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: URL is `/elitea-catalog`; page heading visible and says "Welcome to ELITEA Catalog!".
    - **Verify**: category filter-rail chips are visible in the right sidebar (all 11 category options present: Trending, My Liked, Business Analyst, DevOps, Development, Elitea, Epam, Knowledge & Documentation, Project Management, Quality Assurance, Other).
    - **Verify**: zero console errors during page load.
@@ -53,7 +53,7 @@
    - **Verify**: no agent cards from other categories (DevOps, Development, etc.) are visible.
 
 ## Expected Final State
-Agent Hub displays agents from **both** "Business Analyst" and "Elitea" categories simultaneously in separate, labeled sections. Both category filter chips in the right sidebar show selected state. Clicking multiple category chips accumulates the filters — a true multi-select filter behavior, not a single-select replacement.
+Catalog displays agents from **both** "Business Analyst" and "Elitea" categories simultaneously in separate, labeled sections. Both category filter chips in the right sidebar show selected state. Clicking multiple category chips accumulates the filters — a true multi-select filter behavior, not a single-select replacement.
 
 ## Pass/Fail Criteria
 
@@ -76,7 +76,7 @@ Agent Hub displays agents from **both** "Business Analyst" and "Elitea" categori
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | URL `/elitea-catalog`; page heading visible; category filter chips visible; zero console errors | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | URL `/elitea-catalog`; page heading visible; category filter chips visible; zero console errors | asserted |
 | 2 Click "Business Analyst" category filter chip | Control responds; expected next state is shown | step 2 | chip click succeeds; no console errors; `data-selected="true"` on Business Analyst chip | asserted |
 | 3 Click "Elitea" category filter chip while Business Analyst remains selected | Control responds; both chips remain selected | step 3 | both chips show `data-selected="true"`; no console errors | asserted |
 | 4 Verify both category sections are displayed | Agents from both categories appear in separate labeled sections | step 4 | exactly two `catalog-category-heading-*` visible (business-analyst, elitea); no other category sections | asserted |
@@ -186,4 +186,8 @@ def test_agent_hub_filter_by_multiple_categories(page):
 - **Cause:** the live public catalog changed; the filter itself works as intended (headings `['Business Analyst', 'Elitea']`, both chips selected).
 - **Data change (old -> new):** Elitea category `{Assistant for ELITEA Documentation}` (1) -> `{Custom all fields, Pipeline Orchestrator, Assistant for ELITEA Documentation}` (3). Business Analyst category unchanged (4). Total 5 -> 7.
 - **Expected-result changes:** none to the case's behaviour; only the live catalog dataset in the Elitea category changed 1 -> 3 agents. The exact total-count assertion and the "no cards from other categories" check are unchanged.
-- **Step 7 (class C, known defect #2537):** after the dataset fix, Step 7 (zero console errors) fails deterministically with the open defect EliteaAI/elitea-testing-public#2537 (dev-vm.elitea.ai default-icon CSP violation + application_icon 404s affecting Agent Hub cards). The assertion is kept strict and unchanged; a `# Known defect: #2537` comment marks it. Sanctioned RED (deterministic, single-cause, linked to an open defect) until the product fix ships.
+- **Step 7 (class C, known defect #2537):** after the dataset fix, Step 7 (zero console errors) fails deterministically with the open defect EliteaAI/elitea-testing-public#2537 (application_icon 404s (the default-icon CSP violation seen earlier is gone on DEV as of 2026-11-10) affecting Catalog cards). The assertion is kept strict and unchanged; a `# Known defect: #2537` comment marks it. Sanctioned RED (deterministic, single-cause, linked to an open defect) until the product fix ships.
+
+## Adjustment 2026-11-10 (#2899, class C)
+
+DEV re-checked: the #2537 CSP violation (default_entity_icons/image_14.png) is GONE. Remaining console error: `Failed to load resource: 404` for `https://dev.elitea.ai/app/application_icon/413/c204f142-95d2-4c5d-a74d-f5dbe90368a5.png` (application_icon, 2nd #2537 symptom). Console assertion stays strict, errors not filtered. Expected-result changes: none. Catalog data re-verified: categories incl. Business Analyst, agents User Story Creator (id 172) and Business Analyst (id 31) exist; no hard-coded name changes needed.

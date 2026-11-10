@@ -1,6 +1,6 @@
-"""Agent Hub — filter agents by single category (ELITEA-2352).
+"""Catalog — filter agents by single category (ELITEA-2352).
 
-Verifies that clicking a single category filter-rail chip on the Agent Hub
+Verifies that clicking a single category filter-rail chip on the Catalog
 (Catalog) page (`/elitea-catalog`) selects that chip, filters the content
 area to that category's agents only, and shows the matching content-list
 section header — with zero console errors.
@@ -47,7 +47,7 @@ EXPECTED_AGENT_NAMES = {
 
 
 class TestAgentHubFilterSingleCategory:
-    """ELITEA-2352: Agent Hub — filter agents by single category (l3, medium)."""
+    """ELITEA-2352: Catalog — filter agents by single category (l3, medium)."""
 
     @pytest.mark.tms("ELITEA-2352")
     @allure.issue(
@@ -58,14 +58,15 @@ class TestAgentHubFilterSingleCategory:
     @pytest.mark.p2
     def test_agent_hub_filter_by_single_category(self, page: Page):
         """Clicking a single category filter-rail chip selects that chip and
-        filters the Agent Hub content to that category's agents only."""
+        filters the Catalog content to that category's agents only."""
         agent_hub = AgentHubPage(page)
 
         console_capture = agent_hub.capture_console_errors()
 
         try:
-            with allure.step("Step 1 — Navigate to Agent Hub"):
+            with allure.step("Step 1 — Navigate to Catalog (the Agents tab is active)"):
                 agent_hub.navigate()
+                assert agent_hub.is_agents_tab_selected(), "Catalog should open on the Agents tab"
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
             with allure.step(f"Step 2 — Click the {FILTER_CATEGORY!r} category filter-rail chip"):
@@ -100,6 +101,7 @@ class TestAgentHubFilterSingleCategory:
                 # EliteaAI/elitea-testing-public#1212); not asserted here (reverse-masking guard).
 
             with allure.step("Step 6 — Verify zero console errors during the filter interaction"):
+                # Known defect: #2537 — stays red (sanctioned RED); assertions strict, errors not filtered.
                 assert not console_capture, (
                     f"Unexpected console errors: {[m.text for m in console_capture]!r}"
                 )

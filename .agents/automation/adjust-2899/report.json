@@ -1,0 +1,15 @@
+{
+ "slug": "adjust-2899",
+ "issue": 2899,
+ "triage": "A (Agent Hub renamed to Catalog; Catalog opens on Agents tab). #2537 (CSP/404 icon console errors) closed as not-a-bug (DEV settings); specs keep strict console assertions.",
+ "cases": [
+  {"id": "ELITEA-2352", "outcome": "automated"},
+  {"id": "ELITEA-2353", "outcome": "automated"}
+ ],
+ "scope_note": "all 12 tests/ui/agent_hub specs + page object + AFS renamed; 3 non-agent_hub specs touched by docstring only",
+ "review": "APPROVED (fresh session, twice)",
+ "gate": {"verdict": "green", "n": 3, "runs": "3x per-spec processes over 15 specs (45 invocations), all passed on DEV; combined single-process runs were flaky from DEV 429 rate limits / intermittent icon 404 and were not used"},
+ "expected_result_changes": "Catalog opens on Agents tab (navigate() and ELITEA-2352 step 1 assert aria-selected on catalog-agents-tab)",
+ "findings": ["TMS wording PR EliteaAI/onetest-ai-tm-Elitea#243 awaits human merge", "ruff not installed in this env; lint not run"],
+ "batch": "adjust-2899"
+}

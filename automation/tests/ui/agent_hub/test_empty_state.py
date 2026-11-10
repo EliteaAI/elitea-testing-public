@@ -1,4 +1,4 @@
-"""Test: Agent Hub empty state when no agents match search or filter.
+"""Test: Catalog empty state when no agents match search or filter.
 
 ELITEA-2367: Verify the empty state displays correctly when no agents match
 a search query. Layout remains consistent; all major UI elements visible.
@@ -19,7 +19,7 @@ FILTER_RAIL_TIMEOUT = 10_000
 
 
 class TestCatalogEmptyState:
-    """Agent Hub empty state verification when search matches zero agents."""
+    """Catalog empty state verification when search matches zero agents."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
@@ -39,10 +39,10 @@ class TestCatalogEmptyState:
     @pytest.mark.tryfirst  # @ELITEA-2367
     def test_empty_state_when_search_matches_no_agents(self, page: Page):
         """
-        ELITEA-2367: Agent Hub empty state when search matches no agents.
+        ELITEA-2367: Catalog empty state when search matches no agents.
 
         Steps:
-        1. Navigate to Agent Hub (Catalog)
+        1. Navigate to Catalog
         2. Verify page heading visible
         3. Search for a term that matches no agents
         4. Verify "No agents found" message displays
@@ -67,7 +67,7 @@ class TestCatalogEmptyState:
         page.on("console", lambda msg: console_messages.append((msg.type, msg.text)))
 
         # Step 1: Navigate to Catalog
-        with allure.step("Step 1 — Navigate to Agent Hub"):
+        with allure.step("Step 1 — Navigate to Catalog"):
             # Capture the page's OWN categories response on the way in — it is the
             # oracle for Step 6's filter-rail assertion (read-only observation).
             api_category_names = agent_hub.navigate_and_capture_category_names()
