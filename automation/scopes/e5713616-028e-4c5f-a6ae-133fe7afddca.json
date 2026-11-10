@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "e5713616-028e-4c5f-a6ae-133fe7afddca",
+  "intent": "automation",
+  "batch": "help-center-sidebar-tour-adjust",
+  "cases": [
+    "ELITEA-3754"
+  ],
+  "declaredAt": "2026-11-10T09:13:55.877Z",
+  "updatedAt": "2026-11-10T09:24:13.390Z",
+  "closedAt": "2026-11-10T09:24:13.390Z",
+  "outcomes": {
+    "ELITEA-3754": {
+      "outcome": "automated",
+      "at": "2026-11-10T09:24:06.488Z"
+    }
+  }
+}
