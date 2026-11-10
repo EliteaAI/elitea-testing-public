@@ -1,4 +1,4 @@
-"""Agent Hub — search bar filters agents in real time (ELITEA-2363).
+"""Catalog — search bar filters agents in real time (ELITEA-2363).
 
 Verifies that typing a partial term into the Catalog search bar
 (`/elitea-catalog`) filters the agent list in real time — debounced ~300ms,
@@ -39,7 +39,7 @@ PUBLIC_APPLICATIONS_PATH = "/public_applications/prompt_lib/"
 
 
 class TestAgentHubSearchBarFiltersInRealTime:
-    """ELITEA-2363: Agent Hub — search bar filters agents in real time (l3, medium)."""
+    """ELITEA-2363: Catalog — search bar filters agents in real time (l3, medium)."""
 
     @pytest.mark.tms("ELITEA-2363")
     @allure.issue(
@@ -60,7 +60,7 @@ class TestAgentHubSearchBarFiltersInRealTime:
         console_capture = agent_hub.capture_console_errors()
 
         try:
-            with allure.step("Step 1 — Navigate to Agent Hub and capture the pre-search baseline"):
+            with allure.step("Step 1 — Navigate to Catalog and capture the pre-search baseline"):
                 # navigate_and_capture_applications() (ELITEA-2354) waits specifically
                 # on the bulk all-applications response (excluding the parallel
                 # Trending/My-Liked calls) before returning — the network-level
@@ -167,7 +167,7 @@ class TestAgentHubSearchBarFiltersInRealTime:
 
             with allure.step("Step 7 — Verify zero console errors during typing, filtering, and clearing"):
                 # Known defect: #2537 — Step 7 stays red until fixed (sanctioned RED, deterministic):
-                # dev-vm.elitea.ai default-icon CSP violation + application_icon 404s on Agent Hub cards.
+                # dev-vm.elitea.ai default-icon CSP violation + application_icon 404s on Catalog cards.
                 # Assertion intentionally stays strict (no filtering of these errors).
                 assert not console_capture, (
                     f"Unexpected console errors: {[m.text for m in console_capture]!r}"

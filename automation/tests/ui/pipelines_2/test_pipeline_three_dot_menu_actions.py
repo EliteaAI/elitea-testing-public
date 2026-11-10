@@ -19,7 +19,7 @@ are both labelled "Share" (VERSION-group ``share-version-menuitem`` and
 PIPELINE-group ``share-agent-menuitem``); the PIPELINE-group one functionally
 matches the case's "Copy link" step (copies the generic pipeline URL, shows
 the toast). Filed as a sibling to the same pattern already documented for
-the Agent Detail page (ELITEA-1898, #1288) and the Agent Hub modal
+the Agent Detail page (ELITEA-1898, #1288) and the Catalog modal
 (ELITEA-2356, #1218) — see
 https://github.com/EliteaAI/elitea-testing-public/issues/1337.
 

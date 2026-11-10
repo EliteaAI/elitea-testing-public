@@ -1,6 +1,6 @@
-"""Agent Hub — copy link from agent detail modal navigates to agent (ELITEA-2359).
+"""Catalog — copy link from agent detail modal navigates to agent (ELITEA-2359).
 
-Verifies that a link copied from the Agent Hub catalog modal's Share action
+Verifies that a link copied from the Catalog modal's Share action
 successfully navigates to the agent and displays all agent details (name,
 description, conversation starters, welcome message) correctly in the
 reopened modal. The test captures the clipboard-written URL, navigates to it
@@ -41,7 +41,7 @@ NAVIGATION_TIMEOUT = 15_000
 
 
 class TestAgentHubCopyLinkFromModal:
-    """ELITEA-2359: Agent Hub — copy link from modal navigates to agent (l2, medium)."""
+    """ELITEA-2359: Catalog — copy link from modal navigates to agent (l2, medium)."""
 
     @pytest.mark.tms("ELITEA-2359")
     @allure.issue(
@@ -57,7 +57,7 @@ class TestAgentHubCopyLinkFromModal:
 
         agent_hub = AgentHubPage(page)
 
-        with allure.step("Step 1 — Navigate to Agent Hub Catalog"):
+        with allure.step("Step 1 — Navigate to Catalog"):
             agent_hub.navigate()
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 

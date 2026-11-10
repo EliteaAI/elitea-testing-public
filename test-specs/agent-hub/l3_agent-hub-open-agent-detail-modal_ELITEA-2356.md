@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — open agent detail modal
+# Test Case: Catalog — open agent detail modal
 
 ## Metadata
 - **TMS ID**: ELITEA-2356
@@ -25,7 +25,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible (reuse `AgentHubPage.navigate()` / `wait_for_page_load()`).
 2. Click on any agent card (e.g., "User Story Creator").
    - **Verify**: click succeeds; the underlying `GET /api/v2/elitea_core/public_application/prompt_lib/{id}` request fires (confirmed live: `.../public_application/prompt_lib/172` → `200`) — reuse `AgentHubPage.open_agent_by_name()`, which already waits on this exact response before returning.
@@ -61,7 +61,7 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Click on any agent card | Control responds; expected next state is shown | step 2 | agent-details GET fires, resolves 200 | asserted |
 | 3 Verify the agent detail modal opens as an overlay | Condition holds as described | step 3 | `catalog-agent-modal` visible (testid added by implementer — see § Concrete Handles) | asserted |
 | 4 Verify modal displays icon, name, owner, liked status, copy link icon, "x" button, description | Condition holds as described | step 4 | 7 sub-elements, each own handle (see step 4 detail) | asserted *(copy-link-icon sub-element is drift, see clarification)* |

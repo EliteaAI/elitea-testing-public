@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — close agent detail modal with X button
+# Test Case: Catalog — close agent detail modal with X button
 
 ## Metadata
 - **TMS ID**: ELITEA-2357
@@ -25,7 +25,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible. Reuse `AgentHubPage.navigate()`.
 
 2. Click on any agent card to open the detail modal (e.g., "User Story Creator").
@@ -40,13 +40,13 @@
 5. Verify the modal closes.
    - **Verify**: the modal overlay transitions to hidden state (`state="hidden"`) within 1000ms after the close button click — confirmed live. No errors during transition.
 
-6. Verify the user remains on the Agent Hub list view.
+6. Verify the user remains on the Catalog list view.
    - **Verify**: the page URL remains `/elitea-catalog`; the catalog page heading (`catalog-page-heading`) remains visible; the catalog content area (agent cards / category sections) is still rendered — confirmed live. Zero console errors throughout the interaction.
 
 ## Expected Results
 - Clicking the X button in the agent detail modal closes the modal.
 - The modal transitions to hidden state cleanly.
-- The user remains on the Agent Hub / Catalog list view (`/elitea-catalog`).
+- The user remains on the Catalog list view (`/elitea-catalog`).
 - The Catalog page heading, search bar, and agent card grid remain visible and interactive.
 - Zero console errors, zero 4xx/5xx responses.
 
@@ -56,12 +56,12 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Click on any agent card | Control responds; expected next state is shown | step 2 | agent-details GET fires, resolves 200 | asserted |
 | 3 Verify the agent detail modal opens as an overlay | Condition holds as described | step 3 | `catalog-agent-modal` visible | asserted |
 | 4 Click the X button in the top-right corner of the modal | Control responds; expected next state is shown | step 4 | `catalog-agent-modal-close-button` visible and clickable | asserted |
 | 5 Verify the modal closes | Condition holds as described | step 5 | `catalog-agent-modal` hidden (state transition observed live) | asserted |
-| 6 Verify the user remains on the Agent Hub list view | Condition holds as described | step 6 | page URL remains `/elitea-catalog`, `catalog-page-heading` and agent cards remain visible | asserted |
+| 6 Verify the user remains on the Catalog list view | Condition holds as described | step 6 | page URL remains `/elitea-catalog`, `catalog-page-heading` and agent cards remain visible | asserted |
 
 Disposition legend: `asserted` | `already-covered` | `clarification` | `blocked` | `out-of-scope`.
 
@@ -118,7 +118,7 @@ None — all 6 case steps were reached and observed live. The close button testi
 
 ## References
 
-- **Prerequisite case:** [ELITEA-2356](https://github.com/EliteaAI/elitea-testing-public/issues/863) — Agent Hub — open agent detail modal (provides the modal-open flow, modal dialog testid, and close button testid).
+- **Prerequisite case:** [ELITEA-2356](https://github.com/EliteaAI/elitea-testing-public/issues/863) — Catalog — open agent detail modal (provides the modal-open flow, modal dialog testid, and close button testid).
 - **Case text note:** Case title says "close agent detail modal with X button"; the live product uses a `MUI Dialog` with an `aria-label="close"` `IconButton` at the top-right, functionally equivalent to an "X" button. Automation asserts the live implementation.
 - **Related surfaces:** `AgentHubPage` (`automation/pages/agent_hub_page.py`) — all handles and navigation methods.
 - **Locator policy:** `.agents/testing.md` § Locator policy (testid-only, no fallback ladder).

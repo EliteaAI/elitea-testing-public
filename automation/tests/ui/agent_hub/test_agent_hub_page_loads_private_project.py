@@ -1,6 +1,6 @@
-"""Agent Hub — page loads successfully for Private project (ELITEA-2350).
+"""Catalog — page loads successfully for Private project (ELITEA-2350).
 
-Verifies the public Agent Hub (Catalog) page (`/elitea-catalog`) loads
+Verifies the public Catalog page (`/elitea-catalog`) loads
 cleanly for a user in the "Private" project context: heading, search bar,
 the full 11-entry category filter rail, and agent cards in the main
 content area are all visible, with zero console errors.
@@ -59,7 +59,7 @@ OTHER_CATEGORY_LABELS = [
 
 
 class TestAgentHubPageLoadsPrivateProject:
-    """ELITEA-2350: Agent Hub — page loads successfully for Private project (l2, high)."""
+    """ELITEA-2350: Catalog — page loads successfully for Private project (l2, high)."""
 
     @pytest.mark.tms("ELITEA-2350")
     @allure.issue(
@@ -69,7 +69,7 @@ class TestAgentHubPageLoadsPrivateProject:
     )
     @pytest.mark.p1
     def test_agent_hub_page_loads_private_project(self, page: Page):
-        """Agent Hub (Catalog) page loads without error for a Private-project
+        """Catalog page loads without error for a Private-project
         user: heading, search bar, full category filter rail, and agent
         cards are all visible, with zero console errors."""
         agent_hub = AgentHubPage(page)
@@ -79,7 +79,7 @@ class TestAgentHubPageLoadsPrivateProject:
 
         try:
             with allure.step(
-                "Step 1 — Navigate to Agent Hub from the sidebar while the active project is 'Private'"
+                "Step 1 — Navigate to Catalog from the sidebar while the active project is 'Private'"
             ):
                 agent_hub.navigate()
 

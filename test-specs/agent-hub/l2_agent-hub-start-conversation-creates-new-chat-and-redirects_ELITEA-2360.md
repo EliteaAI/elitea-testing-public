@@ -7,11 +7,11 @@ case-id: ELITEA-2360
 fixtures: [auth_state, test_user]
 ---
 
-# ELITEA-2360: Agent Hub — start conversation creates new chat and redirects to Chat page
+# ELITEA-2360: Catalog — start conversation creates new chat and redirects to Chat page
 
-**Priority:** L2 · **Type:** functional · **Surface:** Agent Hub / Chat
+**Priority:** L2 · **Type:** functional · **Surface:** Catalog / Chat
 
-**Objective:** Verify that clicking "Start Chat" in an Agent Hub detail modal creates a new conversation and redirects to the Chat page, displaying the welcome message.
+**Objective:** Verify that clicking "Start Chat" in an Catalog detail modal creates a new conversation and redirects to the Chat page, displaying the welcome message.
 
 **Coverage:** Steps 1–6 from TMS case; assertion is on the chat welcome message presence and visibility.
 
@@ -22,7 +22,7 @@ fixtures: [auth_state, test_user]
 | Axis 1: TMS step | Observable | Method/page object | Assertion | Notes |
 |---|---|---|---|---|
 | Precondition: User logged in | Auth state loaded | `conftest.auth_state` fixture | Implicit (fixture) | On localhost, `VITE_DEV_TOKEN` skips Keycloak; test user context inherited |
-| Step 1: Navigate to Agent Hub | Page loads, Agents tab visible | `navigate_to_agent_hub()` | URL matches `/elitea-catalog` | No navigation barriers; agents tab is default when catalog loads |
+| Step 1: Navigate to Catalog | Page loads, Agents tab visible | `navigate_to_agent_hub()` | URL matches `/elitea-catalog` | No navigation barriers; agents tab is default when catalog loads |
 | Step 2: Click agent card, open modal | Detail modal for agent appears | `click_agent_card(agent_name)` | Modal visible + agent name shown in modal header | Using "User Story Creator" as representative agent (per surface digest) — no special state required |
 | Step 3: Click "Start Chat" button | Modal responds; navigation begins | `click_start_chat_button()` → resolves post-navigation | Implicit in Step 5 (redirect succeeds) | No intermediate state assertion; the button click is transient |
 | Step 4: Verify new chat created | New conversation exists (backend consequence) | Implicit in Step 6 (message rendered means conversation exists) | URL contains conversation ID + chat greeting rendered | Conversation creation is a backend side-effect of sending the first message; this step verifies indirectly |
@@ -35,7 +35,7 @@ fixtures: [auth_state, test_user]
 
 | Surface Element | Testid / Selector | Provenance | Notes |
 |---|---|---|---|
-| Agent Hub page / main view | `/elitea-catalog` (URL) | Live verified ELITEA-2360 | Entry point; no testid required (URL is the handle) |
+| Catalog page / main view | `/elitea-catalog` (URL) | Live verified ELITEA-2360 | Entry point; no testid required (URL is the handle) |
 | Agent card (list item, "User Story Creator" example) | `data-testid="catalog-agent-card-172"` | Live verified ELITEA-2360 | Feature-specific agent ID (172); card carries testid natively |
 | Agent detail modal (root container) | `data-testid="catalog-agent-modal"` | Surface digest (ELITEA-2368) | Modal opens on card click; contains agent details + action buttons |
 | "Start Chat" button | `data-testid="catalog-agent-modal-start-chat-button"` | Live verified ELITEA-2360 | Button in modal footer; triggers navigation + conversation creation |
@@ -57,7 +57,7 @@ fixtures: [auth_state, test_user]
 ## Preconditions
 
 - User is authenticated (implicit via `auth_state` fixture).
-- Agent Hub catalog is accessible at `/elitea-catalog`.
+- Catalog catalog is accessible at `/elitea-catalog`.
 - At least one agent (e.g., "User Story Creator") is available in the catalog.
 - Chat page is reachable at `/chat`.
 
