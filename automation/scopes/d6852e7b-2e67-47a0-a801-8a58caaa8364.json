@@ -8,5 +8,16 @@
     "ELITEA-2353"
   ],
   "declaredAt": "2026-11-10T07:54:40.961Z",
-  "updatedAt": "2026-11-10T07:54:40.961Z"
+  "updatedAt": "2026-11-10T13:56:14.679Z",
+  "outcomes": {
+    "ELITEA-2352": {
+      "outcome": "automated",
+      "at": "2026-11-10T13:55:56.633Z"
+    },
+    "ELITEA-2353": {
+      "outcome": "automated",
+      "at": "2026-11-10T13:55:56.633Z"
+    }
+  },
+  "closedAt": "2026-11-10T13:56:14.679Z"
 }
