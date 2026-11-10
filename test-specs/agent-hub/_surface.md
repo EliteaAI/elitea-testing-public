@@ -1,6 +1,6 @@
 # Agent-hub surface — exploration digest
 
-Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
+Handle cache for live-confirmed handles/quirks on the Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
 slot), ELITEA-2364, 2026-08-10.
@@ -309,13 +309,13 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   no manual UI trigger anywhere. Filed as
   [EliteaAI/elitea-testing-public#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212).
   **Future analysts in this family: expect the same claim to recur** across
-  sibling cases (like #1208's "Agent HUB" header text did) — cite #1212 rather
+  sibling cases (like #1208's "Catalog" header text did) — cite #1212 rather
   than re-discovering it.
 
 ## Page identity / naming (case-text drift, recurring across the ELITEA-2350..2370+ family)
-- The TMS "Agent Hub" family (ELITEA-2350 through at least ELITEA-2370, ~20
+- The TMS "Catalog" family (ELITEA-2350 through at least ELITEA-2370, ~20
   sibling cases filed as GitHub issues #858-#878) all use case text calling
-  the surface "Agent HUB". The LIVE product calls it "Catalog" everywhere:
+  the surface "Catalog". The LIVE product calls it "Catalog" everywhere:
   sidebar nav item text, `<title>` (`"ELITEA Catalog - {project}"` — includes
   the active project name, useful as a free project-context assertion), and
   the page heading `data-testid="catalog-page-heading"` = **"Welcome to

@@ -1,4 +1,4 @@
-"""Agent Hub — start conversation creates a new chat and redirects to the
+"""Catalog — start conversation creates a new chat and redirects to the
 Chat page, with the welcome message displayed (ELITEA-2360).
 
 Opens a Catalog agent's detail modal, starts a chat via "Start Chat", and
@@ -54,7 +54,7 @@ CATALOG_AGENT_NAME = "User Story Creator"
 
 
 class TestAgentHubStartConversationCreatesNewChat:
-    """ELITEA-2360: Agent Hub — start conversation creates new chat and redirects (l2, medium)."""
+    """ELITEA-2360: Catalog — start conversation creates new chat and redirects (l2, medium)."""
 
     @pytest.mark.tms("ELITEA-2360")
     @allure.issue(
@@ -77,7 +77,7 @@ class TestAgentHubStartConversationCreatesNewChat:
         page.on("response", lambda resp: failed_responses.append(resp.status) if resp.status >= 400 else None)
 
         try:
-            with allure.step("Step 1 — Navigate to Agent Hub"):
+            with allure.step("Step 1 — Navigate to Catalog"):
                 agent_hub.navigate()
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 

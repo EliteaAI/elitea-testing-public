@@ -1,6 +1,6 @@
-"""Agent Hub — filter agents by multiple categories simultaneously (ELITEA-2353).
+"""Catalog — filter agents by multiple categories simultaneously (ELITEA-2353).
 
-Verifies that clicking multiple category filter-rail chips on the Agent Hub
+Verifies that clicking multiple category filter-rail chips on the Catalog
 (Catalog) page (`/elitea-catalog`) accumulates the filters: both chips remain
 selected, and agents from both categories are displayed simultaneously in
 separate labeled sections — with zero console errors.
@@ -56,7 +56,7 @@ SECOND_CATEGORY = "Elitea"
 # (fonts.gstatic.com). NOT tied to this test's own flow: EliteaUI's
 # ``index.html`` loads Montserrat via a Google Fonts CSS ``<link>`` tag, so
 # the woff2 fetch happens on EVERY page render, app-wide — unrelated to the
-# Agent Hub category filter-rail or the content-list sections this test
+# Catalog category filter-rail or the content-list sections this test
 # exercises. ``fonts.gstatic.com`` URLs are content-hashed and essentially
 # never 404 once published, so this reads as a transient CDN/network blip
 # rather than a broken reference. Live-confirmed via temporary debug
@@ -90,7 +90,7 @@ EXPECTED_TOTAL_CARD_COUNT = len(BUSINESS_ANALYST_AGENTS) + len(ELITEA_CATEGORY_A
 
 
 class TestAgentHubFilterMultipleCategories:
-    """ELITEA-2353: Agent Hub — filter agents by multiple categories simultaneously (l2, high)."""
+    """ELITEA-2353: Catalog — filter agents by multiple categories simultaneously (l2, high)."""
 
     @pytest.mark.tms("ELITEA-2353")
     @allure.issue(
@@ -108,7 +108,7 @@ class TestAgentHubFilterMultipleCategories:
         console_capture = agent_hub.capture_console_errors()
 
         try:
-            with allure.step("Step 1 — Navigate to Agent Hub"):
+            with allure.step("Step 1 — Navigate to Catalog"):
                 agent_hub.navigate()
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
@@ -212,7 +212,7 @@ class TestAgentHubFilterMultipleCategories:
 
             with allure.step("Step 7 — Verify zero console errors during the multi-click filter interaction"):
                 # Known defect: #2537 — Step 7 stays red until fixed (sanctioned RED, deterministic):
-                # dev-vm.elitea.ai default-icon CSP violation + application_icon 404s on Agent Hub cards.
+                # application_icon 404s (the default-icon CSP violation seen earlier is gone on DEV as of 2026-11-10) on Catalog cards.
                 # Assertion intentionally stays strict (no filtering of these errors).
                 # Known defect: elitea-testing-public#1434 — the app-wide Montserrat
                 # webfont CDN 404 (see _is_known_1434_montserrat_font_404 docstring

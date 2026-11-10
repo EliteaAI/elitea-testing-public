@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — "My Liked" filter shows only liked agents
+# Test Case: Catalog — "My Liked" filter shows only liked agents
 
 ## Metadata
 - **TMS ID**: ELITEA-2364
@@ -12,7 +12,7 @@
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
 - Active project context is "Private" (this project's default `${TEST_USER}` project on localhost).
-- Agent Hub (Catalog) page freshly navigated to.
+- Catalog page freshly navigated to.
 
 ## Test Data
 
@@ -24,7 +24,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible. Confirmed live.
 
 2. Locate an agent card that is NOT yet liked by the current user (i.e., `data-liked="false"` on its like button).
@@ -54,7 +54,7 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Locate an agent card NOT yet liked by the user | Action completes without error and produces the expected UI state | step 2 | dynamic discovery of a live unliked card; confirmed live: agent 16 with `data-liked="false"` | asserted |
 | 3 Click the heart icon (like button) to like it | Control responds; expected next state is shown | step 3 | click succeeds, like count increments (7→8), `data-liked` changes to `"true"`, `POST .../social/like/...` fires | asserted |
 | 4 Click the "My Liked" category filter tab | Control responds; expected next state is shown | step 4 | chip click succeeds, `data-selected="true"` on chip, `catalog-category-heading-my-liked` becomes visible, filter applied | asserted |

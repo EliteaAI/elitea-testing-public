@@ -1,6 +1,6 @@
-"""UI Test for ELITEA-2354 — Agent Hub: like an agent from the list view.
+"""UI Test for ELITEA-2354 — Catalog: like an agent from the list view.
 
-Verifies that liking an unliked agent card on the Agent Hub (Catalog) page
+Verifies that liking an unliked agent card on the Catalog page
 (`/elitea-catalog`) increments its like count, fills the heart icon to its
 active state, and both persist across a full page refresh. Cleanup
 (mandatory — this case mutates shared, cross-session product data that
@@ -60,7 +60,7 @@ _KNOWN_DEFECT_1215_PREFIX = (
 def _is_known_defect_1215(text: str) -> bool:
     """True for the known, filed, non-blocking Redux console error
     (EliteaAI/elitea-testing-public#1215) that fires on every like/unlike
-    click on an Agent Hub agent card. Matches on the warning's own stable
+    click on an Catalog agent card. Matches on the warning's own stable
     text prefix (the exact reducer-value suffix varies per click/agent, so
     it is not part of the match).
     """
@@ -107,7 +107,7 @@ def _cleanup_soft_failures(
 
 
 class TestAgentHubLikeAgentListView:
-    """ELITEA-2354: Agent Hub — like an agent from the list view (l3, medium)."""
+    """ELITEA-2354: Catalog — like an agent from the list view (l3, medium)."""
 
     @pytest.mark.tms("ELITEA-2354")
     @allure.issue(
@@ -131,7 +131,7 @@ class TestAgentHubLikeAgentListView:
         agent_name: str | None = None
 
         try:
-            with allure.step("Step 1 — Navigate to Agent Hub"):
+            with allure.step("Step 1 — Navigate to Catalog"):
                 applications = agent_hub.navigate_and_capture_applications(timeout=NAVIGATION_TIMEOUT)
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 

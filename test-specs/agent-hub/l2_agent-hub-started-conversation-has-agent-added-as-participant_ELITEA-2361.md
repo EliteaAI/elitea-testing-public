@@ -1,6 +1,6 @@
 ---
-name: "Agent Hub — started conversation has agent added as participant"
-description: "Verify that when starting a conversation from Agent Hub, the selected agent appears as a participant in the chat with avatar, name, and version visible"
+name: "Catalog — started conversation has agent added as participant"
+description: "Verify that when starting a conversation from Catalog, the selected agent appears as a participant in the chat with avatar, name, and version visible"
 type: ready-for-automation
 priority: medium
 case_id: ELITEA-2361
@@ -8,14 +8,14 @@ tms_case_path: tests/automated-full-regression-ui/agent-hub/ELITEA-2361.md
 status: ready-for-automation
 ---
 
-# ELITEA-2361 — Agent Hub: Started Conversation Has Agent Added as Participant
+# ELITEA-2361 — Catalog: Started Conversation Has Agent Added as Participant
 
-**Objective:** Verify that when starting a conversation from the Agent Hub (Catalog), the selected agent is automatically added as a participant in the chat. Success is confirmed by verifying the agent's avatar, name, and version are all visible in the Participants panel.
+**Objective:** Verify that when starting a conversation from the Catalog, the selected agent is automatically added as a participant in the chat. Success is confirmed by verifying the agent's avatar, name, and version are all visible in the Participants panel.
 
 ## Preconditions
 
 - User is logged in to the Elitea platform
-- Agent Hub (Catalog) page is accessible at `/elitea-catalog`
+- Catalog page is accessible at `/elitea-catalog`
 - Test agent available (e.g., "User Story Creator", id=172)
 
 ## Test Data
@@ -29,7 +29,7 @@ status: ready-for-automation
 
 | Step # | Original case text | AFS Status | Assertion | Notes |
 |---|---|---|---|---|
-| 1 | Navigate to Agent Hub | asserted | Page loads to `/elitea-catalog` | |
+| 1 | Navigate to Catalog | asserted | Page loads to `/elitea-catalog` | |
 | 2 | Click on an agent card (e.g., "User Story Creator") to open the detail modal | asserted | Modal opens with agent details visible | Uses `catalog-agent-card-172` |
 | 3 | Click "Start conversation" | asserted | Button click succeeds; navigation begins | Live product labels this "Start Chat" per #1042 |
 | 4 | In the new chat, open the Participants panel on the right side | asserted | Participants panel expands | Uses `chat-participants-panel-toggle-button` |
@@ -42,7 +42,7 @@ status: ready-for-automation
 
 | Handle | Locator/Method | Provenance | Notes |
 |---|---|---|---|
-| Agent Hub page | `navigate("/elitea-catalog")` | pre-existing | Page object method |
+| Catalog page | `navigate("/elitea-catalog")` | pre-existing | Page object method |
 | User Story Creator card | `[data-testid="catalog-agent-card-172"]` | on-automation/testids ✓ (ELITEA-2075) | Agent id=172 "no starters/no welcome message" precondition |
 | Agent modal | auto-waits on GET `/api/v2/elitea_core/public_application/prompt_lib/{id}` | _surface.md | Opens on card click |
 | Start Chat button | `[data-testid="catalog-agent-modal-start-chat-button"]` | on-automation/testids ✓ (pre-existing, ELITEA-2075) | Creates new conversation; `AgentHubPage.click_start_chat()` owns the known-defect-#1043 1s wait internally |
@@ -55,7 +55,7 @@ status: ready-for-automation
 
 ## Test Outline
 
-1. Navigate to Agent Hub at `/elitea-catalog`
+1. Navigate to Catalog at `/elitea-catalog`
 2. Click the User Story Creator agent card to open the modal
 3. Wait for modal to load (GET `.../prompt_lib/172` resolves)
 4. Click the "Start Chat" button in the modal

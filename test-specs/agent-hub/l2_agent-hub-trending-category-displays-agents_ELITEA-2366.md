@@ -7,7 +7,7 @@ tms_id: ELITEA-2366
 tms_link: "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agent_hub/ELITEA-2366_agent-hub-trending-category-displays-agents.md"
 ---
 
-# ELITEA-2366: Agent Hub — Trending category displays agents
+# ELITEA-2366: Catalog — Trending category displays agents
 
 **AFS Status:** `ready-for-automation`  
 **Implementer Instructions:** The case text refers to a "Reload the category items" icon which does **not exist** in the live product (verified 2026-08-10, filed as [#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212)). Test only the assertions that match live product: section header "Trending" appears, and agents are displayed under it. The "reload" step is omitted per reverse-masking guard — case-text drift → CLARIFICATION, not a product defect.
@@ -25,7 +25,7 @@ tms_link: "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/auto
 
 | Case Element | Observable | Covered by | Asserted where | Disposition |
 |---|---|---|---|---|
-| Step 1: Navigate to Agent Hub | Page loads successfully | `ChatPage.navigate("/elitea-catalog")` + wait for page heading | test body, Step 1 | `ready` |
+| Step 1: Navigate to Catalog | Page loads successfully | `ChatPage.navigate("/elitea-catalog")` + wait for page heading | test body, Step 1 | `ready` |
 | Step 2: Click "Trending" filter (implicit: verify default view shows it) | Filter button present, clickable | inspect filter rail for "Trending" button | Step 2 | `ready` |
 | Step 3: Verify tab is highlighted/active | "Trending" button shows selected state (`data-selected="true"`) | click "Trending" + read `data-selected` | Step 3 | `ready` |
 | Step 4: Verify agents display under Trending | ≥1 agent card renders in Trending section | query `catalog-agent-card-*` within Trending section | Step 4 | `ready` |

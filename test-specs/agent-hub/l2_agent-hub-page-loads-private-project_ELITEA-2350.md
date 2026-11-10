@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — page loads successfully for Private project
+# Test Case: Catalog — page loads successfully for Private project
 
 ## Metadata
 - **TMS ID**: ELITEA-2350
@@ -23,7 +23,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`) from the left sidebar while the active project is "Private".
+1. Navigate to Catalog (`/elitea-catalog`) from the left sidebar while the active project is "Private".
    - **Verify**: URL is `/elitea-catalog`; page title is `"ELITEA Catalog - Private"` (confirmed live via `useBrowserPageTitle`, includes the active project name — an extra, free confirmation that we are in the Private project context).
    - **Verify**: sidebar `project-selector-trigger-combobox` contains the project name "Private" (unchanged by navigation).
    - **IMPLEMENTER AMENDMENT (drift, not a defect):** the element's `text_content()`
@@ -39,7 +39,7 @@
      The project-context confirmation itself still holds; only the exact-string
      premise was stale.
 2. Verify the page loads with the Catalog heading.
-   - **CASE-TEXT DRIFT (CLARIFICATION, filed — not a defect)**: case text says `"Welcome to Agent HUB"`; live heading text is **`"Welcome to ELITEA Catalog!"`** (`catalog-page-heading`, `EliteaCatalog.jsx`). Same root cause as the ELITEA-2075 AFS's step-1 nav-label drift (`AgentHub`/`/agents-hub` is only a legacy redirect source in `routes.js`, never a rendered label) — filed as its own ticket this session since it wasn't previously filed as a standalone issue (see § Known Defects). Assert the live heading text.
+   - **CASE-TEXT DRIFT (CLARIFICATION, filed — not a defect)**: case text says `"Welcome to Catalog"`; live heading text is **`"Welcome to ELITEA Catalog!"`** (`catalog-page-heading`, `EliteaCatalog.jsx`). Same root cause as the ELITEA-2075 AFS's step-1 nav-label drift (`AgentHub`/`/agents-hub` is only a legacy redirect source in `routes.js`, never a rendered label) — filed as its own ticket this session since it wasn't previously filed as a standalone issue (see § Known Defects). Assert the live heading text.
 3. Verify the search bar is visible at the top center.
    - **Verify**: `catalog-search-input` (pre-existing testid) visible, placeholder `"Search for agents"` (Agents tab is the default/selected tab — confirmed live via `tab "Agents" [selected]`).
 4. Verify category filter tabs are displayed.
@@ -49,7 +49,7 @@
    - **Verify**: at least one `catalog-agent-card-{id}` (pre-existing dynamic testid, `AgentCard.jsx`) visible under the "Trending" content-list heading (`catalog-category-heading-trending`, pre-existing). Confirmed live: 6 cards rendered by default (Business Analyst, Assistant for ELITEA Documentation, Reflexion, API Testing Buddy, Quality Engineering Sidekick, Code Review Assistant) plus a "Show more" expander.
 
 ## Expected Results
-- Agent Hub (Catalog) page loads without error for a user in the "Private" project context.
+- Catalog page loads without error for a user in the "Private" project context.
 - Heading, search bar, category filter rail (all 11 entries), and agent cards in the main content area are all visible.
 - Zero console errors during load.
 
@@ -59,8 +59,8 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub from a Private project context | Target page/section loads successfully | step 1 | URL `/elitea-catalog`; page title `"ELITEA Catalog - Private"`; `project-selector-trigger-combobox` text | asserted |
-| 2 Verify "Welcome to Agent HUB" header | Condition holds as described | step 2 | `catalog-page-heading` visible, live text asserted | asserted *(label drift, see clarification — asserts the LIVE text, not the stale case string)* |
+| 1 Navigate to Catalog from a Private project context | Target page/section loads successfully | step 1 | URL `/elitea-catalog`; page title `"ELITEA Catalog - Private"`; `project-selector-trigger-combobox` text | asserted |
+| 2 Verify "Welcome to Catalog" header | Condition holds as described | step 2 | `catalog-page-heading` visible, live text asserted | asserted *(label drift, see clarification — asserts the LIVE text, not the stale case string)* |
 | 3 Verify search bar visible at top center | Condition holds as described | step 3 | `catalog-search-input` visible | asserted |
 | 4 Verify category filter tabs displayed (11 named) | Condition holds as described | step 4 | 11 `Chip` labels in `CategoryRail` (Featured + Categories sections) visible | asserted |
 | 5 Verify agent cards displayed in main content area | Condition holds as described | step 5 | ≥1 `catalog-agent-card-{id}` visible | asserted |
@@ -95,7 +95,7 @@ None — read-only page-load verification, no state created.
 - No 4xx/5xx observed during page load.
 
 ## Known Defects Found During Exploration
-- **[CLARIFICATION, filed]** [EliteaAI/elitea-testing-public#1208](https://github.com/EliteaAI/elitea-testing-public/issues/1208) — case text says the header reads "Welcome to Agent HUB"; live product shows "Welcome to ELITEA Catalog!" (`catalog-page-heading`). Live product is internally consistent (nav label, page `<title>`, and heading all say "Catalog"/"ELITEA Catalog") — this is stale case text, not a product defect (reverse-masking guard). Same root cause as the un-filed drift noted inline in the ELITEA-2075 AFS; filed as its own ticket here since no standalone issue existed for it yet. Automation asserts the live text.
+- **[CLARIFICATION, filed]** [EliteaAI/elitea-testing-public#1208](https://github.com/EliteaAI/elitea-testing-public/issues/1208) — case text says the header reads "Welcome to Catalog"; live product shows "Welcome to ELITEA Catalog!" (`catalog-page-heading`). Live product is internally consistent (nav label, page `<title>`, and heading all say "Catalog"/"ELITEA Catalog") — this is stale case text, not a product defect (reverse-masking guard). Same root cause as the un-filed drift noted inline in the ELITEA-2075 AFS; filed as its own ticket here since no standalone issue existed for it yet. Automation asserts the live text.
 - None else found — zero console errors, zero 4xx/5xx, category filter list matches the case text exactly (no drift there).
 
 ## Blocked Steps

@@ -1,6 +1,6 @@
 ---
-name: "Agent Hub — agent chip visible in message input with version and settings"
-description: "Verify that after starting a conversation from Agent Hub, the composer (message-input area) shows the active agent as a chip with avatar, name, version, and a settings icon"
+name: "Catalog — agent chip visible in message input with version and settings"
+description: "Verify that after starting a conversation from Catalog, the composer (message-input area) shows the active agent as a chip with avatar, name, version, and a settings icon"
 type: ready-for-automation
 priority: medium
 case_id: ELITEA-2362
@@ -8,9 +8,9 @@ tms_case_path: tests/automated-full-regression-ui/agent_hub/ELITEA-2362_agent-hu
 status: ready-for-automation
 ---
 
-# ELITEA-2362 — Agent Hub: Agent Chip Visible in Message Input With Version and Settings
+# ELITEA-2362 — Catalog: Agent Chip Visible in Message Input With Version and Settings
 
-**Objective:** Verify that when starting a conversation from the Agent Hub (Catalog), the
+**Objective:** Verify that when starting a conversation from the Catalog, the
 composer's active-participant chip — in the message-input area at the bottom of the chat,
 distinct from the Participants panel (covered by ELITEA-2361) — shows the agent's avatar,
 name, version, and a settings icon.
@@ -18,7 +18,7 @@ name, version, and a settings icon.
 ## Preconditions
 
 - User is logged in to the Elitea platform
-- Agent Hub (Catalog) page is accessible at `/elitea-catalog`
+- Catalog page is accessible at `/elitea-catalog`
 - Test agent available (e.g., "User Story Creator", id=172)
 
 ## Test Data
@@ -32,7 +32,7 @@ name, version, and a settings icon.
 
 | Step # | Original case text | AFS Status | Assertion | Notes |
 |---|---|---|---|---|
-| 1 | Navigate to Agent Hub | asserted | Page loads to `/elitea-catalog` | |
+| 1 | Navigate to Catalog | asserted | Page loads to `/elitea-catalog` | |
 | 2 | Click on an agent card (e.g., "User Story Creator") to open the detail modal | asserted | Modal opens with agent details visible | Uses `catalog-agent-card-172` |
 | 3 | Click "Start conversation" | asserted | Button click succeeds; navigation to `/chat` begins | Live product labels this "Start Chat" per #1042 (already tracked, not re-filed) |
 | 4 | Verify the agent chip is visible in the message input area at the bottom | asserted | Composer's active-participant chip button visible | `switch_participant_button` / testid `chat-switch-participant-button` |
@@ -45,7 +45,7 @@ name, version, and a settings icon.
 
 | Handle | Locator/Method | Provenance | Notes |
 |---|---|---|---|
-| Agent Hub page | `navigate("/elitea-catalog")` | pre-existing | Page object method |
+| Catalog page | `navigate("/elitea-catalog")` | pre-existing | Page object method |
 | User Story Creator card | `[data-testid="catalog-agent-card-172"]` | on-automation/testids ✓ (ELITEA-2075) | Agent id=172 "no starters/no welcome message" precondition |
 | Agent modal | auto-waits on GET `/api/v2/elitea_core/public_application/prompt_lib/{id}` | `_surface.md` | Opens on card click |
 | Start Chat button | `[data-testid="catalog-agent-modal-start-chat-button"]` | on-automation/testids ✓ (pre-existing, ELITEA-2075) | `AgentHubPage.click_start_chat()` owns the known-defect-#1043 1s wait internally |
@@ -57,7 +57,7 @@ name, version, and a settings icon.
 
 ## Test Outline
 
-1. Navigate to Agent Hub at `/elitea-catalog`
+1. Navigate to Catalog at `/elitea-catalog`
 2. Click the User Story Creator agent card to open the modal
 3. Wait for modal to load (GET `.../prompt_lib/172` resolves)
 4. Click the "Start Chat" button in the modal (`AgentHubPage.click_start_chat()`)

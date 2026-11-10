@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — search bar filters agents in real time
+# Test Case: Catalog — search bar filters agents in real time
 
 ## Metadata
 - **TMS ID**: ELITEA-2363
@@ -14,7 +14,7 @@
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
 - Active project context is "Private" (this project's default `${TEST_USER}` project on localhost).
-- Agent Hub (Catalog) page freshly navigated to, Agents tab active (default).
+- Catalog page freshly navigated to, Agents tab active (default).
 
 ## Test Data
 
@@ -27,7 +27,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible (reuse `AgentHubPage.wait_for_page_load()`); capture the full set of currently-rendered agent card names as the pre-search baseline (via `AGENT_CARD_PREFIX` or the underlying `public_applications` list response).
 2. Click into the search bar at the top.
    - **Verify**: `catalog-search-input` is focused/editable (reuse `AgentHubPage.search_input`).
@@ -51,7 +51,7 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Click in the search bar at the top | Control responds; expected next state is shown | step 2 | `catalog-search-input` focused/clickable | asserted |
 | 3 Type a partial search term (e.g., "story") | Field accepts the input and displays the entered value | step 3 | `catalog-search-input` value reads "story" | asserted |
 | 4 Verify the agent list filters in real time as the user types | Condition holds as described | step 4 | single debounced `GET .../public_applications/prompt_lib/?query=story...` request fires ~300ms after typing stops, with no Enter/click needed (confirmed via source + live network capture) | asserted |
@@ -87,7 +87,7 @@ No testid needed for this case — every element it touches already carries one 
 - No 4xx/5xx observed at any point (typing, filtered state, or clearing).
 
 ## Known Defects Found During Exploration
-None. All 6 case steps reproduced exactly as expected; zero console errors; no case-text drift beyond the already-tracked family-wide "Agent HUB" naming drift (issue #1208, not re-cited here since this case's own text doesn't use that phrase) and the search field's missing clear button, which is a **case-text note, not a defect** (see step 6 — the case's own wording "clear the search field" is satisfied by manually deleting the text; the live product never claimed to have a dedicated clear button, so there is no divergence between intended and actual behaviour to file).
+None. All 6 case steps reproduced exactly as expected; zero console errors; no case-text drift beyond the already-tracked family-wide "Catalog" naming drift (issue #1208, not re-cited here since this case's own text doesn't use that phrase) and the search field's missing clear button, which is a **case-text note, not a defect** (see step 6 — the case's own wording "clear the search field" is satisfied by manually deleting the text; the live product never claimed to have a dedicated clear button, so there is no divergence between intended and actual behaviour to file).
 
 ## Blocked Steps
 None — all 6 case steps were reached and observed live.
@@ -155,3 +155,7 @@ None — all 6 case steps were reached and observed live.
 - **Expected-result change:** matching scope "name contains term" -> "name or description contains term". **Case-text clarification** for the TMS case (case text says matching agents by name); TMS repo not edited here.
 - **Page object:** added `AgentHubPage.search_and_capture_response()` and `get_visible_agent_card_ids()` (reuse `AGENT_CARD_PREFIX`; no new locators).
 - **Step 7:** console errors are the known defect #2537 (dev-vm default-icon CSP + 404s); assertion stays strict, test linked to #2537 via `@allure.issue` (sanctioned RED, same pattern as siblings ELITEA-2356/2357).
+
+## Adjustment 2026-11-10 (#2899, class C)
+
+DEV re-checked: the #2537 CSP violation (default_entity_icons/image_14.png) is GONE. Remaining console error: `Failed to load resource: 404` for `https://dev.elitea.ai/app/application_icon/413/c204f142-95d2-4c5d-a74d-f5dbe90368a5.png` (application_icon, 2nd #2537 symptom). Console assertion stays strict, errors not filtered. Expected-result changes: none. Catalog data re-verified: categories incl. Business Analyst, agents User Story Creator (id 172) and Business Analyst (id 31) exist; no hard-coded name changes needed.

@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — filter agents by single category
+# Test Case: Catalog — filter agents by single category
 
 ## Metadata
 - **TMS ID**: ELITEA-2352
@@ -13,7 +13,7 @@
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
 - Active project context is "Private" (this project's default `${TEST_USER}` project on localhost).
-- Agent Hub (Catalog) page freshly navigated to (no category filter pre-selected) — the filter state is a page-level array (`selectedTagNames` in `AgentsTab.jsx`) that persists across chip clicks within a session, so the test must start from an unfiltered page load, not a page some earlier test already filtered.
+- Catalog page freshly navigated to (no category filter pre-selected) — the filter state is a page-level array (`selectedTagNames` in `AgentsTab.jsx`) that persists across chip clicks within a session, so the test must start from an unfiltered page load, not a page some earlier test already filtered.
 
 ## Test Data
 
@@ -25,7 +25,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible (reuse `AgentHubPage.wait_for_page_load()`).
 2. Click on the "Business Analyst" category filter-rail chip (`CategoryRail.jsx`, right-hand rail — NOT a top tab; see ELITEA-2350's AFS § "Category filter rail vs. category content-list headings" for the case-text's "tabs" wording nuance, which is a wording nuance only, not a drift).
    - **Verify**: click succeeds; no console errors.
@@ -39,7 +39,7 @@
    - **CASE-TEXT DRIFT (CLARIFICATION, filed — not a defect)**: the "Business Analyst" content-list heading (`catalog-category-heading-business-analyst`) IS present and correctly positioned above the filtered results — that half of the case holds. The **"reload category items" icon does not exist anywhere in the live product** — confirmed both visually (screenshot) and via source: `AgentCategorySection.jsx`'s `headerContainer` renders only a `Typography` title, zero icon elements, and a full-file grep for reload/refresh icon components (`RestartAlt`, `SyncIcon`, `ReplayIcon`, `Autorenew`, `RefreshIcon`, `CachedIcon`) under `src/[fsd]/features/agent-hub` and `src/[fsd]/shared/ui/category` returns 0 hits. The Catalog's only refresh mechanism is a fully automatic, throttled background refresh (`useCatalogAutoRefresh`) with no manual-trigger UI element. Filed as [EliteaAI/elitea-testing-public#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212) (same drift family as #1208 from ELITEA-2350). Automation asserts the heading only; does not assert a "reload" icon (reverse-masking guard — asserting a non-existent element's presence would either always fail on a non-defect, or if written as an absence-assertion, would silently assert nothing meaningful about the case's real intent).
 
 ## Expected Results
-- Clicking a single category filter-rail chip filters the Agent Hub content to that category's agents only.
+- Clicking a single category filter-rail chip filters the Catalog content to that category's agents only.
 - The clicked chip shows a stable, accessible "selected" signal (`data-selected="true"`).
 - The category section header appears above the filtered results with the category name.
 - Zero console errors during the interaction.
@@ -50,7 +50,7 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Click "Business Analyst" category filter tab | Control responds; expected next state is shown | step 2 | chip click succeeds, no console errors | asserted |
 | 3 Verify the selected tab is highlighted/active | Condition holds as described | step 3 | `data-selected="true"` on the clicked chip (new state attribute, see finding) | asserted |
 | 4 Verify only Business Analyst agents are displayed | Condition holds as described | step 4 | exactly one `catalog-category-heading-*` present (`business-analyst`); all 4 live agent names present | asserted |
@@ -84,7 +84,7 @@ None — read-only filter interaction, no state created. The single-select click
 - No 4xx/5xx observed during the filter interaction.
 
 ## Known Defects Found During Exploration
-- **[CLARIFICATION, filed]** [EliteaAI/elitea-testing-public#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212) — case text claims a "reload category items" icon appears next to the filtered section header; no such icon exists anywhere in the live product or its source (confirmed via source grep — 0 hits for reload/refresh icon components). Same drift family as #1208 (ELITEA-2350's "Welcome to Agent HUB" header text) — stale TMS case text, not a product defect.
+- **[CLARIFICATION, filed]** [EliteaAI/elitea-testing-public#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212) — case text claims a "reload category items" icon appears next to the filtered section header; no such icon exists anywhere in the live product or its source (confirmed via source grep — 0 hits for reload/refresh icon components). Same drift family as #1208 (ELITEA-2350's "Welcome to Catalog" header text) — stale TMS case text, not a product defect.
 - None else found — zero console errors, zero 4xx/5xx, filter behavior itself works correctly and matches the case's core intent (single-category filtering).
 
 ## Blocked Steps
@@ -96,3 +96,9 @@ None — all 5 case steps were reached and observed live.
 - **Click method**: add `click_category_filter_chip(category_label)` to `AgentHubPage`, using the same `_slugify_category()` module helper already defined in the page object file.
 - Selector policy: testid-only + `data-*` state attribute, no fallback (`.agents/testing.md` § Locator policy). The `data-selected` addition follows the exact precedent already documented there ("Testid = stable identity; state via `data-*` attributes").
 - Marker suggestion: `@pytest.mark.p2` (medium priority → l3), `@pytest.mark.regression`, `@pytest.mark.agents` (matches ELITEA-2350's marker set for this same page).
+
+
+## Adjustment (#2899)
+
+- Triage class A (rename Agent Hub -> Catalog; text only) + C for console errors (open #2537, data: agent 528 icon_meta URL still on dev-vm host; 404 application_icon on agents 134/172).
+- Expected-result changes: Step 1 now also states the Catalog opens on the Agents tab (aria-selected=true on `catalog-agents-tab`, verified on DEV: Agents (66) selected, Skills (50) not).

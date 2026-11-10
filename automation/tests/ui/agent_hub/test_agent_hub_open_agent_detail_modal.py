@@ -1,4 +1,4 @@
-"""Agent Hub — open agent detail modal (ELITEA-2356).
+"""Catalog — open agent detail modal (ELITEA-2356).
 
 Verifies that clicking a Catalog agent card opens the agent preview modal as
 an overlay, and that the modal displays: agent icon, agent name, owner name,
@@ -61,7 +61,7 @@ EXPECTED_WELCOME_MESSAGE_EMPTY_TEXT = "No welcome message set – the agent will
 
 
 class TestAgentHubOpenAgentDetailModal:
-    """ELITEA-2356: Agent Hub — open agent detail modal (l3, medium)."""
+    """ELITEA-2356: Catalog — open agent detail modal (l3, medium)."""
 
     @pytest.mark.tms("ELITEA-2356")
     @allure.issue(
@@ -71,7 +71,7 @@ class TestAgentHubOpenAgentDetailModal:
     )
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/2537",
-        "Known defect — dev-vm.elitea.ai default-icon CSP violation + application_icon 404s (console errors)",
+        "Known defect — application_icon 404s (the default-icon CSP violation seen earlier is gone on DEV as of 2026-11-10) (console errors)",
     )
     @pytest.mark.p2
     def test_agent_hub_open_agent_detail_modal(self, page: Page):
@@ -91,7 +91,7 @@ class TestAgentHubOpenAgentDetailModal:
         failed_responses: list[int] = []
         page.on("response", lambda resp: failed_responses.append(resp.status) if resp.status >= 400 else None)
 
-        with allure.step("Step 1 — Navigate to Agent Hub"):
+        with allure.step("Step 1 — Navigate to Catalog"):
             agent_hub.navigate()
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 

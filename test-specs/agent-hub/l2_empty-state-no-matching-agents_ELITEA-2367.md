@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — empty state when no agents match filter or search
+# Test Case: Catalog — empty state when no agents match filter or search
 
 ## Metadata
 - **TMS ID**: ELITEA-2367
@@ -21,7 +21,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: URL is `/elitea-catalog`; page title is `"ELITEA Catalog - <project name>"`.
    - **Verify**: `catalog-page-heading` visible with text "Welcome to ELITEA Catalog!"
    - **Verify**: zero console errors during page load.
@@ -54,7 +54,7 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | URL `/elitea-catalog`; page title includes project name; `catalog-page-heading` visible; zero console errors | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | URL `/elitea-catalog`; page title includes project name; `catalog-page-heading` visible; zero console errors | asserted |
 | 2 Search for a non-matching term | Operation completes successfully; state updates and confirmation shown | step 2 | search input accepts typed term; backend request fires (~500ms after keystroke sequence completes) | asserted |
 | 3 "No agents found" message displayed | Condition holds as described | step 3 | text "No agents found" visible in SPAN element; computed opacity 1; no display:none/visibility:hidden | asserted |
 | 4 Helper message appears | Condition holds as described | step 4 | text "Try adjusting your search terms" visible; element rendered, not hidden | asserted |

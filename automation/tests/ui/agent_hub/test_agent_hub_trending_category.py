@@ -1,4 +1,4 @@
-"""ELITEA-2366: Agent Hub — Trending category displays agents.
+"""ELITEA-2366: Catalog — Trending category displays agents.
 
 Case: Verify that clicking the Trending category filter displays the
 Trending section with agents listed under it.
@@ -22,7 +22,7 @@ from pages.agent_hub_page import AgentHubPage
 @pytest.mark.agents
 @pytest.mark.p2
 class TestAgentHubTrendingCategory:
-    """Test suite for Agent Hub Trending category filter behavior (ELITEA-2366)."""
+    """Test suite for Catalog Trending category filter behavior (ELITEA-2366)."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
@@ -34,7 +34,7 @@ class TestAgentHubTrendingCategory:
         """Verify Trending category filter shows agents when selected.
 
         Steps:
-        1. Navigate to Agent Hub (Catalog)
+        1. Navigate to Catalog
         2. Click the Trending category filter chip
         3. Verify the filter is highlighted/active
         4. Verify agents are displayed under Trending section
@@ -42,7 +42,7 @@ class TestAgentHubTrendingCategory:
         """
         agent_hub_page = AgentHubPage(page)
 
-        with allure.step("Step 1 — Navigate to Agent Hub"):
+        with allure.step("Step 1 — Navigate to Catalog"):
             agent_hub_page.navigate()
             # Verify page URL contains elitea-catalog
             current_url = page.url

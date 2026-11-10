@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — page loads successfully for Team project
+# Test Case: Catalog — page loads successfully for Team project
 
 ## Metadata
 - **TMS ID**: ELITEA-2351
@@ -12,7 +12,7 @@
 
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
-- Active project context is a "Team" project — test fixture or project-switch method must select a Team project before navigating to Agent Hub (this is the **only data difference** from ELITEA-2350, which uses "Private").
+- Active project context is a "Team" project — test fixture or project-switch method must select a Team project before navigating to Catalog (this is the **only data difference** from ELITEA-2350, which uses "Private").
 
 ## Test Data
 
@@ -24,7 +24,7 @@
 
 ## Test Steps
 
-1. Switch project context to a Team project, then navigate to Agent Hub (`/elitea-catalog`).
+1. Switch project context to a Team project, then navigate to Catalog (`/elitea-catalog`).
    - **Verify**: URL is `/elitea-catalog`; page title is `"ELITEA Catalog - <TeamProjectName>"` (confirmed via expected pattern — project name varies, but title includes the active project name after "ELITEA Catalog -").
    - **Verify**: sidebar `project-selector-trigger-combobox` contains a Team project name (not "Private").
    - **Verify**: zero console errors during page load.
@@ -38,7 +38,7 @@
    - **Verify**: at least one `catalog-agent-card-{id}` (pre-existing dynamic testid) visible under the "Trending" content-list heading (`catalog-category-heading-trending`, pre-existing). The specific cards rendered may differ from ELITEA-2350 (different project, different visibility/ownership/configuration), but the pattern and structure are identical.
 
 ## Expected Results
-- Agent Hub (Catalog) page loads without error for a user in a **Team** project context.
+- Catalog page loads without error for a user in a **Team** project context.
 - Heading, search bar, category filter rail (all 11 entries), and agent cards in the main content area are all visible.
 - Zero console errors during load.
 - **Sole data difference from ELITEA-2350**: project name in page title and project selector reflect the active Team project, not "Private".
@@ -49,8 +49,8 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Switch to Team project and navigate to Agent Hub | Target page/section loads successfully in Team project context | step 1 | URL `/elitea-catalog`; page title includes Team project name; `project-selector-trigger-combobox` shows Team project; zero console errors | asserted |
-| 2 Verify "Welcome to Agent HUB" header | Condition holds as described | step 2 | `catalog-page-heading` visible, live text asserted (identical to ELITEA-2350) | asserted |
+| 1 Switch to Team project and navigate to Catalog | Target page/section loads successfully in Team project context | step 1 | URL `/elitea-catalog`; page title includes Team project name; `project-selector-trigger-combobox` shows Team project; zero console errors | asserted |
+| 2 Verify "Welcome to Catalog" header | Condition holds as described | step 2 | `catalog-page-heading` visible, live text asserted (identical to ELITEA-2350) | asserted |
 | 3 Verify search bar visible at top center | Condition holds as described | step 3 | `catalog-search-input` visible | asserted |
 | 4 Verify category filter tabs displayed (11 named) | Condition holds as described | step 4 | 11 `Chip` labels in `CategoryRail` visible (identical to ELITEA-2350) | asserted |
 | 5 Verify agent cards displayed in main content area | Condition holds as described | step 5 | ≥1 `catalog-agent-card-{id}` visible | asserted |
@@ -84,7 +84,7 @@ None — read-only page-load verification, no state created.
 - No 4xx/5xx observed during page load in Team project context.
 
 ## Known Defects Found During Exploration
-- Same case-text drift as ELITEA-2350, already filed: [EliteaAI/elitea-testing-public#1208](https://github.com/EliteaAI/elitea-testing-public/issues/1208) (case text says "Agent HUB", live product says "Catalog"). Automation asserts the live text.
+- Same case-text drift as ELITEA-2350, already filed: [EliteaAI/elitea-testing-public#1208](https://github.com/EliteaAI/elitea-testing-public/issues/1208) (case text says "Catalog", live product says "Catalog"). Automation asserts the live text.
 - None else found — zero console errors, same category filter list, same page structure.
 
 ## Blocked Steps

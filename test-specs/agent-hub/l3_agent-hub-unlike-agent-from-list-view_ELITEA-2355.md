@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — unlike an agent from the list view
+# Test Case: Catalog — unlike an agent from the list view
 
 ## Metadata
 - **TMS ID**: ELITEA-2355
@@ -12,7 +12,7 @@
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
 - Active project context is "Private" (this project's default `${TEST_USER}` project on localhost).
-- Agent Hub (Catalog) page freshly navigated to.
+- Catalog page freshly navigated to.
 - **An agent card is already liked by the current user** (count ≥ 1, `data-liked="true"`).
 
 **Declared improvisation (implementer, ELITEA-2355, per `.agents/role-overrides.md`
@@ -60,7 +60,7 @@ file's own cleanup discipline, mirroring ELITEA-2354's established pattern.
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible (reuse `AgentHubPage.wait_for_page_load()`).
 2. Locate an agent card currently liked by the user (i.e., `data-liked="true"` on its like button).
    - **Verify**: found dynamically (see § Test Data) — do not hardcode a specific agent name/id. Confirmed live: dynamically searched all `[data-testid^="catalog-agent-like-button-"]` buttons, found agent 277 with `data-liked="true"` and count="1".
@@ -85,7 +85,7 @@ file's own cleanup discipline, mirroring ELITEA-2354's established pattern.
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Locate an agent card showing ≥ 1 likes and liked by user (agent with `data-liked="true"`) | Action completes without error and produces the expected UI state | step 2 | dynamic discovery of a live liked-by-user card (confirmed live: agent 277 with `data-liked="true"` and count="1") | asserted *(with a data-selection adaptation — case text says agent is "already liked", confirmed via `data-liked` attribute, not agent name)* |
 | 3 Click the heart icon on the agent card | Control responds; expected next state is shown | step 3 | click succeeds, `DELETE .../social/like/...` fires (Redux action dispatched; endpoint semantic verified) | asserted — plus a known, filed, non-blocking console-error finding (§ Known Defects) |
 | 4 Verify the heart icon changes to an unfilled/inactive state | Condition holds as described | step 4 | `data-liked="false"` on the like-button testid after click (state attribute already present on current branch) | asserted |
@@ -122,7 +122,7 @@ Compare ELITEA-2354 (like): that case must re-unlike at the end because it ADDS 
 - No 4xx/5xx observed during the unlike interaction.
 
 ## Known Defects Found During Exploration
-- **[MINOR, filed]** [EliteaAI/elitea-testing-public#1215](https://github.com/EliteaAI/elitea-testing-public/issues/1215) — clicking the like/unlike heart icon on an Agent Hub agent card dispatches a Redux action (`agentHub/updateApplicationInCategories`) whose payload contains a raw function (`updateFn`), which fires a `console.error` ("non-serializable value detected") from Redux Toolkit's dev-only serializability-check middleware, on every single like AND unlike click (confirmed both directions live, same session as ELITEA-2354). Root cause confirmed via source: `src/[fsd]/features/agent-hub/lib/hooks/useAgentHubData.hooks.js:330` dispatches the closure directly; `src/slices/agentHub.js:42-49`'s reducer then invokes it. **Functionally harmless** — the like/unlike flow itself (count, icon, persistence, backend call) is entirely correct; this is dev-console-only noise (the middleware doesn't run in production builds) but pollutes local/dev test runs. Automation should assert this as a KNOWN defect (`expect.soft()` + `# Known defect: #1215`) on the unlike click specifically, not treat it as a general console-cleanliness regression for the rest of the test.
+- **[MINOR, filed]** [EliteaAI/elitea-testing-public#1215](https://github.com/EliteaAI/elitea-testing-public/issues/1215) — clicking the like/unlike heart icon on an Catalog agent card dispatches a Redux action (`agentHub/updateApplicationInCategories`) whose payload contains a raw function (`updateFn`), which fires a `console.error` ("non-serializable value detected") from Redux Toolkit's dev-only serializability-check middleware, on every single like AND unlike click (confirmed both directions live, same session as ELITEA-2354). Root cause confirmed via source: `src/[fsd]/features/agent-hub/lib/hooks/useAgentHubData.hooks.js:330` dispatches the closure directly; `src/slices/agentHub.js:42-49`'s reducer then invokes it. **Functionally harmless** — the like/unlike flow itself (count, icon, persistence, backend call) is entirely correct; this is dev-console-only noise (the middleware doesn't run in production builds) but pollutes local/dev test runs. Automation should assert this as a KNOWN defect (`expect.soft()` + `# Known defect: #1215`) on the unlike click specifically, not treat it as a general console-cleanliness regression for the rest of the test.
 
 ## Blocked Steps
 None — all 6 case steps were reached and observed live.
