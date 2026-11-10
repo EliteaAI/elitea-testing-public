@@ -162,25 +162,3 @@ def observed_frame_kinds(frames: Any) -> list[tuple[str, str]]:
         tool_name = metadata.get("tool_name", "") if isinstance(metadata, dict) else ""
         kinds.add((str(kind), str(tool_name or "")))
     return sorted(kinds)
-
-
-#: Default length of :func:`clip_tool_output` — enough for the head of a
-#: success payload, short enough for a one-line assertion message.
-TOOL_OUTPUT_PREVIEW_CHARS = 240
-
-
-def clip_tool_output(output: Any, limit: int = TOOL_OUTPUT_PREVIEW_CHARS) -> str:
-    """Return *output* shortened to *limit* characters for an assertion message.
-
-    A ``tool_output`` can run to many kilobytes (a full branch list, a page of
-    Jira issues); quoting it whole buries the failure. Output longer than
-    *limit* is cut at *limit* characters and gets the suffix
-    ``"… [+N chars]"``, where N is the number of characters dropped. Shorter
-    output comes back unchanged, and a non-string comes back as ``""`` — the
-    same "no tool output" convention as :func:`get_tool_output`.
-    """
-    if not isinstance(output, str):
-        return ""
-    if len(output) <= limit:
-        return output
-    return f"{output[:limit]}… [+{len(output) - limit} chars]"
