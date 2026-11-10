@@ -9,12 +9,12 @@ state.
 
 AFS: test-specs/help-center/l2_sidebar-interactive-tour-completes_ELITEA-3754.md
 
-Known localhost-only quirk (not a product defect, see the AFS § Automation
-Hints): the "Sidebar Interactive Tour" link is backend-CMS-served and
-hardcodes ``/app`` in its href, which 404s to "Page not found" locally
-(``APP_PREFIX`` is empty on localhost). The tour dialog/overlay mounts
-independently of the route, so none of this test's assertions target main
-content identity after the tour tab opens.
+DEV change (#2906): the Help Center "Interactive Tours" card ships with no
+CMS-configured links ("No links configured"), so the "Sidebar Interactive Tour"
+link no longer exists to click. The test opens Help Center via the sidebar "?"
+icon, confirms the Interactive Tours card, and starts the tour through the
+``?tour=sidebar`` deep link the app itself consumes (``useTourFromUrl``) — a
+declared improvisation; the tour then runs in the same tab.
 
 Markers:
     - ui: requires browser
@@ -72,15 +72,18 @@ class TestHelpCenterSidebarTour:
     )
     @pytest.mark.tms("ELITEA-3754")
     def test_sidebar_interactive_tour_completes_via_next(self, page):
-        with allure.step('Step 1 — Navigate to Help Center and click "Sidebar Interactive Tour"'):
+        with allure.step('Step 1 — Open Help Center via the sidebar "?" icon and start the Sidebar Interactive Tour'):
             help_center = HelpCenterPage(page)
-            help_center.navigate()
-            expect(help_center.page_header).to_be_visible()
+            ChatPage(page).navigate("/chat")
+            help_center.open_via_sidebar_icon()
             expect(help_center.page_header).to_have_text("Help Center")
+            # The tour link is CMS-configured and absent on DEV ("No links configured");
+            # declared improvisation: start the tour through the ?tour=sidebar deep link.
+            expect(help_center.interactive_tours_card).to_be_visible()
+            help_center.start_tour_via_url("sidebar")
+            tour_page = page
 
-            tour_page = help_center.open_resource_link_in_new_tab("sidebar-interactive-tour")
-
-        with allure.step("Step 2 — Verify the tour dialog opens on the new page at step 1/17"):
+        with allure.step("Step 2 — Verify the tour dialog opens at step 1/17"):
             tour = InteractiveTourCard(tour_page)
             console_errors = tour.capture_console_errors()
             tour.wait_for_step()
