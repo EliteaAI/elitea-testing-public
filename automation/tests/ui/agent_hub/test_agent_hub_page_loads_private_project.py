@@ -129,6 +129,7 @@ class TestAgentHubPageLoadsPrivateProject:
                 )
 
             with allure.step("Step 6 — Verify zero console errors during the whole page load"):
+                # Known defect: #2537 — stays red (sanctioned RED); assertions strict, errors not filtered.
                 assert not console_capture, (
                     f"Unexpected console errors: {[m.text for m in console_capture]!r}"
                 )

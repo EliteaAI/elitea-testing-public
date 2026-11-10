@@ -101,6 +101,7 @@ class TestAgentHubFilterSingleCategory:
                 # EliteaAI/elitea-testing-public#1212); not asserted here (reverse-masking guard).
 
             with allure.step("Step 6 — Verify zero console errors during the filter interaction"):
+                # Known defect: #2537 — stays red (sanctioned RED); assertions strict, errors not filtered.
                 assert not console_capture, (
                     f"Unexpected console errors: {[m.text for m in console_capture]!r}"
                 )
