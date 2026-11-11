@@ -625,6 +625,18 @@ class ChatPage(BasePage):
         description="Copy-to-clipboard icon on a completed AI message (hover-revealed)."
     )
 
+    # DEV split the single copy icon into "Copy markdown" / "Copy text"
+    # (ApplicationAnswerActions.jsx); ``chat-copy-button`` is gone from DEV.
+    copy_markdown_action_button = LocatorDescriptor(
+        testid="chat-copy-markdown-button",
+        description="Copy-as-markdown icon on a completed AI message (hover-revealed).",
+    )
+
+    copy_text_action_button = LocatorDescriptor(
+        testid="chat-copy-text-button",
+        description="Copy-as-text icon on a completed AI message (hover-revealed).",
+    )
+
     regenerate_action_button = LocatorDescriptor(
         testid="chat-regenerate-button",
         description=(
