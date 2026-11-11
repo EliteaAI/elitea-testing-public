@@ -3247,6 +3247,40 @@
       "scenarios_automated": 1,
       "scenarios_executed": 1,
       "notes": "gate pass (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/elitea-4629/cost.json (v1); batch slug 'elitea-4629'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-adjust-2916",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 13,
+      "subagent_dispatches": 2,
+      "orchestrator_cost_pct": 33.7,
+      "tokens": {
+        "input": 31630,
+        "output": 44484,
+        "cache_read": 7305719,
+        "cache_create": 550811
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 31630,
+          "output": 44484,
+          "cache_read": 7305719,
+          "cache_create": 550811
+        }
+      },
+      "cost_api_equivalent_usd": 2.88,
+      "cache_read_share_pct": 43.7,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate green (3 separate invocations of tests/ui/pipelines/test_pipeline_canvas_zoom_and_pan.py (2 tests) on DEV, 2 passed eachx); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-2916/cost.json (v1); batch slug 'adjust-2916'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
