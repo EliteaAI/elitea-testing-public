@@ -3165,6 +3165,47 @@
       "scenarios_automated": 2,
       "scenarios_executed": 2,
       "notes": "gate green (3x per-spec processes over 15 specs (45 invocations), all passed on DEV; combined single-process runs were flaky from DEV 429 rate limits / intermittent icon 404 and were not usedx); outcomes: automated 2. Telemetry cohort: reconstructed from .agents/automation/adjust-2899/cost.json (v1); batch slug 'adjust-2899'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-elitea-4628",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 21,
+      "subagent_dispatches": 12,
+      "orchestrator_cost_pct": 27.8,
+      "tokens": {
+        "input": 94007,
+        "output": 56991,
+        "cache_read": 10800235,
+        "cache_create": 1686687
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5",
+        "<synthetic>"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 94007,
+          "output": 56991,
+          "cache_read": 10800235,
+          "cache_create": 1686687
+        },
+        "<synthetic>": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_create": 0
+        }
+      },
+      "cost_api_equivalent_usd": 6.68,
+      "cache_read_share_pct": 30.3,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate pass (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/elitea-4628/cost.json (v1); batch slug 'elitea-4628'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
