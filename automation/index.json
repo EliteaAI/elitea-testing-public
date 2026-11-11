@@ -3814,6 +3814,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.skills.test_skill_run_analytics_costs.TestSkillRunAnalytics.test_skill_run_analytics_costs_accuracy",
+      "markers": [
+        "p2",
+        "regression",
+        "skills",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4632"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-4632_skill-run-analytics-cost-accuracy.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.skills.test_skill_run_history_restore_chat.TestSkillRunHistory.test_skill_run_history_display_and_restore_chat",
       "markers": [
         "p2",
