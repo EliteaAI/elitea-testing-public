@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "session": "79b8030b-34ac-467e-aa57-ac2dd911a458",
+  "intent": "automation",
+  "batch": "adjust-streaming-copy-2929",
+  "cases": [
+    "ELITEA-STREAMING"
+  ],
+  "declaredAt": "2026-11-11T18:48:31.242Z",
+  "updatedAt": "2026-11-11T18:48:31.242Z"
+}
