@@ -936,3 +936,11 @@ Playwright MCP chrome binary was missing in this sandbox).
 - `chat-clear-button` in test panel starts a new conversation -> new history row (row 0 = newest).
 
 **Added during ELITEA-4632 implementation:** `RunAnalyticsPage` (`pages/run_analytics_page.py`) declares KPI cards / Cost-by-User / Cost-by-Model cells as scoped xpath rungs (no testids on DEV). Header `run-analytics-run-info` first renders `Version: … · Model: …` (ellipsis) before data loads - use a web-first wait. Run-history row menu button testid repeats once per row plus once in `run-history-list-column`: scope it within the row. `chat-clear-button` starts a new conversation without a Switch dialog when the response is complete.
+
+## Catalog -> Skills tab -> Run button -> chat (`/elitea-catalog?tab=skills`) - ELITEA-4633 (DEV, 2026-11-11)
+
+- `catalog-skill-run-button` (aria-label "run skill", tooltip "Run") x16, one per card; **no `catalog-skill-card-*` testid on DEV** (page object's `SKILL_CARD_PREFIX` matches 0). Search `catalog-search-input` ("Search for skills") filters live -> 1 run button for `code-reviewer`.
+- Run click persists conversation at once (`POST conversations` 201 + `select_conversation` 200) -> `/chat/{id}?name=Run+code-reviewer`; sidebar item `chat-conversation-item-{id}` "Run code-reviewer" (**appears only after the first message is sent**, per ELITEA-4633 implementation); no greeting message; participant row `code-reviewer | Catalog | v1.0` with `chat-participant-catalog-tag`. Panel collapsed by default.
+- Skill reply ~7s; sender label on DEV reads "Elitea to Message" (not "Skill: code-r..."); pick the reply by its "Thought for" footer, not position. Cleanup: `DELETE .../elitea_core/conversation/prompt_lib/575/{id}` (204); once an extra conversation was created after send - delete by name too.
+- `platform-banner-corner` appears ~3-5s after load and intercepts clicks (incl. send button) -> close it, `force=True` on send.
+Full: `test-specs/skills/l1_run-catalog-skill-from-catalog-and-message-exchange_ELITEA-4633.md`.

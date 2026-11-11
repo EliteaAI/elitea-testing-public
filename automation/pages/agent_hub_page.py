@@ -89,6 +89,21 @@ class AgentHubPage(BasePage):
         ),
     )
 
+    skill_run_button = LocatorDescriptor(
+        testid="catalog-skill-run-button",
+        description=(
+            "Run (play) button on a Catalog Skills-tab card, aria-label 'run skill' (ELITEA-4633). "
+            "One per card — narrow to a single card via search_skills() first."
+        ),
+    )
+
+    skill_run_tooltip = LocatorDescriptor(
+        role="tooltip",
+        name="Run",
+        suggested_testid="catalog-skill-run-tooltip",
+        description="MUI tooltip 'Run' shown on hovering a Catalog skill card's run button (ELITEA-4633).",
+    )
+
     # Category section heading — dynamic per category name (slugified:
     # lowercase, non-alnum runs -> '-'). Templated class-level constant per
     # .agents/testing.md's dynamic-testid convention.
@@ -943,6 +958,17 @@ class AgentHubPage(BasePage):
             self.search_input.click()
             self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
+
+    @action("Search Catalog Skills tab by skill name")
+    def search_skills(self, query: str, timeout: int = 15000):
+        """Type *query* into the Catalog search box on the Skills tab (ELITEA-4633).
+
+        ``press_sequentially`` so React ``onChange`` fires (mui-patterns). The Skills
+        tab filters live (~3s), so callers assert the narrowed result via expect().
+        """
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        self.search_input.click()
+        self.search_input.press_sequentially(query, delay=50)
 
     @action("Search Catalog and capture the search response")
     def search_and_capture_response(self, query: str, timeout: int = 15000) -> dict:
