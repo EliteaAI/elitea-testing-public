@@ -30,6 +30,7 @@ from urllib.parse import urlparse
 import allure
 import pytest
 from config import settings
+from playwright.sync_api import expect
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
@@ -237,21 +238,48 @@ class TestCreatePipeline:
     @pytest.mark.tms("ELITEA-0864")
     @pytest.mark.p1
     def test_create_pipeline_required_fields_validation(self, page):
-        """Save button should be disabled when required fields are empty."""
-        with allure.step("Step 1 — Navigate to create pipeline form"):
+        """Pipelines Editor 2.0 create form: the editor opens directly (no dialog) with a
+        pre-filled default Name and Save enabled; only the Name field gates Save
+        (clearing it disables Save, typing a valid name re-enables it); the optional
+        Description never influences Save.
+        """
+        with allure.step("Step 1 — Navigate to create pipeline"):
             form_page = PipelineFormPage(page)
             form_page.navigate_to_create()
 
-        with allure.step("Step 2 — Verify Save disabled with empty fields"):
-            assert not form_page.is_save_enabled(), (
-                "Save should be disabled with empty required fields"
+        with allure.step("Step 2 — Verify it landed directly in the editor (no dialog/modal)"):
+            assert urlparse(page.url).path == f"{settings.app_prefix}/pipelines/create", (
+                f"Should be on the create editor, got: {page.url}"
+            )
+            assert not form_page.is_create_form_in_dialog(), (
+                "Create form should open directly in the editor, not inside a dialog"
             )
 
-        with allure.step("Step 3 — Fill only name and verify Save still disabled"):
-            form_page.update_name("autotest_partial")
-            form_page.wait_for_network(timeout=3000)
-            assert not form_page.is_save_enabled(), (
-                "Save should be disabled without description"
+        with allure.step("Step 3 — Verify Name has a non-empty default"):
+            assert form_page.get_name().strip(), "Name should be pre-filled with a default value"
+
+        with allure.step("Step 4 — Verify Save is enabled immediately"):
+            assert form_page.is_save_enabled(), "Save should be enabled with the default Name"
+
+        with allure.step("Step 5 — Clear the Name completely"):
+            form_page.clear_name()
+
+        with allure.step("Step 6 — Verify Save is disabled with an empty Name"):
+            expect(form_page.save_button).to_be_disabled()
+
+        with allure.step("Step 7 — Type a valid name"):
+            form_page.name_input.press_sequentially("autotest_partial", delay=20)
+            assert form_page.get_name() == "autotest_partial"
+
+        with allure.step("Step 8 — Verify Save is enabled again"):
+            expect(form_page.save_button).to_be_enabled()
+
+        with allure.step("Step 9 — Verify Description was left empty throughout"):
+            assert form_page.get_description() == "", "Description should remain empty"
+
+        with allure.step("Step 10 — Verify Description did not influence Save (state tracked Name only)"):
+            assert form_page.get_description() == "" and form_page.is_save_enabled(), (
+                "Save must be enabled with a valid Name and an empty Description"
             )
 
     @pytest.mark.tms("ELITEA-2020")

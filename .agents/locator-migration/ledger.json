@@ -183,7 +183,7 @@
     },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_DELETE_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 862,
+      "line": 874,
       "kind": "role",
       "selector": "button[name='Delete entity']",
       "suggested_testid": "generated-entity-chip-delete-button",
@@ -195,7 +195,7 @@
     },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_OPEN_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 856,
+      "line": 868,
       "kind": "role",
       "selector": "button[name='Open entity']",
       "suggested_testid": "generated-entity-chip-open-button",
@@ -225,7 +225,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
-      "line": 6971,
+      "line": 6983,
       "kind": "xpath",
       "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
       "suggested_testid": "chat-participant-attention-card-{}",
@@ -237,7 +237,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
       "file": "pages/chat_page.py",
-      "line": 6960,
+      "line": 6972,
       "kind": "css",
       "selector": "svg path",
       "suggested_testid": "chat-participant-icon-path",
@@ -261,7 +261,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
       "file": "pages/chat_page.py",
-      "line": 6949,
+      "line": 6961,
       "kind": "xpath",
       "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
       "suggested_testid": "chat-participants-section-title-{}",
@@ -285,7 +285,7 @@
     },
     "pages/chat_page.py::ChatPage.USER_MESSAGE_AVATAR": {
       "file": "pages/chat_page.py",
-      "line": 1516,
+      "line": 1528,
       "kind": "xpath",
       "selector": ".//*[contains(@class, 'MuiAvatar-root')]",
       "suggested_testid": "chat-message-user-avatar",
@@ -297,7 +297,7 @@
     },
     "pages/chat_page.py::ChatPage.conversation_menu_item_icon": {
       "file": "pages/chat_page.py",
-      "line": 1289,
+      "line": 1301,
       "kind": "css",
       "selector": "svg",
       "suggested_testid": "chat-conversation-menu-item-icon",
@@ -309,7 +309,7 @@
     },
     "pages/chat_page.py::ChatPage.export_chat_modal_option_radio": {
       "file": "pages/chat_page.py",
-      "line": 1272,
+      "line": 1284,
       "kind": "css",
       "selector": "input[type=\"radio\"]",
       "suggested_testid": "export-chat-modal-option-radio",
@@ -321,7 +321,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_items": {
       "file": "pages/chat_page.py",
-      "line": 1471,
+      "line": 1483,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "chat-folder-menu-item-{}",
@@ -333,7 +333,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_new_chat_item": {
       "file": "pages/chat_page.py",
-      "line": 1477,
+      "line": 1489,
       "kind": "role",
       "selector": "menuitem[name='New chat']",
       "suggested_testid": "chat-folder-menu-new-chat-menuitem",
@@ -345,7 +345,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_own_menu_button": {
       "file": "pages/chat_page.py",
-      "line": 1488,
+      "line": 1500,
       "kind": "xpath",
       "selector": ".//*[@data-testid=\"conversation-menu-menu-button\"][not(ancestor::*[starts-with(@data-testid, \"chat-conversation-item-\")])]",
       "suggested_testid": "chat-folder-menu-button",
@@ -357,7 +357,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 6908,
+      "line": 6920,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -369,7 +369,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 6877,
+      "line": 6889,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -381,7 +381,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 6869,
+      "line": 6881,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -393,7 +393,7 @@
     },
     "pages/chat_page.py::ChatPage.speaking_mode_button": {
       "file": "pages/chat_page.py",
-      "line": 1509,
+      "line": 1521,
       "kind": "role",
       "selector": "button[name='enter speaking mode']",
       "suggested_testid": "chat-speaking-mode-button",
@@ -405,7 +405,7 @@
     },
     "pages/chat_page.py::ChatPage.voice_input_button": {
       "file": "pages/chat_page.py",
-      "line": 1526,
+      "line": 1538,
       "kind": "role",
       "selector": "button[name='start voice input']",
       "suggested_testid": "chat-voice-input-button",
@@ -701,6 +701,18 @@
       "state": "raw",
       "added": "2026-10-05",
       "updated": "2026-10-05",
+      "history": []
+    },
+    "pages/pipeline_form_page.py::PipelineFormPage.name_input_in_dialog": {
+      "file": "pages/pipeline_form_page.py",
+      "line": 68,
+      "kind": "css",
+      "selector": "[role=\"dialog\"] input[name=\"name\"]",
+      "suggested_testid": "pipeline-create-dialog-name-input",
+      "description": "Name input rendered inside a dialog/modal (must be absent: editor-first create flow)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
       "history": []
     },
     "pages/project_context_chat_canvas_page.py::ProjectContextChatCanvasPage.close_button": {
@@ -1102,21 +1114,21 @@
   },
   "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1385,
-    "declared_testid": 1295,
-    "declared_non_testid": 90,
-    "non_testid_with_hint": 69,
+    "declared_total": 1388,
+    "declared_testid": 1297,
+    "declared_non_testid": 91,
+    "non_testid_with_hint": 70,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 14,
+      "css": 15,
       "fallback": 20,
       "label": 1,
       "locator": 1,
       "role": 30,
-      "testid": 1295,
+      "testid": 1297,
       "xpath": 24
     },
-    "locator_debt": 0.065,
+    "locator_debt": 0.0656,
     "unmanaged_handles": 312
   }
 }
