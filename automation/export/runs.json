@@ -3513,6 +3513,47 @@
       "scenarios_automated": 1,
       "scenarios_executed": 1,
       "notes": "gate green; outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-elitea-0864/cost.json (v1); batch slug 'adjust-elitea-0864'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-elitea-4655-web-search-default-modules",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 24,
+      "subagent_dispatches": 17,
+      "orchestrator_cost_pct": 27.2,
+      "tokens": {
+        "input": 139586,
+        "output": 99455,
+        "cache_read": 20291220,
+        "cache_create": 3030290
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5",
+        "<synthetic>"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 139586,
+          "output": 99455,
+          "cache_read": 20291220,
+          "cache_create": 3030290
+        },
+        "<synthetic>": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_create": 0
+        }
+      },
+      "cost_api_equivalent_usd": 11.99,
+      "cache_read_share_pct": 31.4,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/elitea-4655-web-search-default-modules/cost.json (v1); batch slug 'elitea-4655-web-search-default-modules'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
