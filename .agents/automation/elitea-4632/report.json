@@ -4,26 +4,21 @@
   "pr_unit": "trunk",
   "integration_branch": "tests/batch-elitea-4632",
   "gate": {
-    "verdict": "red",
-    "runs": 0,
+    "verdict": "green",
+    "runs": 3,
     "seconds": [
-      85.81
+      35.0,
+      35.06,
+      33.39
     ],
-    "failures": [
-      {
-        "spec": "automation/tests/ui/skills/test_skill_run_analytics_costs.py::TestSkillRunAnalytics::test_skill_run_analytics_costs_accuracy",
-        "signature": "playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"skill-information-section\") to be visible — 'Step failed: Navigate to skill detail'. Pytest ran 1 failed, 2 reruns, 83s.",
-        "case_ids": [
-          "ELITEA-4632"
-        ]
-      }
-    ]
+    "failures": [],
+    "note": "lead gate, APP_PREFIX=/app, 3 separate invocations on trunk; workflow's own gate was red from missing APP_PREFIX env (404 page), not a test defect"
   },
   "cases": [
     {
       "id": "ELITEA-4632",
-      "outcome": "blocked",
-      "note": "gate red: playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"skill-information-section\") to be visible — 'Step failed: Navigate to skill detail'. Pyte",
+      "outcome": "automated",
+      "note": "reviewer APPROVED (round 2); lead 3x DEV gate green",
       "findings": [
         {
           "kind": "clarification",
@@ -53,7 +48,7 @@
         },
         {
           "kind": "note",
-          "note": "The Run Analytics header first renders 'Version: … · Model: …' before data loads. The spec waits with web-first assertions. The first costs payload can be empty for about 10-40s, so wait_for_costs_data refreshes until total_tokens > 0."
+          "note": "The Run Analytics header first renders 'Version: \u2026 \u00b7 Model: \u2026' before data loads. The spec waits with web-first assertions. The first costs payload can be empty for about 10-40s, so wait_for_costs_data refreshes until total_tokens > 0."
         },
         {
           "kind": "note",
@@ -76,7 +71,7 @@
         },
         {
           "kind": "note",
-          "note": "Triangulation of the 15 case steps against the AFS Coverage Map and the code. Rows 1-6 and 8-15 map to a real assertion at their own step. Row 7: the run id and status are absent from the live header, which is a documented clarification. The AFS has no row for the case's 'Cost reconciles with usage events' pass criterion. The spec reconciles against the analytics_costs API payload, which is a reas… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Triangulation of the 15 case steps against the AFS Coverage Map and the code. Rows 1-6 and 8-15 map to a real assertion at their own step. Row 7: the run id and status are absent from the live header, which is a documented clarification. The AFS has no row for the case's 'Cost reconciles with usage events' pass criterion. The spec reconciles against the analytics_costs API payload, which is a reas\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "test-specs/skills/l2_skill-run-analytics-costs-accuracy_ELITEA-4632.md"
         },
         {
@@ -98,7 +93,7 @@
         },
         {
           "kind": "note",
-          "note": "Prior blocker 1 (positional pick) is fixed. open_analytics_for_run now resolves the row with run_history_rows.filter(has_text=^row_text$), using the text captured earlier from get_run_history_row_texts(). The test asserts the two row texts differ, so the pick is unique. RUN_ROW_MENU_BUTTON is a class-level ScopedLocator on the testid rung, resolved with .within(row). The mechanical grep is clean f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Prior blocker 1 (positional pick) is fixed. open_analytics_for_run now resolves the row with run_history_rows.filter(has_text=^row_text$), using the text captured earlier from get_run_history_row_texts(). The test asserts the two row texts differ, so the pick is unique. RUN_ROW_MENU_BUTTON is a class-level ScopedLocator on the testid rung, resolved with .within(row). The mechanical grep is clean f\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/pages/skill_detail_page.py:1464"
         },
         {
@@ -118,7 +113,7 @@
         },
         {
           "kind": "note",
-          "note": "Triangulation, case to AFS to diff, holds on all 15 steps. Case-text drift is recorded as clarifications and not asserted against: breadcrumb form, run header with no id or status, no Cost Breakdown section, and the rate formula. Case steps 1-2 are covered by Step 2 (two rows), 3-4 by Step 3, 5 by Step 4, 6 by Step 5 (breadcrumbs), 7 by Step 6, 8 by Step 7, 9 by Step 8 (TOTAL COST against the API)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Triangulation, case to AFS to diff, holds on all 15 steps. Case-text drift is recorded as clarifications and not asserted against: breadcrumb form, run header with no id or status, no Cost Breakdown section, and the rate formula. Case steps 1-2 are covered by Step 2 (two rows), 3-4 by Step 3, 5 by Step 4, 6 by Step 5 (breadcrumbs), 7 by Step 6, 8 by Step 7, 9 by Step 8 (TOTAL COST against the API)\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",

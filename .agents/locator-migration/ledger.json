@@ -835,9 +835,45 @@
       "updated": "2026-10-20",
       "history": []
     },
+    "pages/run_analytics_page.py::RunAnalyticsPage.KPI_CARD_VALUE": {
+      "file": "pages/run_analytics_page.py",
+      "line": 42,
+      "kind": "xpath",
+      "selector": ".//span[normalize-space()='{}' and not(@role)]/../following-sibling::div/span",
+      "suggested_testid": "run-analytics-costs-kpi-value-{}",
+      "description": "Value of the KPI card whose label span reads {}; table headers (role=button) excluded. Rungs 1-4 failed: cards are MuiBox with a plain label span, no testid/role/label",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/run_analytics_page.py::RunAnalyticsPage.TABLE_CELLS": {
+      "file": "pages/run_analytics_page.py",
+      "line": 48,
+      "kind": "xpath",
+      "selector": ".//span[normalize-space()='{}']/../following-sibling::div//p",
+      "suggested_testid": "run-analytics-costs-table-cell-{}",
+      "description": "Data cells of the table titled {}; rungs 1-4 failed: cells are bare <p> without testid/role",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.run_history_analytics_menuitem": {
+      "file": "pages/skill_detail_page.py",
+      "line": 189,
+      "kind": "role",
+      "selector": "menuitem[name='Analytics']",
+      "suggested_testid": "run-history-analytics-menuitem",
+      "description": "'Analytics' item in the open run-row menu; unique by accessible name",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_menu_items": {
       "file": "pages/skill_detail_page.py",
-      "line": 191,
+      "line": 205,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "run-history-menu-item-{}",
@@ -849,7 +885,7 @@
     },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_restore_chat_menuitem": {
       "file": "pages/skill_detail_page.py",
-      "line": 185,
+      "line": 199,
       "kind": "role",
       "selector": "menuitem[name='Restore chat']",
       "suggested_testid": "run-history-restore-chat-menuitem",
@@ -1006,21 +1042,21 @@
   },
   "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1362,
-    "declared_testid": 1280,
-    "declared_non_testid": 82,
-    "non_testid_with_hint": 61,
+    "declared_total": 1376,
+    "declared_testid": 1291,
+    "declared_non_testid": 85,
+    "non_testid_with_hint": 64,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 12,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 26,
-      "testid": 1280,
-      "xpath": 22
+      "role": 27,
+      "testid": 1291,
+      "xpath": 24
     },
-    "locator_debt": 0.0602,
+    "locator_debt": 0.0618,
     "unmanaged_handles": 312
   }
 }
