@@ -1,11 +1,11 @@
 {
  "v": 1,
  "batch": "elitea-4628",
- "generatedAt": "2026-11-11T09:21:08.628Z",
+ "generatedAt": "2026-11-11T09:21:15.218Z",
  "sources": {
   "window": {
    "start": "2026-11-10T08:41:47.956Z",
-   "end": "2026-11-12T09:21:07.120Z",
+   "end": "2026-11-12T09:21:13.598Z",
    "source": "scopes"
   },
   "sessions": 1,
@@ -27,7 +27,7 @@
   ]
  },
  "totals": {
-  "costUsd": 6.66,
+  "costUsd": 6.68,
   "tokens": 12637920,
   "tokensSplit": {
    "input": 94007,
@@ -87,7 +87,7 @@
    "toolErrors": 3
   },
   "test-automation-lead": {
-   "costUsd": 1.84,
+   "costUsd": 1.86,
    "tokens": 2287719,
    "tok": {
     "input": 17331,
@@ -103,10 +103,10 @@
  },
  "overhead": {
   "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
-  "costUsd": 3.09,
-  "sharePct": 46,
+  "costUsd": 3.11,
+  "sharePct": 47,
   "lead": {
-   "costUsd": 1.84,
+   "costUsd": 1.86,
    "tokens": 2287719,
    "tok": {
     "input": 17331,
@@ -183,7 +183,7 @@
  },
  "delivered": 1,
  "gate": {
-  "verdict": "green",
+  "verdict": "pass",
   "runs": 3,
   "seconds": [
    28.9,
@@ -205,11 +205,6 @@
   },
   "declaredOutcomes": {
    "ELITEA-4628": "automated"
-  },
-  "gateDrift": {
-   "receipt": "green",
-   "recorded": "pass",
-   "at": null
   }
  },
  "cases": [
@@ -233,7 +228,7 @@
     "toolErrors": 3
    },
    "loaded": {
-    "costUsd": 6.66,
+    "costUsd": 6.68,
     "tokens": 12637920,
     "activeMin": 68
    }
@@ -263,10 +258,10 @@
    "n": 1
   },
   "loadedCostUsd": {
-   "avg": 6.66,
-   "median": 6.66,
-   "min": 6.66,
-   "max": 6.66,
+   "avg": 6.68,
+   "median": 6.68,
+   "min": 6.68,
+   "max": 6.68,
    "n": 1
   },
   "loadedActiveMin": {
@@ -279,7 +274,7 @@
  },
  "averages": {
   "totalPerDelivered": {
-   "costUsd": 6.66,
+   "costUsd": 6.68,
    "note": "whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)"
   },
   "directPerCase": {

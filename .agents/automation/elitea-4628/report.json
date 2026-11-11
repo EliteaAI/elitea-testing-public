@@ -4,7 +4,7 @@
  "pr_unit": "trunk",
  "integration_branch": "tests/batch-elitea-4628",
  "gate": {
-  "verdict": "green",
+  "verdict": "pass",
   "runs": 3,
   "seconds": [
    28.9,

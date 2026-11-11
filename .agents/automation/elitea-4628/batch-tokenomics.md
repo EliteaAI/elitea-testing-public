@@ -1,6 +1,6 @@
 # Batch tokenomics — elitea-4628
 
-Generated: 2026-11-11T09:21:08.628Z  ·  sessions: 1  ·  models: 1_eu.anthropic.claude-sonnet-5-5, <synthetic>  ·  companion of batch-report (delivery view)
+Generated: 2026-11-11T09:21:15.218Z  ·  sessions: 1  ·  models: 1_eu.anthropic.claude-sonnet-5-5, <synthetic>  ·  companion of batch-report (delivery view)
 
 ## Composition — where the tokens went
 
@@ -22,7 +22,7 @@ Generated: 2026-11-11T09:21:08.628Z  ·  sessions: 1  ·  models: 1_eu.anthropic
 |---|---|---|---|---|---|
 | 1_eu.anthropic.claude-sonnet-5-5 | 94,007 | 56,991 | 1.7M | 10.8M | 12,637,920 |
 | <synthetic> | 0 | 0 | 0 | 0 | 0 |
-**Total: 12,637,920 tokens · $6.66 · 1.1h active · 12 dispatches** — judge by composition and hit rate, not by the big number.
+**Total: 12,637,920 tokens · $6.68 · 1.1h active · 12 dispatches** — judge by composition and hit rate, not by the big number.
 
 ## By role
 
@@ -30,11 +30,11 @@ Generated: 2026-11-11T09:21:08.628Z  ·  sessions: 1  ·  models: 1_eu.anthropic
 |---|---|---|---|---|---|
 | test-automation-engineer | $2.76 | 67,610 | 623k | 6.1M | 90.2% |
 | qa-engineer | $2.06 | 59,550 | 501k | 3.0M | 84.7% |
-| test-automation-lead | $1.84 | 23,838 | 562k | 1.7M | 74.6% |
+| test-automation-lead | $1.86 | 23,838 | 562k | 1.7M | 74.6% |
 
 ## Orchestrator (lead thread) composition
 
-Lead: $1.84 — overhead incl. stages is 46% of the batch · real work 23,838 · cache 1.7M read / 562k write · hit rate 74.6%
+Lead: $1.86 — overhead incl. stages is 47% of the batch · real work 23,838 · cache 1.7M read / 562k write · hit rate 74.6%
 A high lead share with a high hit rate is orchestration overhead working as designed (context replayed per turn), not runaway spend.
 
 ## By stage (overhead)
