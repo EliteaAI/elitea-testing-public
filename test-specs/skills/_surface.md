@@ -960,3 +960,5 @@ Full: `test-specs/skills/l1_run-catalog-skill-from-catalog-and-message-exchange_
 - AI message chips (all testids): `chat-answer-thought-accordion` ("Thought for 2 secs"), `chat-answer-tool-chip` ("Skill: <name>"), `chat-answer-model-chip`, `chat-answer-chip-duration`. Instruction "UPPERCASE" + "run" -> reply `RUN`.
 - Env gotcha: without `APP_PREFIX=/app` (no `.env.test` in sandbox) pages 404 at `https://dev.elitea.ai/skills/all`. Direct `SkillDetailPage.navigate` before visiting the list can fail on `skill-information-section`; visit list first.
 - Full details: `test-specs/skills/l1_test-skill-button-opens-panel-and-executes-skill_ELITEA-4635.md`.
+
+**Added during ELITEA-4635 implementation:** the `chat-send-button` is NOT rendered while the input is empty (a voice-input button occupies the slot); assert it only after typing. `SkillDetailPage` gained `edit_with_ai_button` (`edit-skill-with-ai-button`) and a panel-scoped `TEST_PANEL_ALERT` (role=alert, hint `skill-test-panel-alert`). Spec: `tests/ui/skills/test_skill_editor_test_button_execution.py`.
