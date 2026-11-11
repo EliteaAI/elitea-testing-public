@@ -118,7 +118,7 @@ Axis 2 — Analyst additions:
 |---|---|---|---|
 | testid | `[data-testid="chat-configuration-section"]` | n/a | testid on DEV ✓ |
 | css | `div:has(> div > :text-is("Mid-turn input")) input[role="switch"]` scoped inside the section (ScopedLocator `MIDTURN_INPUT_SWITCH`) | `settings-midturn-input-switch` | ladder — no testid on DEV; unique within the section (title-anchored, non-positional) |
-| role | `button` name `Got it` ("What's New in ELITEA 2.0.8" modal) | `whats-new-got-it-button` | ladder — no testid on DEV |
+| testid | `platform-banner-close` ("Got it" in the platform announcement dialog; BasePage `platform_banner_close`, dismissed via inherited `dismiss_announcement_dialog_if_present` + `auto_dismiss_announcement_dialog`) | n/a | testid on DEV ✓ (EliteaUI CenterBanner.jsx) |
 
 Same handle set as ELITEA-2875 (`interjection-composer`, `chat-inject-button`,
 `interjection-queue-area`, `interjection-queue-label`, `interjection-queue-item`,

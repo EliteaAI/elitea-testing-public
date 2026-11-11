@@ -35,13 +35,6 @@ class ProjectGeneralSettingsPage(BasePage):
         suggested_testid="settings-midturn-input-switch",
     )
 
-    whats_new_got_it_button = LocatorDescriptor(
-        role="button",
-        name="Got it",
-        description="'What's New' release modal dismiss button (may overlay the page)",
-        suggested_testid="whats-new-got-it-button",
-    )
-
     @property
     def midturn_input_switch(self):
         """The Mid-turn input switch, resolved inside the Chat configuration section."""
@@ -49,15 +42,12 @@ class ProjectGeneralSettingsPage(BasePage):
 
     @action("Open Settings → General")
     def open(self) -> None:
-        """Navigate to Settings → General and dismiss the What's New modal if shown."""
+        """Navigate to Settings → General and dismiss the platform announcement dialog (inherited BasePage helpers)."""
         self.navigate(self.PATH)
         self.chat_configuration_section.wait_for(state="visible", timeout=30_000)
-        self._dismiss_whats_new()
-
-    def _dismiss_whats_new(self) -> None:
-        if self.whats_new_got_it_button.count() > 0:
-            self.whats_new_got_it_button.click()
-            expect(self.whats_new_got_it_button).to_have_count(0)
+        self.dismiss_announcement_dialog_if_present()
+        # The dialog can render seconds late: guard every later action on this page.
+        self.auto_dismiss_announcement_dialog()
 
     @action("Read Mid-turn input toggle state")
     def is_midturn_input_enabled(self) -> bool:
