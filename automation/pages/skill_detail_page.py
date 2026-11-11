@@ -162,6 +162,38 @@ class SkillDetailPage(SkillFormPage):
         description="Skill controls overflow menu button"
     )
 
+    # Run History (ELITEA-4631) — overflow-menu entry opens the /history route.
+    # List/header/row-menu testids are shared with the Agent/Pipeline run-history
+    # components (RunHistoryContainer); only the menu entry is skill-specific.
+    run_history_menu_item = LocatorDescriptor(
+        testid="skill-run-history-menu-item",
+        description="Overflow menu item 'Run History' — navigates to /skills/all/{id}/history",
+    )
+    run_history_header = LocatorDescriptor(
+        testid="run-history-header",
+        description="Run History table header row (Date / Version / Duration)",
+    )
+    run_history_rows = LocatorDescriptor(
+        testid="run-history-list-item",
+        description="Run History rows (enumerated by count, never picked positionally)",
+    )
+    RUN_HISTORY_SELECTED_ROW = '[data-testid="run-history-list-item"][data-selected="true"]'
+    run_history_row_menu_button = LocatorDescriptor(
+        testid="run-history-menu-menu-button",
+        description="Hover-revealed three-dot button of a run-history row",
+    )
+    run_history_restore_chat_menuitem = LocatorDescriptor(
+        role="menuitem",
+        name="Restore chat",
+        suggested_testid="run-history-restore-chat-menuitem",
+        description="'Restore chat' item in the open run-row menu; unique by accessible name",
+    )
+    run_history_menu_items = LocatorDescriptor(
+        role="menuitem",
+        suggested_testid="run-history-menu-item-{}",
+        description="All items of the open run-row menu (enumerated, never picked)",
+    )
+
     # Overflow menu — SKILL-scoped pin/unpin toggle item ("Pin to top" /
     # "Unpin from top"). Testid added via add-data-testid for ELITEA-2435
     # (see test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md,
@@ -1397,3 +1429,55 @@ class SkillDetailPage(SkillFormPage):
             testid = options.nth(i).get_attribute("data-testid") or ""
             names.append(testid[len(prefix):] if testid.startswith(prefix) else testid)
         return names
+
+    # ------------------------------------------------------------------
+    # Run History page (ELITEA-4631)
+    # ------------------------------------------------------------------
+
+    @action("Open Run History via overflow menu")
+    def open_run_history(self, timeout: int = 15000):
+        """Overflow menu -> 'Run History'; wait for the /history route and rows."""
+        self.dismiss_platform_release_banner_if_present()
+        self.controls_menu_button.click()
+        self.run_history_menu_item.click()
+        self.page.wait_for_url(re.compile(r"/skills/all/\d+/history"), timeout=timeout)
+        self.run_history_rows.first.wait_for(state="visible", timeout=timeout)
+
+    def get_run_history_row_texts(self) -> list[str]:
+        """Full text of every run-history row, in display order."""
+        return self.run_history_rows.all_text_contents()
+
+    def wait_for_selected_run_with_messages(self, timeout: int = 15000):
+        """Wait for the auto-selected row and its transcript in the right panel."""
+        self.page.locator(self.RUN_HISTORY_SELECTED_ROW).wait_for(state="visible", timeout=timeout)
+        self._test_panel_messages().first.wait_for(state="visible", timeout=timeout)
+
+    def get_message_texts(self) -> list[str]:
+        """Text of every chat message currently rendered."""
+        return self._test_panel_messages().all_text_contents()
+
+    @action("Open run-row menu")
+    def open_run_row_menu(self, timeout: int = 10000):
+        """Hover the (only) selected run row and open its three-dot menu."""
+        row = self.page.locator(self.RUN_HISTORY_SELECTED_ROW)
+        row.hover()
+        self.run_history_row_menu_button.click()
+        self.run_history_restore_chat_menuitem.wait_for(state="visible", timeout=timeout)
+
+    def get_run_row_menu_item_names(self) -> list[str]:
+        """Accessible text of every item in the open run-row menu."""
+        return [t.strip() for t in self.run_history_menu_items.all_text_contents()]
+
+    @action("Restore chat from history")
+    def click_restore_chat(self, timeout: int = 15000):
+        """Click 'Restore chat' and wait for the skill detail page with ?run=."""
+        self.run_history_restore_chat_menuitem.click()
+        self.page.wait_for_url(re.compile(r"/skills/all/\d+\?run=\d+"), timeout=timeout)
+
+    def page_contains_text(self, text: str) -> bool:
+        """Whether the rendered page HTML contains *text* (breadcrumb/title check)."""
+        return text in self.page.content()
+
+    def wait_for_any_message(self, timeout: int = 15000):
+        """Wait until at least one chat message is rendered."""
+        self._test_panel_messages().first.wait_for(state="visible", timeout=timeout)
