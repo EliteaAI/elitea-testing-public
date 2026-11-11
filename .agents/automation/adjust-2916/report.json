@@ -1,0 +1,11 @@
+{
+ "slug": "adjust-2916",
+ "issue": 2916,
+ "triage": "A (Pipelines Editor 2.0 canvas control bar redesign, elitea_issues#7093/#7160; human-confirmed on the card)",
+ "cases": [{"id": "ELITEA-2057", "outcome": "automated"}],
+ "review": "APPROVED (fresh session, static)",
+ "gate": {"verdict": "green", "n": 3, "runs": "3 separate invocations of tests/ui/pipelines/test_pipeline_canvas_zoom_and_pan.py (2 tests) on DEV, 2 passed each"},
+ "expected_result_changes": "Toggle cards size step removed (card-authorized); Toggle Interactivity -> Lock/Unlock (aria-pressed, canvas-space comparison, tolerances unchanged); Auto-arrange -> Arrange menu (same-orientation exact-position round trip); Minimap added (hidden by default, show/hide); control panel = new 6-button set",
+ "findings": ["TMS wording PR (adjust/ELITEA-2057-canvas-controls) awaits human merge", "ruff not installed in this env; lint not run", "automation/.env.test missing on this host: APP_PREFIX=/app passed on the command line"],
+ "batch": "adjust-2916"
+}
