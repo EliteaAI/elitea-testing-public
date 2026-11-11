@@ -980,10 +980,10 @@
       "history": []
     }
   },
-  "last_sync": "2026-11-10",
+  "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1344,
-    "declared_testid": 1264,
+    "declared_total": 1350,
+    "declared_testid": 1270,
     "declared_non_testid": 80,
     "non_testid_with_hint": 59,
     "non_testid_without_hint": 21,
@@ -993,10 +993,10 @@
       "label": 1,
       "locator": 1,
       "role": 24,
-      "testid": 1264,
+      "testid": 1270,
       "xpath": 22
     },
-    "locator_debt": 0.0595,
+    "locator_debt": 0.0593,
     "unmanaged_handles": 315
   }
 }

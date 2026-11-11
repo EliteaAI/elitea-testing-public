@@ -1,75 +1,72 @@
 {
-  "batch": "elitea-4628",
-  "base": "origin/main",
-  "pr_unit": "trunk",
-  "integration_branch": "tests/batch-elitea-4628",
-  "gate": {
-    "verdict": "red",
-    "runs": 0,
-    "seconds": [],
-    "failures": [
-      {
-        "spec": "automation/tests/ui/chat/test_chat_add_skill_participant_plus_menu.py::TestChatAddSkillParticipant::test_add_own_and_catalog_skill_participants",
-        "signature": "playwright TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"chat-message-input\") to be visible. Raised in Step 1 at chat.navigate_to_chat() -> ChatPage.wait_for_page_load (pages/chat_page.py:1633). Failed in both direct runs (1st run exhausted pytest reruns, 177s; 2nd run with reruns disabled, 64s). Setup log warning: 'Missing elitea-staging_auth_session cookie… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
-        "case_ids": [
-          "ELITEA-4628"
-        ]
-      }
-    ]
-  },
-  "cases": [
-    {
-      "id": "ELITEA-4628",
-      "outcome": "blocked",
-      "note": "gate red: playwright TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"chat-message-input\") to be visible. Raised in Step 1 at chat.navigate_to_chat() -> ChatPage.wait_for_pa",
-      "findings": [
-        {
-          "kind": "note",
-          "note": "The container has no automation/.env.test, so APP_PREFIX defaults to empty and chat navigation lands on a 404 page. Set APP_PREFIX=/app for every run here, including the gate."
-        },
-        {
-          "kind": "note",
-          "note": "The spec calls page.locator(chat.PARTICIPANT_ROW_PREFIX) and similar directly in the test body. The selectors are class-level testid constants, but the reviewer should confirm that is compliant."
-        },
-        {
-          "kind": "note",
-          "note": "Case text disagrees with the live product. The example skills do not exist, so a fixture skill is created. An own skill's version badge reads 'base'. The catalog skill reads 'v1.0'. 'Invite Users' is absent in a private project. The Skills submenu opens on click."
-        },
-        {
-          "kind": "note",
-          "note": "Mechanical locator grep, run on the full diff: git diff main...tests/ELITEA-4628-skill-participant-plus-menu -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. It returned 10 hits: 1 in chat_page.py:get_skill_menu_item_by_na… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
-          "ref": "automation/tests/ui/chat/test_chat_add_skill_participant_plus_menu.py"
-        },
-        {
-          "kind": "note",
-          "note": "Declarations are on the right rung. skills_menuitem, skills_search_input and skills_create_new_button are all testid rung, which is higher than the AFS's css/placeholder row for the search input. I confirmed the source on origin/main: PlusSubmenu sets inputProps data-testid to `${sectionKey}-search-input`, and PlusChatButton.test.jsx references skills-create-new-button. I did not execute the spec … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
-          "ref": "automation/pages/chat_page.py:7011"
-        },
-        {
-          "kind": "note",
-          "note": "Triangulation of case, AFS and diff is complete.\n- Step 1: blank chat plus a zero participant-row count.\n- Step 2: every menu item is asserted visible. Invite Users is asserted absent, which is declared case-text drift (private project) and not a defect.\n- Step 3: placeholder 'Search skills...' and the Create Skill button.\n- Step 4: both the own row, found by its project and skill id, and the cata… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
-        },
-        {
-          "kind": "clarification",
-          "note": "Nit: PARTICIPANT_SECTION_TITLE's description and the get_participant_section_title docstring still list only Agents/Pipelines/Toolkits/MCPs. The spec now passes 'Skills' (the new header assertions at spec lines 163 and 175 use it), so the xpath is exercised with a new argument. Update the docstring and description.",
-          "ref": "automation/pages/chat_page.py:6949"
-        },
-        {
-          "kind": "clarification",
-          "note": "Nit: the AFS handles table still lists the search input as css/placeholder, but the implementation uses the skills-search-input testid, and the AFS has no amendment recording that. Nit: the version assertions (to_contain_text('base') and 'v1.0') run against the whole participant row because the version text has no testid. That is acceptable, and the AFS already records it as ladder-only with no te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
-          "ref": "test-specs/chat-interface/l1_add-skill-participant-from-plus-menu_ELITEA-4628.md"
-        }
-      ],
-      "afs": "test-specs/chat-interface/l1_add-skill-participant-from-plus-menu_ELITEA-4628.md",
-      "branch": "tests/ELITEA-4628-skill-participant-plus-menu",
-      "pr": 2915
-    }
+ "batch": "elitea-4628",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-elitea-4628",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   28.9,
+   32.6,
+   26.4
   ],
-  "totals": {
-    "blocked": 1
-  },
-  "quality_flags": [],
-  "quota_halted": false,
-  "expected_red": [],
-  "parked": []
+  "failures": [],
+  "note": "Workflow gate was red from a missing APP_PREFIX (container has no .env.test); lead re-gated 3x separate invocations with APP_PREFIX=/app on the trunk: 3/3 green"
+ },
+ "cases": [
+  {
+   "id": "ELITEA-4628",
+   "outcome": "automated",
+   "note": "reviewer APPROVED; lead 3x DEV gate green",
+   "findings": [
+    {
+     "kind": "note",
+     "note": "The container has no automation/.env.test, so APP_PREFIX defaults to empty and chat navigation lands on a 404 page. Set APP_PREFIX=/app for every run here, including the gate."
+    },
+    {
+     "kind": "note",
+     "note": "The spec calls page.locator(chat.PARTICIPANT_ROW_PREFIX) and similar directly in the test body. The selectors are class-level testid constants, but the reviewer should confirm that is compliant."
+    },
+    {
+     "kind": "note",
+     "note": "Case text disagrees with the live product. The example skills do not exist, so a fixture skill is created. An own skill's version badge reads 'base'. The catalog skill reads 'v1.0'. 'Invite Users' is absent in a private project. The Skills submenu opens on click."
+    },
+    {
+     "kind": "note",
+     "note": "Mechanical locator grep, run on the full diff: git diff main...tests/ELITEA-4628-skill-participant-plus-menu -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. It returned 10 hits: 1 in chat_page.py:get_skill_menu_item_by_na\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/chat/test_chat_add_skill_participant_plus_menu.py"
+    },
+    {
+     "kind": "note",
+     "note": "Declarations are on the right rung. skills_menuitem, skills_search_input and skills_create_new_button are all testid rung, which is higher than the AFS's css/placeholder row for the search input. I confirmed the source on origin/main: PlusSubmenu sets inputProps data-testid to `${sectionKey}-search-input`, and PlusChatButton.test.jsx references skills-create-new-button. I did not execute the spec \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/pages/chat_page.py:7011"
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation of case, AFS and diff is complete.\n- Step 1: blank chat plus a zero participant-row count.\n- Step 2: every menu item is asserted visible. Invite Users is asserted absent, which is declared case-text drift (private project) and not a defect.\n- Step 3: placeholder 'Search skills...' and the Create Skill button.\n- Step 4: both the own row, found by its project and skill id, and the cata\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "clarification",
+     "note": "Nit: PARTICIPANT_SECTION_TITLE's description and the get_participant_section_title docstring still list only Agents/Pipelines/Toolkits/MCPs. The spec now passes 'Skills' (the new header assertions at spec lines 163 and 175 use it), so the xpath is exercised with a new argument. Update the docstring and description.",
+     "ref": "automation/pages/chat_page.py:6949"
+    },
+    {
+     "kind": "clarification",
+     "note": "Nit: the AFS handles table still lists the search input as css/placeholder, but the implementation uses the skills-search-input testid, and the AFS has no amendment recording that. Nit: the version assertions (to_contain_text('base') and 'v1.0') run against the whole participant row because the version text has no testid. That is acceptable, and the AFS already records it as ladder-only with no te\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "test-specs/chat-interface/l1_add-skill-participant-from-plus-menu_ELITEA-4628.md"
+    }
+   ],
+   "afs": "test-specs/chat-interface/l1_add-skill-participant-from-plus-menu_ELITEA-4628.md",
+   "branch": "tests/ELITEA-4628-skill-participant-plus-menu",
+   "pr": 2915
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": []
 }
