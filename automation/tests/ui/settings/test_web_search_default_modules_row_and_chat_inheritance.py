@@ -92,7 +92,6 @@ class TestWebSearchDefaultModules:
                 page.keyboard.press("Escape")
 
             with allure.step("Step 9 — Send the web-search prompt"):
-                initial_count = chat.get_message_count()
                 chat.send_message(_PROMPT)
 
             with allure.step("Step 10 — Wait for the response to complete"):
