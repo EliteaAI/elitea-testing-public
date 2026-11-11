@@ -921,3 +921,18 @@ Playwright MCP chrome binary was missing in this sandbox).
 - Fixture: `SkillAPI.create_skill(...)` (client.py) + `delete_skill`. Existing DEV skills have 0 history.
 - Gotcha: DEV corner banner `platform-banner-corner` / `platform-banner-center` (close:
   `platform-banner-close`, "Got it") intercepts clicks on send/menu - dismiss first.
+
+## Skill Run Analytics (`/skills/all/{id}/history/analytics?run=&history_run_id=`) - ELITEA-4632 (DEV, 2026-11-11)
+
+- Reach: Run History row hover -> `run-history-menu-menu-button` -> menuitem "Analytics" (no testid).
+- Page testids: `run-analytics-page`, `run-analytics-run-info` ("Run: <date> · Version: base · Model: <name>"), `run-analytics-refresh-button`,
+  `run-analytics-export-button`, `run-analytics-costs-info-button`, tabs `run-analytics-tab-{costs,tokens,health}`,
+  empty states `run-analytics-costs-empty` / `run-analytics-tokens-empty`, `analytics-costs-tool-spend`, breadcrumbs (`breadcrumb-item` x3 + `breadcrumb-current`).
+- Costs/Tokens data lags the run by ~10-40 s: empty state until ingested; refresh button re-fetches. Health fills sooner.
+- Cards/tables (TOTAL COST, INPUT/OUTPUT/CACHE costs, Cost by User, Cost by Model, Cost by Paid Tool) have NO testids.
+- API: `GET /api/v2/usage/analytics_run_detail/prompt_lib/{pid}?run_id=<uuid>&root_entity_type=skill&root_entity_id={id}&root_entity_project_id={pid}` and `.../analytics_costs/...` (same params) -> `{kpis{total_cost,total_input_tokens,total_output_tokens,total_tokens,total_input_cost,total_output_cost,...}, by_model[], by_skill[], ...}`.
+  Haiku 5.5 rates: in $0.10/M, out $0.50/M. UI rounds to 5 dp, `< $0.00001` below.
+- Leaving the test panel (e.g. to Run History) while a response streams or just finished shows a "Switch" confirm dialog (role button "Switch").
+- `chat-clear-button` in test panel starts a new conversation -> new history row (row 0 = newest).
+
+**Added during ELITEA-4632 implementation:** `RunAnalyticsPage` (`pages/run_analytics_page.py`) declares KPI cards / Cost-by-User / Cost-by-Model cells as scoped xpath rungs (no testids on DEV). Header `run-analytics-run-info` first renders `Version: … · Model: …` (ellipsis) before data loads - use a web-first wait. Run-history row menu button testid repeats once per row plus once in `run-history-list-column`: scope it within the row. `chat-clear-button` starts a new conversation without a Switch dialog when the response is complete.
