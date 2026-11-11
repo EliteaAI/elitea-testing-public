@@ -87,8 +87,8 @@ def test_create_pipeline_full_details_persist_after_reload(page, pipeline_api, g
         assert "/pipelines/create" in url_path, f"Should be on the create form, got: {page.url}"
 
     with allure.step(f"Step 3 — Fill Name: '{pipeline_name}'"):
-        pipeline_page.name_input.click()
-        pipeline_page.name_input.press_sequentially(pipeline_name, delay=20)
+        # The create form pre-fills a default name ("Pipeline N") — replace, don't append.
+        pipeline_page.replace_name(pipeline_name)
         assert pipeline_page.get_name() == pipeline_name
 
     with allure.step(f"Step 4 — Fill Description: '{_PIPELINE_DESCRIPTION}'"):
