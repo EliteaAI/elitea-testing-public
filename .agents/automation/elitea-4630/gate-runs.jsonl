@@ -1,0 +1,3 @@
+{"run":1,"spec":"tests/ui/chat/test_chat_skill_auto_invocation_by_intent.py","result":"pass"}
+{"run":2,"spec":"tests/ui/chat/test_chat_skill_auto_invocation_by_intent.py","result":"pass"}
+{"run":3,"spec":"tests/ui/chat/test_chat_skill_auto_invocation_by_intent.py","result":"pass"}
