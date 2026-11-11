@@ -1592,3 +1592,11 @@ on DEV.** Three load-bearing findings this pass:
 - Export is encrypted server-side (`GET /elitea_core/conversation_export/prompt_lib/{P}/{cid}` -> `application/octet-stream`, `ELITEA-CHAT-ENC/1`); `?summary=true` returns JSON `{messages_count, attachments_count, total_size}` - usable as server-side count oracle. Chat messages: `GET .../conversation/prompt_lib/{P}/{cid}` -> `message_groups[]` (`created_at`, `message_items[].item_details.content`).
 - Sending: `send_message(text, use_enter=True)`; Send-button click sent nothing in a headless probe (platform-banner overlay). `get_message_count()` counts user+AI (2 per exchange). Row testid `chat-conversation-item-{id}`.
 - Export menu item has NO author gating in `ConversationItem.jsx`; only Rename/Delete (disabled), Restrict access, Share externally (hidden) are creator-gated. User B creds absent in sandbox (`TEST_USER_B_*` unset). Non-author API export returned 200 (chat 385, project 470).
+
+## Plus menu -> Skills participants (ELITEA-4628, 2026-11-11)
+
+- `skills-menuitem` exists in the plus menu; its submenu opened on **click** (hover for 3 s did not, in a scripted probe). Placeholder "Search skills...", "Create Skill" button (source: `skills-create-new-button`, `skills-search-input` - search testid not seen in DOM dump, verify).
+- Rows: `skills-menu-item-skill-{projectId}-{skillId}`; own skills use the active project id, catalog skills project **1** and carry inner text "Catalog". Skill click = select-and-close.
+- Panel: `SKILLS` group, `chat-participant-row-{skillId}`; catalog row has `chat-participant-catalog-tag` + version "v1.0"; own skill's version text is "base". Rows have `chat-participant-remove-button`.
+- Catalog on DEV has `code-reviewer` (1-31), `bug-report-generator` (1-33). Own skills named in the case do not exist - create via `skill_api`.
+- Blank chat is not persisted until first send (no conversation cleanup for add-participant-only flows).
