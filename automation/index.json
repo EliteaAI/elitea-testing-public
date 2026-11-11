@@ -3782,6 +3782,22 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.skills.test_skill_editor_test_button_execution.TestSkillEditorTestButtonExecution.test_test_skill_button_opens_panel_and_executes_skill",
+      "markers": [
+        "chat",
+        "p1",
+        "regression",
+        "skills",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4635"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-4635_test-skill-from-editor-interaction-panel.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImport.test_export_and_import_skill_base_version",
       "markers": [
         "new_verified",
