@@ -907,6 +907,30 @@
       "updated": "2026-11-11",
       "history": []
     },
+    "pages/skills_list_page.py::SkillsListPage.ROW_ACTION_BUTTON": {
+      "file": "pages/skills_list_page.py",
+      "line": 237,
+      "kind": "css",
+      "selector": "button[id=\"{}-skill-action\"]",
+      "suggested_testid": "skill-row-action-menu-button-{}",
+      "description": "Table-row three-dot menu button (id template, aria-label 'more'); no testid on DEV",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skills_list_page.py::SkillsListPage.ROW_RUN_MENU_ITEM": {
+      "file": "pages/skills_list_page.py",
+      "line": 245,
+      "kind": "role",
+      "selector": "menuitem[name='Run']",
+      "suggested_testid": "skill-row-run-menu-item",
+      "description": "'Run' item of the open row menu (testid skill-run-menu-item is non-unique page-wide)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/support_assistant_page.py::SupportAssistantPage.attach_button": {
       "file": "pages/support_assistant_page.py",
       "line": 94,
@@ -1054,21 +1078,21 @@
   },
   "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1378,
-    "declared_testid": 1292,
-    "declared_non_testid": 86,
-    "non_testid_with_hint": 65,
+    "declared_total": 1381,
+    "declared_testid": 1293,
+    "declared_non_testid": 88,
+    "non_testid_with_hint": 67,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 12,
+      "css": 13,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 28,
-      "testid": 1292,
+      "role": 29,
+      "testid": 1293,
       "xpath": 24
     },
-    "locator_debt": 0.0624,
+    "locator_debt": 0.0637,
     "unmanaged_handles": 312
   }
 }
