@@ -944,3 +944,11 @@ Playwright MCP chrome binary was missing in this sandbox).
 - Skill reply ~7s; sender label on DEV reads "Elitea to Message" (not "Skill: code-r..."); pick the reply by its "Thought for" footer, not position. Cleanup: `DELETE .../elitea_core/conversation/prompt_lib/575/{id}` (204); once an extra conversation was created after send - delete by name too.
 - `platform-banner-corner` appears ~3-5s after load and intercepts clicks (incl. send button) -> close it, `force=True` on send.
 Full: `test-specs/skills/l1_run-catalog-skill-from-catalog-and-message-exchange_ELITEA-4633.md`.
+
+## Run action (own skill) — Skills list row menu → skill detail test panel (ELITEA-4634, 2026-11-11, DEV)
+
+- Run for a **private** skill is in the **table-view** row three-dot menu only (card view has Move/Pin only). Toggle: `agent-table-view-button`. Row overflow button: `button[id="{skillId}-skill-action"]` (aria-label "more", no testid). Menu items: Run / Move to folder / Delete. `skill-run-menu-item` exists on every row's hidden menu (20 DOM matches) — not unique; use role=menuitem name "Run" exact.
+- Run -> `/skills/all/{id}?focus=run` (no new chat; opens `skill-test-panel`, input focused). Send persists a `source=skill` conversation; URL becomes `?run={convId}`; reload restores. Not in Chats sidebar nor `list_conversations()`. Delete via `ConversationAPI.delete_conversation(convId)`.
+- Catalog Run (ELITEA-4633) is a different flow: opens `/chat/{id}` with participants panel.
+- Corner banner (`platform-banner-close`) covers the test-panel send button; a click lands on it and does not send. Close it first.
+- First load of `/skills/all` on DEV can exceed 30s before `entity-card` renders.
