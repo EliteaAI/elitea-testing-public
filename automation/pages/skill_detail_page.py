@@ -57,6 +57,17 @@ class SkillDetailPage(SkillFormPage):
         description="Toolbar 'Test Skill' button (SkillEditorWorkspace.jsx) — opens the SkillTestPanel",
     )
 
+    edit_with_ai_button = LocatorDescriptor(
+        testid="edit-skill-with-ai-button",
+        description="Toolbar 'Edit with AI' button, the neighbour of 'Test Skill' (ELITEA-4635)",
+    )
+
+    TEST_PANEL_ALERT = ScopedLocator(
+        role="alert",
+        description="Any ARIA alert rendered inside the SkillTestPanel (error indicator); scoped to the panel",
+        suggested_testid="skill-test-panel-alert",
+    )
+
     # ------------------------------------------------------------------
     # LLM model selector + Model Settings dialog (SkillTestPanel, ELITEA-2436)
     # ------------------------------------------------------------------

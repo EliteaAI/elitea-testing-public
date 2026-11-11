@@ -1,0 +1,99 @@
+{
+  "batch": "skills-4635",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-skills-4635",
+  "gate": {
+    "n": 3,
+    "verdict": "green",
+    "by": "lead",
+    "env": "DEV APP_PREFIX=/app",
+    "note": "workflow gate red (0 runs) was env artifact: no .env.test, APP_PREFIX unset; lead re-ran 3 separate invocations: 3/3 pass"
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4635",
+      "outcome": "automated",
+      "note": "gate green 3/3 (lead)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The send button (`chat-send-button`) is not rendered while the input is empty, because a voice button takes the slot. The spec asserts it only after typing. The digest has this noted. The case text says 'send button visible' at step 3, which does not match the live product."
+        },
+        {
+          "kind": "note",
+          "note": "The sandbox has no automation/.env.test, so a bare ELITEA_URL gives a 404 page. Run with APP_PREFIX=/app set. Also, the ruff binary is missing from the .venv."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case, AFS and diff. Every step of the case (1-14) has a Coverage Map row, and every `covered` row maps to a real assertion at its own step. Step 1 asserts button visible, enabled, text 'Test Skill', Edit-with-AI visible, panel hidden. Step 2 asserts panel visible. Step 3 asserts the placeholder and 0 messages. Step 4 asserts the input value. Step 5 asserts user text and author name. \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_editor_test_button_execution.py:1-125"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep. Command: `git diff main...tests/ELITEA-4635-test-skill-button-execution -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'`. Result: 0 hits (no matches). The two new declarations are class-level. `edit\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "TMS pair is correct: `@pytest.mark.tms('ELITEA-4635')` plus an `@allure.issue` blob URL whose file name `ELITEA-4635_test-skill-from-editor-interaction-panel.md` exists in the sibling TMS clone. I did not run `tms_backwrite.py check` (static review). No masking found: no skip, no xfail, no weakened expects. Cleanup is in a finally block. The test creates its own data through the API."
+        },
+        {
+          "kind": "clarification",
+          "note": "The AFS Step 3 says to verify `chat-send-button` visible with the panel freshly open. The implementation moved that assertion to Step 4, after typing, because DEV renders a voice button until text exists. This is a legitimate correction and is recorded in `_surface.md`, but the AFS file itself was not amended. Add one line to the AFS (Step 3 or Clarifications) so AFS and implementation agree. Not \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS Steps 3 and 'Clarifications' vs spec Step 3/4"
+        },
+        {
+          "kind": "note",
+          "note": "The spec hardcodes the author name 'autotest_user_admin'. It will fail if the suite is run under another account, such as TEST_USER_B. The AFS observed this name on one account only. Consider asserting only a non-empty author, or derive the name from config or the profile. Non-blocking.",
+          "ref": "automation/tests/ui/skills/test_skill_editor_test_button_execution.py:93"
+        },
+        {
+          "kind": "note",
+          "note": "The relevance check `'run' in reply.lower()` is weak. The instruction is 'uppercase the input', so the reply 'RUN' would match, but any reply that mentions 'run' also passes. Acceptable given LLM nondeterminism, and the AFS declares it. A stricter `reply.strip().upper() == 'RUN'` is optional.",
+          "ref": "automation/tests/ui/skills/test_skill_editor_test_button_execution.py:100"
+        },
+        {
+          "kind": "note",
+          "note": "The case's steps 13-14 'success indicator' and the 'panel on the right side' are asserted only as absence of alerts and error text, and panel visibility (no position check). Both are declared clarifications in the AFS, so this is not a defect.",
+          "ref": "automation/tests/ui/skills/test_skill_editor_test_button_execution.py:7"
+        },
+        {
+          "kind": "note",
+          "note": "On DEV at 2026-11-11, the ELITEA-4635 spec fails at skill detail navigation with a 404 page. The ELITEA-4634 sibling spec (test_own_skill_run_message_exchange) also fails to find its freshly created skill in the list. This points to a DEV environment or regression issue affecting the skills create/detail flow, not to the 4635 code. Needs a re-run and, if it reproduces, a repro and bug filing."
+        },
+        {
+          "kind": "note",
+          "note": "ruff is not installed in /opt/work_dir/elitea-testing-public/.venv, so the lint conventions step could not be run mechanically. Line length was checked with awk."
+        },
+        {
+          "kind": "note",
+          "note": "Both E501 items are fixed. I ran an awk length>120 scan over the branch copy of the spec and it printed nothing, so no line is over 120. ruff is not installed in .venv, so I could not run `ruff check` itself. I checked line length only. The lead should run ruff in the hardening gate."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep (git diff main...branch -- automation/pages automation/tests, reading the added lines). The only new declarations are `edit_with_ai_button` (testid rung, edit-skill-with-ai-button, verified on DEV in the AFS) and `TEST_PANEL_ALERT` (class-level ScopedLocator, role=alert, suggested_testid set, used via .within(test_panel)). The spec has no raw get_by_*/locator/nth/fallback c\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case-to-AFS-to-diff triangulation for ELITEA-4635, steps 1-14. The spec asserts the Test Skill button (visible, enabled, text) next to Edit with AI, the panel closed, then open on click. It asserts placeholder and zero messages, the fill value and the send button, the user message with author name, and the 'Thought for N secs' accordion. It asserts the 'Skill: <name>' tool chip and a non-empty mod\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-4635"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case's 'success status' check (steps 13-14) has no explicit success icon in the product. The spec asserts the absence of errors and alerts instead. This is declared in the AFS and the spec docstring, so it is an acceptable drift.",
+          "ref": "ELITEA-4635"
+        }
+      ],
+      "afs": "test-specs/skills/l1_test-skill-button-opens-panel-and-executes-skill_ELITEA-4635.md",
+      "branch": "tests/ELITEA-4635-test-skill-button-execution",
+      "pr": 2933
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
