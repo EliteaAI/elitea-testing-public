@@ -1,0 +1,91 @@
+{
+  "batch": "elitea-4631",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-elitea-4631",
+  "gate": {
+    "verdict": "red",
+    "runs": 0,
+    "seconds": [
+      85
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/skills/test_skill_run_history_restore_chat.py::TestSkillRunHistory::test_skill_run_history_display_and_restore_chat",
+        "signature": "playwright TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"skill-information-section\") to be visible. Fails in Step 1 (Open the skill and run one prompt in the test panel); identical on the initial attempt and both reruns (3/3 attempts broken). Cleanup step passed.",
+        "case_ids": [
+          "ELITEA-4631"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4631",
+      "outcome": "blocked",
+      "note": "gate red: playwright TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"skill-information-section\") to be visible. Fails in Step 1 (Open the skill and run one prompt in the te",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text disagrees with the live Skill Run History page in four places. The table columns are Date, Version and Duration, with no Status or User column. There are no status icons, so error and stopped runs cannot be represented. Dates are absolute (DD-MM-YYYY, hh:mm AM/PM), not relative. Run History is reached through the overflow menu or the test-panel header, not a tab. Restore chat navigates t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-4631"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS says the Playwright MCP chrome binary was missing during the earlier analysis, so exploration used the repo's Python Playwright with the storage state. I did not recheck this."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says Run History tab, status icons, and Status/User columns. Live DEV shows an overflow-menu 'Run History' item that opens /history, with Date/Version/Duration columns only and no status icons. The test asserts the live contract (per the AFS).",
+          "ref": "ELITEA-4631"
+        },
+        {
+          "kind": "note",
+          "note": "Sandbox has no automation/.env.test. Without APP_PREFIX=/app every navigation 404s, and the failure looks like a skill-information-section timeout. Pass APP_PREFIX=/app for local and gate runs."
+        },
+        {
+          "kind": "note",
+          "note": "Local pytest runs on this host fail to start with `-p no:rerunfailures` because pytest.ini carries --reruns options. Use `--reruns 0` to disable reruns instead."
+        },
+        {
+          "kind": "note",
+          "note": "Ladder grep run on the full diff (`git diff main...tests/ELITEA-4631-skill-run-history -- automation/pages automation/tests | grep -nE '^[+].*(get_by_*|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'`) returned 2 hits, both `page.locator(self.RUN_HISTORY_SELECTED_ROW)` in skill_detail_page.py. Both are compliant under rule (a): the constant is an UPPER_CASE class field whose … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Declarations are sound. Rungs match the AFS. The two non-testid rungs (`run_history_restore_chat_menuitem`, `run_history_menu_items`) carry `suggested_testid=`. TMS pair is present: `@pytest.mark.tms(\"ELITEA-4631\")` plus an `@allure.issue` link. The linked file name `ELITEA-4631_skill-run-history-and-restore-chat.md` exists in the TMS clone under skills/ and carries the same id. The spec has one `… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertions match the AFS. Step 3 asserts the Date/Version/Duration headers and one row. Step 4 asserts the date regex, `base` and the duration regex. Step 5 asserts selection and the transcript. Step 6 asserts that the Restore chat menuitem is present. Step 7 asserts the URL (via wait_for_url in click_restore_chat), the restored messages and a count of 2. Step 8 asserts the count grows to… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 5 (green/red/orange status icons) and the Status/User columns have no counterpart in the Skill history UI, per the analyst's live run. The AFS records this as out-of-scope or a clarification, which is acceptable under the reverse-masking guard. The lead should make sure a case-text clarification issue is filed or linked so the TMS case gets corrected. I did not see one referenced in the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-4631"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the breadcrumb check in Step 2 uses `page_contains_text(skill_name)`, which searches the whole `page.content()` with no wait. The name could appear elsewhere on the page, and it is not retried, so the check is weak. Scoping it to a breadcrumb handle or using `expect(...).to_contain_text` would be stronger. It does not block.",
+          "ref": "automation/tests/ui/skills/test_skill_run_history_restore_chat.py:57"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: in Step 7, `wait_for_any_message` waits for the first message, then `get_test_message_count()` is asserted to equal 2 immediately. If the transcript renders incrementally, this could race. The hardening gate should show whether that happens. A wait for count==2 would be safer.",
+          "ref": "automation/tests/ui/skills/test_skill_run_history_restore_chat.py:84"
+        }
+      ],
+      "afs": "test-specs/skills/l2_skill-run-history-display-and-restore-chat_ELITEA-4631.md",
+      "branch": "tests/ELITEA-4631-skill-run-history",
+      "pr": 2930
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
