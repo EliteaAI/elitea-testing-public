@@ -934,3 +934,5 @@ Playwright MCP chrome binary was missing in this sandbox).
   Haiku 5.5 rates: in $0.10/M, out $0.50/M. UI rounds to 5 dp, `< $0.00001` below.
 - Leaving the test panel (e.g. to Run History) while a response streams or just finished shows a "Switch" confirm dialog (role button "Switch").
 - `chat-clear-button` in test panel starts a new conversation -> new history row (row 0 = newest).
+
+**Added during ELITEA-4632 implementation:** `RunAnalyticsPage` (`pages/run_analytics_page.py`) declares KPI cards / Cost-by-User / Cost-by-Model cells as scoped xpath rungs (no testids on DEV). Header `run-analytics-run-info` first renders `Version: … · Model: …` (ellipsis) before data loads - use a web-first wait. Run-history row menu button testid repeats once per row plus once in `run-history-list-column`: scope it within the row. `chat-clear-button` starts a new conversation without a Switch dialog when the response is complete.

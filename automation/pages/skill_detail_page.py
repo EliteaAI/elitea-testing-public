@@ -177,6 +177,10 @@ class SkillDetailPage(SkillFormPage):
         testid="run-history-list-item",
         description="Run History rows (enumerated by count, never picked positionally)",
     )
+    chat_clear_button = LocatorDescriptor(
+        testid="chat-clear-button",
+        description="Test-panel 'clear chat' button — starts a new conversation (ELITEA-4632)",
+    )
     RUN_HISTORY_SELECTED_ROW = '[data-testid="run-history-list-item"][data-selected="true"]'
     run_history_row_menu_button = LocatorDescriptor(
         testid="run-history-menu-menu-button",
@@ -1442,6 +1446,12 @@ class SkillDetailPage(SkillFormPage):
         self.run_history_menu_item.click()
         self.page.wait_for_url(re.compile(r"/skills/all/\d+/history"), timeout=timeout)
         self.run_history_rows.first.wait_for(state="visible", timeout=timeout)
+
+    @action("Start a new test conversation (clear chat)")
+    def clear_test_chat(self, timeout: int = 10000):
+        """Click clear-chat in the test panel and wait for the transcript to empty."""
+        self.chat_clear_button.click()
+        expect(self._test_panel_messages()).to_have_count(0, timeout=timeout)
 
     def get_run_history_row_texts(self) -> list[str]:
         """Full text of every run-history row, in display order."""
