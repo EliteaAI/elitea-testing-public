@@ -57,7 +57,7 @@ class TestWebSearchDefaultModules:
                 expect(settings.web_search_description).to_be_visible()
                 expect(settings.web_search_description).to_have_text(_DESCRIPTION)
 
-            with allure.step("Step 3 — Tooltip text is present (in Default Modules the paragraph is the tooltip; no (i) icon)"):
+            with allure.step("Step 3 — Tooltip text is present (paragraph is the tooltip; no (i) icon)"):
                 assert settings.web_search_description.inner_text().strip(), "Web Search description is empty"
 
             with allure.step("Step 4 — Two separate Chats / Agents switches with column headers"):
