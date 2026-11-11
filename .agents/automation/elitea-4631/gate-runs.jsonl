@@ -1,0 +1,4 @@
+{"run":1,"spec":"tests/ui/skills/test_skill_run_history_restore_chat.py","result":"pass","seconds":33,"env":"APP_PREFIX=/app"}
+{"run":2,"spec":"tests/ui/skills/test_skill_run_history_restore_chat.py","result":"pass","seconds":32}
+{"run":3,"spec":"tests/ui/skills/test_skill_run_history_restore_chat.py","result":"pass","seconds":33}
+{"run":4,"spec":"tests/ui/skills/test_skill_run_history_restore_chat.py","result":"pass","seconds":36}
