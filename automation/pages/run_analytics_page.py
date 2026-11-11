@@ -27,20 +27,6 @@ class RunAnalyticsPage(BasePage):
 
     COSTS_API_FRAGMENT = "/usage/analytics_costs/"
 
-    # --- Run History row -> Analytics navigation -------------------------
-    run_history_rows = LocatorDescriptor(
-        testid="run-history-list-item", description="Run History rows (picked by display index in the page-object method)"
-    )
-    ROW_MENU_BUTTON = ScopedLocator(
-        testid="run-history-menu-menu-button", description="Hover-revealed three-dot button inside one row"
-    )
-    analytics_menuitem = LocatorDescriptor(
-        role="menuitem",
-        name="Analytics",
-        suggested_testid="run-history-analytics-menuitem",
-        description="'Analytics' item in the open run-row menu; unique by accessible name",
-    )
-
     # --- Page shell ------------------------------------------------------
     page_root = LocatorDescriptor(testid="run-analytics-page", description="Run Analytics page root")
     breadcrumb_items = LocatorDescriptor(testid="breadcrumb-item", description="Breadcrumb links (enumerated)")
@@ -65,14 +51,8 @@ class RunAnalyticsPage(BasePage):
         description="Data cells of the table titled {}; rungs 1-4 failed: cells are bare <p> without testid/role",
     )
 
-    @action("Open Analytics from the run-row menu")
-    def open_analytics_for_row(self, index: int, timeout: int = 15000) -> None:
-        """Hover run row *index* (display order), open its menu, click Analytics."""
-        # Enumerate all rows (display order is newest-first) and take the requested one.
-        row = self.run_history_rows.all()[index]
-        row.hover()
-        self.ROW_MENU_BUTTON.within(row).click()
-        self.analytics_menuitem.click()
+    @action("Wait for Run Analytics page to load")
+    def wait_until_loaded(self, timeout: int = 15000) -> None:
         self.page.wait_for_url(re.compile(r"/skills/all/\d+/history/analytics\?"), timeout=timeout)
         self.page_root.wait_for(state="visible", timeout=timeout)
 
@@ -84,7 +64,8 @@ class RunAnalyticsPage(BasePage):
         """Refresh until the empty placeholder is gone; return the final costs payload.
 
         Usage events are ingested asynchronously (~10-40 s after the run); each
-        iteration re-fetches via the refresh button and waits on the response.
+        iteration re-fetches via the refresh button and waits on the response
+        (the response round-trip is the pacing — no sleep).
         """
         deadline = time.time() + timeout_s
         while True:
@@ -97,8 +78,6 @@ class RunAnalyticsPage(BasePage):
                 return payload
             if time.time() > deadline:
                 raise TimeoutError("Costs data never appeared on the Run Analytics page")
-            # Polling interval for asynchronous usage ingestion (no UI event to wait on).
-            self.page.wait_for_timeout(4000)
 
     @classmethod
     def _is_costs_response(cls, r: Response) -> bool:

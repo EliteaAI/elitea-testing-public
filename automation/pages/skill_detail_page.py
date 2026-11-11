@@ -14,7 +14,7 @@ from playwright.sync_api import Page, expect
 from playwright.sync_api import Download
 
 from .skill_form_page import SkillFormPage
-from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor, ScopedLocator
 from components.mui import Dialog
 from utils.actions import action
 
@@ -182,6 +182,16 @@ class SkillDetailPage(SkillFormPage):
         description="Test-panel 'clear chat' button — starts a new conversation (ELITEA-4632)",
     )
     RUN_HISTORY_SELECTED_ROW = '[data-testid="run-history-list-item"][data-selected="true"]'
+    RUN_ROW_MENU_BUTTON = ScopedLocator(
+        testid="run-history-menu-menu-button",
+        description="Hover-revealed three-dot button inside one given run row",
+    )
+    run_history_analytics_menuitem = LocatorDescriptor(
+        role="menuitem",
+        name="Analytics",
+        suggested_testid="run-history-analytics-menuitem",
+        description="'Analytics' item in the open run-row menu; unique by accessible name",
+    )
     run_history_row_menu_button = LocatorDescriptor(
         testid="run-history-menu-menu-button",
         description="Hover-revealed three-dot button of a run-history row",
@@ -1452,6 +1462,17 @@ class SkillDetailPage(SkillFormPage):
         """Click clear-chat in the test panel and wait for the transcript to empty."""
         self.chat_clear_button.click()
         expect(self._test_panel_messages()).to_have_count(0, timeout=timeout)
+
+    @action("Open Analytics from the run-row menu")
+    def open_analytics_for_run(self, row_text: str, timeout: int = 15000):
+        """Hover the run row whose rendered text equals *row_text* (captured earlier via
+        ``get_run_history_row_texts``), open its menu and click Analytics."""
+        row = self.run_history_rows.filter(has_text=re.compile(rf"^{re.escape(row_text)}$"))
+        row.wait_for(state="visible", timeout=timeout)
+        row.hover()
+        self.RUN_ROW_MENU_BUTTON.within(row).click()
+        self.run_history_analytics_menuitem.click()
+        self.page.wait_for_url(re.compile(r"/skills/all/\d+/history/analytics\?"), timeout=timeout)
 
     def get_run_history_row_texts(self) -> list[str]:
         """Full text of every run-history row, in display order."""

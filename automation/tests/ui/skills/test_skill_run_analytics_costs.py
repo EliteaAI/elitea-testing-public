@@ -65,10 +65,13 @@ class TestSkillRunAnalytics:
             with allure.step("Step 2 — Open Run History and see both runs"):
                 detail.open_run_history()
                 assert re.search(rf"/skills/all/{skill_id}/history", page.url), page.url
-                assert len(analytics.run_history_rows.all()) == 2, "Expected exactly two runs"
+                row_texts = detail.get_run_history_row_texts()  # display order: newest (B) first
+                assert len(row_texts) == 2, "Expected exactly two runs"
+                assert row_texts[0] != row_texts[1], "Run rows must be distinguishable by their text"
 
             with allure.step("Step 3 — Row menu -> Analytics for run B (newest, row 0)"):
-                analytics.open_analytics_for_row(0)
+                detail.open_analytics_for_run(row_texts[0])
+                analytics.wait_until_loaded()
 
             with allure.step("Step 4 — Analytics page loads for the selected run"):
                 assert re.search(
@@ -137,8 +140,9 @@ class TestSkillRunAnalytics:
 
             with allure.step("Step 12 — Run A shows only its own cost data (no leakage)"):
                 page.go_back()
-                analytics.run_history_rows.first.wait_for(state="visible", timeout=15000)
-                analytics.open_analytics_for_row(1)
+                detail.run_history_rows.first.wait_for(state="visible", timeout=15000)
+                detail.open_analytics_for_run(row_texts[1])
+                analytics.wait_until_loaded()
                 payload_a = analytics.wait_for_costs_data()
                 assert payload_a["kpis"]["total_tokens"] != kpis["total_tokens"]
                 assert payload_a["kpis"]["total_cost"] != kpis["total_cost"]
