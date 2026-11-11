@@ -1600,3 +1600,11 @@ on DEV.** Three load-bearing findings this pass:
 - Panel: `SKILLS` group, `chat-participant-row-{skillId}`; catalog row has `chat-participant-catalog-tag` + version "v1.0"; own skill's version text is "base". Rows have `chat-participant-remove-button`.
 - Catalog on DEV has `code-reviewer` (1-31), `bug-report-generator` (1-33). Own skills named in the case do not exist - create via `skill_api`.
 - Blank chat is not persisted until first send (no conversation cleanup for add-participant-only flows).
+
+
+## Tilde `~` skill mention in a chat (ELITEA-4629, 2026-11-11)
+
+- `~` popper (`skill-mention-list`) in a chat with NO agent lists ONLY the conversation's skill PARTICIPANTS, never all project skills, and EXCLUDES the active participant (last-added skill = active, chip `chat-switch-participant-button`). 0 skills or 1 skill -> `skill-mention-list-empty` "No skills in this chat". Need 2 skill participants; the first-added is mentionable. Source: `useChatSkillMention.hooks.js` `toConversationSkillItems`.
+- Items `skill-mention-item-{name}`; filtering is live on typed query; groups (`skill-mention-group-*`) only appear when agent-attached + chat skills both present. Selecting inserts `~name ` (trailing space) and unmounts the popper. Use `press_sequentially` (fill() skips trigger).
+- Sending persists the conversation (URL `/app/chat/<id>?name=...`) -> needs cleanup. Reply shows tool chips `Skill: <name>` for the mentioned AND active skills; both skills' instructions applied.
+- Skill create API: POST `/api/v2/elitea_core/skills/prompt_lib/575` `{name,description,versions:[{name:"base",instructions}]}`.
