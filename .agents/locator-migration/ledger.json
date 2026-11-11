@@ -859,6 +859,18 @@
       "updated": "2026-10-20",
       "history": []
     },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.COLUMN_HEADER": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 66,
+      "kind": "css",
+      "selector": ":text-is(\"{}\")",
+      "suggested_testid": "settings-default-modules-column-header-{}",
+      "description": "Default Modules column header text ('Chats' / 'Agents')",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.MIDTURN_INPUT_SWITCH": {
       "file": "pages/project_general_settings_page.py",
       "line": 32,
@@ -866,6 +878,42 @@
       "selector": "div:has(> div > :text-is(\"Mid-turn input\")) input[role=\"switch\"]",
       "suggested_testid": "settings-midturn-input-switch",
       "description": "Mid-turn input card's MUI Switch input, scoped to the card whose title is 'Mid-turn input'",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.WEB_SEARCH_MODULE_DESCRIPTION": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 60,
+      "kind": "css",
+      "selector": ":text-is(\"Allow the LLM to search the Internet, read web pages, and cite its sources.\")",
+      "suggested_testid": "settings-default-modules-web-search-description",
+      "description": "Web Search row description paragraph (the row's only tooltip text in Default Modules)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.WEB_SEARCH_MODULE_ROW": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 45,
+      "kind": "css",
+      "selector": "div:has(> div > :text-is(\"Web Search\"))",
+      "suggested_testid": "settings-default-modules-web-search-row",
+      "description": "Web Search row of Default Modules: the box holding title+description and the two switch cells",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.WEB_SEARCH_MODULE_SWITCHES": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 51,
+      "kind": "css",
+      "selector": "input[role=\"switch\"]",
+      "suggested_testid": "settings-default-modules-web-search-switch",
+      "description": "The Web Search row's switch inputs, enumerated: DOM order is the column order (first = Chats, second = Agents); neither carries a label/testid on DEV",
       "state": "raw",
       "added": "2026-11-11",
       "updated": "2026-11-11",
@@ -1114,21 +1162,21 @@
   },
   "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1388,
-    "declared_testid": 1297,
-    "declared_non_testid": 91,
-    "non_testid_with_hint": 70,
+    "declared_total": 1393,
+    "declared_testid": 1298,
+    "declared_non_testid": 95,
+    "non_testid_with_hint": 74,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 15,
+      "css": 19,
       "fallback": 20,
       "label": 1,
       "locator": 1,
       "role": 30,
-      "testid": 1297,
+      "testid": 1298,
       "xpath": 24
     },
-    "locator_debt": 0.0656,
+    "locator_debt": 0.0682,
     "unmanaged_handles": 312
   }
 }
