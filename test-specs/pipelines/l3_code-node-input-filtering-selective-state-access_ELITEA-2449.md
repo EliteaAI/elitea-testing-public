@@ -389,3 +389,13 @@ remains unexplained or unautomatable.
   filtering (elitea_state scoping)" entry documenting the confirmed platform
   contract and the `get_code_node_input_value()` multi-select display quirk,
   so no future analyst/implementer rediscovers either by hand.
+
+## Adjustment 2026-11-11 (product change EliteaUI#1406 / elitea_issues#3513)
+
+Run Details timeline label for a Code node changed from the Python-sandbox
+name `pyodide` to the node's own display name. Expected result for the
+Code-node timeline step is now: label ends with `CODE1` (this test's Code node
+id). Every earlier mention of `pyodide` as the expected label in this AFS
+(incl. the #1385 amendment) is superseded. Assertion strength is unchanged:
+a specific name is asserted, not a generic substring. Not yet re-confirmed live
+on DEV at adjustment time (DEV pipeline detail returned 404 during the session).

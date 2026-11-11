@@ -40,9 +40,9 @@ clarifications):
     running this test): the AFS expected the Code node's Run Details timeline
     step to render `"Code1"` (the space-stripped YAML id, per the
     ELITEA-2450/2452 LLM/Printer convention). Confirmed live: it instead
-    renders `"pyodide"` (the Python-sandbox executor's name) -- the
-    space-stripped-id convention does not generalize to Code nodes. This
-    test asserts the live-correct `"pyodide"` label.
+    rendered `"pyodide"` (the Python-sandbox executor's name). Since the
+    product change EliteaUI#1406 / elitea_issues#3513 the label is the Code
+    node's own name again, and this test asserts it.
 
 Known-defect routing (IMPLEMENTER AMENDMENT, found while running this test):
   - `EliteaAI/elitea-testing-public#1025` (already-filed, CONFIRMED to also
@@ -195,12 +195,11 @@ def test_code_node_reads_elitea_state_variable(
         # Index 1 -- the SECOND timeline entry, Code 1 (index 0 is LLM1).
         pipeline_page.select_run_details_timeline_step(1, timeout=UI_ELEMENT_TIMEOUT)
         timeline_text = pipeline_page.get_run_details_selected_timeline_step_id()
-        # CONFIRMED LIVE (this session): a Code node's timeline label shows the
-        # Python-sandbox executor's name ("pyodide"), NOT the space-stripped
-        # YAML id ("Code1") that the LLM/Printer convention (ELITEA-2450/2452)
-        # would predict -- implementer amendment, EliteaAI/elitea-testing-public#1385.
-        assert "pyodide" in timeline_text.lower(), (
-            f"Timeline label should show the pyodide sandbox name after selecting step 1, "
+        # Code node timeline label shows the node's own display name ("Code1");
+        # product change EliteaUI#1406 / elitea_issues#3513 (formerly "pyodide",
+        # see EliteaAI/elitea-testing-public#1385).
+        assert timeline_text.strip().endswith("Code1"), (
+            f"Timeline label should show the Code node's own name 'Code1' after selecting step 1, "
             f"got {timeline_text!r}"
         )
 
