@@ -952,3 +952,11 @@ Full: `test-specs/skills/l1_run-catalog-skill-from-catalog-and-message-exchange_
 - Catalog Run (ELITEA-4633) is a different flow: opens `/chat/{id}` with participants panel.
 - Corner banner (`platform-banner-close`) covers the test-panel send button; a click lands on it and does not send. Close it first.
 - First load of `/skills/all` on DEV can exceed 30s before `entity-card` renders.
+
+## Skill editor "Test Skill" button -> test panel execution chips (ELITEA-4635, 2026-11-11, DEV)
+
+- Toolbar: `edit-skill-with-ai-button` + `skill-test-button` ("Test Skill"); panel `skill-test-panel` hidden until click. After click, a 2nd click on the button timed out (covered) - don't assert toggle.
+- Panel input placeholder here = "Type your message..." (empty in Run-from-list flow, 4634). Reply ~7s.
+- AI message chips (all testids): `chat-answer-thought-accordion` ("Thought for 2 secs"), `chat-answer-tool-chip` ("Skill: <name>"), `chat-answer-model-chip`, `chat-answer-chip-duration`. Instruction "UPPERCASE" + "run" -> reply `RUN`.
+- Env gotcha: without `APP_PREFIX=/app` (no `.env.test` in sandbox) pages 404 at `https://dev.elitea.ai/skills/all`. Direct `SkillDetailPage.navigate` before visiting the list can fail on `skill-information-section`; visit list first.
+- Full details: `test-specs/skills/l1_test-skill-button-opens-panel-and-executes-skill_ELITEA-4635.md`.
