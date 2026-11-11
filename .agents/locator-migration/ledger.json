@@ -1,6 +1,18 @@
 {
   "schema": 1,
   "entries": {
+    "pages/agent_hub_page.py::AgentHubPage.skill_run_tooltip": {
+      "file": "pages/agent_hub_page.py",
+      "line": 100,
+      "kind": "role",
+      "selector": "tooltip[name='Run']",
+      "suggested_testid": "catalog-skill-run-tooltip",
+      "description": "MUI tooltip 'Run' shown on hovering a Catalog skill card's run button (ELITEA-4633).",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/artifacts_page.py::ArtifactsPage.EDIT_EXCEPTION_PERMISSION_SELECT": {
       "file": "pages/artifacts_page.py",
       "line": 2770,
@@ -835,6 +847,114 @@
       "updated": "2026-10-20",
       "history": []
     },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.MIDTURN_INPUT_SWITCH": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 32,
+      "kind": "css",
+      "selector": "div:has(> div > :text-is(\"Mid-turn input\")) input[role=\"switch\"]",
+      "suggested_testid": "settings-midturn-input-switch",
+      "description": "Mid-turn input card's MUI Switch input, scoped to the card whose title is 'Mid-turn input'",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/run_analytics_page.py::RunAnalyticsPage.KPI_CARD_VALUE": {
+      "file": "pages/run_analytics_page.py",
+      "line": 42,
+      "kind": "xpath",
+      "selector": ".//span[normalize-space()='{}' and not(@role)]/../following-sibling::div/span",
+      "suggested_testid": "run-analytics-costs-kpi-value-{}",
+      "description": "Value of the KPI card whose label span reads {}; table headers (role=button) excluded. Rungs 1-4 failed: cards are MuiBox with a plain label span, no testid/role/label",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/run_analytics_page.py::RunAnalyticsPage.TABLE_CELLS": {
+      "file": "pages/run_analytics_page.py",
+      "line": 48,
+      "kind": "xpath",
+      "selector": ".//span[normalize-space()='{}']/../following-sibling::div//p",
+      "suggested_testid": "run-analytics-costs-table-cell-{}",
+      "description": "Data cells of the table titled {}; rungs 1-4 failed: cells are bare <p> without testid/role",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.TEST_PANEL_ALERT": {
+      "file": "pages/skill_detail_page.py",
+      "line": 65,
+      "kind": "role",
+      "selector": "alert",
+      "suggested_testid": "skill-test-panel-alert",
+      "description": "Any ARIA alert rendered inside the SkillTestPanel (error indicator); scoped to the panel",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.run_history_analytics_menuitem": {
+      "file": "pages/skill_detail_page.py",
+      "line": 200,
+      "kind": "role",
+      "selector": "menuitem[name='Analytics']",
+      "suggested_testid": "run-history-analytics-menuitem",
+      "description": "'Analytics' item in the open run-row menu; unique by accessible name",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.run_history_menu_items": {
+      "file": "pages/skill_detail_page.py",
+      "line": 216,
+      "kind": "role",
+      "selector": "menuitem",
+      "suggested_testid": "run-history-menu-item-{}",
+      "description": "All items of the open run-row menu (enumerated, never picked)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.run_history_restore_chat_menuitem": {
+      "file": "pages/skill_detail_page.py",
+      "line": 210,
+      "kind": "role",
+      "selector": "menuitem[name='Restore chat']",
+      "suggested_testid": "run-history-restore-chat-menuitem",
+      "description": "'Restore chat' item in the open run-row menu; unique by accessible name",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skills_list_page.py::SkillsListPage.ROW_ACTION_BUTTON": {
+      "file": "pages/skills_list_page.py",
+      "line": 237,
+      "kind": "css",
+      "selector": "button[id=\"{}-skill-action\"]",
+      "suggested_testid": "skill-row-action-menu-button-{}",
+      "description": "Table-row three-dot menu button (id template, aria-label 'more'); no testid on DEV",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skills_list_page.py::SkillsListPage.ROW_RUN_MENU_ITEM": {
+      "file": "pages/skills_list_page.py",
+      "line": 245,
+      "kind": "role",
+      "selector": "menuitem[name='Run']",
+      "suggested_testid": "skill-row-run-menu-item",
+      "description": "'Run' item of the open row menu (testid skill-run-menu-item is non-unique page-wide)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/support_assistant_page.py::SupportAssistantPage.attach_button": {
       "file": "pages/support_assistant_page.py",
       "line": 94,
@@ -982,21 +1102,21 @@
   },
   "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1355,
-    "declared_testid": 1275,
-    "declared_non_testid": 80,
-    "non_testid_with_hint": 59,
+    "declared_total": 1385,
+    "declared_testid": 1295,
+    "declared_non_testid": 90,
+    "non_testid_with_hint": 69,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 12,
+      "css": 14,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 24,
-      "testid": 1275,
-      "xpath": 22
+      "role": 30,
+      "testid": 1295,
+      "xpath": 24
     },
-    "locator_debt": 0.059,
+    "locator_debt": 0.065,
     "unmanaged_handles": 312
   }
 }

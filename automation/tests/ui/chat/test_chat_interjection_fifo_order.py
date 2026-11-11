@@ -6,7 +6,10 @@ the queue count label reflects 3 pending, the full drain processes all three
 in submission order, and each gets exactly one agent response — no
 duplicate, no skipped, no reordered entry.
 
-Feature-gated: same `midturn_injection_enabled` fixture as ELITEA-2875.
+Feature-gated: same `midturn_injection_enabled` fixture as ELITEA-2875 (API
+guarantee + restore), AND an explicit UI precondition (Step 1): the
+Settings → General → "Mid-turn input" toggle must be enabled (turned on via the
+UI if not) so the precondition is visible in the report.
 
 Markers:
     - ui: requires browser
@@ -24,6 +27,7 @@ import allure
 import pytest
 
 from pages.chat_page import ChatPage
+from pages.project_general_settings_page import ProjectGeneralSettingsPage
 
 logger = logging.getLogger(__name__)
 
@@ -69,14 +73,22 @@ class TestInterjectionFifoMessageOrderPreservation:
     ):
         chat = ChatPage(page)
 
-        with allure.step("Step 1 — Navigate to a fresh conversation and send the long-running prompt"):
+        with allure.step("Step 1 — Precondition: Settings → General → Mid-turn input toggle is enabled"):
+            settings_page = ProjectGeneralSettingsPage(page)
+            settings_page.open()
+            settings_page.enable_midturn_input()
+            assert settings_page.is_midturn_input_enabled(), (
+                "Precondition failed: Settings → General → 'Mid-turn input' toggle is not enabled"
+            )
+
+        with allure.step("Step 2 — Navigate to a fresh conversation and send the long-running prompt"):
             chat.navigate_to_chat(conversation_id=conversation_id)
             initial_count = chat.get_message_count()
             chat.send_message(_LONG_RUNNING_PROMPT)
             chat.wait_for_interjectable(timeout=INTERJECTABLE_WINDOW_TIMEOUT)
 
         with allure.step(
-            "Step 2 — Queue Message A, B, C in rapid succession; after each queue action "
+            "Step 3 — Queue Message A, B, C in rapid succession; after each queue action "
             "the newest item appends to the END of the existing items, in submission order"
         ):
             chat.queue_interjection(_MESSAGE_A)
@@ -94,21 +106,21 @@ class TestInterjectionFifoMessageOrderPreservation:
                 "Queue should hold A, B, C in submission order after the third queue action"
             )
 
-        with allure.step("Step 3 — Verify the queue count label shows 3"):
+        with allure.step("Step 4 — Verify the queue count label shows 3"):
             label_text = chat.get_interjection_queue_label_text()
             assert label_text == _QUEUE_LABEL_THREE_PENDING, (
                 f"Expected queue label '{_QUEUE_LABEL_THREE_PENDING}' (en dash), got {label_text!r}"
             )
 
         with allure.step(
-            "Step 4 — Wait for all three messages to fully drain (queue area gone AND "
+            "Step 5 — Wait for all three messages to fully drain (queue area gone AND "
             "the agent's turn fully settled, no interjection-composer present)"
         ):
             chat.wait_for_interjection_drain(timeout=DRAIN_TIMEOUT)
             chat.wait_for_message_content_stable(timeout=STABLE_CONTENT_TIMEOUT)
 
         with allure.step(
-            "Step 5 — Assert processing order matches send order by reading the full "
+            "Step 6 — Assert processing order matches send order by reading the full "
             "message timeline (user-authored entries only)"
         ):
             user_texts = chat.get_user_message_texts()
@@ -116,7 +128,7 @@ class TestInterjectionFifoMessageOrderPreservation:
                 f"User-authored timeline order must be [prompt, A, B, C], got {user_texts}"
             )
 
-        with allure.step("Step 6 — Verify each message has exactly one response (8 total timeline entries)"):
+        with allure.step("Step 7 — Verify each message has exactly one response (8 total timeline entries)"):
             total_entries = chat.get_message_count() - initial_count
             assert total_entries == 8, (
                 f"Expected exactly 8 timeline entries (prompt, response, A, response, B, response, "
