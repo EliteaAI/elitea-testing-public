@@ -29,11 +29,11 @@ capture starts right after the step-2 baseline is established so the initial
 canvas navigation's own (expected) fetch doesn't false-positive the check.
 
 ELITEA-2057 (second test below) covers the case's remaining, genuinely
-unasserted control-panel buttons: control-panel visibility (all 6 buttons),
-Zoom Out (the pre-existing ``zoom_out_canvas()`` method was never called by
-any test before this), Toggle Interactivity, Toggle cards size, and
-Auto-arrange — all confirmed live to be deterministic round-trips, same
-pure-client-side network/console profile as Zoom In/Pan/Fit-View.
+unasserted control-panel buttons: control-panel visibility (all 6 buttons:
+Zoom in, Zoom out, Fit view, Lock/Unlock, Arrange, Minimap), Zoom Out, Lock/Unlock,
+the Arrange menu and the Minimap toggle — deterministic round-trips, same
+pure-client-side network/console profile as Zoom In/Pan/Fit-View. (Pipelines
+Editor 2.0 removed "Toggle cards size" — its step is gone; card #2916.)
 """
 
 import allure
@@ -197,12 +197,11 @@ AUTO_ARRANGE_DRAG_DY = -120
 )
 def test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange(page, pipeline_llm_code_end):
     """Extends the ELITEA-2019 coverage above with the case's remaining
-    control-panel buttons: visibility of all 6 buttons, Zoom Out (the
-    pre-existing `zoom_out_canvas()` method was never exercised by any
-    test before this), Toggle Interactivity (lock/unlock node dragging),
-    Toggle cards size (compact/expanded node height, exact round trip), and
-    Auto-arrange (deterministic layout — a dragged-away node returns to its
-    exact original position)."""
+    control-panel buttons: visibility of all 6 buttons (Zoom in, Zoom out,
+    Fit view, Lock/Unlock, Arrange, Minimap), Zoom Out, Lock/Unlock (node
+    dragging locks and unlocks), the Arrange menu (deterministic layout — a
+    dragged-away node returns to its exact arranged position) and the
+    Minimap show/hide toggle."""
     with allure.step("Step 1 — Navigate to the pipeline's canvas"):
         pipeline_page = _navigate_to_canvas(page, pipeline_llm_code_end)
         node_ids = pipeline_page.get_node_ids()
@@ -223,8 +222,8 @@ def test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange
 
     with allure.step("Step 2 — Verify the control panel is visible with all 6 buttons"):
         assert pipeline_page.is_control_panel_fully_visible(timeout=UI_ELEMENT_TIMEOUT), (
-            "All 6 canvas control-panel buttons (Zoom In, Zoom Out, Fit View, "
-            "Toggle Interactivity, Toggle cards size, Auto-arrange) should be visible"
+            "All 6 canvas control-panel buttons (Zoom in, Zoom out, Fit view, "
+            "Lock/Unlock, Arrange, Minimap) should be visible"
         )
         assert not console_errors, f"Control panel should be visible with no console errors: {list(console_errors)}"
 
@@ -253,26 +252,42 @@ def test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange
             f"pipeline network requests, got: {list(viewport_op_requests)}"
         )
 
-    with allure.step("Step 6 — Toggle Interactivity off then on, verify node dragging locks and unlocks"):
-        pre_toggle_box = pipeline_page.get_node_bounding_box(probe_node_id)
+    with allure.step("Step 6 — Click Lock canvas then Unlock canvas, verify node dragging locks and unlocks"):
+        # Positions are compared in CANVAS space (screen bbox minus viewport translate):
+        # on a locked canvas a drag that starts on a node no longer drags the node but
+        # pans the viewport (pan/zoom still work), which moves the node's SCREEN
+        # position without moving the node itself.
+        pre_toggle_pos = pipeline_page.get_node_canvas_position(probe_node_id)
+        pre_toggle_transform = pipeline_page.get_canvas_viewport_transform()
 
-        pipeline_page.toggle_canvas_interactivity(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.toggle_canvas_lock(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_canvas_locked(), "Lock canvas should leave the Lock button pressed (canvas locked)"
         pipeline_page.move_node(probe_node_id, INTERACTIVITY_DRAG_DX, INTERACTIVITY_DRAG_DY)
-        locked_box = pipeline_page.get_node_bounding_box(probe_node_id)
-        assert locked_box["x"] == pytest.approx(pre_toggle_box["x"], abs=1.0), (
-            f"Node {probe_node_id!r} should NOT move while interactivity is off "
-            f"(x): {pre_toggle_box['x']:.1f} -> {locked_box['x']:.1f}"
+        locked_pos = pipeline_page.get_node_canvas_position(probe_node_id)
+        locked_transform = pipeline_page.get_canvas_viewport_transform()
+        assert locked_pos["x"] == pytest.approx(pre_toggle_pos["x"], abs=1.0), (
+            f"Node {probe_node_id!r} should NOT move while the canvas is locked "
+            f"(x): {pre_toggle_pos['x']:.1f} -> {locked_pos['x']:.1f}"
         )
-        assert locked_box["y"] == pytest.approx(pre_toggle_box["y"], abs=1.0), (
-            f"Node {probe_node_id!r} should NOT move while interactivity is off "
-            f"(y): {pre_toggle_box['y']:.1f} -> {locked_box['y']:.1f}"
+        assert locked_pos["y"] == pytest.approx(pre_toggle_pos["y"], abs=1.0), (
+            f"Node {probe_node_id!r} should NOT move while the canvas is locked "
+            f"(y): {pre_toggle_pos['y']:.1f} -> {locked_pos['y']:.1f}"
+        )
+        # Pan still works while locked: the same drag moved the viewport instead.
+        assert locked_transform["tx"] - pre_toggle_transform["tx"] == pytest.approx(INTERACTIVITY_DRAG_DX, abs=2.0), (
+            "Panning should still work on a locked canvas (viewport translate-x follows the drag)"
+        )
+        assert locked_transform["ty"] - pre_toggle_transform["ty"] == pytest.approx(INTERACTIVITY_DRAG_DY, abs=2.0), (
+            "Panning should still work on a locked canvas (viewport translate-y follows the drag)"
         )
 
-        pipeline_page.toggle_canvas_interactivity(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.toggle_canvas_lock(timeout=UI_ELEMENT_TIMEOUT)
+        assert not pipeline_page.is_canvas_locked(), "Unlock canvas should leave the Lock button unpressed"
+        pre_unlocked_box = pipeline_page.get_node_bounding_box(probe_node_id)
         pipeline_page.move_node(probe_node_id, INTERACTIVITY_DRAG_DX, INTERACTIVITY_DRAG_DY)
         unlocked_box = pipeline_page.get_node_bounding_box(probe_node_id)
-        dx = unlocked_box["x"] - locked_box["x"]
-        dy = unlocked_box["y"] - locked_box["y"]
+        dx = unlocked_box["x"] - pre_unlocked_box["x"]
+        dy = unlocked_box["y"] - pre_unlocked_box["y"]
         # abs=6.0 (not the pan_canvas/get_canvas_viewport_transform tests' abs=1.0):
         # confirmed live a NODE drag (unlike a canvas-PANE drag) absorbs a few px
         # into ReactFlow's own node-drag-activation threshold before it starts
@@ -282,89 +297,68 @@ def test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange
         # node (which would show ~0px, not ~54-60px).
         assert dx == pytest.approx(INTERACTIVITY_DRAG_DX, abs=6.0), (
             f"Node {probe_node_id!r} SHOULD move by (approximately) the exact drag delta once "
-            f"interactivity is re-enabled (x-delta), got {dx:.1f}px"
+            f"the canvas is unlocked (x-delta), got {dx:.1f}px"
         )
         assert dy == pytest.approx(INTERACTIVITY_DRAG_DY, abs=6.0), (
             f"Node {probe_node_id!r} SHOULD move by (approximately) the exact drag delta once "
-            f"interactivity is re-enabled (y-delta), got {dy:.1f}px"
+            f"the canvas is unlocked (y-delta), got {dy:.1f}px"
         )
-        assert not console_errors, f"Toggle Interactivity should not introduce console errors: {list(console_errors)}"
+        assert not console_errors, f"Lock/Unlock should not introduce console errors: {list(console_errors)}"
         assert not viewport_op_requests, (
-            "Toggle Interactivity is a pure client-side operation — expected zero "
+            "Lock/Unlock is a pure client-side operation — expected zero "
             f"pipeline network requests, got: {list(viewport_op_requests)}"
         )
 
-    with allure.step("Step 7 — Toggle cards size, verify node height shrinks then restores exactly"):
-        # Toggle cards size internally RE-LAYOUTS node positions AND re-fits the
-        # view (FlowEditor's onExpandAll -> onReLayout -> fitView) — it does not
-        # merely resize cards in place. A plain Fit View (no re-layout) on top of
-        # step 6's manually-dragged position is therefore NOT the same basis the
-        # post-toggle measurements land on (confirmed during implementation: a
-        # plain-Fit-View baseline produced a false mismatch, 232.9px vs 251.2px,
-        # then 304.0px vs 251.2px on a second attempt — the manually-dragged
-        # position doesn't match the re-layout-computed one). Use Auto-arrange
-        # itself to establish the baseline so it's on the SAME "re-layout +
-        # fit-view" basis every subsequent toggle/re-arrange in this test lands
-        # on — this is the reset-to-known-state technique, not an assertion
-        # about Auto-arrange (that's step 8's job).
-        pipeline_page.auto_arrange_canvas(timeout=UI_ELEMENT_TIMEOUT)
-        # Precondition (class D): cards render MINI whenever viewport zoom < 0.6
-        # (FlowEditor MINI_CARD_ZOOM), and Auto-arrange's fit-view can land below
-        # that on a small viewport — zoom in until cards are really expanded
-        # before measuring. Heights are compared in unscaled (layout) px
-        # (on-screen height / viewport scale) because every toggle re-fits the
-        # view, so raw px at different scales are not comparable.
-        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
-        expanded_height = pipeline_page.get_node_layout_height(probe_node_id)
-
-        pipeline_page.toggle_canvas_cards_size(timeout=UI_ELEMENT_TIMEOUT)
-        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
-        compact_height = pipeline_page.get_node_layout_height(probe_node_id)
-        assert compact_height < expanded_height / 2, (
-            f"Node {probe_node_id!r} should shrink to a compact card height: "
-            f"{expanded_height:.1f}px -> {compact_height:.1f}px (unscaled)"
-        )
-
-        pipeline_page.toggle_canvas_cards_size(timeout=UI_ELEMENT_TIMEOUT)
-        pipeline_page.zoom_in_until_full_cards(timeout=UI_ELEMENT_TIMEOUT)
-        restored_height = pipeline_page.get_node_layout_height(probe_node_id)
-        assert restored_height == pytest.approx(expanded_height, abs=1.0), (
-            f"Node {probe_node_id!r} should restore its exact expanded height: "
-            f"{expanded_height:.1f}px -> {restored_height:.1f}px (unscaled)"
-        )
-        assert not console_errors, f"Toggle cards size should not introduce console errors: {list(console_errors)}"
-        assert not viewport_op_requests, (
-            "Toggle cards size is a pure client-side operation — expected zero "
-            f"pipeline network requests, got: {list(viewport_op_requests)}"
-        )
-
-    with allure.step("Step 8 — Drag a node away, click Auto-arrange, verify it returns to the exact arranged position"):
-        # Same fit-to-view-basis reasoning as step 7 — Auto-arrange also calls
-        # onReLayout -> fitView internally, so the baseline must be captured
-        # right after a Fit View, not after a manual drag/zoom left over from
-        # an earlier step.
-        pipeline_page.fit_canvas_view(timeout=UI_ELEMENT_TIMEOUT)
+    with allure.step(
+        "Step 7 — Open Arrange, pick an orientation, verify a dragged node returns to its exact arranged position"
+    ):
+        # Arrange is a menu ("Arrange top to bottom" / "Arrange left to right").
+        # DEV's default (data-current) orientation is read live and then used for
+        # BOTH the baseline and the restore, so the round trip is same-orientation.
+        # Arrange re-fits the view internally, so the baseline is captured right
+        # after an Arrange (not after a manual drag/zoom left over from step 6).
+        orientation = pipeline_page.get_current_arrange_orientation(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.arrange_canvas(orientation, timeout=UI_ELEMENT_TIMEOUT)
         arranged_box = pipeline_page.get_node_bounding_box(probe_node_id)
 
         pipeline_page.move_node(probe_node_id, AUTO_ARRANGE_DRAG_DX, AUTO_ARRANGE_DRAG_DY)
         dragged_box = pipeline_page.get_node_bounding_box(probe_node_id)
         assert dragged_box["x"] != pytest.approx(arranged_box["x"], abs=1.0) or dragged_box["y"] != pytest.approx(
             arranged_box["y"], abs=1.0
-        ), f"Sanity check: node {probe_node_id!r} should actually have moved before Auto-arrange is clicked"
+        ), f"Sanity check: node {probe_node_id!r} should actually have moved before Arrange is picked"
 
-        pipeline_page.auto_arrange_canvas(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.arrange_canvas(orientation, timeout=UI_ELEMENT_TIMEOUT)
         rearranged_box = pipeline_page.get_node_bounding_box(probe_node_id)
         assert rearranged_box["x"] == pytest.approx(arranged_box["x"], abs=1.0), (
-            f"Auto-arrange should be deterministic — node {probe_node_id!r} x-position should return to the "
+            f"Arrange should be deterministic — node {probe_node_id!r} x-position should return to the "
             f"original {arranged_box['x']:.1f}, got {rearranged_box['x']:.1f}"
         )
         assert rearranged_box["y"] == pytest.approx(arranged_box["y"], abs=1.0), (
-            f"Auto-arrange should be deterministic — node {probe_node_id!r} y-position should return to the "
+            f"Arrange should be deterministic — node {probe_node_id!r} y-position should return to the "
             f"original {arranged_box['y']:.1f}, got {rearranged_box['y']:.1f}"
         )
-        assert not console_errors, f"Auto-arrange should not introduce console errors: {list(console_errors)}"
+        assert not console_errors, f"Arrange should not introduce console errors: {list(console_errors)}"
         assert not viewport_op_requests, (
-            "Auto-arrange is a pure client-side operation — expected zero "
+            "Arrange is a pure client-side operation — expected zero "
+            f"pipeline network requests, got: {list(viewport_op_requests)}"
+        )
+
+    with allure.step("Step 8 — Click Show minimap then Hide minimap, verify the minimap appears and disappears"):
+        assert not pipeline_page.is_canvas_minimap_visible(timeout=1000), (
+            "Minimap should be hidden by default on a fresh canvas"
+        )
+        pipeline_page.toggle_canvas_minimap(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_canvas_minimap_visible(timeout=UI_ELEMENT_TIMEOUT), (
+            "Show minimap should render the minimap panel"
+        )
+        pipeline_page.toggle_canvas_minimap(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.canvas_minimap.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+        assert not pipeline_page.is_canvas_minimap_visible(timeout=1000), (
+            "Hide minimap should remove the minimap panel"
+        )
+        assert not console_errors, f"Minimap toggle should not introduce console errors: {list(console_errors)}"
+        assert not viewport_op_requests, (
+            "Minimap toggle is a pure client-side operation — expected zero "
             f"pipeline network requests, got: {list(viewport_op_requests)}"
         )
         console_errors.stop()
