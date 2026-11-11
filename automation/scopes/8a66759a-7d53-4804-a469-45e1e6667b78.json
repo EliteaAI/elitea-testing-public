@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "8a66759a-7d53-4804-a469-45e1e6667b78",
+  "intent": "automation",
+  "batch": "skills-run-own-skill-4634",
+  "cases": [
+    "ELITEA-4634"
+  ],
+  "declaredAt": "2026-11-11T16:18:18.512Z",
+  "updatedAt": "2026-11-11T17:05:41.687Z",
+  "outcomes": {
+    "ELITEA-4634": {
+      "outcome": "automated",
+      "at": "2026-11-11T17:05:27.821Z"
+    }
+  },
+  "closedAt": "2026-11-11T17:05:41.687Z"
+}
