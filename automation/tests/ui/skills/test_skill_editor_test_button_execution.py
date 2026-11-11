@@ -4,7 +4,8 @@ and verify the skill execution chips and response.
 AFS: test-specs/skills/l1_test-skill-button-opens-panel-and-executes-skill_ELITEA-4635.md
 
 Case-text drift (live product is the contract): the skill is created per run via API (not a pre-existing
-"lmt-answer-format"); the send button only renders once text is typed (voice button shows before); there is no explicit success icon, so success is asserted as a non-empty reply with no
+"lmt-answer-format"); the send button only renders once text is typed (voice button shows before);
+there is no explicit success icon, so success is asserted as a non-empty reply with no
 alert/error text in the panel.
 """
 
@@ -81,7 +82,9 @@ class TestSkillEditorTestButtonExecution:
                 expect(chat.message_input).to_have_attribute("placeholder", "Type your message...")
                 assert detail.get_test_message_count() == 0, "Fresh test panel must have no messages"
 
-            with allure.step("Step 4 — Type the test message; it appears in the input and the send button is offered"):
+            with allure.step(
+                "Step 4 — Type the test message; it appears in the input and the send button is offered"
+            ):
                 detail.dismiss_announcement_dialog_if_present()
                 chat.message_input.fill(TEST_MESSAGE)
                 expect(chat.message_input).to_have_value(TEST_MESSAGE)
