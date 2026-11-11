@@ -3814,6 +3814,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.skills.test_skill_run_history_restore_chat.TestSkillRunHistory.test_skill_run_history_display_and_restore_chat",
+      "markers": [
+        "p2",
+        "regression",
+        "skills",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4631"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-4631_skill-run-history-and-restore-chat.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.skills.test_skill_search.TestSkillSearch.test_search_skills_by_name",
       "markers": [
         "p2",
