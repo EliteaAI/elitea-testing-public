@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "b099a1f8-906a-4d4e-a8db-a09eea418682",
+  "intent": "automation",
+  "batch": "adjust-2876-midturn-precondition",
+  "cases": [
+    "ELITEA-2876"
+  ],
+  "declaredAt": "2026-11-11T18:25:58.976Z",
+  "updatedAt": "2026-11-11T18:44:19.112Z",
+  "outcomes": {
+    "ELITEA-2876": {
+      "outcome": "automated",
+      "at": "2026-11-11T18:44:19.072Z"
+    }
+  },
+  "closedAt": "2026-11-11T18:44:19.112Z"
+}
