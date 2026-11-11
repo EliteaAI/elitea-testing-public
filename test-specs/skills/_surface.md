@@ -894,3 +894,30 @@ extension of `AgentDetailPage`'s):
   `/{version_id}` to the URL) — not yet added as of this run; the DOM-level
   `skill-form-icon-img` src read is sufficient and was this run's primary
   evidence.
+
+## Skill Run History (`/skills/all/{id}/history`) + Restore chat — ELITEA-4631 (DEV, 2026-11-11)
+
+Source: `SkillRunHistoryView.jsx` + shared `entities/run-history` (same list component as
+Agent/Pipeline history). Probed live on `https://dev.elitea.ai/app` (headless Python Playwright;
+Playwright MCP chrome binary was missing in this sandbox).
+
+- Reach: detail page `skill-controls-menu-button` -> menu item `skill-run-history-menu-item`
+  ("Run History"), OR the test-panel header button `skill-run-history-button`; URL becomes
+  `/skills/all/{id}/history`. Direct goto works.
+- Columns (header testid `run-history-header`, text `Date | Version | Duration`) - NO Status
+  column/icons, NO User column; case text is stale. Row `run-history-list-item`
+  (`data-selected="true"` on the selected row; first row auto-selected). Row text e.g.
+  `11-11-2026, 01:02 PM | base | 3.01 s` (absolute date, not relative).
+- Row actions: `run-history-menu-menu-button` (3-dot, hover-revealed, id `run-history-menu-action`);
+  menu items are `role=menuitem` WITHOUT testids: Share link, Delete, Restore chat, Analytics.
+  Reach by role+name. (Unit tests reference `menu-item-Restore chat` testid, NOT rendered on DEV.)
+- Right panel renders `chat-message-list` / `chat-message-item` with the selected run's messages.
+- Restore chat for a test-panel run -> `/skills/all/{id}?run={conversationId}`, test panel reopens
+  with the full prior transcript; a new send appends to the SAME conversation (history stays 1 row).
+- Runs are created by sending in the SkillTestPanel (`skill-test-button`, `chat-message-input`,
+  `chat-send-button`, `skill-test-last-response`); one panel session = one conversation = one history row.
+  `chat-clear-button` starts a fresh conversation (second row).
+- History list API: `GET /api/v2/elitea_core/conversations/prompt_lib/{pid}?source=skill&entity_name=skill&entity_meta_id={id}&...`
+- Fixture: `SkillAPI.create_skill(...)` (client.py) + `delete_skill`. Existing DEV skills have 0 history.
+- Gotcha: DEV corner banner `platform-banner-corner` / `platform-banner-center` (close:
+  `platform-banner-close`, "Got it") intercepts clicks on send/menu - dismiss first.
