@@ -835,6 +835,30 @@
       "updated": "2026-10-20",
       "history": []
     },
+    "pages/skill_detail_page.py::SkillDetailPage.run_history_menu_items": {
+      "file": "pages/skill_detail_page.py",
+      "line": 191,
+      "kind": "role",
+      "selector": "menuitem",
+      "suggested_testid": "run-history-menu-item-{}",
+      "description": "All items of the open run-row menu (enumerated, never picked)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.run_history_restore_chat_menuitem": {
+      "file": "pages/skill_detail_page.py",
+      "line": 185,
+      "kind": "role",
+      "selector": "menuitem[name='Restore chat']",
+      "suggested_testid": "run-history-restore-chat-menuitem",
+      "description": "'Restore chat' item in the open run-row menu; unique by accessible name",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/support_assistant_page.py::SupportAssistantPage.attach_button": {
       "file": "pages/support_assistant_page.py",
       "line": 94,
@@ -982,21 +1006,21 @@
   },
   "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1355,
-    "declared_testid": 1275,
-    "declared_non_testid": 80,
-    "non_testid_with_hint": 59,
+    "declared_total": 1362,
+    "declared_testid": 1280,
+    "declared_non_testid": 82,
+    "non_testid_with_hint": 61,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 12,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 24,
-      "testid": 1275,
+      "role": 26,
+      "testid": 1280,
       "xpath": 22
     },
-    "locator_debt": 0.059,
+    "locator_debt": 0.0602,
     "unmanaged_handles": 312
   }
 }
