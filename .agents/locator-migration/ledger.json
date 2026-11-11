@@ -871,9 +871,21 @@
       "updated": "2026-11-11",
       "history": []
     },
+    "pages/skill_detail_page.py::SkillDetailPage.TEST_PANEL_ALERT": {
+      "file": "pages/skill_detail_page.py",
+      "line": 65,
+      "kind": "role",
+      "selector": "alert",
+      "suggested_testid": "skill-test-panel-alert",
+      "description": "Any ARIA alert rendered inside the SkillTestPanel (error indicator); scoped to the panel",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_analytics_menuitem": {
       "file": "pages/skill_detail_page.py",
-      "line": 189,
+      "line": 200,
       "kind": "role",
       "selector": "menuitem[name='Analytics']",
       "suggested_testid": "run-history-analytics-menuitem",
@@ -885,7 +897,7 @@
     },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_menu_items": {
       "file": "pages/skill_detail_page.py",
-      "line": 205,
+      "line": 216,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "run-history-menu-item-{}",
@@ -897,7 +909,7 @@
     },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_restore_chat_menuitem": {
       "file": "pages/skill_detail_page.py",
-      "line": 199,
+      "line": 210,
       "kind": "role",
       "selector": "menuitem[name='Restore chat']",
       "suggested_testid": "run-history-restore-chat-menuitem",
@@ -1078,21 +1090,21 @@
   },
   "last_sync": "2026-11-11",
   "metric": {
-    "declared_total": 1381,
-    "declared_testid": 1293,
-    "declared_non_testid": 88,
-    "non_testid_with_hint": 67,
+    "declared_total": 1383,
+    "declared_testid": 1294,
+    "declared_non_testid": 89,
+    "non_testid_with_hint": 68,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 13,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 29,
-      "testid": 1293,
+      "role": 30,
+      "testid": 1294,
       "xpath": 24
     },
-    "locator_debt": 0.0637,
+    "locator_debt": 0.0644,
     "unmanaged_handles": 312
   }
 }

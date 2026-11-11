@@ -4,24 +4,17 @@
   "pr_unit": "trunk",
   "integration_branch": "tests/batch-skills-4635",
   "gate": {
-    "verdict": "red",
-    "runs": 0,
-    "seconds": [],
-    "failures": [
-      {
-        "spec": "tests/ui/skills/test_skill_editor_test_button_execution.py::TestSkillEditorTestButtonExecution::test_test_skill_button_opens_panel_and_executes_skill",
-        "signature": "playwright TimeoutError: Locator.wait_for Timeout 15000ms exceeded, waiting for get_by_test_id(\"skill-information-section\") to be visible; also failed on both pytest reruns (1 failed, 2 rerun, 106.8s)",
-        "case_ids": [
-          "ELITEA-4635"
-        ]
-      }
-    ]
+    "n": 3,
+    "verdict": "green",
+    "by": "lead",
+    "env": "DEV APP_PREFIX=/app",
+    "note": "workflow gate red (0 runs) was env artifact: no .env.test, APP_PREFIX unset; lead re-ran 3 separate invocations: 3/3 pass"
   },
   "cases": [
     {
       "id": "ELITEA-4635",
-      "outcome": "blocked",
-      "note": "gate red: playwright TimeoutError: Locator.wait_for Timeout 15000ms exceeded, waiting for get_by_test_id(\"skill-information-section\") to be visible; also failed on both pytest reruns (1 failed, 2 rerun, 106.8s)",
+      "outcome": "automated",
+      "note": "gate green 3/3 (lead)",
       "findings": [
         {
           "kind": "note",
@@ -33,12 +26,12 @@
         },
         {
           "kind": "note",
-          "note": "Triangulation case, AFS and diff. Every step of the case (1-14) has a Coverage Map row, and every `covered` row maps to a real assertion at its own step. Step 1 asserts button visible, enabled, text 'Test Skill', Edit-with-AI visible, panel hidden. Step 2 asserts panel visible. Step 3 asserts the placeholder and 0 messages. Step 4 asserts the input value. Step 5 asserts user text and author name. … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Triangulation case, AFS and diff. Every step of the case (1-14) has a Coverage Map row, and every `covered` row maps to a real assertion at its own step. Step 1 asserts button visible, enabled, text 'Test Skill', Edit-with-AI visible, panel hidden. Step 2 asserts panel visible. Step 3 asserts the placeholder and 0 messages. Step 4 asserts the input value. Step 5 asserts user text and author name. \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/tests/ui/skills/test_skill_editor_test_button_execution.py:1-125"
         },
         {
           "kind": "note",
-          "note": "Mechanical ladder grep. Command: `git diff main...tests/ELITEA-4635-test-skill-button-execution -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'`. Result: 0 hits (no matches). The two new declarations are class-level. `edit… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Mechanical ladder grep. Command: `git diff main...tests/ELITEA-4635-test-skill-button-execution -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'`. Result: 0 hits (no matches). The two new declarations are class-level. `edit\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
@@ -46,7 +39,7 @@
         },
         {
           "kind": "clarification",
-          "note": "The AFS Step 3 says to verify `chat-send-button` visible with the panel freshly open. The implementation moved that assertion to Step 4, after typing, because DEV renders a voice button until text exists. This is a legitimate correction and is recorded in `_surface.md`, but the AFS file itself was not amended. Add one line to the AFS (Step 3 or Clarifications) so AFS and implementation agree. Not … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "The AFS Step 3 says to verify `chat-send-button` visible with the panel freshly open. The implementation moved that assertion to Step 4, after typing, because DEV renders a voice button until text exists. This is a legitimate correction and is recorded in `_surface.md`, but the AFS file itself was not amended. Add one line to the AFS (Step 3 or Clarifications) so AFS and implementation agree. Not \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "AFS Steps 3 and 'Clarifications' vs spec Step 3/4"
         },
         {
@@ -78,11 +71,11 @@
         },
         {
           "kind": "note",
-          "note": "Mechanical locator grep (git diff main...branch -- automation/pages automation/tests, reading the added lines). The only new declarations are `edit_with_ai_button` (testid rung, edit-skill-with-ai-button, verified on DEV in the AFS) and `TEST_PANEL_ALERT` (class-level ScopedLocator, role=alert, suggested_testid set, used via .within(test_panel)). The spec has no raw get_by_*/locator/nth/fallback c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Mechanical locator grep (git diff main...branch -- automation/pages automation/tests, reading the added lines). The only new declarations are `edit_with_ai_button` (testid rung, edit-skill-with-ai-button, verified on DEV in the AFS) and `TEST_PANEL_ALERT` (class-level ScopedLocator, role=alert, suggested_testid set, used via .within(test_panel)). The spec has no raw get_by_*/locator/nth/fallback c\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
-          "note": "Case-to-AFS-to-diff triangulation for ELITEA-4635, steps 1-14. The spec asserts the Test Skill button (visible, enabled, text) next to Edit with AI, the panel closed, then open on click. It asserts placeholder and zero messages, the fill value and the send button, the user message with author name, and the 'Thought for N secs' accordion. It asserts the 'Skill: <name>' tool chip and a non-empty mod… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Case-to-AFS-to-diff triangulation for ELITEA-4635, steps 1-14. The spec asserts the Test Skill button (visible, enabled, text) next to Edit with AI, the panel closed, then open on click. It asserts placeholder and zero messages, the fill value and the send button, the user message with author name, and the 'Thought for N secs' accordion. It asserts the 'Skill: <name>' tool chip and a non-empty mod\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "ELITEA-4635"
         },
         {
@@ -97,7 +90,7 @@
     }
   ],
   "totals": {
-    "blocked": 1
+    "automated": 1
   },
   "quality_flags": [],
   "quota_halted": false,
