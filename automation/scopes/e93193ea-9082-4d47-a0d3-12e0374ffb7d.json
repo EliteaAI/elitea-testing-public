@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "session": "e93193ea-9082-4d47-a0d3-12e0374ffb7d",
+  "intent": "automation",
+  "batch": "elitea-4630",
+  "cases": [
+    "ELITEA-4630"
+  ],
+  "declaredAt": "2026-11-11T12:13:43.229Z",
+  "updatedAt": "2026-11-11T12:56:03.776Z",
+  "closedAt": "2026-11-11T12:56:03.776Z"
+}
