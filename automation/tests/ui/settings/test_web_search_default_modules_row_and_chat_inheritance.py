@@ -97,8 +97,8 @@ class TestWebSearchDefaultModules:
 
             with allure.step("Step 10 — Wait for the response to complete"):
                 # wait_for_ai_response keys on a Copy button aria-label DEV no longer renders; use
-                # the answer bubble + content stability instead.
-                chat.messages_container.nth(initial_count + 1).wait_for(state="visible", timeout=_RESPONSE_TIMEOUT)
+                # the answer tool chip (non-positional) + content stability instead.
+                chat.answer_tool_chip.first.wait_for(state="visible", timeout=_RESPONSE_TIMEOUT)
                 chat.wait_for_message_content_stable(timeout=_RESPONSE_TIMEOUT)
 
             with allure.step("Step 11 — A web_search tool-use chip is shown"):
