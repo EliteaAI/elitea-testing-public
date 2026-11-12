@@ -2286,23 +2286,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
-      "markers": [
-        "new_verified",
-        "p2",
-        "pipelines",
-        "regression",
-        "toolkits",
-        "ui"
-      ],
-      "tms_case_ids": [
-        "ELITEA-2036"
-      ],
-      "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2036_pipeline-custom-node-configuration.md"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_dashboard_pin_to_top.test_pipeline_dashboard_pin_to_top",
       "markers": [
         "new_verified",
