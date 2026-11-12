@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "3be3d4ab-6dfb-456a-a871-dce12867795b",
+  "intent": "automation",
+  "batch": "adjust-elitea-2377",
+  "cases": [
+    "ELITEA-2377"
+  ],
+  "declaredAt": "2026-11-12T13:41:51.129Z",
+  "updatedAt": "2026-11-12T13:41:51.165Z",
+  "outcomes": {
+    "ELITEA-2377": {
+      "outcome": "automated",
+      "at": "2026-11-12T13:41:51.165Z"
+    }
+  }
+}
