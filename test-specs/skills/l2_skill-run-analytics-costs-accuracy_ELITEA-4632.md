@@ -72,3 +72,8 @@ Also observed: the "Costs are estimated..." note and the costs-info popover (`ru
 
 ## Blocked Steps
 None. Risk: ingestion lag makes the spec slow (budget 120 s poll); `networkidle` waits are risky on this page. A second concern: Haiku model availability on DEV default model (model name asserted only as non-empty).
+
+## Adjustment (card #2941, 2026-11-12) - Expected-result change: cost display format
+- **Cause:** DEV product `fmtCost` (EliteaUI `analyticsCommon.helpers.js`) now renders costs in tiers; the 0.0001 <= |v| < 0.01 tier rounds UP to 4 decimals (0.000512 -> `$0.0006`). The page-object mirror `RunAnalyticsPage.format_cost` still used the old "< $0.00001 else 5 decimals" rule.
+- **Change:** `format_cost` ported faithfully (None/NaN -> `-`; 0 -> `$0.00`; <1e-5 -> `< $0.00001`; <1e-4 -> 5 dp; <0.01 -> ceil to 4 dp; <1 -> 4 dp; <1000 -> 2 dp; K / M suffixes; sign prefix).
+- **Nature preserved:** the test still asserts exact UI text equals the formatted API value (KPI total, Cost by Model cell, tab-switch context); no assertion weakened. Only the expected-format rule moved to match the product.
