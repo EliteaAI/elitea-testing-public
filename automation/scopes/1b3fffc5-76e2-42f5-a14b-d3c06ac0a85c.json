@@ -10,23 +10,24 @@
     "ELITEA-2449"
   ],
   "declaredAt": "2026-11-11T18:10:12.302Z",
-  "updatedAt": "2026-11-11T18:25:06.584Z",
+  "updatedAt": "2026-11-12T15:15:13.391Z",
   "outcomes": {
     "ELITEA-2446": {
-      "outcome": "blocked",
-      "at": "2026-11-11T18:25:06.584Z"
+      "outcome": "automated",
+      "at": "2026-11-12T15:15:13.353Z"
     },
     "ELITEA-2447": {
-      "outcome": "blocked",
-      "at": "2026-11-11T18:25:06.584Z"
+      "outcome": "automated",
+      "at": "2026-11-12T15:15:13.353Z"
     },
     "ELITEA-2448": {
-      "outcome": "blocked",
-      "at": "2026-11-11T18:25:06.584Z"
+      "outcome": "automated",
+      "at": "2026-11-12T15:15:13.353Z"
     },
     "ELITEA-2449": {
-      "outcome": "blocked",
-      "at": "2026-11-11T18:25:06.584Z"
+      "outcome": "automated",
+      "at": "2026-11-12T15:15:13.353Z"
     }
-  }
+  },
+  "closedAt": "2026-11-12T15:15:13.391Z"
 }
