@@ -259,11 +259,11 @@ implementation work).
 
 ## Adjustment — Pipelines Editor 2.0 (EL-7157 / elitea_issues#7157), ELITEA-2443
 
-- **Triage class:** A (UI drift) for the Agent-node handling; **Step 6 timeline count is UNRESOLVED (open question, see below)**.
+- **Triage class:** A (UI drift) for the Agent-node handling; Step 6 timeline expectation changed to the grouped shape (see Expected-result changes).
 - **What changed (old -> new), verified on DEV 2026-11-12:**
   - Node cards on the canvas are view-only. The Agent select moved off the card into the node config side panel (`pipeline-agent-node-agent-select`, `-input-select`, `-output-select` all still exist there; `pipeline-agent-node-input-mapping-heading` is gone, replaced by the TASK field).
   - The card shows `pipeline-node-summary-primary`, but it echoes the YAML `tool:` name even while the relation is unresolved, so it cannot express "empty before attach". Pre-attach truth is the panel's `pipeline-agent-node-not-found` marker + the select. `get_agent_node_agent_value()` therefore reads the select in the panel and returns "" while "Agent not found" is shown.
   - TOOLS section is a read-only list; "+ Pipeline" (`agent-add-pipeline-button`) is gone. Attach = pick in the Agent node's "Agents & Pipelines" picker, then Save (PATCH application_relation 201 + PUT 201). Re-picking the YAML-named value does not dirty the form, so the page object clears first. Picking resets the node's TASK mapping to empty, leaving the node "Not configured" and Test Pipeline disabled; the page object re-enters the fixture TASK text.
 - **Handles (ladder):** | rung | handle | suggested_testid | provenance | -> testid | pipeline-agent-node-not-found | n/a | testid on DEV ok | ; testid | pipeline-agent-node-agent-select-clear | n/a | testid on DEV ok |.
-- **Expected-result changes:** none. Assertions untouched.
-- **Open question (needs human decision):** Step 6 asserts timeline >= 3 steps (CODE1 + nested child steps + AGENT1). DEV now renders 2 steps (`CODE1`, `<child name>`) for the same run. Either nested child steps are no longer listed in Run Details (expected-result change: needs TMS + sign-off) or this is a product regression. Not adjusted.
+- **Expected-result changes (human sign-off, EliteaAI/elitea-testing-public#2951; product intent elitea_issues#3734):** Run Details' Timeline groups a nested child pipeline into ONE collapsed entry. Step 6 old: `timeline_count >= 3` (CODE1 + nested child steps + AGENT1). Step 6 new: timeline node ids are exactly `["CODE1", <child name>]` (2 entries, no nested rows), AND the child's own steps are verified in the chat's thinking/trace view (nested accordion `chat-answer-nested-agent-accordion-summary-<child name>` expands to show the child's `pyodide_sandbox` code-node step; Run Details modal is closed to reach it, then reopened). State assertions (Steps 7+) unchanged.
+- **Open question:** resolved by #2951 (above).

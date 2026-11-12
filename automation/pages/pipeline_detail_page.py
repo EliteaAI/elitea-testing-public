@@ -1944,6 +1944,12 @@ class PipelineDetailPage(PipelineFormPage):
     # pre-existing CHAT_ATTACHMENT_CHIP_PREFIX precedent).
     RUN_DETAILS_TIMELINE_STEP_PREFIX = '[data-testid^="pipeline-run-details-timeline-step-"]'
 
+    # Embedded-chat "Thought for N secs" trace: a nested child pipeline/agent renders as ONE
+    # collapsible accordion keyed by its exact name (existing testids, shared SubAgentAccordion.jsx
+    # -- same literals as AgentDetailPage, whose embedded chat is a distinct DOM scope).
+    NESTED_AGENT_ACCORDION_SUMMARY = '[data-testid="chat-answer-nested-agent-accordion-summary-{}"]'
+    NESTED_AGENT_ACCORDION_DETAILS = '[data-testid="chat-answer-nested-agent-accordion-details-{}"]'
+
     # Fullscreen value modal (PipelineStateViewModal.jsx) — feature-scoped
     # literal testids (single consumer, RunStateDialog.jsx).
     run_details_value_modal = LocatorDescriptor(
@@ -9012,6 +9018,25 @@ class PipelineDetailPage(PipelineFormPage):
     def get_run_details_timeline_step_count(self) -> int:
         """Return the total number of timeline-step dots currently rendered."""
         return self.page.locator(self.RUN_DETAILS_TIMELINE_STEP_PREFIX).count()
+
+    def get_nested_pipeline_trace_text(self, child_name: str, timeout: int = 10000) -> str:
+        """Expand the chat trace's nested accordion for *child_name* and return its details text.
+
+        Run Details' Timeline groups a nested child pipeline/agent into ONE entry
+        (elitea_issues#3734); the child's own steps (e.g. its code-node call) are only visible
+        here, in the answer's "Thought for N secs" trace. Idempotent: expands only if collapsed.
+
+        Args:
+            child_name: Exact name of the nested child pipeline/agent.
+            timeout: Maximum wait time in milliseconds.
+        """
+        summary = self.page.locator(self.NESTED_AGENT_ACCORDION_SUMMARY.format(child_name))
+        summary.wait_for(state="visible", timeout=timeout)
+        if summary.get_attribute("aria-expanded") != "true":
+            summary.click()
+        details = self.page.locator(self.NESTED_AGENT_ACCORDION_DETAILS.format(child_name))
+        details.wait_for(state="visible", timeout=timeout)
+        return (details.inner_text() or "").strip()
 
     def expand_run_details_state_row(self, variable: str, timeout: int = 10000):
         """Click the accordion header for *variable* in the STATES section to
