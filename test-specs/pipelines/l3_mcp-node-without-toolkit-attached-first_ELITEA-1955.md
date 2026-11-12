@@ -446,3 +446,26 @@ Cause: EliteaUI EL-7157 (a695e4e8) — canvas node cards are view-only summaries
 | `Input mapping (required 2)` heading | Heading not rendered; exactly 2 required Value fields (`pipeline-mcp-node-input-mapping-value-<key>`, rung 1, scoped under `pipeline-node-panel-basic-section`) via `has_mcp_node_required_input_mapping_count(2)` |
 
 Expected-result changes: the heading observable is replaced by "exactly 2 required Input-mapping Value fields listed" (same information: required count + names; both fields still asserted visible/filled/saved/persisted). Everything else: none.
+
+## Adjustment — 2026-11-12 (CI failure at Step 4, card #2849, issue #2859) — triage class A (UI drift, deliberate redesign)
+
+Cause: EliteaUI 359dcdb2 / EL-7159 replaced the MCP node's Toolkit `SingleSelect` with `ProjectToolkitPicker`; the old testid `pipeline-mcp-node-toolkit-select-combobox` is gone. The picker always lists every project MCP (search box, "Create new", populated list), regardless of what is attached in TOOLS; picking an MCP in the node attaches it (TOOLS updates automatically).
+
+**Human sign-off:** a human ruled on `EliteaAI/elitea-testing-public#2859` that the case is rewritten to the flow below. This is the explicit sign-off for the Expected-result change. TMS case rewritten on branch `adjust/ELITEA-1955-picker` (not pushed; human raises the PR).
+
+New flow (9 steps): 1 fresh pipeline, nothing in TOOLS; 2 add MCP node; 3 open node MCP picker; 4 assert search textbox + "Create new" + non-empty list (NOT empty); 5 type fixture MCP name in search; 6 select from filtered results; 7 assert it is the node's selected value; 8 assert it appears in TOOLS automatically (no "+ MCP"); 9 configure `ask_wiki_question` + input mapping, save, reload, verify persistence.
+
+**Expected-result changes (human-signed):** the "dropdown is empty before attach / populates after attach" premise (old Steps 5-6, 9) and the "+ MCP popper attach" (old Steps 7-8) are dropped; replaced by "picker lists project MCPs (non-empty)" and "picking in the node auto-attaches to TOOLS". Persistence assertions (toolkit, tool, 2 required mappings) unchanged.
+
+### Handles (DEV-verified via EliteaUI source `ProjectToolkitPicker.jsx` + passing run)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| 1 | `[data-testid="pipeline-mcp-node-toolkit-select"]` (trigger) | n/a | testid on DEV ✓ |
+| 1 | `[data-testid="pipeline-mcp-node-toolkit-select-menu-search"]` | n/a | testid on DEV ✓ |
+| 1 | `[data-testid="pipeline-mcp-node-toolkit-select-create-new"]` | n/a | testid on DEV ✓ (`${testId}-create-new`) |
+| 1 | `[data-testid="pipeline-mcp-node-toolkit-select-option"]` (rows) | n/a | testid on DEV ✓ |
+
+Removed (dead): `mcp_node_toolkit_select_combobox`, `open_mcp_node_toolkit_select_allow_empty`, `close_mcp_node_toolkit_select` (no other callers).
+
+Note: Step 8 waits on the TOOLS card condition (`is_toolkit_attached`); the card appeared right after the pick in the live run (no Save needed to show it).
