@@ -1701,10 +1701,10 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[10k_tokens]",
+      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[balanced_mode]",
       "markers": [
         "chat",
-        "p1",
+        "p2",
         "ui"
       ],
       "tms_case_ids": [
@@ -1715,10 +1715,10 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[32k_tokens]",
+      "automation_test_id": "tests.ui.chat.test_context_management.TestContextManagementSettings.test_context_budget_reflects_profile_max_tokens[full_mode]",
       "markers": [
         "chat",
-        "p2",
+        "p1",
         "ui"
       ],
       "tms_case_ids": [
