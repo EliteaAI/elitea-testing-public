@@ -1,0 +1,289 @@
+{
+ "v": 1,
+ "batch": "adjust-2942",
+ "generatedAt": "2026-11-12T15:56:07.111Z",
+ "sources": {
+  "window": {
+   "start": "2026-11-11T11:10:28.827Z",
+   "end": "2026-11-13T15:56:05.812Z",
+   "source": "scopes"
+  },
+  "sessions": 1,
+  "sessionIds": [
+   "claude:321232bd-481a-4743-ac92-befdc57e6887"
+  ],
+  "hosts": [
+   "claude"
+  ],
+  "users": [
+   "automation-factory"
+  ],
+  "costSources": [
+   "ccusage-metered"
+  ],
+  "models": [
+   "1_eu.anthropic.claude-sonnet-5-5"
+  ]
+ },
+ "totals": {
+  "costUsd": 6.43,
+  "tokens": 18373338,
+  "tokensSplit": {
+   "input": 42695,
+   "output": 74590,
+   "cacheRead": 16926889,
+   "cacheWrite": 1329164
+  },
+  "tokensByModel": {
+   "1_eu.anthropic.claude-sonnet-5-5": {
+    "input": 42695,
+    "output": 74590,
+    "cacheRead": 16926889,
+    "cacheWrite": 1329164
+   }
+  },
+  "activeMin": 81,
+  "dispatches": 3,
+  "sessions": 1,
+  "turns": 38,
+  "toolCalls": 117,
+  "toolErrors": 1,
+  "skills": [
+   "adjust-automated-test"
+  ]
+ },
+ "byRole": {
+  "qa-engineer": {
+   "costUsd": 0.44,
+   "tokens": 949712,
+   "tok": {
+    "input": 10531,
+    "output": 5436,
+    "cacheRead": 837788,
+    "cacheWrite": 95957
+   },
+   "activeMin": 1,
+   "dispatches": 1,
+   "toolCalls": 8,
+   "toolErrors": 0
+  },
+  "test-automation-engineer": {
+   "costUsd": 2.77,
+   "tokens": 11831380,
+   "tok": {
+    "input": 21049,
+    "output": 46313,
+    "cacheRead": 11417195,
+    "cacheWrite": 346823
+   },
+   "activeMin": 22,
+   "dispatches": 2,
+   "toolCalls": 71,
+   "toolErrors": 0
+  },
+  "test-automation-lead": {
+   "costUsd": 3.23,
+   "tokens": 5592246,
+   "tok": {
+    "input": 11115,
+    "output": 22841,
+    "cacheRead": 4671906,
+    "cacheWrite": 886384
+   },
+   "activeMin": 58,
+   "dispatches": 0,
+   "toolCalls": 38,
+   "toolErrors": 1
+  }
+ },
+ "overhead": {
+  "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
+  "costUsd": 3.23,
+  "sharePct": 50,
+  "lead": {
+   "costUsd": 3.23,
+   "tokens": 5592246,
+   "tok": {
+    "input": 11115,
+    "output": 22841,
+    "cacheRead": 4671906,
+    "cacheWrite": 886384
+   },
+   "activeMin": 58,
+   "dispatches": 0,
+   "toolCalls": 38,
+   "toolErrors": 1
+  },
+  "stages": {
+   "costUsd": null,
+   "tokens": 0,
+   "tok": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   },
+   "activeMin": 0,
+   "dispatches": 0,
+   "toolCalls": 0,
+   "toolErrors": 0
+  },
+  "byStage": {}
+ },
+ "outcomes": {
+  "automated": 2,
+  "retired": 1
+ },
+ "delivered": 2,
+ "gate": {
+  "n": 3,
+  "verdict": "green",
+  "detail": "3 separate DEV runs of the 2 remaining specs green, reruns disabled (--reruns 0), APP_PREFIX=/app, dummy GIT_HUB_TOKEN. Earlier gate attempts were discarded and repeated after DEV noise (503 'no healthy upstream' on fixture create, 429 console errors, detail-page-load timeouts); the failing step in each was a precondition/network, none an assertion of this change."
+ },
+ "records": {
+  "note": "script-authored gate verdicts (gate-runs.jsonl) + declared session outcomes (work-scope) vs the receipt — drift means report.json needs a write-back, records never overwrite it",
+  "gateRuns": {
+   "count": 3,
+   "latest": {
+    "verdict": "green",
+    "at": null,
+    "consecutiveGreen": 0
+   }
+  },
+  "declaredOutcomes": {
+   "ELITEA-2036": "retired",
+   "ELITEA-2010": "automated",
+   "ELITEA-2065": "automated"
+  }
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2010",
+   "outcome": "automated",
+   "findings": 0,
+   "direct": {
+    "costUsd": 1.07,
+    "tokens": 4260364,
+    "tok": {
+     "input": 10527,
+     "output": 17250,
+     "cacheRead": 4084994,
+     "cacheWrite": 147593
+    },
+    "activeMin": 8,
+    "dispatches": 1,
+    "fixRounds": 0,
+    "toolCalls": 26,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": 2.15,
+    "tokens": 6124446,
+    "activeMin": 27
+   }
+  },
+  {
+   "id": "ELITEA-2065",
+   "outcome": "automated",
+   "findings": 0,
+   "direct": {
+    "costUsd": 1.07,
+    "tokens": 4260364,
+    "tok": {
+     "input": 10527,
+     "output": 17250,
+     "cacheRead": 4084994,
+     "cacheWrite": 147593
+    },
+    "activeMin": 8,
+    "dispatches": 1,
+    "fixRounds": 0,
+    "toolCalls": 26,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": 2.15,
+    "tokens": 6124446,
+    "activeMin": 27
+   }
+  },
+  {
+   "id": "ELITEA-2036",
+   "outcome": "retired",
+   "findings": 0,
+   "direct": {
+    "costUsd": 1.07,
+    "tokens": 4260364,
+    "tok": {
+     "input": 10527,
+     "output": 17250,
+     "cacheRead": 4084994,
+     "cacheWrite": 147593
+    },
+    "activeMin": 8,
+    "dispatches": 1,
+    "fixRounds": 0,
+    "toolCalls": 26,
+    "toolErrors": 0
+   },
+   "loaded": {
+    "costUsd": 2.15,
+    "tokens": 6124446,
+    "activeMin": 27
+   }
+  }
+ ],
+ "stats": {
+  "note": "direct = per-case measured values only; loaded = direct + even overhead share (allocation, not measurement)",
+  "directCostUsd": {
+   "avg": 1.07,
+   "median": 1.07,
+   "min": 1.07,
+   "max": 1.07,
+   "n": 3
+  },
+  "directTokens": {
+   "avg": 4260364,
+   "median": 4260364,
+   "min": 4260364,
+   "max": 4260364,
+   "n": 3
+  },
+  "directActiveMin": {
+   "avg": 8,
+   "median": 8,
+   "min": 8,
+   "max": 8,
+   "n": 3
+  },
+  "loadedCostUsd": {
+   "avg": 2.15,
+   "median": 2.15,
+   "min": 2.15,
+   "max": 2.15,
+   "n": 3
+  },
+  "loadedActiveMin": {
+   "avg": 27,
+   "median": 27,
+   "min": 27,
+   "max": 27,
+   "n": 3
+  }
+ },
+ "averages": {
+  "totalPerDelivered": {
+   "costUsd": 3.22,
+   "note": "whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)"
+  },
+  "directPerCase": {
+   "costUsd": 1.07,
+   "note": "avg direct spend of an attributed case — excludes batch overhead"
+  }
+ },
+ "coverage": {
+  "casesAttributed": 3,
+  "casesUnattributed": [],
+  "note": "unattributed = no dispatch label named this id in any matched session (interrupted capture, or work not yet swept)"
+ }
+}

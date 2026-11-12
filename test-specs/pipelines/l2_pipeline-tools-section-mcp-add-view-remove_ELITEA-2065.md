@@ -169,3 +169,11 @@ first node added. Step 1's canvas check changed from `node ids == ["END"]` to `n
 canvas empty); every other assertion untouched. Handles unchanged (`.react-flow__node` enumeration via
 the existing `get_node_ids`). No other END-baseline assumption exists in the spec; the full flow
 (attach, show-tools, remove, save, reload) ran green on DEV.
+
+## Adjustment — EL-7159 / #2942 (class A for Steps 2-4/5-6; Step 7 = missing flow, see below)
+
+TOOLS "+ MCP" (`agent-add-mcp-button`) is gone. Flow now: add MCP node (`pipeline-add-node-button` -> `pipeline-add-node-menu-item-mcp`) -> `open_mcp_node_picker` (`pipeline-mcp-node-toolkit-select`, `-select-option`, `-select-menu-search`) -> pick -> node select shows the MCP -> left `pipeline-tools-section` auto-lists a `pipeline-tool-card` (all testids on DEV).
+
+**Expected-result change (human-sanctioned):** Step 2/3 precondition "+ MCP popper / immediate attach PATCH 201" replaced by "add node, open picker, pick, node shows MCP"; Step 4 asserts the card appears in TOOLS automatically.
+
+**Resolved (human ruling, #2944):** Steps 7-9 removal = open the MCP node's config panel and click the clear "X" next to the MCP selection (`pipeline-mcp-node-toolkit-select-clear`, testid on DEV, PickerTrigger `-clear`; page object `clear_mcp_node_toolkit`). Step 8 asserts the TOOLS card detaches (TOOLS reverts to its empty hint). Step 9: explicit Save (`save_and_wait_for_update`) then full reload; card still absent. The TOOLS card delete icon / confirm dialog / disassociate PATCH is no longer used. Console-error assertions kept at every step. Proposed TMS text: Step 7 "Open the MCP node's config panel and click the clear (X) button next to the MCP selection"; Step 8 "Verify the MCP card disappears from the TOOLS section"; Step 9 "Save the pipeline and reload; verify the MCP is still absent from TOOLS".

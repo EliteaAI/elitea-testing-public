@@ -808,6 +808,11 @@ class PipelineDetailPage(PipelineFormPage):
         description="MCP node's Toolkit select (inline on the ReactFlow canvas card)"
     )
 
+    mcp_node_toolkit_select_clear = LocatorDescriptor(
+        testid="pipeline-mcp-node-toolkit-select-clear",
+        description="MCP node's Toolkit select clear 'X' button (PickerTrigger, shown only when a value is set)"
+    )
+
     mcp_node_tool_select = LocatorDescriptor(
         testid="pipeline-mcp-node-tool-select",
         description="MCP node's Tool select (inline on the ReactFlow canvas card)"
@@ -4921,6 +4926,14 @@ class PipelineDetailPage(PipelineFormPage):
             toolkit_name,
             timeout=timeout,
         )
+
+    def clear_mcp_node_toolkit(self, timeout: int = 10000) -> None:
+        """Clear the MCP node's toolkit selection via the select's clear 'X' button (EL-7159).
+
+        Opens the node config panel if needed; clearing detaches the MCP from the TOOLS section.
+        """
+        self.ensure_mcp_node_panel_open(timeout=timeout)
+        self.mcp_node_toolkit_select_clear.click(timeout=timeout)
 
     def open_mcp_node_picker(self, timeout: int = 10000) -> None:
         """Open the MCP node's project MCP picker and wait for its rows (EL-7159)."""

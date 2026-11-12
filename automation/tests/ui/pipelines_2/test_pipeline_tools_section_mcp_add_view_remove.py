@@ -75,33 +75,33 @@ def test_tools_section_mcp_add_view_remove(page, pipeline_id, mcp_toolkit_with_t
             "A fresh pipeline's canvas should be empty (no nodes, END included) before any attach"
         )
 
-    with allure.step('Step 2 — Click TOOLS "+ MCP"; verify the MCP-picker popup opens'):
-        popper = pipeline_page.open_mcp_popper(timeout=UI_ELEMENT_TIMEOUT)
-        assert popper.is_visible(), "'+ MCP' popper should open"
-        # Rows load lazily on the FIRST open (ToolMenu.jsx forceSkip); the
-        # untestid'd "Loading…" placeholder and .count()'s lack of
-        # auto-waiting make this wait the only honest way to reach them.
-        pipeline_page.wait_for_mcp_popper_items(popper, timeout=UI_ELEMENT_TIMEOUT)
-        assert pipeline_page.get_mcp_popper_menu_item_count(popper) > 0, (
-            "'+ MCP' popper should list at least one toolkit-menu-item result row "
-            "(the project's available MCPs, including the freshly-provisioned fixture MCP)"
+    with allure.step("Step 2 — Add an MCP node via the canvas; open its picker; verify the fixture MCP is listed"):
+        # EL-7159 / #2942 (class A, UI drift): TOOLS "+ MCP" is gone; MCPs are added to TOOLS
+        # only by picking them inside a node's picker (ProjectToolkitPicker).
+        pipeline_page.add_node("MCP")
+        node_id = pipeline_page.wait_for_node_on_canvas("mcp", timeout=UI_ELEMENT_TIMEOUT)
+        assert node_id, "MCP node should be present on the canvas with a non-empty data-id"
+        pipeline_page.open_mcp_node_picker(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_mcp_node_picker_option_count() > 0, (
+            "MCP picker should list at least one project MCP row"
+        )
+        assert pipeline_page.is_mcp_node_picker_listing(mcp_display_name, timeout=UI_ELEMENT_TIMEOUT), (
+            f"MCP picker should list the fixture MCP {mcp_display_name!r}"
         )
 
-    with allure.step("Step 3 — Select the fixture MCP from the popup; verify immediate auto-persist"):
-        attach_response = pipeline_page.select_mcp_in_popper(
-            popper, mcp_display_name, project_id, timeout=UI_ELEMENT_TIMEOUT
-        )
-        assert attach_response is not None, (
-            "MCP attach should return the persisted toolkit payload from the "
-            "immediate PATCH .../tool/prompt_lib/{project}/ 201 response"
+    with allure.step("Step 3 — Select the fixture MCP in the picker; verify it is selected on the node"):
+        pipeline_page.select_mcp_node_toolkit(mcp_display_name, timeout=UI_ELEMENT_TIMEOUT)
+        assert mcp_display_name in pipeline_page.get_mcp_node_toolkit_value(), (
+            f"MCP node's Toolkit select should show {mcp_display_name!r} after selection"
         )
 
     with allure.step(
-        "Step 4 — Verify the MCP appears attached as a flat-list card (no MCP sub-tab — "
-        "CLARIFICATION EliteaAI/elitea-testing-public#1149, sibling of #530)"
+        "Step 4 — Verify the MCP was auto-attached to the left TOOLS section as a flat-list card "
+        "(no + MCP click; no MCP sub-tab — CLARIFICATION EliteaAI/elitea-testing-public#1149, sibling of #530)"
     ):
+        pipeline_page.ensure_toolkits_section_visible()
         assert pipeline_page.is_toolkit_attached(mcp_display_name, timeout=UI_ELEMENT_TIMEOUT), (
-            f"TOOLS section should show a card for the attached MCP {mcp_display_name!r}"
+            f"TOOLS section should show a card for the auto-attached MCP {mcp_display_name!r}"
         )
         assert not console_errors, f"Attaching the MCP should not introduce console errors: {console_errors}"
 
@@ -123,42 +123,24 @@ def test_tools_section_mcp_add_view_remove(page, pipeline_id, mcp_toolkit_with_t
         ), f"Expanded card should list the fixture tool {_EXPECTED_TOOL!r}"
 
     with allure.step(
-        "Step 7 — Remove the MCP via the delete icon + confirm dialog; verify the disassociate "
-        "PATCH fires and the card leaves the DOM"
+        "Step 7 — Open the MCP node's config panel and click the clear 'X' next to the MCP selection "
+        "(EL-7159 / #2944: removal = clear the node's selection; the TOOLS card has no delete icon "
+        "for in-use items)"
     ):
-        pipeline_page.remove_toolkit(mcp_display_name, project_id, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.clear_mcp_node_toolkit(timeout=UI_ELEMENT_TIMEOUT)
 
-    with allure.step("Step 8 — Verify the MCP no longer appears in the Tools list"):
+    with allure.step("Step 8 — Verify the MCP card leaves the TOOLS section"):
+        pipeline_page.toolkit_card.filter(has_text=mcp_display_name).first.wait_for(
+            state="detached", timeout=UI_ELEMENT_TIMEOUT
+        )
         assert pipeline_page.toolkit_card.filter(has_text=mcp_display_name).count() == 0, (
             "No card matching the removed MCP's name should remain in the TOOLS section"
         )
-        assert not console_errors, f"Removing the MCP should not introduce console errors: {console_errors}"
+        assert not console_errors, f"Clearing the MCP should not introduce console errors: {console_errors}"
 
-    with allure.step(
-        "Step 9 — Verify removal already persisted (Save is a no-op) and survives a full page reload"
-    ):
-        # CORRECTED (live-verified this session, same class of finding as ELITEA-2037's
-        # attach auto-persist correction): removal ALSO auto-persists immediately —
-        # useDisassociateToolkit.hooks.js's savePipelineAfterToolkitRemoval fires its own
-        # PUT .../application/prompt_lib/{project}/{pipeline_id} right after the disassociate
-        # PATCH (step 7) and resets the Formik baseline, so SaveApplicationButton.jsx's
-        # `isButtonDisabled` (gated on `!isFormDirtyExcluding`) goes true — there is nothing
-        # left to Save. Confirmed live: clicking the disabled Save button (even via a forced
-        # JS .click(), which a real disabled <button> still suppresses) produced NO new PUT
-        # and timed out `save_and_wait_for_update`'s response wait. Case step 9's literal
-        # "Save — verify removal persists" wording assumes an explicit Save is required;
-        # the live product does not need one. Asserting the disabled state IS the correct
-        # assertion of "no pending changes remain to save" — reload confirms persistence
-        # directly, matching the reverse-masking guard (asserting live behavior, not stale
-        # case text). Not filed as a new ticket — same pattern already covered for attach
-        # by EliteaAI/elitea-testing-public#1149 / ELITEA-2037.
-        assert pipeline_page.save_button.is_disabled(), (
-            "Save button should be disabled after removal — the disassociate flow's own "
-            "auto-persist already saved the pipeline, leaving no pending changes"
-        )
-        assert not console_errors, (
-            f"Removal's own auto-persist should not introduce console errors: {console_errors}"
-        )
+    with allure.step("Step 9 — Save the pipeline; verify the removal survives a full page reload"):
+        pipeline_page.save_and_wait_for_update(project_id, int(pipeline_id))
+        assert not console_errors, f"Saving should not introduce console errors: {console_errors}"
 
         page.goto(canonical_url)
         pipeline_page.wait_for_detail_page_load()
