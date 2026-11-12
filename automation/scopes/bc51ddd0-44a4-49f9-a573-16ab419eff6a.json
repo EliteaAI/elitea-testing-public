@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "bc51ddd0-44a4-49f9-a573-16ab419eff6a",
+  "intent": "automation",
+  "batch": "delete-2374",
+  "cases": [
+    "ELITEA-2374"
+  ],
+  "declaredAt": "2026-11-12T14:23:48.992Z",
+  "updatedAt": "2026-11-12T14:23:49.030Z",
+  "outcomes": {
+    "ELITEA-2374": {
+      "outcome": "retired",
+      "at": "2026-11-12T14:23:49.030Z"
+    }
+  }
+}
