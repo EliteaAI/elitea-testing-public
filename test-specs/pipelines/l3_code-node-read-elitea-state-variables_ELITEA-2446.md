@@ -338,5 +338,5 @@ name `pyodide` to the node's own display name. Expected result for the
 Code-node timeline step is now: label ends with `Code1` (this test's Code node
 id). Every earlier mention of `pyodide` as the expected label in this AFS
 (incl. the #1385 amendment) is superseded. Assertion strength is unchanged:
-a specific name is asserted, not a generic substring. Not yet re-confirmed live
-on DEV at adjustment time (DEV pipeline detail returned 404 during the session).
+a specific name is asserted, not a generic substring. Confirmed live on DEV
+2026-11-12: all 4 specs pass; ELITEA-2448 label read 'Timeline step:Code1'.

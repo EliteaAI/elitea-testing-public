@@ -168,7 +168,7 @@ def test_code_node_return_dict_multiple_state_vars(
         # ("CODE1"; product change EliteaUI#1406 / elitea_issues#3513 --
         # previously the sandbox name "pyodide") -- same convention
         # ELITEA-2446 already confirmed (EliteaAI/elitea-testing-public#1385),
-        # reconfirmed live this session on a DIFFERENT Code-node fixture.
+        # applied here on this different Code-node fixture.
         assert timeline_text.strip().endswith("CODE1"), (
             f"Timeline label should show the Code node's own name 'CODE1' after selecting step 1, "
             f"got {timeline_text!r}"

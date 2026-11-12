@@ -34,8 +34,7 @@ as ELITEA-2446/2447 on this same Code-node family):
     `pipeline_api.get_pipeline()` server-truth instead of the YAML-tab DOM.
   - `EliteaAI/elitea-testing-public#1385`: a Code node's Run Details timeline
     label USED to render as `"pyodide"` (the Python-sandbox executor's name; now
-    the node's own name `"CODE1"`, EliteaUI#1406), NOT
-    the space-stripped YAML id (`"Code1"`/`"CODE1"`).
+    the node's own name `"CODE1"`, EliteaUI#1406).
   - `EliteaAI/elitea-testing-public#1267`: Run Details panel's Timeline
     Stepper prop-leak React warning -- same signature as every other
     Run-Details-opening test in this suite; excluded from the console-error
@@ -200,8 +199,8 @@ def test_code_node_input_filtering_selective_state_access(
 
     with allure.step(
         "Step 7 — Open Run Details, select the Code node timeline step (index 3 -- the FOURTH "
-        "entry: STATE_A, STATE_B, STATE_C, then the Code node, which renders as 'CODE1' (was 'pyodide'), not "
-        "'CODE1' -- EliteaAI/elitea-testing-public#1385)"
+        "entry: STATE_A, STATE_B, STATE_C, then the Code node, which renders as its own name 'CODE1'; "
+        "was 'pyodide' before EliteaUI#1406)"
     ):
         pipeline_page.open_run_details_panel(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.run_details_panel).to_be_visible()
