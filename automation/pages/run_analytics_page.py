@@ -9,6 +9,7 @@ under ``run-analytics-page`` (non-positional, anchored on the visible label).
 
 import json
 import logging
+import math
 import re
 import time
 
@@ -49,6 +50,13 @@ class RunAnalyticsPage(BasePage):
         xpath=".//span[normalize-space()='{}']/../following-sibling::div//p",
         suggested_testid="run-analytics-costs-table-cell-{}",
         description="Data cells of the table titled {}; rungs 1-4 failed: cells are bare <p> without testid/role",
+    )
+
+    TABLE_USER_NAMES = ScopedLocator(
+        xpath=".//span[normalize-space()='{}']/../following-sibling::div//span[contains(@class,'user-label-name')]",
+        suggested_testid="run-analytics-costs-table-user-name-{}",
+        description="User-name labels (UserLabel span.user-label-name, a stable app class) in the table titled {}; "
+        "rungs 1-4 failed: name span has no testid/role/label",
     )
 
     @action("Wait for Run Analytics page to load")
@@ -93,10 +101,49 @@ class RunAnalyticsPage(BasePage):
     def table_cells(self, title: str) -> list[str]:
         return [t.strip() for t in self.TABLE_CELLS.within(self.page_root, title).all_text_contents()]
 
+    def table_user_names(self, title: str) -> list[str]:
+        return [t.strip() for t in self.TABLE_USER_NAMES.within(self.page_root, title).all_text_contents()]
+
     @staticmethod
-    def format_cost(value: float) -> str:
-        """Mirror the live UI rule: < 1e-5 renders '< $0.00001', else 5 decimals."""
-        return "< $0.00001" if 0 < value < 1e-5 else f"${value:.5f}"
+    def format_user_name(user: dict) -> str:
+        """Mirror the product's ``formatUserName``: display name, else email, else 'User <id>'."""
+        if user.get("user_display_name"):
+            return user["user_display_name"]
+        if user.get("user_email"):
+            return user["user_email"]
+        return "" if user.get("user_id") is None else f"User {user['user_id']}"
+
+    @staticmethod
+    def format_cost(value: float | None) -> str:
+        """Mirror the product's ``fmtCost`` (analyticsCommon.helpers.js) tier by tier.
+
+        None / non-finite -> '-'; 0 -> '$0.00'; |v| < 1e-5 -> '< $0.00001';
+        |v| < 1e-4 -> 5 decimals; |v| < 0.01 -> ROUNDED UP to 4 decimals (0.000512 -> '$0.0006');
+        |v| < 1 -> 4 decimals; |v| < 1000 -> 2 decimals; < 1e6 -> 'N.NK'; else 'N.NM'.
+        A negative value gets a '-' sign prefix (before '< ' for the sub-1e-5 tier: '-< $0.00001').
+        """
+        if value is None or not math.isfinite(value):
+            return "-"
+        if value == 0:
+            return "$0.00"
+        sign = "-" if value < 0 else ""
+        a = abs(value)
+        if a < 1e-5:
+            return f"{sign}< $0.00001"
+        if a < 1e-4:
+            return f"{sign}${a:.5f}"
+        if a < 0.01:
+            # Exact mirror of the product's Math.ceil(abs * 10_000) / 10_000 (no pre-rounding): Python and JS
+            # share IEEE-754 doubles, so float-ceil quirks (0.0051*10000 = 51.00000000000001 -> $0.0052) are
+            # deliberately reproduced.
+            return f"{sign}${math.ceil(a * 10000) / 10000:.4f}"
+        if a < 1:
+            return f"{sign}${a:.4f}"
+        if a < 1000:
+            return f"{sign}${a:.2f}"
+        if a < 1e6:
+            return f"{sign}${a / 1000:.1f}K"
+        return f"{sign}${a / 1e6:.1f}M"
 
     @action("Switch analytics tab")
     def open_tab(self, tab: LocatorDescriptor) -> None:

@@ -921,7 +921,7 @@
     },
     "pages/run_analytics_page.py::RunAnalyticsPage.KPI_CARD_VALUE": {
       "file": "pages/run_analytics_page.py",
-      "line": 42,
+      "line": 43,
       "kind": "xpath",
       "selector": ".//span[normalize-space()='{}' and not(@role)]/../following-sibling::div/span",
       "suggested_testid": "run-analytics-costs-kpi-value-{}",
@@ -933,7 +933,7 @@
     },
     "pages/run_analytics_page.py::RunAnalyticsPage.TABLE_CELLS": {
       "file": "pages/run_analytics_page.py",
-      "line": 48,
+      "line": 49,
       "kind": "xpath",
       "selector": ".//span[normalize-space()='{}']/../following-sibling::div//p",
       "suggested_testid": "run-analytics-costs-table-cell-{}",
@@ -941,6 +941,18 @@
       "state": "raw",
       "added": "2026-11-11",
       "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/run_analytics_page.py::RunAnalyticsPage.TABLE_USER_NAMES": {
+      "file": "pages/run_analytics_page.py",
+      "line": 55,
+      "kind": "xpath",
+      "selector": ".//span[normalize-space()='{}']/../following-sibling::div//span[contains(@class,'user-label-name')]",
+      "suggested_testid": "run-analytics-costs-table-user-name-{}",
+      "description": "User-name labels (UserLabel span.user-label-name, a stable app class) in the table titled {}; rungs 1-4 failed: name span has no testid/role/label",
+      "state": "raw",
+      "added": "2026-11-12",
+      "updated": "2026-11-12",
       "history": []
     },
     "pages/skill_detail_page.py::SkillDetailPage.TEST_PANEL_ALERT": {
@@ -1174,10 +1186,10 @@
   },
   "last_sync": "2026-11-12",
   "metric": {
-    "declared_total": 1397,
+    "declared_total": 1398,
     "declared_testid": 1301,
-    "declared_non_testid": 96,
-    "non_testid_with_hint": 75,
+    "declared_non_testid": 97,
+    "non_testid_with_hint": 76,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 20,
@@ -1186,9 +1198,9 @@
       "locator": 1,
       "role": 30,
       "testid": 1301,
-      "xpath": 24
+      "xpath": 25
     },
-    "locator_debt": 0.0687,
+    "locator_debt": 0.0694,
     "unmanaged_handles": 312
   }
 }
