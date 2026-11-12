@@ -1,11 +1,11 @@
 {
  "v": 1,
  "batch": "adjust-2943",
- "generatedAt": "2026-11-12T11:59:50.270Z",
+ "generatedAt": "2026-11-12T12:00:07.335Z",
  "sources": {
   "window": {
    "start": "2026-11-11T11:31:55.245Z",
-   "end": "2026-11-13T11:59:49.010Z",
+   "end": "2026-11-13T12:00:06.083Z",
    "source": "scopes"
   },
   "sessions": 1,
@@ -26,27 +26,27 @@
   ]
  },
  "totals": {
-  "costUsd": 3.26,
-  "tokens": 11900039,
+  "costUsd": 3.31,
+  "tokens": 12282118,
   "tokensSplit": {
-   "input": 31670,
-   "output": 57197,
-   "cacheRead": 11333187,
-   "cacheWrite": 477985
+   "input": 31676,
+   "output": 57798,
+   "cacheRead": 11712231,
+   "cacheWrite": 480413
   },
   "tokensByModel": {
    "1_eu.anthropic.claude-sonnet-5-5": {
-    "input": 31670,
-    "output": 57197,
-    "cacheRead": 11333187,
-    "cacheWrite": 477985
+    "input": 31676,
+    "output": 57798,
+    "cacheRead": 11712231,
+    "cacheWrite": 480413
    }
   },
   "activeMin": 52,
   "dispatches": 2,
   "sessions": 1,
-  "turns": 12,
-  "toolCalls": 77,
+  "turns": 15,
+  "toolCalls": 80,
   "toolErrors": 2,
   "skills": [
    "adjust-automated-test"
@@ -82,36 +82,36 @@
    "toolErrors": 2
   },
   "test-automation-lead": {
-   "costUsd": 0.77,
-   "tokens": 1365929,
+   "costUsd": 0.83,
+   "tokens": 1748008,
    "tok": {
-    "input": 10649,
-    "output": 6149,
-    "cacheRead": 1147245,
-    "cacheWrite": 201886
+    "input": 10655,
+    "output": 6750,
+    "cacheRead": 1526289,
+    "cacheWrite": 204314
    },
    "activeMin": 29,
    "dispatches": 0,
-   "toolCalls": 12,
+   "toolCalls": 15,
    "toolErrors": 0
   }
  },
  "overhead": {
   "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
-  "costUsd": 0.77,
-  "sharePct": 24,
+  "costUsd": 0.83,
+  "sharePct": 25,
   "lead": {
-   "costUsd": 0.77,
-   "tokens": 1365929,
+   "costUsd": 0.83,
+   "tokens": 1748008,
    "tok": {
-    "input": 10649,
-    "output": 6149,
-    "cacheRead": 1147245,
-    "cacheWrite": 201886
+    "input": 10655,
+    "output": 6750,
+    "cacheRead": 1526289,
+    "cacheWrite": 204314
    },
    "activeMin": 29,
    "dispatches": 0,
-   "toolCalls": 12,
+   "toolCalls": 15,
    "toolErrors": 0
   },
   "stages": {
@@ -144,16 +144,13 @@
   "gateRuns": {
    "count": 3,
    "latest": {
+    "verdict": "green",
     "at": null,
     "consecutiveGreen": 0
    }
   },
   "declaredOutcomes": {
    "ELITEA-3744": "automated"
-  },
-  "gateDrift": {
-   "receipt": "green",
-   "at": null
   }
  },
  "cases": [
@@ -177,8 +174,8 @@
     "toolErrors": 2
    },
    "loaded": {
-    "costUsd": 3.26,
-    "tokens": 11900039,
+    "costUsd": 3.32,
+    "tokens": 12282118,
     "activeMin": 52
    }
   }
@@ -207,10 +204,10 @@
    "n": 1
   },
   "loadedCostUsd": {
-   "avg": 3.26,
-   "median": 3.26,
-   "min": 3.26,
-   "max": 3.26,
+   "avg": 3.32,
+   "median": 3.32,
+   "min": 3.32,
+   "max": 3.32,
    "n": 1
   },
   "loadedActiveMin": {
@@ -223,7 +220,7 @@
  },
  "averages": {
   "totalPerDelivered": {
-   "costUsd": 3.26,
+   "costUsd": 3.31,
    "note": "whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)"
   },
   "directPerCase": {
