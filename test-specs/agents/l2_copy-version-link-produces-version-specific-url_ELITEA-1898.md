@@ -174,3 +174,9 @@ testid work needed)
 ## Known Defects
 None found — both drift observations (Steps 2–3) are case-text drift (label/mechanism mismatch), not
 product defects; see [EliteaAI/elitea-testing-public#1288](https://github.com/EliteaAI/elitea-testing-public/issues/1288).
+
+## Adjustment (2026-11-12, #2939)
+
+- **Triage class: D/A (timing/visibility drift, no product bug).** EliteaUI `origin/main` `AgentEditorWorkspace.jsx:130` renders `<ApplicationInformation defaultExpanded={false} />`. On a fresh tab the Information accordion body is collapsed (`visibility:hidden`), so `copy-version-id` is mounted but `innerText` is `''`; `AgentDetailPage.wait_for_version_trigger_and_id` compared `innerText` and never converged (Step 6 timeout). `agent-information-section` is still visible (wait_for_page_load unaffected).
+- **Fix (how only):** the predicate now reads `textContent` (same approach as `VERSION_CONVERGED_JS`, #2896). Handles unchanged (`copy-version-id` testid on DEV).
+- **Expected-result changes: none.** All assertions (name, version id equality, URL segments, zero console errors) unchanged.

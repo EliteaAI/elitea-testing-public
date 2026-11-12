@@ -4355,7 +4355,11 @@ class AgentDetailPage(AgentFormPage):
                 );
                 if (!trigger || trigger.innerText.trim() !== name) return false;
                 if (!versionIdEl) return false;
-                return versionIdEl.innerText.trim() === expectedId;
+                // textContent, not innerText: the Information accordion is
+                // collapsed by default (AgentEditorWorkspace defaultExpanded=
+                // {false}) so its body is visibility:hidden and innerText is
+                // '' although the id is mounted (same quirk as VERSION_CONVERGED_JS).
+                return (versionIdEl.textContent || "").trim() === expectedId;
             }""",
             arg=[version_name, version_id],
             timeout=timeout,
