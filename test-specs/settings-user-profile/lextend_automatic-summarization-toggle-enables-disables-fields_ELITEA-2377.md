@@ -14,7 +14,7 @@
 - **Covering spec**: `automation/tests/ui/settings/test_context_management_toggle.py:73`
   (`class TestContextManagementToggle`, existing method
   `test_context_management_toggle_enables_disables_fields` at line 76).
-- **Covering AFS**: `test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`
+- **Covering AFS**: `l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md` (RETIRED — case ELITEA-2374 deprecated, EL-6898; AFS removed, see git history)
 - **Behavioural overlap**: the covering spec already exercises the SAME
   `/settings/memory` page, the same `UserProfileSettingsPage` page object, and
   already asserts that the Automatic Summarization sub-section (including its

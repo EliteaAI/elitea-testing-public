@@ -412,10 +412,8 @@ class UserProfileSettingsPage(BasePage):
           around this call, matching the wrap-the-call pattern already used
           throughout ``test_context_management_toggle.py``.
 
-        Do NOT modify :meth:`set_max_context_tokens` itself — it is used
-        unchanged by ``test_context_management_toggle_enables_disables_fields``
-        (ELITEA-2374); this is a sibling method, not a behavioural change to
-        the shared one.
+        Do NOT modify :meth:`set_max_context_tokens` itself; this is a
+        sibling method, not a behavioural change to the shared one.
 
         Args:
             text: Raw text to type verbatim. May be non-numeric or contain a

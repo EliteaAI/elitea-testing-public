@@ -115,9 +115,8 @@ schema/fresh-account defaults — they carry whatever was last saved by
 earlier manual or automated sessions (observed this session: Max Context
 Tokens = `10000`, Preserve Recent Messages = `5`, Target Summary Tokens =
 `4096`, Automatic Summarization = ON). Don't hard-assert a literal
-"default" value in a new test; read-and-compare instead (see
-`l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`
-§ Blocked Steps for the worked example).
+"default" value in a new test; read-and-compare instead (worked example: the ELITEA-2374 AFS, retired
+with its deprecated case — see the 2377 AFS § Blocked Steps).
 
 ## Target Summary Tokens — min/max validation (ELITEA-2378 session, 2026-08-06)
 

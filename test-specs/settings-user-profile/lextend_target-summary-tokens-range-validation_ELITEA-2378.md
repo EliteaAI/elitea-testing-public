@@ -16,7 +16,7 @@
   method appended to this class, mirroring the additive mechanic already used
   by `test_automatic_summarization_toggle_enables_disables_own_fields`
   (ELITEA-2377, `lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md`).
-- **Covering AFS**: `test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`
+- **Covering AFS**: `l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md` (RETIRED — case ELITEA-2374 deprecated, EL-6898; AFS removed, see git history)
   + `test-specs/settings-user-profile/lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md`.
 - **Behavioural overlap**: the covering specs already reach `/settings/memory`,
   drive `UserProfileSettingsPage`, and enable Context Management + Automatic

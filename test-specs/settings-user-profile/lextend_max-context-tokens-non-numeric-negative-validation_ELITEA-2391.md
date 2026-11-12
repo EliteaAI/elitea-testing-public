@@ -16,7 +16,7 @@
   New test method appended to this class, mirroring the additive mechanic already
   used twice in this class (`test_automatic_summarization_toggle_enables_disables_own_fields`
   for ELITEA-2377, `test_target_summary_tokens_range_validation` for ELITEA-2378).
-- **Covering AFS**: `test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`.
+- **Covering AFS**: `l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md` (RETIRED — case ELITEA-2374 deprecated, EL-6898; AFS removed, see git history).
 - **Behavioural overlap**: the covering ELITEA-2374 spec already reaches
   `/settings/memory`, drives `UserProfileSettingsPage`, enables Context
   Management, and reads/round-trips the Max Context Tokens value (as a
