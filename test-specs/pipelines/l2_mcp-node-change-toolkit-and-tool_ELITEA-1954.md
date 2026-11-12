@@ -144,3 +144,17 @@ Cause: EliteaUI EL-7157 (a695e4e8) — canvas node cards are compact view-only s
 Handles Reference additions: rung 1 `pipeline-node-panel-basic-section` (scope) + `[data-testid^="pipeline-mcp-node-input-mapping-value-"]` (all testid on DEV; no suggested_testid needed).
 
 Expected-result changes: the "section titled `Input mapping (required 2)`" observable is replaced by "exactly 2 required Input-mapping Value fields (repoName, question) listed in the panel's Basic section" (same information: the required-parameter count and names; both fields still asserted visible, filled, saved, and persisted). Everything else: none.
+
+## Adjustment — EL-7159 / #2848 (class A, UI drift; sanctioned on #2858)
+
+The MCP node's Toolkit control is now `ProjectToolkitPicker` (lists ALL project MCPs, search box + "Create new"), and the left TOOLS panel is a read-only `PipelineToolsSection` of `PipelineToolCard`s.
+
+| Old handle | New handle |
+|---|---|
+| `#simple-select-Toolkit` + `[data-testid^="select-option-"]` listbox | `pipeline-mcp-node-toolkit-select` picker: `…-select-option`, `…-select-menu-search` (testids on DEV) |
+| TOOLS container `agent-toolkits-section` / card `agent-toolkit-card` | `pipeline-tools-section` / `pipeline-tool-card` |
+| (none) | `pipeline-tool-card-used-by` chip (new, testid on DEV), `pipeline-tool-card-show-tools` toggle, `toolkit-card-tool-item-{tool}` |
+
+**Expected-result changes (human decision, #2858):**
+- Step 4: the Toolkit picker **includes** every MCP attached in TOOLS (was "lists exactly the attached MCPs"; the picker now always lists all project MCPs, so equality is unachievable).
+- New Step 11 (verification against the TOOLS panel): after the node's Toolkit/Tool are set, the attached MCP's card in TOOLS shows "Used by: <node name>" (`pipeline-tool-card-used-by`), and clicking "Show tools" expands it to list the tool configured on the node (`ask_wiki_question`). All other assertions unchanged.

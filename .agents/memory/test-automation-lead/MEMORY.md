@@ -56,3 +56,4 @@
 - ["Issue with the selected model" is transient](workflow_transient_model_access_error_resume_not_restart.md) — check git, then resumeFromRunId, never a fresh dispatch
 - [AI-timeout RED can be one model route](ai_response_timeout_can_be_model_route_specific.md) — swap models in-conversation before classifying as pipeline-wide outage
 - sandbox_no_env_test_needs_app_prefix.md — missing .env.test => 404 everywhere; export APP_PREFIX=/app
+- 2026-11-12 adjust-2848 ELITEA-1954: class A picker drift; question #2858 answered (option 1 + TOOLS-panel verification); reviewed APPROVED, gate 3/3.
