@@ -266,3 +266,14 @@ source grep of `automation/pages/pipeline_detail_page.py` this session).
   (only the known `#1267` signature present); DOM state captured via
   `browser_evaluate` (see Concrete Handles / Test Step 12 for the exact values
   read).
+
+## Adjustment — Pipelines Editor 2.0 (EL-7157 / elitea_issues#7157), ELITEA-2444
+
+- **Triage class:** A (UI drift) for the Agent-node handling; **Step 6 timeline count is UNRESOLVED (open question, see below)**.
+- **What changed (old -> new), verified on DEV 2026-11-12:**
+  - Node cards on the canvas are view-only. The Agent select moved off the card into the node config side panel (`pipeline-agent-node-agent-select`, `-input-select`, `-output-select` all still exist there; `pipeline-agent-node-input-mapping-heading` is gone, replaced by the TASK field).
+  - The card shows `pipeline-node-summary-primary`, but it echoes the YAML `tool:` name even while the relation is unresolved, so it cannot express "empty before attach". Pre-attach truth is the panel's `pipeline-agent-node-not-found` marker + the select. `get_agent_node_agent_value()` therefore reads the select in the panel and returns "" while "Agent not found" is shown.
+  - TOOLS section is a read-only list; "+ Pipeline" (`agent-add-pipeline-button`) is gone. Attach = pick in the Agent node's "Agents & Pipelines" picker, then Save (PATCH application_relation 201 + PUT 201). Re-picking the YAML-named value does not dirty the form, so the page object clears first. Picking resets the node's TASK mapping to empty, leaving the node "Not configured" and Test Pipeline disabled; the page object re-enters the fixture TASK text.
+- **Handles (ladder):** | rung | handle | suggested_testid | provenance | -> testid | pipeline-agent-node-not-found | n/a | testid on DEV ok | ; testid | pipeline-agent-node-agent-select-clear | n/a | testid on DEV ok |.
+- **Expected-result changes:** none. Assertions untouched.
+- **Open question (needs human decision):** Step 6 asserts timeline >= 3 steps (CODE1 + nested child steps + AGENT1). DEV now renders 2 steps (`CODE1`, `<child name>`) for the same run. Either nested child steps are no longer listed in Run Details (expected-result change: needs TMS + sign-off) or this is a product regression. Not adjusted.
