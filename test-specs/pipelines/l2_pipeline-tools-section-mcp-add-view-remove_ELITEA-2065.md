@@ -169,3 +169,11 @@ first node added. Step 1's canvas check changed from `node ids == ["END"]` to `n
 canvas empty); every other assertion untouched. Handles unchanged (`.react-flow__node` enumeration via
 the existing `get_node_ids`). No other END-baseline assumption exists in the spec; the full flow
 (attach, show-tools, remove, save, reload) ran green on DEV.
+
+## Adjustment — EL-7159 / #2942 (class A for Steps 2-4/5-6; Step 7 = missing flow, see below)
+
+TOOLS "+ MCP" (`agent-add-mcp-button`) is gone. Flow now: add MCP node (`pipeline-add-node-button` -> `pipeline-add-node-menu-item-mcp`) -> `open_mcp_node_picker` (`pipeline-mcp-node-toolkit-select`, `-select-option`, `-select-menu-search`) -> pick -> node select shows the MCP -> left `pipeline-tools-section` auto-lists a `pipeline-tool-card` (all testids on DEV).
+
+**Expected-result change (human-sanctioned):** Step 2/3 precondition "+ MCP popper / immediate attach PATCH 201" replaced by "add node, open picker, pick, node shows MCP"; Step 4 asserts the card appears in TOOLS automatically.
+
+**Open (not drift):** Steps 7-9 (remove via card delete icon). `PipelineToolCard` renders `pipeline-tool-card-remove` only for items no node uses (`PipelineToolsSection.jsx`: legacy leftovers). Via the new flow, deleting the node (even after Save) leaves TOOLS empty, so the delete icon is unreachable; test stays red at Step 7. Needs a lead decision (expected-result change: removal = delete node / clear picker).
