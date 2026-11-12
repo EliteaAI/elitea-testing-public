@@ -7,11 +7,12 @@
     "ELITEA-1955"
   ],
   "declaredAt": "2026-11-02T04:21:00.889Z",
-  "updatedAt": "2026-11-02T04:23:57.777Z",
+  "updatedAt": "2026-11-12T07:14:09.443Z",
   "outcomes": {
     "ELITEA-1955": {
-      "outcome": "blocked",
-      "at": "2026-11-02T04:23:57.777Z"
+      "outcome": "automated",
+      "at": "2026-11-12T07:14:09.404Z"
     }
-  }
+  },
+  "closedAt": "2026-11-12T07:14:09.443Z"
 }
