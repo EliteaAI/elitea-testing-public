@@ -60,27 +60,23 @@
      (`context-management-section`) is visible and expanded by default.
    - *(Reused from the covering spec's own step 1 — same navigation, no new
      assertion needed here since the covering test already proves this.)*
-2. Ensure Context Management is enabled (precondition for the rest of the
-   flow — Automatic Summarization is unreachable while it's OFF). If OFF,
-   turn it ON via the Context Management toggle (`context-management-toggle`)
-   and wait for the autosave round-trip (`PUT /api/v2/social/author/` → 200).
-3. Verify the Automatic Summarization toggle (`automatic-summarization-toggle`)
+2. Verify the Automatic Summarization toggle (`automatic-summarization-toggle`)
    is present and visible. If it is currently OFF, turn it ON first
    (precondition for the rest of the flow) and wait for the autosave
    round-trip.
-4. With the toggle ON, verify Summarization Instructions
+3. With the toggle ON, verify Summarization Instructions
    (`summarization-instructions-textarea`) and Target Summary Tokens
    (`target-summary-tokens-input`) are **visible and enabled** (not
    `disabled`).
-5. Read the current value of Target Summary Tokens and assert it is a
+4. Read the current value of Target Summary Tokens and assert it is a
    non-empty positive integer. **Do not assert the literal `4096`** — see
    Test Data note above. Store the value as `original_target_tokens` for the
-   restore-verification in step 8.
-6. Click the Automatic Summarization toggle (`automatic-summarization-toggle`)
+   restore-verification in step 7.
+5. Click the Automatic Summarization toggle (`automatic-summarization-toggle`)
    to turn it OFF. Wait for the autosave round-trip
    (`PUT /api/v2/social/author/` → 200; UI shows a "Settings saved
    successfully" toast).
-7. Verify Summarization Instructions (`summarization-instructions-textarea`)
+6. Verify Summarization Instructions (`summarization-instructions-textarea`)
    and Target Summary Tokens (`target-summary-tokens-input`) become
    **disabled** (`to_be_disabled()`). **This is a genuinely different
    mechanism from the parent Context Management toggle** (which conditionally
@@ -91,12 +87,12 @@
    uneditable" wording is **literally accurate here** (unlike the parent
    toggle case, where the same wording described an unmount and needed a
    clarification — EliteaAI/elitea-testing-public#1238).
-8. Click the Automatic Summarization toggle (`automatic-summarization-toggle`)
+7. Click the Automatic Summarization toggle (`automatic-summarization-toggle`)
    back ON. Wait for the autosave round-trip.
    - **Verify**: Summarization Instructions and Target Summary Tokens
      re-enable (`to_be_enabled()`).
    - **Verify**: Target Summary Tokens' value equals `original_target_tokens`
-     from step 5 (state is preserved across the disable/enable cycle, not
+     from step 4 (state is preserved across the disable/enable cycle, not
      reset). Summarization Instructions is not value-compared — the field is
      empty (placeholder-only) on this account, so there is no meaningful
      value to round-trip; the enabled-state check above is sufficient
@@ -120,35 +116,34 @@
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 Navigate to Personalization → DEFAULT SUMMARIZATION | Target page/section loads | AFS step 1 | step 1: `context-management-section` visible (reused from covering spec) | clarification *(route is Settings → Memory, not Personalization; "DEFAULT SUMMARIZATION" is the "Automatic Summarization" sub-section — same stale case-text pattern as the sibling ELITEA-2374 case, covered by the existing clarification EliteaAI/elitea-testing-public#1238, no new ticket needed)* |
-| 2 Ensure Context Management is enabled | Condition holds | AFS step 2 | step 2: `context-management-toggle` ON (enable if needed) + autosave PUT 200 | asserted |
-| 3 Verify "Enable automatic summarization" toggle is present | Toggle visible | AFS step 3 (partial) | step 3: `automatic-summarization-toggle` visible | asserted |
-| 4 Verify toggle ON: Summarization Instructions + Target Summary Tokens editable | Fields editable | AFS steps 3 (turn ON if needed) + 4 | step 4: both fields visible + enabled | asserted |
-| 5 Verify default value: Target Summary Tokens = 4096 | Specific default shown | AFS step 5 (partial) | step 5: field is a non-empty positive integer | blocked *(exact literal default unverifiable as a platform default on the shared `${TEST_USER}` account, which already carries a persisted value — happens to read `4096` today, same test-data caveat as the sibling ELITEA-2374 case; see § Blocked Steps)* |
-| 6 Click the toggle to turn it OFF | Toggle responds | AFS step 6 | step 6: toggle unchecked + autosave PUT 200 | asserted |
-| 7 Verify Summarization Instructions and Target Summary Tokens become grayed out / uneditable | Fields disabled | AFS step 7 | step 7: both fields `to_be_disabled()` | asserted *(case text is literally accurate here — genuine `disabled` prop, not the unmount mechanism seen on the parent toggle)* |
-| 8 Toggle back ON — verify fields are editable again | Fields restored, editable | AFS step 8 | step 8: both fields `to_be_enabled()` + Target Summary Tokens value round-trip | asserted |
+| 2 Verify "Enable automatic summarization" toggle is present | Toggle visible | AFS step 2 | step 2: `automatic-summarization-toggle` visible | asserted |
+| 3 Verify toggle ON: Summarization Instructions + Target Summary Tokens editable | Fields editable | AFS step 2 (turn ON if needed) + step 3 | step 3: both fields visible + enabled | asserted |
+| 4 Verify default value: Target Summary Tokens = 4096 | Specific default shown | AFS step 4 (partial) | step 4: field is a non-empty positive integer | blocked *(exact literal default unverifiable as a platform default on the shared `${TEST_USER}` account, which already carries a persisted value — happens to read `4096` today, same test-data caveat as the sibling ELITEA-2374 case; see § Blocked Steps)* |
+| 5 Click the toggle to turn it OFF | Toggle responds | AFS step 5 | step 5: toggle unchecked + autosave PUT 200 | asserted |
+| 6 Verify Summarization Instructions and Target Summary Tokens become grayed out / uneditable | Fields disabled | AFS step 6 | step 6: both fields `to_be_disabled()` | asserted *(case text is literally accurate here — genuine `disabled` prop, not the unmount mechanism seen on the parent toggle)* |
+| 7 Toggle back ON — verify fields are editable again | Fields restored, editable | AFS step 7 | step 7: both fields `to_be_enabled()` + Target Summary Tokens value round-trip | asserted |
 
 ### Axis 2 — Analyst additions
-- AFS steps 6/8 assert the `PUT /api/v2/social/author/` → 200 autosave
+- AFS steps 5/7 assert the `PUT /api/v2/social/author/` → 200 autosave
   round-trip explicitly — *added: confirmed via live network capture that
   the Automatic Summarization toggle autosaves through the same endpoint as
   the parent Context Management toggle.*
-- AFS step 7 explicitly documents and asserts the **mechanism difference**
+- AFS step 6 explicitly documents and asserts the **mechanism difference**
   from the parent toggle (disable via `disabled` prop vs. conditional
   unmount) — *added: this is the actual reason this case needs its own test
   rather than being folded into the covering spec's existing assertions; the
   covering spec's steps 6–8 only ever observe the Automatic Summarization
   sub-section from the OUTSIDE (its own toggle unmounting/remounting as a
   unit with the parent), never exercise the sub-section's OWN toggle.*
-- AFS step 8 asserts the Target Summary Tokens value is **preserved**, not
+- AFS step 7 asserts the Target Summary Tokens value is **preserved**, not
   reset, across the disable/enable cycle — *added: natural counterpart to
-  step 7's finding, guards against a future regression that resets the value
+  step 6's finding, guards against a future regression that resets the value
   on re-enable.*
 
 ## Cleanup
-- None required beyond the test's own flow. Context Management and Automatic
-  Summarization both start and end this test ON (steps 2/3 establish the
-  precondition; steps 6→8 is a full disable/enable round-trip back to the
+- None required beyond the test's own flow. Automatic
+  Summarization starts and ends this test ON (step 2 establishes the
+  precondition; steps 5→7 is a full disable/enable round-trip back to the
   starting state). No persistent mutation beyond what already existed.
 
 ## Concrete Handles (discovered during exploration)
@@ -158,7 +153,7 @@
 | Automatic Summarization toggle | `automatic-summarization-toggle` | on-automation/testids only (awaiting human promotion to main) | Pre-existing — added in the ELITEA-2374 session, `EliteaAI/EliteaUI@b8155bda`. Already declared on the page object; reused here, not re-added. |
 | Summarization Instructions textarea | `summarization-instructions-textarea` | on-automation/testids only (awaiting human promotion to main) | **NEW** — added this session, `EliteaAI/EliteaUI@be73caea`, `MemorySummarization.jsx` (via `inputProps['data-testid']` on `Input.StyledInputEnhancer`, forwarded to the underlying `<textarea>` through MUI's `htmlInput` slot). |
 | Target Summary Tokens input | `target-summary-tokens-input` | on-automation/testids only (awaiting human promotion to main) | **NEW** — added this session, `EliteaAI/EliteaUI@be73caea`, same file/mechanism as above. Verified unique — a differently-scoped `context-modal-target-summary-tokens-input` exists in a sibling widget (`ContextStrategySummarization.jsx`, the chat-side Context Budget panel), not a collision. |
-| Context Management section, Context Management toggle | `context-management-section`, `context-management-toggle` | on-main ✓ | Reused from the covering spec — no change. |
+| Context Management section | `context-management-section` | on-main ✓ | Reused from the covering spec — no change. |
 
 State assertion (per `.agents/testing.md` § Locator policy — state via
 `data-*`, not testid-value-switching): N/A here — this case's "disabled"
@@ -175,7 +170,6 @@ and is asserted via absence, per the covering AFS).
 | rung | handle | suggested_testid | provenance |
 |---|---|---|---|
 | 1 testid | `context-management-section` | n/a | testid on DEV ✓ |
-| 1 testid | `preserve-recent-messages-input` | n/a | testid on DEV ✓ (Step 2 always-on check; also `wait_for_page_load` is no longer gated on a removed control) |
 | 1 testid | `automatic-summarization-toggle` | n/a | testid on DEV ✓ (now the page-load readiness handle) |
 | 1 testid | `summarization-instructions-textarea` | n/a | testid on DEV ✓ |
 | 1 testid | `target-summary-tokens-input` | n/a | testid on DEV ✓ |
@@ -186,8 +180,8 @@ and is asserted via absence, per the covering AFS).
 ## Adjustment (2026-10-25, card #2685, triage class A — UI drift)
 
 - **What changed in the product:** frontend commit 7242d9c3 "[EL-6898] Context management rename, always-on and Memory default mode" removed the parent Context Management toggle and the Max Context Tokens input; context management is always on.
-- **What changed in the test:** `UserProfileSettingsPage.wait_for_page_load` now waits on `automatic-summarization-toggle` instead of the removed parent toggle. Step 2 (precondition) no longer clicks a toggle; it asserts the always-on state (Preserve Recent Messages input visible and enabled, so Automatic Summarization is reachable). Step wrapper retained.
-- **Assertions Steps 3-8:** untouched. The disabled mechanism is unchanged (`isSummarizationDisabled = !values.enable_summarization`, children stay mounted with `disabled`).
+- **What changed in the test:** `UserProfileSettingsPage.wait_for_page_load` now waits on `automatic-summarization-toggle` instead of the removed parent toggle. The former Step 2 precondition was later removed entirely (see the 2026-11-12 adjustment below).
+- **Assertions of the remaining steps:** untouched. The disabled mechanism is unchanged (`isSummarizationDisabled = !values.enable_summarization`, children stay mounted with `disabled`).
 - **Expected-result changes: none.** The precondition was removed because the control was removed by the product; no assertion was deleted or weakened.
 
 ## Network Behavior
@@ -211,14 +205,14 @@ and is asserted via absence, per the covering AFS).
   Automatic Summarization toggle, never types into the numeric field.
 
 ## Blocked Steps
-- Case step 5's literal default value (`4096`) could not be verified against
+- Case step 4's literal default value (`4096`) could not be verified against
   a pristine account — the shared `${TEST_USER}` account already has a
   persisted value from earlier sessions (test data pollution, not a product
   issue). It happens to read `4096` today, consistent with the case text,
   but automating a hard-coded assertion on that literal would be flaky
-  against this shared account's real (mutable) state. AFS step 5 instead
+  against this shared account's real (mutable) state. AFS step 4 instead
   asserts "a non-empty positive integer" and captures the value for the
-  step-8 round-trip check — same treatment as the sibling ELITEA-2374 case's
+  step-7 round-trip check — same treatment as the sibling ELITEA-2374 case's
   identical blocker for Max Context Tokens / Preserve Recent Messages. Not
   filed as a new ticket (test-design/test-data consideration, not a
   case-text-vs-product disagreement).
@@ -246,3 +240,15 @@ and is asserted via absence, per the covering AFS).
   helpers) around every toggle click — the covering test's docstring
   explains why the GET refetch wait matters (race with a second click before
   the first click's refetch resolves).
+
+
+## Adjustment (2026-11-12, issue #2947)
+
+- **Triage class A** — case-text drift, no product change. TMS case ELITEA-2377 dropped its
+  step 2 ("Ensure Context Management is enabled"): the parent toggle was removed
+  (EliteaAI/elitea_issues#6898 AC4), so Context window + Automatic Summarization are always visible.
+- Test steps renumbered 1-7 to match the case; the `preserve_recent_messages_input` always-on
+  precondition step was removed with it. No other assertion touched.
+- **Expected-result changes:** none (the removed step was a precondition, not a verified outcome).
+- Handles unchanged; all verified present on DEV (`summarization-settings`, `automatic-summarization-toggle`,
+  `target-summary-tokens-input`, `summarization-instructions-textarea` — testid on DEV ✓).
