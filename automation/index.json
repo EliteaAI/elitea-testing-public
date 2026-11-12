@@ -3625,6 +3625,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.settings.test_web_search_default_modules_row_and_chat_inheritance.TestWebSearchDefaultModules.test_web_search_default_modules_row_and_chat_inheritance",
+      "markers": [
+        "chat",
+        "p1",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4655"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/settings/default-modules/ELITEA-4655_web-search-default-modules-tooltip-and-chat-inheritance-triggers-search.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.skills.test_agent_instructions_tilde_mention.TestTildeMentionListsOnlyAttachedSkills.test_tilde_mention_in_instructions_lists_only_attached_skills",
       "markers": [
         "p2",
