@@ -147,21 +147,26 @@ def test_subgraph_state_sharing_non_common_state_isolation(page, pipeline_parent
         )
 
     with allure.step(
-        "Step 6 — Timeline nests the CHILD pipeline's own execution steps inside the SAME panel "
-        "(structural check, per ELITEA-2443's own fixture-shape finding for this recipe)"
+        "Step 6 — Timeline groups the nested CHILD pipeline into ONE collapsed entry after CODE1 "
+        "(no nested rows; elitea_issues#3734, human decision #2951); the child's own steps are "
+        "visible in the chat's thinking/trace view"
     ):
         timeline_count = pipeline_page.get_run_details_timeline_step_count()
-        assert timeline_count >= 3, (
-            f"Timeline should show >= 3 steps (parent CODE1 + nested child step(s)) for a "
-            f"nested-pipeline run, got {timeline_count}"
-        )
         timeline_node_ids = [
             pipeline_page.get_run_details_timeline_step_node_id(i, timeout=UI_ELEMENT_TIMEOUT)
             for i in range(timeline_count)
         ]
-        assert any(child_name in node_id for node_id in timeline_node_ids), (
-            f"The child pipeline's own name ({child_name!r}) should appear among the nested "
-            f"timeline step ids, got {timeline_node_ids!r}"
+        assert timeline_node_ids == ["CODE1", child_name], (
+            f"Timeline should show exactly 2 entries -- the parent's CODE1 then the single grouped "
+            f"child-pipeline entry {child_name!r}, with no nested rows -- got {timeline_node_ids!r}"
+        )
+        # Run Details is a modal: close it to reach the chat trace, then reopen for the state reads.
+        pipeline_page.close_run_details_panel()
+        trace_text = pipeline_page.get_nested_pipeline_trace_text(child_name, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.open_run_details_panel(timeout=UI_ELEMENT_TIMEOUT)
+        assert "pyodide_sandbox" in trace_text, (
+            f"The chat trace's grouped {child_name!r} entry should expand to the child's own "
+            f"code-node step (pyodide_sandbox), got {trace_text!r}"
         )
 
     with allure.step(

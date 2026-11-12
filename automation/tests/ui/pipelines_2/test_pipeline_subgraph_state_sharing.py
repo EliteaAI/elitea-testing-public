@@ -147,35 +147,29 @@ def test_subgraph_state_sharing_common_vars(page, pipeline_parent_child_state_sh
         )
 
     with allure.step(
-        "Step 6 — Timeline nests the CHILD pipeline's own execution steps inside the SAME panel; "
-        "select the LAST entry (the Agent node's own step, 'AGENT1') -- satisfies case step 6"
+        "Step 6 — Timeline groups the nested CHILD pipeline into ONE collapsed entry after CODE1 "
+        "(no nested rows; elitea_issues#3734, human decision #2951); select that grouped entry "
+        "(the Agent node's step) and check the child's own steps in the chat's thinking/trace view"
     ):
         timeline_count = pipeline_page.get_run_details_timeline_step_count()
-        assert timeline_count >= 3, (
-            f"Timeline should show >= 3 steps (parent CODE1 + >=1 nested child step + AGENT1 "
-            f"wrap-up) for a nested-pipeline run, got {timeline_count}"
-        )
-
         timeline_node_ids = [
             pipeline_page.get_run_details_timeline_step_node_id(i, timeout=UI_ELEMENT_TIMEOUT)
             for i in range(timeline_count)
         ]
-        assert any(child_name in node_id for node_id in timeline_node_ids), (
-            f"The child pipeline's own name ({child_name!r}) should appear among the nested "
-            f"timeline step ids, got {timeline_node_ids!r}"
+        assert timeline_node_ids == ["CODE1", child_name], (
+            f"Timeline should show exactly 2 entries -- the parent's CODE1 then the single grouped "
+            f"child-pipeline entry {child_name!r}, with no nested rows -- got {timeline_node_ids!r}"
+        )
+        # Run Details is a modal: close it to reach the chat trace, then reopen for the state reads.
+        pipeline_page.close_run_details_panel()
+        trace_text = pipeline_page.get_nested_pipeline_trace_text(child_name, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.open_run_details_panel(timeout=UI_ELEMENT_TIMEOUT)
+        assert "pyodide_sandbox" in trace_text, (
+            f"The chat trace's grouped {child_name!r} entry should expand to the child's own "
+            f"code-node step (pyodide_sandbox), got {trace_text!r}"
         )
 
-        # Select the LAST entry -- the AFS's own Automation Hints call for a
-        # STRUCTURAL assertion here (count / child-name presence / last-entry
-        # identity), not the literal id string, because entry count/order is
-        # fixture-shape-dependent: this fixture's own live run showed 4
-        # entries ending in the CHILD's own "pyodide" code-node step, not a
-        # distinct trailing "AGENT1" entry (unlike the AFS author's session,
-        # whose 2-node-parent/1-node-child recipe produced 5, ending in
-        # "AGENT1") -- confirmed live for THIS recipe during implementation.
-        # Either shape satisfies case step 6 ("click on the Agent node step
-        # in the timeline"): the last entry is always the deepest point of
-        # the nested execution, immediately before the run reports Completed.
+        # Select the grouped child entry (last) -- the Agent node's step in the Timeline.
         last_index = timeline_count - 1
         pipeline_page.select_run_details_timeline_step(last_index, timeout=UI_ELEMENT_TIMEOUT)
 

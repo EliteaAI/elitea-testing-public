@@ -860,7 +860,15 @@ class PipelineDetailPage(PipelineFormPage):
     # single Agent node on canvas.
     agent_node_agent_select = LocatorDescriptor(
         testid="pipeline-agent-node-agent-select",
-        description="Agent node's Agent select (inline on the ReactFlow canvas card)"
+        description="Agent node's Agent select (in the node config side panel, EL-7157)"
+    )
+    agent_node_not_found = LocatorDescriptor(
+        testid="pipeline-agent-node-not-found",
+        description="Agent node panel's 'Agent not found' marker (YAML tool: not resolved to an attached relation)"
+    )
+    agent_node_agent_select_clear = LocatorDescriptor(
+        testid="pipeline-agent-node-agent-select-clear",
+        description="Agent node panel's 'Clear Agents & Pipelines' button"
     )
     agent_node_input_select = LocatorDescriptor(
         testid="pipeline-agent-node-input-select",
@@ -1756,6 +1764,8 @@ class PipelineDetailPage(PipelineFormPage):
     # consistency with every other node type's Input-mapping fields and to
     # stay greppable by the coverage tooling.
     AGENT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-agent-node-input-mapping-value-{}"]'
+    # TASK text seeded by the parent/child state pipeline fixtures (data_fixtures.py, AGENT1 input_mapping).
+    AGENT_NODE_FIXTURE_TASK = "Run the child pipeline and share state."
     AGENT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-agent-node-input-mapping-type-{}"]'
 
     # Select-dropdown option pattern shared by Toolkit/Tool/Input/Output
@@ -1938,6 +1948,12 @@ class PipelineDetailPage(PipelineFormPage):
     # over the ALREADY-EXISTING per-index dot testid (same mechanism as the
     # pre-existing CHAT_ATTACHMENT_CHIP_PREFIX precedent).
     RUN_DETAILS_TIMELINE_STEP_PREFIX = '[data-testid^="pipeline-run-details-timeline-step-"]'
+
+    # Embedded-chat "Thought for N secs" trace: a nested child pipeline/agent renders as ONE
+    # collapsible accordion keyed by its exact name (existing testids, shared SubAgentAccordion.jsx
+    # -- same literals as AgentDetailPage, whose embedded chat is a distinct DOM scope).
+    NESTED_AGENT_ACCORDION_SUMMARY = '[data-testid="chat-answer-nested-agent-accordion-summary-{}"]'
+    NESTED_AGENT_ACCORDION_DETAILS = '[data-testid="chat-answer-nested-agent-accordion-details-{}"]'
 
     # Fullscreen value modal (PipelineStateViewModal.jsx) — feature-scoped
     # literal testids (single consumer, RunStateDialog.jsx).
@@ -5238,10 +5254,26 @@ class PipelineDetailPage(PipelineFormPage):
     # ------------------------------------------------------------------
 
     def get_agent_node_agent_value(self, timeout: int = 5000) -> str:
-        """Read the Agent node's currently-selected Agent display text."""
+        """Read the Agent node's currently-selected Agent display text.
+
+        Pipelines Editor 2.0 (EL-7157, class A UI drift): the Agent select no longer sits on the
+        canvas card (cards are view-only); it lives in the node's config side panel, so the panel
+        is opened first. Both the select and the card's ``pipeline-node-summary-primary`` echo the
+        YAML ``tool:`` name even while the relation is NOT attached; in that state DEV also shows
+        the panel's "Agent not found" marker. An unresolved reference reads as "" (the pre-EL-7157
+        select was empty in exactly that state), otherwise the select's text is returned.
+        """
+        opened_here = not self.agent_node_agent_select.is_visible()
+        self.ensure_agent_node_panel_open(timeout=max(timeout, 10000))
         self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
-        text = (self.agent_node_agent_select.text_content() or "").replace("​", "")
-        return text.strip()
+        if self.agent_node_not_found.count() > 0 and self.agent_node_not_found.is_visible():
+            text = ""
+        else:
+            text = (self.agent_node_agent_select.text_content() or "").replace("​", "").strip()
+        if opened_here:
+            # The open panel hides the left TOOLS column; restore it for the caller's next step.
+            self.close_node_panel(timeout=max(timeout, 10000))
+        return text
 
     def select_agent_node_agent(self, agent_name: str, timeout: int = 5000) -> None:
         """Open the Agent node's Agent dropdown and select *agent_name*.
@@ -6876,11 +6908,12 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Locator of the visible MUI popper (see ``components.mui.Popper``).
         """
-        logger.info("Opening TOOLS section '+ Pipeline' popper")
-        self.ensure_toolkits_section_visible(timeout=timeout)
-        self.add_pipeline_button.wait_for(state="visible", timeout=timeout)
-        self.add_pipeline_button.click(force=True)
-        return Popper.wait_for(self.page, timeout=timeout)
+        # EL-7157/EL-7159 (class A, UI drift): the TOOLS section is a read-only list now; a pipeline is
+        # attached from the Agent node's "Agents & Pipelines" picker in the node panel. The returned
+        # locator is the picker's option list (the equivalent of the old popper).
+        logger.info("Opening the Agent node's Agents & Pipelines picker")
+        self.open_agent_node_picker(timeout=timeout)
+        return self.page.locator(self.AGENT_NODE_PICKER_OPTION).first
 
     def select_pipeline_in_popper(
         self, popper: Locator, pipeline_name: str, project_id: str, timeout: int = 10000
@@ -6906,17 +6939,26 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Parsed JSON body of the ``201 Created`` attach PATCH response.
         """
-        logger.info("Selecting pipeline '%s' in popper", pipeline_name)
-        with self.page.expect_response(
-            lambda r: f"/application_relation/prompt_lib/{project_id}/" in r.url
-            and r.request.method == "PATCH"
-            and r.status == 201,
-            timeout=timeout,
-        ) as response_info:
-            Popper.select_menuitem_by_testid(popper, pipeline_name, self.page, timeout=timeout)
-
+        # EL-7157/EL-7159: pick in the node picker, then Save -- the relation is persisted by Save
+        # (PATCH application_relation 201 + pipeline PUT 201), no longer on pick.
+        logger.info("Selecting pipeline '%s' in the Agent node picker", pipeline_name)
+        if self.agent_node_not_found.count() > 0 and self.agent_node_not_found.is_visible():
+            # The YAML `tool:` already names this pipeline but the relation is unresolved
+            # ("Agent not found"): re-picking the same value does not dirty the form, so clear first.
+            self.page.keyboard.press("Escape")
+            self.agent_node_agent_select_clear.click(timeout=timeout)
+            self.open_agent_node_picker(timeout=timeout)
+        self.pick_agent_node_application(pipeline_name, timeout=timeout)
+        # DEV (EL-7157): picking an agent resets the node's required TASK mapping to empty (the old
+        # Tools-section attach left the YAML `input_mapping` untouched), which leaves the node
+        # "Not configured" and Test Pipeline disabled. Restore the task text the fixtures seed.
+        if not self.get_agent_node_input_mapping_value(timeout=timeout):
+            self.fill_agent_node_input_mapping_value(self.AGENT_NODE_FIXTURE_TASK, timeout=timeout)
+        attach = self.save_and_wait_for_attach(
+            "/application_relation/prompt_lib/", project_id, int(self.get_pipeline_id()), timeout=max(timeout, 15000)
+        )
         logger.info("Pipeline '%s' attached", pipeline_name)
-        return response_info.value.json()
+        return attach
 
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit/MCP card is attached in the TOOLS section.
@@ -8989,6 +9031,25 @@ class PipelineDetailPage(PipelineFormPage):
     def get_run_details_timeline_step_count(self) -> int:
         """Return the total number of timeline-step dots currently rendered."""
         return self.page.locator(self.RUN_DETAILS_TIMELINE_STEP_PREFIX).count()
+
+    def get_nested_pipeline_trace_text(self, child_name: str, timeout: int = 10000) -> str:
+        """Expand the chat trace's nested accordion for *child_name* and return its details text.
+
+        Run Details' Timeline groups a nested child pipeline/agent into ONE entry
+        (elitea_issues#3734); the child's own steps (e.g. its code-node call) are only visible
+        here, in the answer's "Thought for N secs" trace. Idempotent: expands only if collapsed.
+
+        Args:
+            child_name: Exact name of the nested child pipeline/agent.
+            timeout: Maximum wait time in milliseconds.
+        """
+        summary = self.page.locator(self.NESTED_AGENT_ACCORDION_SUMMARY.format(child_name))
+        summary.wait_for(state="visible", timeout=timeout)
+        if summary.get_attribute("aria-expanded") != "true":
+            summary.click()
+        details = self.page.locator(self.NESTED_AGENT_ACCORDION_DETAILS.format(child_name))
+        details.wait_for(state="visible", timeout=timeout)
+        return (details.inner_text() or "").strip()
 
     def expand_run_details_state_row(self, variable: str, timeout: int = 10000):
         """Click the accordion header for *variable* in the STATES section to
