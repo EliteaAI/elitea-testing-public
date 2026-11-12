@@ -96,23 +96,23 @@ class TestSkillTestPanelResponseActions:
             ):
                 # Layer 1 — state: both buttons enabled, not disabled.
                 detail_page.read_out_button.wait_for(state="visible", timeout=ACTION_TIMEOUT)
-                detail_page.copy_action_button.wait_for(state="visible", timeout=ACTION_TIMEOUT)
+                detail_page.copy_text_button.wait_for(state="visible", timeout=ACTION_TIMEOUT)
                 assert detail_page.read_out_button.is_enabled(), (
                     "Expected 'Read aloud' button to be enabled on the completed response"
                 )
-                assert detail_page.copy_action_button.is_enabled(), (
+                assert detail_page.copy_text_button.is_enabled(), (
                     "Expected 'Copy to clipboard' button to be enabled on the completed response"
                 )
 
                 # Layer 2 — behavior: clicking each produces its real effect.
                 # Copy to clipboard -> toast "The message has been copied to
-                # the clipboard." (version_toast_message reuses the app-wide
+                # the clipboard." -> now "Text copied to clipboard." on DEV (version_toast_message reuses the app-wide
                 # toast-message testid, already wired on this page).
-                detail_page.copy_action_button.click()
+                detail_page.copy_text_button.click()
                 detail_page.version_toast_message.wait_for(state="visible", timeout=ACTION_TIMEOUT)
                 toast_text = (detail_page.version_toast_message.text_content() or "").strip()
-                assert "copied to the clipboard" in toast_text.lower(), (
-                    f"Expected a 'copied to the clipboard' toast, got: {toast_text!r}"
+                assert "copied to clipboard" in toast_text.lower(), (
+                    f"Expected a 'copied to clipboard' toast, got: {toast_text!r}"
                 )
 
                 # Read aloud -> voice mini-player mounts.

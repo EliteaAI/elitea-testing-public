@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — "My Liked" reload reflects a like made in another tab
+# Test Case: Catalog — "My Liked" reload reflects a like made in another tab
 
 ## Metadata
 - **TMS ID**: ELITEA-2365
@@ -13,7 +13,7 @@
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
 - Active project context is "Private" (this project's default `${TEST_USER}` project on localhost) — same in both tabs (same browser context, same auth/session).
-- Agent Hub (Catalog) page freshly navigated to in Tab A.
+- Catalog page freshly navigated to in Tab A.
 
 ## Test Data
 
@@ -26,11 +26,11 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`) in Tab A and click the "My Liked" category filter-rail chip.
+1. Navigate to Catalog (`/elitea-catalog`) in Tab A and click the "My Liked" category filter-rail chip.
    - **Verify**: page loads (`catalog-page-heading` visible, reuse `AgentHubPage.wait_for_page_load()`); chip click narrows the content list to render ONLY the "My Liked" category section (confirmed live: clicking the chip via `AgentHubPage.click_category_filter_chip("My Liked")` left `catalog-category-heading-my-liked` as the sole rendered category heading, same multi-select-chip mechanic ELITEA-2352 documented — a fresh page starts with zero chips selected, so this single click is effectively exclusive). Chip's own selected state is verifiable via `is_category_filter_chip_selected("My Liked")` (`data-selected="true"`, ELITEA-2352 precedent).
 2. Verify the current list of liked agents is displayed under the "My Liked" section.
    - **Verify**: `catalog-category-heading-my-liked` visible + the pre-existing liked agent cards render beneath it (confirmed live: "Business Analyst" (8) and "Magic Assistant" (2) both rendered). Automation should assert the SET of card names present at this point as the pre-refresh baseline (do not hardcode these two names — read them live, since like state is shared cross-session data), and specifically assert the target agent (step 4/2's dynamically-discovered one) is NOT yet a member.
-3. Open Agent Hub in a second tab (Tab B), same browser context.
+3. Open Catalog in a second tab (Tab B), same browser context.
    - **Verify**: `page.context.new_page()` → navigate to `/elitea-catalog` → page loads (`catalog-page-heading` visible). Same authenticated session (no re-login) — confirmed live via the page title `"ELITEA Catalog - Private"` matching Tab A's project context.
 4. In Tab B, locate an agent that is not yet liked and click its heart icon (like button) to like it.
    - **Verify**: found dynamically (see § Test Data — do not hardcode a specific agent name/id). Click succeeds; `POST /api/v2/social/like/prompt_lib/{project_id}/application/{id}` fires and returns `201 Created` (confirmed live: `POST .../social/like/prompt_lib/1/application/277 => 201`).
@@ -59,9 +59,9 @@ The agent liked in Tab B is visible in Tab A's "My Liked" list after a refresh, 
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Open Agent Hub in Tab A, click "My Liked" filter tab | Target page/section loads successfully | step 1 | `catalog-page-heading` visible + `catalog-category-heading-my-liked` sole rendered heading + chip `data-selected="true"` | asserted |
+| 1 Open Catalog in Tab A, click "My Liked" filter tab | Target page/section loads successfully | step 1 | `catalog-page-heading` visible + `catalog-category-heading-my-liked` sole rendered heading + chip `data-selected="true"` | asserted |
 | 2 Verify current liked-agents list displayed under "My Liked" | Condition holds as described | step 2 | pre-existing card set read live (not hardcoded), target agent confirmed absent | asserted |
-| 3 Open Agent Hub in Tab B (new tab) | Target page/section loads successfully | step 3 | `page.context.new_page()` + `catalog-page-heading` visible in the new page | asserted |
+| 3 Open Catalog in Tab B (new tab) | Target page/section loads successfully | step 3 | `page.context.new_page()` + `catalog-page-heading` visible in the new page | asserted |
 | 4 In Tab B, like an unliked agent | Action completes without error and produces the expected UI state | step 4 | dynamic discovery (see § Test Data) + `POST .../social/like/...` `201` | asserted — plus a known, filed, non-blocking console-error finding (§ Known Defects) |
 | 5 Verify like count increments in Tab B | Condition holds as described | step 5 | like-button testid text `0`→`1` in Tab B | asserted |
 | 6 Switch back to Tab A | Action completes without error and produces the expected UI state | step 6 | tab-select, Tab A state unchanged | asserted |

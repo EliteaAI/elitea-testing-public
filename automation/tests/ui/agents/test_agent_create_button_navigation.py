@@ -97,7 +97,9 @@ def test_create_button_navigates_to_create_agent_page(page):
         assert form_page.description_input.input_value() == "", (
             "Description field should be empty on a fresh Create Agent form"
         )
-        assert form_page.instructions_input.input_value() == "", (
+        # Create flow opens in Edit mode; the editor is a contenteditable div
+        # (not an input), so read its text via the page object.
+        assert form_page.get_instructions() == "", (
             "Instructions field should be empty on a fresh Create Agent form"
         )
 

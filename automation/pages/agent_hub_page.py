@@ -1,6 +1,6 @@
-"""Agent Hub ("Catalog") page object — ELITEA-2075.
+"""Catalog ("Catalog") page object — ELITEA-2075.
 
-Handles the public Agent Hub / Catalog listing (``/elitea-catalog``): the
+Handles the public Catalog listing (``/elitea-catalog``): the
 page heading + search bar, category sections, agent cards, and the agent
 preview modal opened by clicking a card (AgentModal.jsx).
 
@@ -52,7 +52,7 @@ def _slugify_category(category: str) -> str:
 
 
 class AgentHubPage(BasePage):
-    """Page object for the Agent Hub / Catalog listing + agent preview modal.
+    """Page object for the Catalog listing + agent preview modal.
 
     Inherits nothing — this surface has no relation to the agent CRUD form
     hierarchy (``AgentFormPage``/``AgentDetailPage``); it is a read-only
@@ -87,6 +87,21 @@ class AgentHubPage(BasePage):
             "testid added directly to the SkillsIcon svg (EliteaAI/EliteaUI@da16c70a), same "
             "precedent as version.helpers.jsx's PinIcon."
         ),
+    )
+
+    skill_run_button = LocatorDescriptor(
+        testid="catalog-skill-run-button",
+        description=(
+            "Run (play) button on a Catalog Skills-tab card, aria-label 'run skill' (ELITEA-4633). "
+            "One per card — narrow to a single card via search_skills() first."
+        ),
+    )
+
+    skill_run_tooltip = LocatorDescriptor(
+        role="tooltip",
+        name="Run",
+        suggested_testid="catalog-skill-run-tooltip",
+        description="MUI tooltip 'Run' shown on hovering a Catalog skill card's run button (ELITEA-4633).",
     )
 
     # Category section heading — dynamic per category name (slugified:
@@ -303,16 +318,21 @@ class AgentHubPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
 
-    @action("Navigate to Agent Hub (Catalog)")
+    @action("Navigate to Catalog")
     def navigate(self):
         """Navigate to the Catalog page and wait for it to be ready."""
         super().navigate("/elitea-catalog")
         self.wait_for_page_load()
+        self.expect_agents_tab_active()
+
+    def expect_agents_tab_active(self, timeout: int = 10000):
+        """Assert the Catalog opened on the Agents tab (``aria-selected="true"``), not Skills (#2899)."""
+        expect(self.agents_tab).to_have_attribute("aria-selected", "true", timeout=timeout)
 
     def wait_for_page_load(self, timeout: int = 15000):
         """Wait for the Catalog heading to become visible."""
         self.page_heading.wait_for(state="visible", timeout=timeout)
-        logger.info("Agent Hub (Catalog) page loaded")
+        logger.info("Catalog page loaded")
 
     def is_category_section_visible(self, category_slug: str, timeout: int = 10000) -> bool:
         """Return True if the category heading for *category_slug* is visible.
@@ -503,7 +523,7 @@ class AgentHubPage(BasePage):
         """
         return set(cls.FEATURED_CATEGORY_LABELS) | set(api_category_names) | {cls.OTHER_CATEGORY_LABEL}
 
-    @action("Navigate to Agent Hub and capture the agent categories response")
+    @action("Navigate to Catalog and capture the agent categories response")
     def navigate_and_capture_category_names(
         self, timeout: int = 15000, *, response_timeout: int = CATALOG_RESPONSE_TIMEOUT
     ) -> list[str]:
@@ -692,7 +712,7 @@ class AgentHubPage(BasePage):
 
     # --- Like/unlike (ELITEA-2354) ---
 
-    @action("Navigate to Agent Hub and capture the initial applications snapshot")
+    @action("Navigate to Catalog and capture the initial applications snapshot")
     def navigate_and_capture_applications(self, timeout: int = 15000) -> list[dict]:
         """Navigate to the Catalog page (same target as :meth:`navigate`) and
         additionally capture the initial bulk "all applications" response body
@@ -891,7 +911,7 @@ class AgentHubPage(BasePage):
             button.click()
         return response_info.value
 
-    @action("Reload Agent Hub and capture the refreshed My Liked response")
+    @action("Reload Catalog and capture the refreshed My Liked response")
     def reload_and_capture_my_liked(self, timeout: int = 15000) -> dict:
         """Reload the Catalog page and capture the My-Liked-specific bulk
         response (``GET /public_applications/prompt_lib/...my_liked=true...``
@@ -915,7 +935,7 @@ class AgentHubPage(BasePage):
         with self.page.expect_response(_is_my_liked_response, timeout=timeout) as response_info:
             self.page.reload(wait_until="networkidle", timeout=timeout)
         self.wait_for_page_load(timeout=timeout)
-        logger.info("Agent Hub reloaded; My Liked response re-fetched")
+        logger.info("Catalog reloaded; My Liked response re-fetched")
         return response_info.value.json()
 
     @action("Search Catalog by agent name")
@@ -938,6 +958,17 @@ class AgentHubPage(BasePage):
             self.search_input.click()
             self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
+
+    @action("Search Catalog Skills tab by skill name")
+    def search_skills(self, query: str, timeout: int = 15000):
+        """Type *query* into the Catalog search box on the Skills tab (ELITEA-4633).
+
+        ``press_sequentially`` so React ``onChange`` fires (mui-patterns). The Skills
+        tab filters live (~3s), so callers assert the narrowed result via expect().
+        """
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        self.search_input.click()
+        self.search_input.press_sequentially(query, delay=50)
 
     @action("Search Catalog and capture the search response")
     def search_and_capture_response(self, query: str, timeout: int = 15000) -> dict:

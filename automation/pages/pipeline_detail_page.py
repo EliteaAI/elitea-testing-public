@@ -530,6 +530,31 @@ class PipelineDetailPage(PipelineFormPage):
         description="Canvas control panel — Lock/Unlock canvas (node dragging); aria-pressed when locked",
     )
 
+    canvas_arrange_button = LocatorDescriptor(
+        testid="pipeline-canvas-arrange",
+        description="Canvas control panel — Arrange (opens the orientation menu; aria-label 'Auto-arrange')",
+    )
+
+    canvas_arrange_top_to_bottom_item = LocatorDescriptor(
+        testid="pipeline-canvas-arrange-tb",
+        description="Arrange menu — 'Arrange top to bottom'; data-current='true' on the active orientation",
+    )
+
+    canvas_arrange_left_to_right_item = LocatorDescriptor(
+        testid="pipeline-canvas-arrange-lr",
+        description="Arrange menu — 'Arrange left to right'; data-current='true' on the active orientation",
+    )
+
+    canvas_minimap_toggle_button = LocatorDescriptor(
+        testid="pipeline-canvas-minimap-toggle",
+        description="Canvas control panel — Show/Hide minimap; aria-pressed when the minimap is shown",
+    )
+
+    canvas_minimap = LocatorDescriptor(
+        testid="rf__minimap",
+        description="ReactFlow minimap panel (bottom-right overlay); rendered only while shown",
+    )
+
     yaml_editor = LocatorDescriptor(
         testid="pipeline-yaml-editor",
         fallback=lambda page: page.locator("div.cm-editor div.cm-content"),
@@ -781,19 +806,6 @@ class PipelineDetailPage(PipelineFormPage):
     mcp_node_toolkit_select = LocatorDescriptor(
         testid="pipeline-mcp-node-toolkit-select",
         description="MCP node's Toolkit select (inline on the ReactFlow canvas card)"
-    )
-
-    # The outer `pipeline-mcp-node-toolkit-select` testid lands on MUI's
-    # MuiInputBase-root wrapper div — confirmed live (ELITEA-1955) that
-    # `aria-expanded` is NOT on that element but on a nested child div
-    # (role="combobox", MUI's own "display" element). Added via
-    # add-data-testid (SingleSelect.jsx SelectDisplayProps) so open/closed
-    # state can be read even when the dropdown renders zero real options
-    # (no select-option-* row to fall back on — see
-    # open_mcp_node_toolkit_select_allow_empty below).
-    mcp_node_toolkit_select_combobox = LocatorDescriptor(
-        testid="pipeline-mcp-node-toolkit-select-combobox",
-        description="MCP node's Toolkit select — inner combobox div carrying aria-expanded"
     )
 
     mcp_node_tool_select = LocatorDescriptor(
@@ -1700,6 +1712,7 @@ class PipelineDetailPage(PipelineFormPage):
     AGENT_NODE_PICKER_SEARCH = '[data-testid="pipeline-agent-node-agent-select-menu-search"]'
     MCP_NODE_PICKER_OPTION = '[data-testid="pipeline-mcp-node-toolkit-select-option"]'
     MCP_NODE_PICKER_SEARCH = '[data-testid="pipeline-mcp-node-toolkit-select-menu-search"]'
+    MCP_NODE_PICKER_CREATE_NEW = '[data-testid="pipeline-mcp-node-toolkit-select-create-new"]'
     TOOLKIT_NODE_PICKER_OPTION = '[data-testid="pipeline-toolkit-node-toolkit-select-option"]'
     TOOLKIT_NODE_PICKER_SEARCH = '[data-testid="pipeline-toolkit-node-toolkit-select-menu-search"]'
     # Required input-mapping Value fields inside the node panel's Basic section
@@ -3260,17 +3273,10 @@ class PipelineDetailPage(PipelineFormPage):
     def is_control_panel_fully_visible(self, timeout: int = 5000) -> bool:
         """Return True iff all 6 canvas control-panel buttons are visible.
 
-        Added for ELITEA-2057. Confirmed live (2026-08-08): ``canvas_controls``
-        (``rf__controls``) is a SINGLE ``@xyflow/react`` ``Controls`` instance
-        (``FlowEditor.jsx``'s ``StyledControls``) that renders its own default
-        4 buttons (Zoom In, Zoom Out, Fit View, Toggle Interactivity — each
-        with a real ``title``/``aria-label`` attribute) followed by 2 app-code
-        children appended inside the SAME component (Toggle cards size,
-        Auto-arrange — each wrapped in an MUI ``Tooltip`` whose accessible
-        name lands on the wrapping ``<span aria-label="...">``, not the inner
-        ``<button>`` itself). All 6 are #579-sanctioned third-party-widget
-        exceptions scoped under the one real app testid ``canvas_controls``,
-        same provenance as :meth:`fit_canvas_view`.
+        The panel (Pipelines Editor 2.0, EliteaAI/elitea_issues#7093/#7160) holds
+        exactly: Zoom in, Zoom out, Fit view, Lock/Unlock canvas, Arrange and
+        Minimap toggle — each a button with its own ``pipeline-canvas-*`` testid.
+        (The former "Toggle cards size" control no longer exists.)
 
         Args:
             timeout: Maximum wait time per button, in milliseconds.
@@ -3278,36 +3284,28 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             True if every one of the 6 buttons is visible, False otherwise.
         """
-        selectors = [
-            'button[title="Zoom In"]',
-            'button[title="Zoom Out"]',
-            'button[title="Fit View"]',
-            'button[title="Toggle Interactivity"]',
-            'span[aria-label="Toggle cards size"] button',
-            'span[aria-label="Auto-arrange"] button',
+        buttons = [
+            self.canvas_zoom_in_button,
+            self.canvas_zoom_out_button,
+            self.canvas_fit_view_button,
+            self.canvas_lock_button,
+            self.canvas_arrange_button,
+            self.canvas_minimap_toggle_button,
         ]
-        for selector in selectors:
-            button = self.canvas_controls.locator(selector)
+        for button in buttons:
             try:
                 button.wait_for(state="visible", timeout=timeout)
             except Exception:
                 return False
         return True
 
-    def toggle_canvas_interactivity(self, timeout: int = 5000) -> None:
-        """Click ReactFlow's own "Toggle Interactivity" control panel button.
+    def toggle_canvas_lock(self, timeout: int = 5000) -> None:
+        """Click the canvas control panel's Lock/Unlock button.
 
-        Added for ELITEA-2057. Same #579 sanctioned exception and same
-        ``canvas_controls``-scoped pattern as :meth:`zoom_in_canvas` /
-        :meth:`fit_canvas_view` — the button is ReactFlow's own internal
-        render (``react-flow__controls-interactive``, a default ``Controls``
-        button, no app testid can be placed on it).
-
-        Confirmed live (2026-08-08): toggles ``nodesDraggable`` — a node that
-        was draggable before the click can no longer be repositioned by
-        :meth:`move_node` afterwards (bounding box unchanged), and a second
-        click restores dragging. Fires zero network requests and zero
-        console errors, same as the other canvas-viewport controls.
+        Locked ("Unlock canvas" tooltip, ``aria-pressed="true"``): nodes cannot
+        be dragged or connected; pan/zoom still work. Unlocked ("Lock canvas",
+        ``aria-pressed="false"``): normal editing. Fires zero network requests
+        and zero console errors, same as the other canvas-viewport controls.
 
         Args:
             timeout: Maximum wait time in milliseconds.
@@ -3315,54 +3313,76 @@ class PipelineDetailPage(PipelineFormPage):
         self.canvas_lock_button.click(timeout=timeout)
         self.page.wait_for_timeout(300)  # state settle
 
-    def toggle_canvas_cards_size(self, timeout: int = 5000) -> None:
-        """Click the canvas control panel's "Toggle cards size" button.
+    def is_canvas_locked(self) -> bool:
+        """Return True while the canvas is locked (Lock button ``aria-pressed="true"``)."""
+        return self.canvas_lock_button.get_attribute("aria-pressed") == "true"
 
-        Added for ELITEA-2057. #579 sanctioned exception (third-party widget
-        subtree): this is an app-code ``ControlButton`` appended as a child
-        of ReactFlow's own ``Controls`` component (``FlowEditor.jsx``'s
-        ``onExpandAll``), rendered inside the same ``@xyflow/react`` third-
-        party render tree as Zoom In/Out — no app testid is placeable on the
-        individual button. The accessible name lives on the wrapping MUI
-        ``Tooltip`` span (``aria-label="Toggle cards size"``), not the inner
-        ``<button>`` itself (confirmed live via DOM inspection) — scoped
-        under the real app testid ``canvas_controls`` parent.
+    def get_node_canvas_position(self, node_id: str) -> dict:
+        """Return the node's position in canvas space: on-screen bbox origin minus the viewport translate.
 
-        Confirmed live (2026-08-08): toggles every node card between
-        expanded/compact — a node's rendered height shrinks dramatically
-        (e.g. a Decision node: 87.8px -> 9.5px) when compacted, and a second
-        click restores the exact original height. Fires zero network
-        requests and zero console errors.
+        Unlike :meth:`get_node_bounding_box` (screen space), this is unchanged by
+        panning the viewport — it moves only when the node itself is repositioned.
+        Needed for the Lock check: on a locked canvas ReactFlow drops the node's
+        ``draggable``/``nopan`` classes, so a drag that starts on a node pans the
+        viewport instead (screen position changes, canvas position does not).
+
+        Returns:
+            ``{"x": float, "y": float}`` in screen px at the current zoom.
+        """
+        box = self.get_node_bounding_box(node_id)
+        transform = self.get_canvas_viewport_transform()
+        return {"x": box["x"] - transform["tx"], "y": box["y"] - transform["ty"]}
+
+    def arrange_canvas(self, orientation: str = "top_to_bottom", timeout: int = 5000) -> None:
+        """Open the Arrange menu and pick an orientation.
+
+        The Arrange control is a menu (not a single action): "Arrange top to
+        bottom" / "Arrange left to right", with ``data-current="true"`` on the
+        active orientation. Picking one recomputes node positions
+        deterministically and re-fits the view.
 
         Args:
+            orientation: ``"top_to_bottom"`` (DEV default) or ``"left_to_right"``.
             timeout: Maximum wait time in milliseconds.
         """
-        self.canvas_controls.locator('span[aria-label="Toggle cards size"] button').click(timeout=timeout)
-        self.page.wait_for_timeout(500)  # re-layout + fit-view settle (FlowEditor's onExpandAll)
+        items = {
+            "top_to_bottom": self.canvas_arrange_top_to_bottom_item,
+            "left_to_right": self.canvas_arrange_left_to_right_item,
+        }
+        if orientation not in items:
+            raise ValueError(f"orientation must be one of {sorted(items)}, got {orientation!r}")
+        self.canvas_arrange_button.click(timeout=timeout)
+        items[orientation].click(timeout=timeout)
+        self.page.wait_for_timeout(700)  # re-layout + fit-view transition settle
 
-    def auto_arrange_canvas(self, timeout: int = 5000) -> None:
-        """Click the canvas control panel's "Auto-arrange" button.
+    def get_current_arrange_orientation(self, timeout: int = 5000) -> str:
+        """Open the Arrange menu, read which orientation is marked current, close it.
 
-        Added for ELITEA-2057. Same #579 sanctioned exception and
-        ``canvas_controls``-scoped pattern as :meth:`toggle_canvas_cards_size`
-        — an app-code ``ControlButton`` (``FlowEditor.jsx``'s ``onReLayout``)
-        appended inside ReactFlow's own ``Controls`` render tree, accessible
-        name on the wrapping ``<span aria-label="Auto-arrange">`` rather than
-        the inner ``<button>``.
-
-        Confirmed live (2026-08-08): recomputes node positions via a
-        deterministic layout algorithm and calls Fit View — dragging a node
-        away from its arranged position and then clicking this button moves
-        it back to the EXACT same position it started at (px-perfect match,
-        same determinism class as Fit View — see
-        ``test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md``).
-        Fires zero network requests and zero console errors.
-
-        Args:
-            timeout: Maximum wait time in milliseconds.
+        Returns:
+            ``"top_to_bottom"`` or ``"left_to_right"`` (the item with ``data-current="true"``).
         """
-        self.canvas_controls.locator('span[aria-label="Auto-arrange"] button').click(timeout=timeout)
-        self.page.wait_for_timeout(700)  # re-layout (100ms internal) + fit-view transition settle
+        self.canvas_arrange_button.click(timeout=timeout)
+        self.canvas_arrange_top_to_bottom_item.wait_for(state="visible", timeout=timeout)
+        current = (
+            "top_to_bottom"
+            if self.canvas_arrange_top_to_bottom_item.get_attribute("data-current") == "true"
+            else "left_to_right"
+        )
+        self.page.keyboard.press("Escape")
+        self.canvas_arrange_top_to_bottom_item.wait_for(state="hidden", timeout=timeout)
+        return current
+
+    def toggle_canvas_minimap(self, timeout: int = 5000) -> None:
+        """Click the Show/Hide minimap button in the canvas control panel."""
+        self.canvas_minimap_toggle_button.click(timeout=timeout)
+
+    def is_canvas_minimap_visible(self, timeout: int = 3000) -> bool:
+        """Return True iff the minimap panel (``rf__minimap``) is currently rendered and visible."""
+        try:
+            self.canvas_minimap.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
 
     def get_canvas_viewport_transform(self) -> dict:
         """Read the ReactFlow viewport's current CSS transform (translate + scale).
@@ -3425,8 +3445,8 @@ class PipelineDetailPage(PipelineFormPage):
         Added for ELITEA-2057 (class D robustness). ``FlowEditor`` renders
         every card as a MINI card whenever the viewport zoom is below
         ``MINI_CARD_ZOOM`` (0.6, ``nodeCard.helpers.js isMiniCardZoom``)
-        regardless of the expand-all state, and Fit View / Auto-arrange /
-        Toggle cards size all re-fit the view — on a small viewport that can
+        regardless of the expand-all state, and Fit View / Arrange
+        all re-fit the view — on a small viewport that can
         land below 0.6, making an "expanded" card measure as mini. Reaching a
         scale >= *min_scale* is the precondition for measuring real card
         heights. Condition-driven: clicks only while the scale is short.
@@ -4822,53 +4842,6 @@ class PipelineDetailPage(PipelineFormPage):
             state="visible", timeout=timeout
         )
 
-    def open_mcp_node_toolkit_select_allow_empty(self, timeout: int = 5000) -> None:
-        """Open the MCP node's Toolkit dropdown, tolerating zero real options.
-
-        Additive sibling to :meth:`open_mcp_node_toolkit_select` (ELITEA-1955)
-        — that method blocks on a ``select-option-*`` testid appearing, which
-        never renders when the dropdown is genuinely empty (MUI's own
-        placeholder ``<MenuItem value=""><em>None</em></MenuItem>`` carries no
-        testid — confirmed live, see ELITEA-1955 AFS § Concrete Handles).
-        This variant instead waits on the ``mcp_node_toolkit_select_combobox``
-        element's ``aria-expanded="true"`` attribute — that inner div (not the
-        outer ``mcp_node_toolkit_select`` testid, which lands on MUI's
-        MuiInputBase-root wrapper) is the one that actually carries
-        ``aria-expanded``, confirmed to flip regardless of option count.
-        ``open_mcp_node_toolkit_select`` itself is left unmodified
-        (page-objects.md shared-caller rule) — it has an existing merged
-        caller (ELITEA-1954) relying on its option-visible wait.
-
-        Args:
-            timeout: Maximum wait time in milliseconds.
-        """
-        from playwright.sync_api import expect
-
-        self.mcp_node_toolkit_select.click(timeout=timeout)
-        expect(self.mcp_node_toolkit_select_combobox).to_have_attribute(
-            "aria-expanded", "true", timeout=timeout
-        )
-
-    def close_mcp_node_toolkit_select(self, timeout: int = 5000) -> None:
-        """Close the open MCP node Toolkit dropdown via Escape, without selecting.
-
-        Mirrors ``AgentDetailPage.close_model_selector()``'s Escape-key
-        pattern. Waits on ``mcp_node_toolkit_select_combobox``'s
-        ``aria-expanded`` flipping back to ``"false"`` — the same element
-        :meth:`open_mcp_node_toolkit_select_allow_empty` waits on to open, so
-        this works whether or not the dropdown had any real options rendered
-        (ELITEA-1955 AFS step 6).
-
-        Args:
-            timeout: Maximum wait time in milliseconds.
-        """
-        from playwright.sync_api import expect
-
-        self.page.keyboard.press("Escape")
-        expect(self.mcp_node_toolkit_select_combobox).to_have_attribute(
-            "aria-expanded", "false", timeout=timeout
-        )
-
     def open_mcp_node_tool_select(self, timeout: int = 5000) -> None:
         """Open the MCP node's Tool dropdown."""
         self.mcp_node_tool_select.click(timeout=timeout)
@@ -4954,6 +4927,23 @@ class PipelineDetailPage(PipelineFormPage):
         self._wait_for_open_popovers_closed(timeout=timeout)
         self.mcp_node_toolkit_select.click(timeout=timeout)
         self.page.locator(self.MCP_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
+
+    def get_mcp_node_picker_create_new_count(self) -> int:
+        """Count of the "Create new" action in the open MCP node picker menu (EL-7159)."""
+        return self.page.locator(self.MCP_NODE_PICKER_CREATE_NEW).count()
+
+    def search_mcp_node_picker(self, name: str, timeout: int = 10000) -> None:
+        """Type *name* into the open MCP node picker's search field and wait for a matching row."""
+        search = self.page.locator(self.MCP_NODE_PICKER_SEARCH).first
+        search.wait_for(state="visible", timeout=timeout)
+        search.fill(name)
+        self.page.locator(self.MCP_NODE_PICKER_OPTION).filter(has_text=name).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def select_mcp_node_picker_result(self, name: str, timeout: int = 10000) -> None:
+        """Click the (filtered) picker row whose text contains *name*."""
+        self.page.locator(self.MCP_NODE_PICKER_OPTION).filter(has_text=name).first.click(timeout=timeout)
 
     def get_mcp_node_picker_search_count(self) -> int:
         """Count of the search field in the open MCP node picker menu."""

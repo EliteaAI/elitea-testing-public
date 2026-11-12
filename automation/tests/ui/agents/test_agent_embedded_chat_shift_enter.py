@@ -73,6 +73,7 @@ class TestAgentEmbeddedChatShiftEnter:
                 assert detail_page.information_section.is_visible(), (
                     "Agent detail page's Information section should be visible"
                 )
+                detail_page.open_test_agent_panel()
                 assert detail_page.chat_message_input.is_visible(), (
                     "Embedded chat message input should be visible"
                 )

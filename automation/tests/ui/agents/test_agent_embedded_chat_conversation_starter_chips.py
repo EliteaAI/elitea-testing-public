@@ -2,8 +2,10 @@
 clickable (ELITEA-1886).
 
 Adds two conversation starters to a dedicated agent via the "Chat starters"
-accordion (agent form), Saves, reloads for a pristine embedded-chat mount,
-verifies both starter chips render before any message is sent, clicks one
+accordion (agent form), Saves, reloads for a pristine embedded-chat mount and
+clicks the "Test Agent" toolbar button to open the chat panel (new chat session
+with this agent; Step 4), verifies both starter chips render before any
+message is sent, clicks one
 chip (pre-fill only — no auto-send, chip row disappears immediately), then
 explicitly sends via `chat-send-button` and verifies the agent responds.
 
@@ -312,11 +314,13 @@ class TestConversationStarterChipsVisibleAndClickable:
                 )
 
             with allure.step(
-                "Step 4 — Open a new chat session with this agent (full-navigation "
-                "reload for a pristine, freshly-mounted embedded chat panel)"
+                "Step 4 — Click the 'Test Agent' toolbar button to open the embedded chat "
+                "panel (new chat session with this agent; full-navigation reload first "
+                "for a pristine, freshly-mounted panel)"
             ):
                 page.reload()
                 detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+                detail_page.open_test_agent_panel()
                 assert detail_page.get_chat_message_count() == 0, (
                     "Embedded chat should have no messages before any is sent"
                 )

@@ -168,3 +168,19 @@ disposable one (blocked by #524 — see Preconditions). After verifying all 6 st
 automated test must create its own disposable agent (`AgentAPI.create_agent_full()`, per the
 ELITEA-1888 pattern) and delete it at teardown (`delete_agent_via_menu()`) — never touch the
 shared `Test Agent` (id 3) fixture.
+
+## Adjustment — #2896 (2026-11-09): Instructions Edit/Preview toggle
+
+Step(s) that edit Instructions (open the Instructions accordion, click the instructions field) must first click the Edit mode toggle. Without it the click on `agent-instructions-input` times out (element absent in Preview). Re-verify post-save/reload state in Preview mode via `agent-instructions-preview` or re-enter Edit.
+
+### Handles Reference (verified on DEV)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| 1 | `testid=markdown-edit-mode-toggle` (aria-label "Edit mode"; Instructions accordion header, shared MarkdownViewToggle) | n/a | testid on DEV ✓ (probed 2026-11-09; EliteaUI `MarkdownViewToggle.jsx`) |
+| 1 | `testid=markdown-preview-mode-toggle` (aria-label "Preview mode") | n/a | testid on DEV ✓ |
+| 1 | `testid=agent-instructions-input` — **exists only in Edit mode**; a contenteditable `div[role=textbox]` (CodeMirror), NOT a textarea | n/a | testid on DEV ✓ (count 0 in Preview, 1 after Edit click) |
+| 1 | `testid=agent-instructions-preview` — Preview-mode rendered Markdown; readable via `inner_text()`; holds instructions text when not editing | n/a | testid on DEV ✓ |
+
+**Entry/exit:** the accordion opens in **Preview** on existing agents/skills; click `markdown-edit-mode-toggle` to enter Edit (a client-side `useState` swap; no save, no network). Switch back with `markdown-preview-mode-toggle`. Saving is the page Save/Save-as-version, independent of the toggle. Create flow opens already in Edit mode. A version switch or reload re-mounts in Preview.
+**Implementer note:** `input_value()`, `.clear()` and `expect(...).to_have_value()` no longer work on `agent-instructions-input` (it is a div, not a textarea): use `inner_text()` / `to_have_text` in Edit mode, or `agent-instructions-preview` text in Preview mode. Skill pages already have `SkillFormPage.click_edit_mode()` (testid toggle).

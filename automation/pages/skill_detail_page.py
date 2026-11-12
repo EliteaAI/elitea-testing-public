@@ -9,12 +9,12 @@ Handles: /skills/all/{skill_id}
 import re
 import logging
 import time
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from playwright.sync_api import Download
 
 from .skill_form_page import SkillFormPage
-from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor, ScopedLocator
 from components.mui import Dialog
 from utils.actions import action
 
@@ -50,6 +50,22 @@ class SkillDetailPage(SkillFormPage):
     test_panel = LocatorDescriptor(
         testid="skill-test-panel",
         description="SkillTestPanel container"
+    )
+
+    test_skill_button = LocatorDescriptor(
+        testid="skill-test-button",
+        description="Toolbar 'Test Skill' button (SkillEditorWorkspace.jsx) — opens the SkillTestPanel",
+    )
+
+    edit_with_ai_button = LocatorDescriptor(
+        testid="edit-skill-with-ai-button",
+        description="Toolbar 'Edit with AI' button, the neighbour of 'Test Skill' (ELITEA-4635)",
+    )
+
+    TEST_PANEL_ALERT = ScopedLocator(
+        role="alert",
+        description="Any ARIA alert rendered inside the SkillTestPanel (error indicator); scoped to the panel",
+        suggested_testid="skill-test-panel-alert",
     )
 
     # ------------------------------------------------------------------
@@ -133,6 +149,12 @@ class SkillDetailPage(SkillFormPage):
         testid="chat-copy-button",
         description="Copy-to-clipboard button on the test-panel AI response",
     )
+    # DEV split the single copy button into "Copy markdown" / "Copy text"
+    # (ApplicationAnswerActions.jsx, EL-5838); `chat-copy-button` is gone.
+    copy_text_button = LocatorDescriptor(
+        testid="chat-copy-text-button",
+        description="Copy-as-text button on the test-panel AI response (replaces chat-copy-button)",
+    )
     # Voice mini player — appears after clicking Read out (Layer 2 proof).
     # Mirrors ChatPage.voice_mini_player (OptionalLocatorDescriptor since the
     # container is not present until Read-out is clicked).
@@ -149,6 +171,52 @@ class SkillDetailPage(SkillFormPage):
     controls_menu_button = LocatorDescriptor(
         testid="skill-controls-menu-button",
         description="Skill controls overflow menu button"
+    )
+
+    # Run History (ELITEA-4631) — overflow-menu entry opens the /history route.
+    # List/header/row-menu testids are shared with the Agent/Pipeline run-history
+    # components (RunHistoryContainer); only the menu entry is skill-specific.
+    run_history_menu_item = LocatorDescriptor(
+        testid="skill-run-history-menu-item",
+        description="Overflow menu item 'Run History' — navigates to /skills/all/{id}/history",
+    )
+    run_history_header = LocatorDescriptor(
+        testid="run-history-header",
+        description="Run History table header row (Date / Version / Duration)",
+    )
+    run_history_rows = LocatorDescriptor(
+        testid="run-history-list-item",
+        description="Run History rows (enumerated by count, never picked positionally)",
+    )
+    chat_clear_button = LocatorDescriptor(
+        testid="chat-clear-button",
+        description="Test-panel 'clear chat' button — starts a new conversation (ELITEA-4632)",
+    )
+    RUN_HISTORY_SELECTED_ROW = '[data-testid="run-history-list-item"][data-selected="true"]'
+    RUN_ROW_MENU_BUTTON = ScopedLocator(
+        testid="run-history-menu-menu-button",
+        description="Hover-revealed three-dot button inside one given run row",
+    )
+    run_history_analytics_menuitem = LocatorDescriptor(
+        role="menuitem",
+        name="Analytics",
+        suggested_testid="run-history-analytics-menuitem",
+        description="'Analytics' item in the open run-row menu; unique by accessible name",
+    )
+    run_history_row_menu_button = LocatorDescriptor(
+        testid="run-history-menu-menu-button",
+        description="Hover-revealed three-dot button of a run-history row",
+    )
+    run_history_restore_chat_menuitem = LocatorDescriptor(
+        role="menuitem",
+        name="Restore chat",
+        suggested_testid="run-history-restore-chat-menuitem",
+        description="'Restore chat' item in the open run-row menu; unique by accessible name",
+    )
+    run_history_menu_items = LocatorDescriptor(
+        role="menuitem",
+        suggested_testid="run-history-menu-item-{}",
+        description="All items of the open run-row menu (enumerated, never picked)",
     )
 
     # Overflow menu — SKILL-scoped pin/unpin toggle item ("Pin to top" /
@@ -472,6 +540,20 @@ class SkillDetailPage(SkillFormPage):
         """
         return self._test_panel_messages().count()
 
+    @action("Open the Test Skill panel")
+    def open_test_skill_panel(self, timeout: int = 10000):
+        """Open the SkillTestPanel via the toolbar 'Test Skill' button.
+
+        Idempotent: no-op when the panel is already visible. Waits for the
+        button to be enabled first.
+        """
+        if self.test_panel.is_visible():
+            return
+        self.test_skill_button.wait_for(state="visible", timeout=timeout)
+        expect(self.test_skill_button).to_be_enabled(timeout=timeout)
+        self.test_skill_button.click()
+        self.test_panel.wait_for(state="visible", timeout=timeout)
+
     @action("Send test message")
     def send_test_message(self, message: str, timeout: int = 5000):
         """Type and send a message in the SkillTestPanel.
@@ -484,6 +566,7 @@ class SkillDetailPage(SkillFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending test message: %r", message[:60])
+        self.open_test_skill_panel()
         chat_input = self.page.get_by_test_id("chat-message-input")
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
@@ -1371,3 +1454,72 @@ class SkillDetailPage(SkillFormPage):
             testid = options.nth(i).get_attribute("data-testid") or ""
             names.append(testid[len(prefix):] if testid.startswith(prefix) else testid)
         return names
+
+    # ------------------------------------------------------------------
+    # Run History page (ELITEA-4631)
+    # ------------------------------------------------------------------
+
+    @action("Open Run History via overflow menu")
+    def open_run_history(self, timeout: int = 15000):
+        """Overflow menu -> 'Run History'; wait for the /history route and rows."""
+        self.dismiss_platform_release_banner_if_present()
+        self.controls_menu_button.click()
+        self.run_history_menu_item.click()
+        self.page.wait_for_url(re.compile(r"/skills/all/\d+/history"), timeout=timeout)
+        self.run_history_rows.first.wait_for(state="visible", timeout=timeout)
+
+    @action("Start a new test conversation (clear chat)")
+    def clear_test_chat(self, timeout: int = 10000):
+        """Click clear-chat in the test panel and wait for the transcript to empty."""
+        self.chat_clear_button.click()
+        expect(self._test_panel_messages()).to_have_count(0, timeout=timeout)
+
+    @action("Open Analytics from the run-row menu")
+    def open_analytics_for_run(self, row_text: str, timeout: int = 15000):
+        """Hover the run row whose rendered text equals *row_text* (captured earlier via
+        ``get_run_history_row_texts``), open its menu and click Analytics."""
+        row = self.run_history_rows.filter(has_text=re.compile(rf"^{re.escape(row_text)}$"))
+        row.wait_for(state="visible", timeout=timeout)
+        row.hover()
+        self.RUN_ROW_MENU_BUTTON.within(row).click()
+        self.run_history_analytics_menuitem.click()
+        self.page.wait_for_url(re.compile(r"/skills/all/\d+/history/analytics\?"), timeout=timeout)
+
+    def get_run_history_row_texts(self) -> list[str]:
+        """Full text of every run-history row, in display order."""
+        return self.run_history_rows.all_text_contents()
+
+    def wait_for_selected_run_with_messages(self, timeout: int = 15000):
+        """Wait for the auto-selected row and its transcript in the right panel."""
+        self.page.locator(self.RUN_HISTORY_SELECTED_ROW).wait_for(state="visible", timeout=timeout)
+        self._test_panel_messages().first.wait_for(state="visible", timeout=timeout)
+
+    def get_message_texts(self) -> list[str]:
+        """Text of every chat message currently rendered."""
+        return self._test_panel_messages().all_text_contents()
+
+    @action("Open run-row menu")
+    def open_run_row_menu(self, timeout: int = 10000):
+        """Hover the (only) selected run row and open its three-dot menu."""
+        row = self.page.locator(self.RUN_HISTORY_SELECTED_ROW)
+        row.hover()
+        self.run_history_row_menu_button.click()
+        self.run_history_restore_chat_menuitem.wait_for(state="visible", timeout=timeout)
+
+    def get_run_row_menu_item_names(self) -> list[str]:
+        """Accessible text of every item in the open run-row menu."""
+        return [t.strip() for t in self.run_history_menu_items.all_text_contents()]
+
+    @action("Restore chat from history")
+    def click_restore_chat(self, timeout: int = 15000):
+        """Click 'Restore chat' and wait for the skill detail page with ?run=."""
+        self.run_history_restore_chat_menuitem.click()
+        self.page.wait_for_url(re.compile(r"/skills/all/\d+\?run=\d+"), timeout=timeout)
+
+    def page_contains_text(self, text: str) -> bool:
+        """Whether the rendered page HTML contains *text* (breadcrumb/title check)."""
+        return text in self.page.content()
+
+    def wait_for_any_message(self, timeout: int = 15000):
+        """Wait until at least one chat message is rendered."""
+        self._test_panel_messages().first.wait_for(state="visible", timeout=timeout)

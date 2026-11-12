@@ -625,6 +625,18 @@ class ChatPage(BasePage):
         description="Copy-to-clipboard icon on a completed AI message (hover-revealed)."
     )
 
+    # DEV split the single copy icon into "Copy markdown" / "Copy text"
+    # (ApplicationAnswerActions.jsx); ``chat-copy-button`` is gone from DEV.
+    copy_markdown_action_button = LocatorDescriptor(
+        testid="chat-copy-markdown-button",
+        description="Copy-as-markdown icon on a completed AI message (hover-revealed).",
+    )
+
+    copy_text_action_button = LocatorDescriptor(
+        testid="chat-copy-text-button",
+        description="Copy-as-text icon on a completed AI message (hover-revealed).",
+    )
+
     regenerate_action_button = LocatorDescriptor(
         testid="chat-regenerate-button",
         description=(
@@ -7005,3 +7017,52 @@ class ChatPage(BasePage):
         distinct across agent / pipeline / toolkit / MCP."""
         paths = self.PARTICIPANT_ICON_PATHS.within(participant_row)
         return "|".join(paths.evaluate_all("els => els.map(e => e.getAttribute('d') || '')"))
+
+    # ------------------------------------------------------------------
+    # "+" menu -> Skills submenu -> skill participants (ELITEA-4628)
+    # ------------------------------------------------------------------
+
+    skills_menuitem = LocatorDescriptor(
+        testid="skills-menuitem",
+        description=(
+            "'Skills' entry inside the plus-menu dropdown. Unlike Agents/Pipelines, the "
+            "submenu opens on CLICK (PlusChatButton.handleItemClick); hover did not open it."
+        ),
+    )
+
+    skills_search_input = LocatorDescriptor(
+        testid="skills-search-input",
+        description="Search field inside the plus-menu's Skills submenu (placeholder 'Search skills...').",
+    )
+
+    skills_create_new_button = LocatorDescriptor(
+        testid="skills-create-new-button",
+        description="'Create Skill' item inside the plus-menu's Skills submenu.",
+    )
+
+    # Skill rows select-and-close the popper. Own skills: project = own project id; catalog: project 1.
+    SKILL_PARTICIPANT_MENU_ITEM = '[data-testid="skills-menu-item-skill-{}-{}"]'
+    SKILL_PARTICIPANT_MENU_ITEM_PREFIX = '[data-testid^="skills-menu-item-skill-"]'
+    PARTICIPANT_CATALOG_TAG = '[data-testid="chat-participant-catalog-tag"]'
+
+    @action("Open the plus-menu Skills submenu (click)")
+    def open_skills_submenu(self, timeout: int = 10000):
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.skills_menuitem.wait_for(state="visible", timeout=timeout)
+        self.skills_menuitem.click()
+        self.skills_search_input.wait_for(state="visible", timeout=timeout)
+
+    def get_skill_menu_item_by_name(self, name: str):
+        """Skill row in the open Skills submenu matching *name* (own or catalog)."""
+        return self.page.locator(self.SKILL_PARTICIPANT_MENU_ITEM_PREFIX).filter(has_text=name)
+
+    @action("Add a skill as a participant from the plus menu")
+    def add_skill_participant(self, name: str, timeout: int = 10000):
+        """Open Skills submenu, search *name*, click the single matching row (closes the popper)."""
+        self.open_skills_submenu(timeout=timeout)
+        self.skills_search_input.fill(name)
+        row = self.get_skill_menu_item_by_name(name)
+        expect(row).to_have_count(1, timeout=timeout)
+        row.click()
+        expect(self.skills_search_input).to_be_hidden(timeout=timeout)

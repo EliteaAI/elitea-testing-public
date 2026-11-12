@@ -1,0 +1,4 @@
+{"batch":"adjust-2876-midturn-precondition","base":"main","pr_unit":"trunk","integration_branch":"tests/adjust-ELITEA-2876-midturn-precondition",
+"gate":{"n":3,"verdict":"green","by":"lead","env":"DEV APP_PREFIX=/app"},
+"cases":[{"id":"ELITEA-2876","outcome":"automated","note":"adjust, class D precondition; review APPROVED round 2; gate 3/3 (lead); expected-result changes: none","findings":[]}],
+"locatorDelta":{"declared":"1383->1385","nonTestid":"89->90","debt":"6.44%->6.50%","unmanaged":"312->312"}}

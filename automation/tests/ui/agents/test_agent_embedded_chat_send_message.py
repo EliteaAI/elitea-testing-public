@@ -68,6 +68,7 @@ class TestAgentEmbeddedChatSendMessage:
                 )
 
             with allure.step("Step 2 — Locate the embedded chat panel"):
+                detail_page.open_test_agent_panel()
                 assert detail_page.chat_message_input.is_visible(), (
                     "Embedded chat message input should be visible"
                 )

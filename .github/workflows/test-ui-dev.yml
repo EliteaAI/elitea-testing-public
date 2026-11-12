@@ -55,8 +55,8 @@ jobs:
         id: links
         env:
           SUITES: ${{ inputs.custom_suites || inputs.suite || 'all' }}
-          # Schedule forces results processing ON (so the maintenance report is fed)
-          # but NOT TMS publishing — that follows the dispatch default, i.e. off.
+          # Results processing follows the dispatch input only (schedule no longer forces
+          # it on); TMS publishing follows the dispatch default, i.e. off.
           # Change back once QA involvement will be done (Valadzko Aliaksandr)
           # RESULTS_PROCESSING: ${{ github.event_name == 'schedule' || inputs.enable_results_processing == true }}
           RESULTS_PROCESSING: ${{ inputs.enable_results_processing == true }}
@@ -100,9 +100,10 @@ jobs:
       # A scheduled run uses the dispatch defaults: `inputs.*` are all empty on a
       # schedule event, so every fallback below applies — i.e. the nightly runs the
       # FULL suite ('all' -> every dir under automation/tests/ui), stable markers.
-      # The schedule still forces two things: results processing (see the `links`
-      # and `notify` jobs) so the maintenance report keeps being fed, and 3 parallel
-      # runners instead of the dispatch default of 9.
+      # The schedule still forces 3 parallel runners instead of the dispatch default
+      # of 9. Results processing (the `links` and `notify` jobs) is temporarily NOT
+      # forced on schedule — dispatch with enable_results_processing to feed the
+      # maintenance report (see the "Change back" notes in those jobs).
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ github.event_name == 'schedule' && '3' || inputs.parallel_jobs || '9' }}
@@ -167,7 +168,10 @@ jobs:
   notify:
     name: Notify intake pipeline
     needs: [links, test]
-    if: always() && (github.event_name == 'schedule' || inputs.enable_results_processing == true)
+    # Change back once QA involvement will be done (Valadzko Aliaksandr) — keep in sync
+    # with RESULTS_PROCESSING in the `links` job.
+    # if: always() && (github.event_name == 'schedule' || inputs.enable_results_processing == true)
+    if: always() && inputs.enable_results_processing == true
     runs-on: ubuntu-latest
     steps:
       - name: Download JUnit artifacts for test counts

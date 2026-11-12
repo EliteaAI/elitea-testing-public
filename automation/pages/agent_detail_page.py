@@ -148,7 +148,11 @@ class AgentDetailPage(AgentFormPage):
         const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
         if (!trigger || trigger.innerText.trim() !== name) return false;
         if (!versionIdEl) return false;
-        const currentId = versionIdEl.innerText.trim();
+        // textContent, not innerText: after Save As Version the Information
+        // accordion body is collapsed (visibility:hidden), so innerText is ''
+        // although the id is rendered (#2896 evidence). The guard is unchanged:
+        // the id must still equal the URL's NEW version segment (below).
+        const currentId = (versionIdEl.textContent || "").trim();
         if (!currentId) return false;
         const seg = window.location.pathname.split('/').filter(Boolean).pop();
         return seg === currentId;
@@ -328,6 +332,16 @@ class AgentDetailPage(AgentFormPage):
     sensitive_action_authorize_button = LocatorDescriptor(testid="sensitive-action-authorize-button")
 
     # --- Embedded chat ---
+    # The embedded chat lives in the "Test Agent" side panel (EntityTestPanel):
+    # mounted but display:none until the toolbar button is clicked.
+    test_agent_button = LocatorDescriptor(
+        testid="agent-test-button",
+        description="Toolbar 'Test Agent' button (AgentEditorWorkspace.jsx) — opens the embedded-chat test panel",
+    )
+    test_agent_panel = LocatorDescriptor(
+        testid="agent-test-panel",
+        description="Test Agent side panel hosting the embedded chat; hidden until opened",
+    )
     chat_message_list = LocatorDescriptor(testid="chat-message-list")
     chat_message_item = LocatorDescriptor(testid="chat-message-item")
     chat_message_input = LocatorDescriptor(testid="chat-message-input")
@@ -2918,6 +2932,7 @@ class AgentDetailPage(AgentFormPage):
             asserting on the candidate rows it contains.
         """
         logger.info("Typing ~ in Instructions field to open mention panel")
+        self.click_edit_mode()
         self.instructions_input.click()
         self.instructions_input.press_sequentially("~", delay=50)
         return self._instructions_mention_container(timeout=timeout)
@@ -2962,18 +2977,12 @@ class AgentDetailPage(AgentFormPage):
         """Clear the Instructions field content (case step 6's own described
         technique: "removing Skill A reference" before re-triggering "~").
 
-        Uses Playwright's ``clear()`` — the same MUI-field-clearing call
-        already trusted elsewhere in this page object (``fill_form()`` in
-        ``AgentFormPage``) — rather than a manual Control+a/Delete key
-        sequence: exploration found the manual sequence unreliable here
-        (only the leading "~" was removed, not the full mention text),
-        while ``clear()`` empties the field reliably and still fires
-        React's ``onChange`` (unlike ``fill()`` with a non-empty value,
-        which is the pattern ``clear()`` itself is exempt from per
-        `.claude/rules/mui-patterns.md`).
+        Delegates to ``AgentFormPage.clear_instructions()``: enters Edit mode,
+        then select-all + Delete on the contenteditable editor (the editor is
+        a CodeMirror div since the Edit/Preview toggle, #2896, so Playwright's
+        ``clear()`` is no longer available).
         """
-        self.instructions_input.click()
-        self.instructions_input.clear()
+        self.clear_instructions()
 
     # ------------------------------------------------------------------
     # Embedded chat (right panel)
@@ -3055,6 +3064,20 @@ class AgentDetailPage(AgentFormPage):
         has_delete_button = last_msg.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
         return (has_read_out, has_answer_marker, has_delete_button)
 
+    @action("Open the Test Agent panel")
+    def open_test_agent_panel(self, timeout: int = 10000):
+        """Open the embedded-chat side panel via the toolbar 'Test Agent' button.
+
+        Idempotent: no-op when the panel is already visible. Waits for the
+        button to be enabled (disabled while the agent is not ready).
+        """
+        if self.test_agent_panel.is_visible():
+            return
+        self.test_agent_button.wait_for(state="visible", timeout=timeout)
+        expect(self.test_agent_button).to_be_enabled(timeout=timeout)
+        self.test_agent_button.click()
+        self.test_agent_panel.wait_for(state="visible", timeout=timeout)
+
     @action("Send embedded chat message")
     def send_chat_message(self, message: str, timeout: int = 10000):
         """Type and send a message in the embedded chat panel.
@@ -3068,6 +3091,7 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
+        self.open_test_agent_panel(timeout=timeout)
         self.chat_message_input.wait_for(state="visible", timeout=timeout)
         self.chat_message_input.click()
         self.chat_message_input.clear()
@@ -3102,6 +3126,7 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Sending mention message: ~%s %s", skill_name, prompt[:60])
+        self.open_test_agent_panel(timeout=timeout)
         self.chat_message_input.wait_for(state="visible", timeout=timeout)
         self.chat_message_input.click()
         self.chat_message_input.press_sequentially("~", delay=50)
@@ -3143,6 +3168,7 @@ class AgentDetailPage(AgentFormPage):
             Locator scoped to the open ``skill_mention_list`` popper.
         """
         logger.info("Typing ~ in embedded chat to open mention popper")
+        self.open_test_agent_panel(timeout=timeout)
         self.chat_message_input.wait_for(state="visible", timeout=timeout)
         self.chat_message_input.click()
         self.chat_message_input.press_sequentially("~", delay=50)

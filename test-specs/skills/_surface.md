@@ -894,3 +894,71 @@ extension of `AgentDetailPage`'s):
   `/{version_id}` to the URL) — not yet added as of this run; the DOM-level
   `skill-form-icon-img` src read is sufficient and was this run's primary
   evidence.
+
+## Skill Run History (`/skills/all/{id}/history`) + Restore chat — ELITEA-4631 (DEV, 2026-11-11)
+
+Source: `SkillRunHistoryView.jsx` + shared `entities/run-history` (same list component as
+Agent/Pipeline history). Probed live on `https://dev.elitea.ai/app` (headless Python Playwright;
+Playwright MCP chrome binary was missing in this sandbox).
+
+- Reach: detail page `skill-controls-menu-button` -> menu item `skill-run-history-menu-item`
+  ("Run History"), OR the test-panel header button `skill-run-history-button`; URL becomes
+  `/skills/all/{id}/history`. Direct goto works.
+- Columns (header testid `run-history-header`, text `Date | Version | Duration`) - NO Status
+  column/icons, NO User column; case text is stale. Row `run-history-list-item`
+  (`data-selected="true"` on the selected row; first row auto-selected). Row text e.g.
+  `11-11-2026, 01:02 PM | base | 3.01 s` (absolute date, not relative).
+- Row actions: `run-history-menu-menu-button` (3-dot, hover-revealed, id `run-history-menu-action`);
+  menu items are `role=menuitem` WITHOUT testids: Share link, Delete, Restore chat, Analytics.
+  Reach by role+name. (Unit tests reference `menu-item-Restore chat` testid, NOT rendered on DEV.)
+- Right panel renders `chat-message-list` / `chat-message-item` with the selected run's messages.
+- Restore chat for a test-panel run -> `/skills/all/{id}?run={conversationId}`, test panel reopens
+  with the full prior transcript; a new send appends to the SAME conversation (history stays 1 row).
+- Runs are created by sending in the SkillTestPanel (`skill-test-button`, `chat-message-input`,
+  `chat-send-button`, `skill-test-last-response`); one panel session = one conversation = one history row.
+  `chat-clear-button` starts a fresh conversation (second row).
+- History list API: `GET /api/v2/elitea_core/conversations/prompt_lib/{pid}?source=skill&entity_name=skill&entity_meta_id={id}&...`
+- Fixture: `SkillAPI.create_skill(...)` (client.py) + `delete_skill`. Existing DEV skills have 0 history.
+- Gotcha: DEV corner banner `platform-banner-corner` / `platform-banner-center` (close:
+  `platform-banner-close`, "Got it") intercepts clicks on send/menu - dismiss first.
+
+## Skill Run Analytics (`/skills/all/{id}/history/analytics?run=&history_run_id=`) - ELITEA-4632 (DEV, 2026-11-11)
+
+- Reach: Run History row hover -> `run-history-menu-menu-button` -> menuitem "Analytics" (no testid).
+- Page testids: `run-analytics-page`, `run-analytics-run-info` ("Run: <date> · Version: base · Model: <name>"), `run-analytics-refresh-button`,
+  `run-analytics-export-button`, `run-analytics-costs-info-button`, tabs `run-analytics-tab-{costs,tokens,health}`,
+  empty states `run-analytics-costs-empty` / `run-analytics-tokens-empty`, `analytics-costs-tool-spend`, breadcrumbs (`breadcrumb-item` x3 + `breadcrumb-current`).
+- Costs/Tokens data lags the run by ~10-40 s: empty state until ingested; refresh button re-fetches. Health fills sooner.
+- Cards/tables (TOTAL COST, INPUT/OUTPUT/CACHE costs, Cost by User, Cost by Model, Cost by Paid Tool) have NO testids.
+- API: `GET /api/v2/usage/analytics_run_detail/prompt_lib/{pid}?run_id=<uuid>&root_entity_type=skill&root_entity_id={id}&root_entity_project_id={pid}` and `.../analytics_costs/...` (same params) -> `{kpis{total_cost,total_input_tokens,total_output_tokens,total_tokens,total_input_cost,total_output_cost,...}, by_model[], by_skill[], ...}`.
+  Haiku 5.5 rates: in $0.10/M, out $0.50/M. UI rounds to 5 dp, `< $0.00001` below.
+- Leaving the test panel (e.g. to Run History) while a response streams or just finished shows a "Switch" confirm dialog (role button "Switch").
+- `chat-clear-button` in test panel starts a new conversation -> new history row (row 0 = newest).
+
+**Added during ELITEA-4632 implementation:** `RunAnalyticsPage` (`pages/run_analytics_page.py`) declares KPI cards / Cost-by-User / Cost-by-Model cells as scoped xpath rungs (no testids on DEV). Header `run-analytics-run-info` first renders `Version: … · Model: …` (ellipsis) before data loads - use a web-first wait. Run-history row menu button testid repeats once per row plus once in `run-history-list-column`: scope it within the row. `chat-clear-button` starts a new conversation without a Switch dialog when the response is complete.
+
+## Catalog -> Skills tab -> Run button -> chat (`/elitea-catalog?tab=skills`) - ELITEA-4633 (DEV, 2026-11-11)
+
+- `catalog-skill-run-button` (aria-label "run skill", tooltip "Run") x16, one per card; **no `catalog-skill-card-*` testid on DEV** (page object's `SKILL_CARD_PREFIX` matches 0). Search `catalog-search-input` ("Search for skills") filters live -> 1 run button for `code-reviewer`.
+- Run click persists conversation at once (`POST conversations` 201 + `select_conversation` 200) -> `/chat/{id}?name=Run+code-reviewer`; sidebar item `chat-conversation-item-{id}` "Run code-reviewer" (**appears only after the first message is sent**, per ELITEA-4633 implementation); no greeting message; participant row `code-reviewer | Catalog | v1.0` with `chat-participant-catalog-tag`. Panel collapsed by default.
+- Skill reply ~7s; sender label on DEV reads "Elitea to Message" (not "Skill: code-r..."); pick the reply by its "Thought for" footer, not position. Cleanup: `DELETE .../elitea_core/conversation/prompt_lib/575/{id}` (204); once an extra conversation was created after send - delete by name too.
+- `platform-banner-corner` appears ~3-5s after load and intercepts clicks (incl. send button) -> close it, `force=True` on send.
+Full: `test-specs/skills/l1_run-catalog-skill-from-catalog-and-message-exchange_ELITEA-4633.md`.
+
+## Run action (own skill) — Skills list row menu → skill detail test panel (ELITEA-4634, 2026-11-11, DEV)
+
+- Run for a **private** skill is in the **table-view** row three-dot menu only (card view has Move/Pin only). Toggle: `agent-table-view-button`. Row overflow button: `button[id="{skillId}-skill-action"]` (aria-label "more", no testid). Menu items: Run / Move to folder / Delete. `skill-run-menu-item` exists on every row's hidden menu (20 DOM matches) — not unique; use role=menuitem name "Run" exact.
+- Run -> `/skills/all/{id}?focus=run` (no new chat; opens `skill-test-panel`, input focused). Send persists a `source=skill` conversation; URL becomes `?run={convId}`; reload restores. Not in Chats sidebar nor `list_conversations()`. Delete via `ConversationAPI.delete_conversation(convId)`.
+- Catalog Run (ELITEA-4633) is a different flow: opens `/chat/{id}` with participants panel.
+- Corner banner (`platform-banner-close`) covers the test-panel send button; a click lands on it and does not send. Close it first.
+- First load of `/skills/all` on DEV can exceed 30s before `entity-card` renders.
+
+## Skill editor "Test Skill" button -> test panel execution chips (ELITEA-4635, 2026-11-11, DEV)
+
+- Toolbar: `edit-skill-with-ai-button` + `skill-test-button` ("Test Skill"); panel `skill-test-panel` hidden until click. After click, a 2nd click on the button timed out (covered) - don't assert toggle.
+- Panel input placeholder here = "Type your message..." (empty in Run-from-list flow, 4634). Reply ~7s.
+- AI message chips (all testids): `chat-answer-thought-accordion` ("Thought for 2 secs"), `chat-answer-tool-chip` ("Skill: <name>"), `chat-answer-model-chip`, `chat-answer-chip-duration`. Instruction "UPPERCASE" + "run" -> reply `RUN`.
+- Env gotcha: without `APP_PREFIX=/app` (no `.env.test` in sandbox) pages 404 at `https://dev.elitea.ai/skills/all`. Direct `SkillDetailPage.navigate` before visiting the list can fail on `skill-information-section`; visit list first.
+- Full details: `test-specs/skills/l1_test-skill-button-opens-panel-and-executes-skill_ELITEA-4635.md`.
+
+**Added during ELITEA-4635 implementation:** the `chat-send-button` is NOT rendered while the input is empty (a voice-input button occupies the slot); assert it only after typing. `SkillDetailPage` gained `edit_with_ai_button` (`edit-skill-with-ai-button`) and a panel-scoped `TEST_PANEL_ALERT` (role=alert, hint `skill-test-panel-alert`). Spec: `tests/ui/skills/test_skill_editor_test_button_execution.py`.

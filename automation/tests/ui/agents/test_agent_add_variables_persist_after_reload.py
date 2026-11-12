@@ -137,6 +137,7 @@ class TestAgentAddVariablesPersistAfterReload:
             with allure.step(
                 "Step 2 — Type Instructions containing two {{variable}} references"
             ):
+                detail_page.click_edit_mode()
                 detail_page.instructions_input.click()
                 detail_page.instructions_input.press("ControlOrMeta+a")
                 detail_page.instructions_input.press_sequentially(

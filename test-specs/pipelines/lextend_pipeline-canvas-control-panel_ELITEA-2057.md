@@ -254,3 +254,27 @@ rounds):**
 
 ## Adjustment note (2026-10-30, card #2760)
 PARKED on question #2782. DEV removed the "Toggle cards size" control (canvas panel now exposes `pipeline-canvas-zoom-in/-zoom-out/-fit-view/-lock/-arrange/-minimap-toggle`); a human decides whether that step is dropped. Handles/assertions for this case are intentionally unchanged and stay honestly red until then.
+
+## Adjustment (2026-11-11, card #2916) — Pipelines Editor 2.0 control panel
+
+- **Triage class:** A — UI drift, intentional (EliteaAI/elitea_issues#7093 / #7160); human-decided on the card. Supersedes the "PARKED on question #2782" note above.
+- **What changed:** control panel is now Zoom in, Zoom out, Fit view, Lock/Unlock canvas, Arrange (menu), Minimap toggle (6 buttons). "Toggle cards size" is gone; "Toggle Interactivity" became Lock/Unlock; "Auto-arrange" became an Arrange menu; Minimap is new.
+- **Handles Reference (verified on DEV 2026-11-11, pipeline canvas, probe via scratch pytest — Playwright MCP chromium not installed on this host):**
+
+| element | rung | handle | suggested_testid | provenance |
+|---|---|---|---|---|
+| Panel | testid | `pipeline-canvas-controls` — `canvas_controls` | — | testid on DEV ✓ |
+| Zoom in / out / Fit view | testid | `pipeline-canvas-zoom-in` / `-zoom-out` / `-fit-view` | — | testid on DEV ✓ (aria-label "Zoom in" / "Zoom out" / "Fit view") |
+| Lock/Unlock | testid | `pipeline-canvas-lock` — `canvas_lock_button`; `aria-pressed` false/true, `data-locked="true"` when locked; aria-label/tooltip "Lock canvas" -> "Unlock canvas" | — | testid on DEV ✓ |
+| Arrange button | testid | `pipeline-canvas-arrange` — `canvas_arrange_button` (`aria-haspopup="menu"`, aria-label "Auto-arrange") | — | testid on DEV ✓ |
+| Arrange items | testid | `pipeline-canvas-arrange-tb` ("Arrange top to bottom") / `pipeline-canvas-arrange-lr` ("Arrange left to right"); `data-current="true"` on the active one (default: top-to-bottom) | — | testid on DEV ✓ |
+| Minimap toggle | testid | `pipeline-canvas-minimap-toggle` — `canvas_minimap_toggle_button`; `aria-pressed`, aria-label "Show minimap" -> "Hide minimap" | — | testid on DEV ✓ |
+| Minimap panel | testid | `rf__minimap` (ReactFlow `react-flow__minimap`, bottom-right); absent from DOM while hidden (default) | — | testid on DEV ✓ |
+
+- **Behaviour verified live:** while locked, `react-flow__node` loses `draggable`/`nopan`, so a drag that starts on a node PANS the viewport (viewport tx/ty follow the drag; node canvas-space position unchanged) — hence Step 6 compares node position in canvas space (`get_node_canvas_position`) and asserts pan still works. Unlocked drag moves the node 1:1 (within the existing abs=6 drag-threshold tolerance). Arrange round trip (drag away, pick same orientation) restores the exact bounding box (tolerance unchanged, abs=1).
+- **Expected-result changes (human sign-off = card #2916 text):**
+  1. REMOVED: Step 7 "Toggle cards size — node height shrinks then restores exactly" (control no longer exists); page-object `toggle_canvas_cards_size` removed (no other callers).
+  2. RENAMED, same behaviour: Toggle Interactivity -> Lock/Unlock (Step 6). Now also asserts the Lock button's `aria-pressed` state and that pan still works while locked; locked-node check moved from screen-space to canvas-space position because a locked-canvas drag pans the viewport.
+  3. CHANGED: Auto-arrange -> Arrange menu (Step 7, was 8): opens the menu, reads the current orientation (`data-current`), picks it for baseline and restore; determinism assertion (exact position) unchanged.
+  4. ADDED: Step 8 Minimap — hidden by default, "Show minimap" renders `rf__minimap`, "Hide minimap" removes it.
+  5. Step 2 now checks the new 6-button set.

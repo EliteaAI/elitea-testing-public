@@ -260,16 +260,23 @@ def _build_dedicated_agent_payload(name: str) -> dict:
     """
     return {
         "name": name,
-        "description": "Disposable agent for ELITEA-1892 publish/unpublish cycle test",
+        "description": (
+            "Helps team members get clear, concise answers about project status, "
+            "release readiness and quality metrics. "
+            "Use it to summarise open work, prepare weekly status updates and answer planning questions. "
+            "Built for project managers, engineers and QA leads who need quick, reliable status insight."
+        ),
         "type": "interface",
         "versions": [
             {
                 "name": "base",
                 "tags": [{"name": "regression"}],
                 "instructions": (
-                    "You are a helpful QA validation assistant for the "
-                    "ELITEA platform publish/unpublish test (ELITEA-1892). "
-                    "You answer general questions about testing status."
+                    "You are a project status assistant for engineering teams. Help users "
+                    "summarise progress, explain release readiness and draft clear "
+                    "status updates. "
+                    "Ask a clarifying question when a request is ambiguous, keep answers "
+                    "concise and structured, and state plainly when you do not know something."
                 ),
                 "variables": [],
                 "tools": [],
@@ -279,9 +286,16 @@ def _build_dedicated_agent_payload(name: str) -> dict:
                     "model_name": settings.default_model_name,
                     "model_project_id": settings.default_model_project_id,
                 },
-                "conversation_starters": [],
+                "conversation_starters": [
+                    "Summarise this week's project status for me",
+                    "Is our release ready to ship?",
+                    "Draft a status update for stakeholders",
+                ],
                 "agent_type": "openai",
-                "welcome_message": "",
+                "welcome_message": (
+                    "Hi! I can summarise project status, check release readiness "
+                    "and draft updates. What would you like to know?"
+                ),
                 "meta": {"step_limit": 25},
             }
         ],

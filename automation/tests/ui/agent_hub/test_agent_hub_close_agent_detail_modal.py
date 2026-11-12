@@ -1,8 +1,8 @@
-"""Agent Hub — close agent detail modal with X button (ELITEA-2357).
+"""Catalog — close agent detail modal with X button (ELITEA-2357).
 
 Verifies that clicking the X (close) button in the agent preview modal closes
 the modal overlay, with zero console errors and zero 4xx/5xx network responses.
-The user remains on the Agent Hub / Catalog list view after the modal closes.
+The user remains on the Catalog list view after the modal closes.
 Read-only: this test never starts chat, likes, or interacts with the overflow
 menu — only opens and closes the modal.
 
@@ -32,7 +32,7 @@ CATALOG_AGENT_NAME = "User Story Creator"
 
 
 class TestAgentHubCloseAgentDetailModal:
-    """ELITEA-2357: Agent Hub — close agent detail modal with X button (l3, medium)."""
+    """ELITEA-2357: Catalog — close agent detail modal with X button (l3, medium)."""
 
     @pytest.mark.tms("ELITEA-2357")
     @allure.issue(
@@ -42,7 +42,7 @@ class TestAgentHubCloseAgentDetailModal:
     )
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/2537",
-        "Known defect — dev-vm.elitea.ai default-icon CSP violation + application_icon 404s (console errors)",
+        "Known defect — application_icon 404s (the default-icon CSP violation seen earlier is gone on DEV as of 2026-11-10) (console errors)",
     )
     @pytest.mark.p2
     def test_agent_hub_close_agent_detail_modal(self, page: Page):
@@ -60,7 +60,7 @@ class TestAgentHubCloseAgentDetailModal:
         failed_responses: list[int] = []
         page.on("response", lambda resp: failed_responses.append(resp.status) if resp.status >= 400 else None)
 
-        with allure.step("Step 1 — Navigate to Agent Hub"):
+        with allure.step("Step 1 — Navigate to Catalog"):
             agent_hub.navigate()
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
@@ -90,7 +90,7 @@ class TestAgentHubCloseAgentDetailModal:
             if console_errors:
                 soft_failures.append(f"Unexpected console errors during modal close: {console_errors}")
 
-        with allure.step("Step 6 — Verify the user remains on the Agent Hub list view"):
+        with allure.step("Step 6 — Verify the user remains on the Catalog list view"):
             # URL should still be /elitea-catalog
             assert page.url.endswith("/elitea-catalog"), (
                 f"Page URL should remain /elitea-catalog after modal close, got: {page.url}"

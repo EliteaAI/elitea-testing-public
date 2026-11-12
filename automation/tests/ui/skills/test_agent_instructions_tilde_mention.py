@@ -216,6 +216,7 @@ class TestTildeMentionListsOnlyAttachedSkills:
                 "accordion textarea, not the embedded-chat input — see AFS "
                 "Metadata clarification)"
             ):
+                detail_page.click_edit_mode()
                 detail_page.instructions_input.click()
                 expect(detail_page.instructions_input).to_be_focused()
 

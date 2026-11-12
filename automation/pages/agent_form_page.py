@@ -34,10 +34,27 @@ class AgentFormPage(BasePage):
         description="Agent description input field"
     )
 
+    # Instructions accordion has an Edit/Preview toggle (#2896). Existing agents open in
+    # Preview; the editor (``instructions_input``) exists ONLY in Edit mode and is a
+    # contenteditable div (CodeMirror), not a textarea: no input_value()/clear()/fill().
     instructions_input = LocatorDescriptor(
         testid="agent-instructions-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Guidelines for the AI agent"),
-        description="Agent instructions/guidelines field"
+        description="Agent instructions editor (contenteditable, Edit mode only)"
+    )
+
+    instructions_preview = LocatorDescriptor(
+        testid="agent-instructions-preview",
+        description="Agent instructions rendered Markdown (Preview mode only)"
+    )
+
+    instructions_edit_mode_button = LocatorDescriptor(
+        testid="markdown-edit-mode-toggle",
+        description="Instructions Edit/Preview toggle — Edit mode button"
+    )
+
+    instructions_preview_mode_button = LocatorDescriptor(
+        testid="markdown-preview-mode-toggle",
+        description="Instructions Edit/Preview toggle — Preview mode button"
     )
 
     welcome_message_input = LocatorDescriptor(
@@ -345,10 +362,7 @@ class AgentFormPage(BasePage):
 
         # Fill instructions if provided
         if instructions:
-            self.instructions_input.click()
-            self.page.wait_for_timeout(100)
-            self.instructions_input.clear()
-            self.page.wait_for_timeout(100)
+            self.clear_instructions()
             self.instructions_input.press_sequentially(instructions, delay=20)
             self.page.wait_for_timeout(300)
 
@@ -424,9 +438,47 @@ class AgentFormPage(BasePage):
         """Read the current value of the Description field."""
         return self.description_input.input_value()
 
+    @action("Switch Instructions to Edit mode")
+    def click_edit_mode(self, timeout: int = 10000):
+        """Ensure the Instructions accordion is in Edit mode (idempotent).
+
+        Existing agents open in Preview; the Create flow opens already in Edit
+        mode (no click). Client-side toggle: waits only on the editor appearing.
+        """
+        self.instructions_input.or_(self.instructions_edit_mode_button).first.wait_for(
+            state="visible", timeout=timeout
+        )
+        if not self.instructions_input.is_visible():
+            self.instructions_edit_mode_button.click()
+        self.instructions_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Instructions in Edit mode")
+
+    @action("Switch Instructions to Preview mode")
+    def click_preview_mode(self, timeout: int = 10000):
+        """Switch the Instructions accordion to Preview mode (idempotent)."""
+        if not self.instructions_preview.is_visible():
+            self.instructions_preview_mode_button.click()
+        self.instructions_preview.wait_for(state="visible", timeout=timeout)
+
+    def clear_instructions(self):
+        """Enter Edit mode and empty the editor (select-all + Delete on the
+        contenteditable; ``clear()`` is not available on a div)."""
+        self.click_edit_mode()
+        self.instructions_input.click()
+        self.instructions_input.press("ControlOrMeta+a")
+        self.instructions_input.press("Delete")
+
     def get_instructions(self) -> str:
-        """Read the current value of the Instructions field."""
-        return self.instructions_input.input_value()
+        """Read the raw text of the Instructions field.
+
+        Enters Edit mode (idempotent) and reads the contenteditable's text,
+        which is the raw Markdown source (Preview renders it). Side effect:
+        leaves the page in Edit mode.
+        """
+        self.click_edit_mode()
+        text = self.instructions_input.inner_text()
+        # An empty CodeMirror line renders as a lone "\n" in inner_text().
+        return "" if text == "\n" else text
 
     def get_welcome_message(self) -> str:
         """Read the current value of the Welcome Message field."""
@@ -773,7 +825,23 @@ class AgentFormPage(BasePage):
         cm_content.click()
         self.page.keyboard.press("Control+a")
         self.page.keyboard.type(text)
-        self.page.wait_for_timeout(500)
+        # Condition wait: CodeMirror applies keystrokes (and its max-length filter)
+        # asynchronously; wait until the rendered text stops changing before any read.
+        cm_content.evaluate(
+            """el => new Promise((resolve, reject) => {
+                let last = -1, since = performance.now();
+                const deadline = since + 15000;
+                const tick = () => {
+                    const now = performance.now();
+                    const len = el.innerText.length;
+                    if (len !== last) { last = len; since = now; }
+                    if (now - since >= 400) return resolve(len);
+                    if (now > deadline) return reject(new Error('editor text never settled'));
+                    setTimeout(tick, 100);
+                };
+                tick();
+            })"""
+        )
 
     def get_welcome_message_fullscreen_value(self) -> str:
         """Get the current text value from the welcome message fullscreen dialog.

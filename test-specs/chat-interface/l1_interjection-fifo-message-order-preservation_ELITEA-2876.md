@@ -13,6 +13,8 @@
 - User is logged in to Elitea.
 - Chat interface is accessible, a fresh conversation exists (`conversation_id`
   fixture).
+- **Settings → General → "Mid-turn input" toggle is ENABLED** (explicit, visible
+  precondition — automated as Step 0 / test Step 1; see § Adjustment).
 - Mid-turn injection enabled for the project — same fixture dependency as
   ELITEA-2875 (see that AFS's Preconditions/Automation Hints; the fixture is
   shared infrastructure for this whole family, implement once).
@@ -31,6 +33,11 @@
   queue-count-text paraphrase documented in the ELITEA-2875 AFS.)
 
 ## Test Steps
+0. **Precondition** — open Settings → General (`/settings/project-general`), dismiss
+   the "What's New" modal if present, and ensure the "Mid-turn input" toggle is ON
+   (enable via UI if OFF; wait for the module_settings autosave).
+   - **Verify**: the switch is checked.
+   (Automated test titles are offset by one: AFS step N = test "Step N+1".)
 1. Navigate to a fresh conversation and send the long-running prompt.
    - **Verify**: agent starts processing (`interjection-composer` eventually
      present, confirming the interjectable window).
@@ -105,6 +112,14 @@ Axis 2 — Analyst additions:
 
 ## Concrete Handles (discovered during exploration)
 
+### Precondition handles (Settings → General, verified on DEV)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `[data-testid="chat-configuration-section"]` | n/a | testid on DEV ✓ |
+| css | `div:has(> div > :text-is("Mid-turn input")) input[role="switch"]` scoped inside the section (ScopedLocator `MIDTURN_INPUT_SWITCH`) | `settings-midturn-input-switch` | ladder — no testid on DEV; unique within the section (title-anchored, non-positional) |
+| testid | `platform-banner-close` ("Got it" in the platform announcement dialog; BasePage `platform_banner_close`, dismissed via inherited `dismiss_announcement_dialog_if_present` + `auto_dismiss_announcement_dialog`) | n/a | testid on DEV ✓ (EliteaUI CenterBanner.jsx) |
+
 Same handle set as ELITEA-2875 (`interjection-composer`, `chat-inject-button`,
 `interjection-queue-area`, `interjection-queue-label`, `interjection-queue-item`,
 message timeline) — see that AFS's Concrete Handles table and
@@ -139,3 +154,12 @@ None.
 - Reuse `wait_for_ai_response()`/`wait_for_message_content_stable()` for the
   final drain wait; poll on `interjection-composer`/`interjection-queue-area`
   counts reaching 0 as the "fully drained" signal (confirmed reliable live).
+
+## Adjustment (issue #2928)
+- **Class**: D / precondition robustness. CI failed at Step 5 (user timeline held only
+  the prompt; queued A/B/C absent) because project-level "Mid-turn input" was not
+  effectively enabled; the API-only fixture was not a visible precondition.
+- **Change**: new first precondition step (Settings → General → toggle enabled, set via
+  UI if off). The API fixture is kept (guarantees + restores state).
+- **Expected-result changes**: none to existing assertions (steps 1-6 unchanged; the
+  8-entry timeline assertion is retained verbatim).

@@ -1,0 +1,44 @@
+{
+ "slug": "adjust-2896",
+ "issue": 2896,
+ "triage": "A (UI drift: Instructions opens in Preview; Edit mode toggle required; editor is contenteditable)",
+ "cases": [
+  {
+   "id": "ELITEA-1791",
+   "outcome": "automated"
+  },
+  {
+   "id": "ELITEA-1870",
+   "outcome": "automated"
+  },
+  {
+   "id": "ELITEA-1883",
+   "outcome": "automated"
+  },
+  {
+   "id": "ELITEA-1884",
+   "outcome": "automated"
+  },
+  {
+   "id": "ELITEA-1888",
+   "outcome": "automated"
+  },
+  {
+   "id": "ELITEA-1891",
+   "outcome": "automated"
+  }
+ ],
+ "review": "APPROVED (fresh session, round 2)",
+ "gate": {
+  "verdict": "green",
+  "n": 3,
+  "runs": "3x6 passed on DEV"
+ },
+ "expected_result_changes": "none",
+ "findings": [
+  "ELITEA-2440 test_skill_test_panel_version_instructions fails at send_test_message (chat-message-input hidden) \u2014 unrelated to Edit mode; not fixed",
+  "VERSION_CONVERGED_JS textContent change: declared improvisation (innerText empty when Information accordion collapsed)",
+  "TMS PR EliteaAI/onetest-ai-tm-Elitea#235 (11 case files) awaits human merge"
+ ],
+ "batch": "adjust-2896"
+}

@@ -1,4 +1,4 @@
-# Test Case: Agent Hub — E2E start conversation with agent that has conversation starters, use starter to send message, receive reply
+# Test Case: Catalog — E2E start conversation with agent that has conversation starters, use starter to send message, receive reply
 
 ## Metadata
 - **TMS ID**: ELITEA-2369
@@ -27,7 +27,7 @@
 
 ## Test Steps
 
-1. Navigate to Agent Hub (`/elitea-catalog`).
+1. Navigate to Catalog (`/elitea-catalog`).
    - **Verify**: page loads — `catalog-page-heading` visible (reuse `AgentHubPage.navigate()` / `wait_for_page_load()`).
 2. Click on an agent card that has predefined conversation starters (e.g., "API Testing Buddy").
    - **Verify**: click succeeds; the underlying `GET /api/v2/elitea_core/public_application/prompt_lib/34` request fires and resolves `200` (confirmed live) — reuse `AgentHubPage.open_agent_by_name()`, which already waits on this exact response.
@@ -82,7 +82,7 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
+| 1 Navigate to Catalog | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Click agent card with starters | Control responds; expected next state shown | step 2 | agent-details GET fires, resolves 200 | asserted |
 | 3 Modal shows agent name and description | Condition holds as described | step 3 | `modal_agent_name`, description text | asserted |
 | 4 CONVERSATION STARTERS section shows multiple options | Condition holds as described | step 4 | `modal_chat_starters_section` + item count (new testid) | asserted *(section-label drift, #1042; item testid gap, new)* |

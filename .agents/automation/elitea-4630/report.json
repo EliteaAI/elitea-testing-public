@@ -1,0 +1,26 @@
+{
+ "batch": "elitea-4630",
+ "base": "origin/main",
+ "cases": [
+  {
+   "id": "ELITEA-4630",
+   "outcome": "automated",
+   "review": "APPROVED (round 2)",
+   "afs": "test-specs/chat-interface/l1_skill-auto-invocation-from-chat-by-intent_ELITEA-4630.md",
+   "spec": "tests/ui/chat/test_chat_skill_auto_invocation_by_intent.py"
+  }
+ ],
+ "gate": {
+  "verdict": "pass",
+  "runs": 3,
+  "seconds": [
+   43,
+   43,
+   43
+  ],
+  "failures": [],
+  "note": "Lead gate: 3 separate invocations, APP_PREFIX=/app. Workflow merge/report agents failed on haiku 403; lead merged and closed."
+ },
+ "note": "merge agent and report agent failed (403 haiku model); lead merged unit branch and gated by hand. No page-object changes: locator delta 0.",
+ "pr_unit": "trunk"
+}

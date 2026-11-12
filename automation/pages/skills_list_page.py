@@ -11,7 +11,7 @@ import logging
 from playwright.sync_api import Locator, Page, Response, TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from components.mui import Dialog
 from utils.actions import action
 
@@ -226,6 +226,41 @@ class SkillsListPage(BasePage):
     # add-data-testid round-trip needed for this element. See
     # ``pin_toggle_button()``.
     SKILL_PIN_TOGGLE_BUTTON = '[data-testid="skill-pin-toggle-button-{}"]'
+
+    # ELITEA-4634 — table view + row "Run" action (Skills list).
+    table_view_button = LocatorDescriptor(
+        testid="agent-table-view-button",
+        description="Switch to table view (Skills page reuses the shared ViewToggle.jsx default testid)",
+    )
+
+    # Row overflow ("more") button; id is stable per skill. Use .within(page, skill_id).
+    ROW_ACTION_BUTTON = ScopedLocator(
+        css='button[id="{}-skill-action"]',
+        description="Table-row three-dot menu button (id template, aria-label 'more'); no testid on DEV",
+        suggested_testid="skill-row-action-menu-button-{}",
+    )
+
+    # 'skill-run-menu-item' exists on every row's hidden menu (non-unique page-wide), so use the
+    # role rung, unique while exactly one row menu is open.
+    ROW_RUN_MENU_ITEM = ScopedLocator(
+        role="menuitem",
+        name="Run",
+        exact=True,
+        description="'Run' item of the open row menu (testid skill-run-menu-item is non-unique page-wide)",
+        suggested_testid="skill-row-run-menu-item",
+    )
+
+    def row_action_button(self, skill_id) -> Locator:
+        """Return the table-row overflow button of *skill_id*."""
+        return self.ROW_ACTION_BUTTON.within(self.page, skill_id)
+
+    @action("Run skill from table-row menu")
+    def run_skill_from_row(self, skill_id, timeout: int = 10000) -> None:
+        """Open the row menu of *skill_id* and click 'Run' (opens the skill detail with the test panel)."""
+        self.row_action_button(skill_id).click(timeout=timeout)
+        run_item = self.ROW_RUN_MENU_ITEM.within(self.page)
+        run_item.wait_for(state="visible", timeout=timeout)
+        run_item.click()
 
     def __init__(self, page: Page):
         super().__init__(page)

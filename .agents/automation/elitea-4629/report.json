@@ -1,0 +1,13 @@
+{
+ "batch": "elitea-4629",
+ "base": "main",
+ "pr_unit": "case-branch",
+ "integration_branch": "tests/elitea-4629-tilde-skill-mention",
+ "gate": {"verdict": "pass", "runs": 3, "seconds": [37.1, 38.6, 39.3], "failures": [],
+  "note": "Lead gate: 3 separate invocations, APP_PREFIX=/app (container has no .env.test), reruns.json {} each. Workflow's own merge/report agents failed on a haiku 403 (model not allowed); lead completed close."},
+ "cases": [{"id": "ELITEA-4629", "outcome": "automated",
+  "note": "reviewer APPROVED (fresh session, after positional .nth picks replaced by content filters); lead 3x DEV gate green",
+  "spec": "tests/ui/chat/test_chat_tilde_mention_skill_without_agent.py::TestChatTildeMentionSkillWithoutAgent::test_tilde_mention_skill_without_agent",
+  "afs": "test-specs/chat-interface/l1_tilde-mention-skill-in-chat-without-agent_ELITEA-4629.md",
+  "findings": [{"kind": "clarification", "note": "Case text precondition 'no skill added as participant' cannot yield a populated ~ list: without an agent it lists only non-active skill participants (elitea_issues#6924). Spec adds two fixture skills; animal-joke does not exist on DEV. TMS case text should be corrected."}]}]
+}

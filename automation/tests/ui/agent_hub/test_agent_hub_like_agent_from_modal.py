@@ -1,4 +1,4 @@
-"""UI Test for ELITEA-2358 — Agent Hub: like an agent from the expanded detail modal.
+"""UI Test for ELITEA-2358 — Catalog: like an agent from the expanded detail modal.
 
 Verifies that liking/unliking an agent from the preview modal (opened by
 clicking a card on `/elitea-catalog`) toggles the heart icon's active state,
@@ -59,7 +59,7 @@ def _is_known_defect_1215(text: str) -> bool:
 
 
 class TestAgentHubLikeAgentFromModal:
-    """ELITEA-2358: Agent Hub — like an agent from the expanded detail modal (l2, medium)."""
+    """ELITEA-2358: Catalog — like an agent from the expanded detail modal (l2, medium)."""
 
     @pytest.mark.tms("ELITEA-2358")
     @allure.issue(
@@ -87,7 +87,7 @@ class TestAgentHubLikeAgentFromModal:
         AGENT_NAME = "Business Analyst"
         APPLICATION_ID = 31  # Business Analyst application id (AFS § Test Data)
 
-        with allure.step("Step 1 — Navigate to Agent Hub"):
+        with allure.step("Step 1 — Navigate to Catalog"):
             agent_hub.navigate()
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
