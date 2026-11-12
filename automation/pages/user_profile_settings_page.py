@@ -19,7 +19,7 @@ import logging
 from playwright.sync_api import Page
 
 from .base_page import BasePage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.user_profile_settings")
@@ -72,6 +72,12 @@ class UserProfileSettingsPage(BasePage):
     context_window_full_option = LocatorDescriptor(
         testid="context-window-mode-full",
         description="'Full' option of the Context window radio group",
+    )
+
+    context_window_option_radio = ScopedLocator(
+        css='input[type="radio"]',
+        suggested_testid="memory-context-window-mode-radio",
+        description="Native radio input inside a Context window option label (carries the checked state).",
     )
 
     # ------------------------------------------------------------------
@@ -278,6 +284,36 @@ class UserProfileSettingsPage(BasePage):
             self.wait_for_autosave()
         else:
             logger.info("Context management already disabled — no action taken")
+
+    def _context_window_option(self, mode: str):
+        """Return the Balanced/Full option label locator for *mode* ('balanced' | 'full')."""
+        options = {"balanced": self.context_window_balanced_option, "full": self.context_window_full_option}
+        if mode not in options:
+            raise ValueError(f"mode must be 'balanced' or 'full', got {mode!r}")
+        return options[mode]
+
+    def get_context_window_mode(self) -> str:
+        """Return the persisted-in-form Context window mode: 'balanced' or 'full'."""
+        for mode in ("balanced", "full"):
+            if self.context_window_option_radio.within(self._context_window_option(mode)).is_checked():
+                return mode
+        raise AssertionError("Neither Balanced nor Full is selected in the Context window radio group")
+
+    def select_context_window_mode(self, mode: str) -> None:
+        """Select the Context window mode and wait for the autosave PUT to complete.
+
+        Clicking the already-selected option fires no save, so that case is a no-op.
+        """
+        option = self._context_window_option(mode)
+        if self.context_window_option_radio.within(option).is_checked():
+            logger.info("Context window already %s — no action", mode)
+            return
+        with self.page.expect_response(
+            lambda r: r.request.method == "PUT" and "/social/author/" in r.url, timeout=15000
+        ):
+            option.click()
+        self.context_window_option_radio.within(option).wait_for(state="attached")
+        logger.info("Context window mode set to %s", mode)
 
     def get_max_context_tokens(self) -> int:
         """Return the current value of the Max Context Tokens input.

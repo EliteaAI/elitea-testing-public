@@ -304,6 +304,22 @@ class ChatPage(BasePage):
         ),
     )
 
+    context_window_mode_balanced_tab = LocatorDescriptor(
+        testid="context-window-mode-balanced",
+        description=(
+            "'Balanced · <size>' toggle button of the Context management widget "
+            "(ContextWindowModeSelector.jsx). State: aria-pressed."
+        ),
+    )
+
+    context_window_mode_full_tab = LocatorDescriptor(
+        testid="context-window-mode-full",
+        description=(
+            "'Full · <size>' toggle button of the Context management widget "
+            "(ContextWindowModeSelector.jsx). State: aria-pressed."
+        ),
+    )
+
     context_budget_messages_count = LocatorDescriptor(
         testid="context-budget-messages-count",
         description="Messages counter value inside the Context Budget panel (e.g. '4').",
@@ -4716,6 +4732,41 @@ class ChatPage(BasePage):
     # ------------------------------------------------------------------
     # Context Budget helpers
     # ------------------------------------------------------------------
+
+    def wait_for_context_management_widget(self, timeout: int = 60000) -> None:
+        """Expand the Participants panel and wait for the Context management widget."""
+        self.expand_participants_panel_via_toggle(timeout=timeout)
+        self.context_budget_panel.wait_for(state="visible", timeout=timeout)
+
+    def get_context_window_mode_state(self) -> dict:
+        """Return the widget's window-mode state.
+
+        Returns:
+            ``{"selected": "balanced"|"full", "balanced_label": str, "full_label": str}``
+            where the labels are the tab texts, e.g. ``"Full · 400K"``.
+        """
+        pressed = {
+            mode: tab.get_attribute("aria-pressed") == "true"
+            for mode, tab in (
+                ("balanced", self.context_window_mode_balanced_tab),
+                ("full", self.context_window_mode_full_tab),
+            )
+        }
+        selected = [m for m, on in pressed.items() if on]
+        assert len(selected) == 1, f"Exactly one window mode should be selected, got {pressed}"
+        return {
+            "selected": selected[0],
+            "balanced_label": (self.context_window_mode_balanced_tab.text_content() or "").strip(),
+            "full_label": (self.context_window_mode_full_tab.text_content() or "").strip(),
+        }
+
+    def get_context_budget_available_tokens(self) -> int:
+        """Return N from the widget's 'of N tokens' line (usable window after the safety margin)."""
+        text = self.context_budget_tokens_display.first.text_content() or ""
+        match = re.search(r"of\s+([\d\s\u00a0\u202f,]+)\s*tokens", text)
+        if not match:
+            raise ValueError(f"Cannot parse 'of N tokens' from {text!r}")
+        return int(re.sub(r"[\s\u00a0\u202f,]+", "", match.group(1)))
 
     def is_context_budget_panel_visible(self) -> bool:
         """Return True if the Context Budget panel is visible in the sidebar.
