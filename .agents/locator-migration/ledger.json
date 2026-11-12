@@ -585,7 +585,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1808,
+      "line": 1809,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -597,7 +597,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1881,
+      "line": 1882,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -1162,8 +1162,8 @@
   },
   "last_sync": "2026-11-12",
   "metric": {
-    "declared_total": 1393,
-    "declared_testid": 1298,
+    "declared_total": 1394,
+    "declared_testid": 1299,
     "declared_non_testid": 95,
     "non_testid_with_hint": 74,
     "non_testid_without_hint": 21,
@@ -1173,10 +1173,10 @@
       "label": 1,
       "locator": 1,
       "role": 30,
-      "testid": 1298,
+      "testid": 1299,
       "xpath": 24
     },
-    "locator_debt": 0.0682,
+    "locator_debt": 0.0681,
     "unmanaged_handles": 312
   }
 }

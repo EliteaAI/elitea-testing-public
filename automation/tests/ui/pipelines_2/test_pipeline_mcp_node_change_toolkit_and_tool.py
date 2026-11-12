@@ -96,16 +96,18 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
             f"Tool should show the preconfigured value {initial_tool!r}, got {current_tool!r}"
         )
 
-    with allure.step("Step 4 — Open Toolkit dropdown; verify it lists every MCP attached in TOOLS"):
-        pipeline_page.open_mcp_node_toolkit_select()
-        listed_toolkits = set(pipeline_page.get_open_listbox_option_names())
-        assert listed_toolkits == {initial_toolkit_name, new_toolkit_name}, (
-            f"Toolkit dropdown should list exactly the 2 attached MCPs "
-            f"{{{initial_toolkit_name!r}, {new_toolkit_name!r}}}, got {listed_toolkits!r}"
-        )
+    with allure.step("Step 4 — Open Toolkit dropdown; verify it includes every MCP attached in TOOLS"):
+        # EL-7159 (class A, UI drift): the node's MCP control is now the project picker.
+        pipeline_page.open_mcp_node_picker(timeout=UI_ELEMENT_TIMEOUT)
+        for expected in (initial_toolkit_name, new_toolkit_name):
+            assert pipeline_page.is_mcp_node_picker_listing(expected, timeout=UI_ELEMENT_TIMEOUT), (
+                f"MCP picker should list the attached MCP {expected!r}"
+            )
+        # #2858 (human decision): the project picker always lists ALL project MCPs, so
+        # the contract is "includes the attached MCPs", not "exactly the attached MCPs".
         # Close by selecting the new toolkit directly (step 5) rather than a
         # separate close action — the AFS steps 4→5 are one continuous flow.
-        pipeline_page.select_open_listbox_option(new_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.select_mcp_node_toolkit(new_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 5 — Select the other MCP; Toolkit combobox shows the new name"):
         new_toolkit_value = pipeline_page.get_mcp_node_toolkit_value()
@@ -206,3 +208,20 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         assert pipeline_page.get_mcp_node_input_mapping_value("question") == _QUESTION_VALUE, (
             "question Input-mapping value should persist through reload"
         )
+
+    with allure.step(
+        "Step 11 — TOOLS panel: the attached MCP shows 'Used by: <node>' and 'Show tools' lists the node's tool"
+    ):
+        # #2858: verify the node's selection against the left TOOLS panel. An open node
+        # panel collapses that column, so ensure_toolkits_section_visible() closes it.
+        pipeline_page.ensure_toolkits_section_visible()
+        assert pipeline_page.is_toolkit_attached(new_toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
+            f"MCP {new_toolkit_name!r} should be attached in the TOOLS section"
+        )
+        assert pipeline_page.is_toolkit_card_used_by_node(
+            new_toolkit_name, mcp_node, timeout=UI_ELEMENT_TIMEOUT
+        ), f"TOOLS card for {new_toolkit_name!r} should show 'Used by: {mcp_node}'"
+        pipeline_page.open_toolkit_card_tools(new_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_toolkit_card_tool_listed(
+            new_toolkit_name, "ask_wiki_question", timeout=UI_ELEMENT_TIMEOUT
+        ), "Expanded 'Show tools' of the new MCP should list the node's configured tool ask_wiki_question"
