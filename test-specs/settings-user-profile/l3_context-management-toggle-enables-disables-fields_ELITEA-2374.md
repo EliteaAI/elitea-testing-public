@@ -1,5 +1,7 @@
 # Test Case: Context management toggle enables and disables token fields
 
+> **RETIRED 2026-11-12:** TMS case ELITEA-2374 is deprecated (Context Management toggle removed, EliteaAI/elitea_issues#6898 AC4). Its automated test was removed (card #2949); this AFS is kept for history only.
+
 ## Metadata
 - **TMS ID**: ELITEA-2374
 - **Linked Story**: EliteaAI/elitea-testing-public#882
