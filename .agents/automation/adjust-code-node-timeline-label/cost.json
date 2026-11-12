@@ -1,11 +1,11 @@
 {
  "v": 1,
  "batch": "adjust-code-node-timeline-label",
- "generatedAt": "2026-11-12T15:15:07.961Z",
+ "generatedAt": "2026-11-12T15:15:14.633Z",
  "sources": {
   "window": {
    "start": "2026-11-10T18:10:12.302Z",
-   "end": "2026-11-13T15:15:06.717Z",
+   "end": "2026-11-13T15:15:13.391Z",
    "source": "scopes"
   },
   "sessions": 1,
@@ -26,27 +26,27 @@
   ]
  },
  "totals": {
-  "costUsd": 3.44,
-  "tokens": 8569035,
+  "costUsd": 3.47,
+  "tokens": 8731577,
   "tokensSplit": {
-   "input": 53897,
-   "output": 37842,
-   "cacheRead": 7743524,
-   "cacheWrite": 733772
+   "input": 53956,
+   "output": 39505,
+   "cacheRead": 7903687,
+   "cacheWrite": 734429
   },
   "tokensByModel": {
    "1_eu.anthropic.claude-sonnet-5-5": {
-    "input": 53897,
-    "output": 37842,
-    "cacheRead": 7743524,
-    "cacheWrite": 733772
+    "input": 53956,
+    "output": 39505,
+    "cacheRead": 7903687,
+    "cacheWrite": 734429
    }
   },
   "activeMin": 43,
   "dispatches": 4,
   "sessions": 1,
-  "turns": 33,
-  "toolCalls": 68,
+  "turns": 34,
+  "toolCalls": 69,
   "toolErrors": 4,
   "skills": [
    "adjust-automated-test",
@@ -83,36 +83,36 @@
    "toolErrors": 0
   },
   "test-automation-lead": {
-   "costUsd": 1.66,
-   "tokens": 4554003,
+   "costUsd": 1.69,
+   "tokens": 4716545,
    "tok": {
-    "input": 12012,
-    "output": 19082,
-    "cacheRead": 4186749,
-    "cacheWrite": 336160
+    "input": 12071,
+    "output": 20745,
+    "cacheRead": 4346912,
+    "cacheWrite": 336817
    },
    "activeMin": 28,
    "dispatches": 0,
-   "toolCalls": 37,
+   "toolCalls": 38,
    "toolErrors": 4
   }
  },
  "overhead": {
   "note": "batch-level work (lead thread, triage, gate, report) — shown once, never smeared into per-case rows",
-  "costUsd": 1.97,
-  "sharePct": 57,
+  "costUsd": 2,
+  "sharePct": 58,
   "lead": {
-   "costUsd": 1.66,
-   "tokens": 4554003,
+   "costUsd": 1.69,
+   "tokens": 4716545,
    "tok": {
-    "input": 12012,
-    "output": 19082,
-    "cacheRead": 4186749,
-    "cacheWrite": 336160
+    "input": 12071,
+    "output": 20745,
+    "cacheRead": 4346912,
+    "cacheWrite": 336817
    },
    "activeMin": 28,
    "dispatches": 0,
-   "toolCalls": 37,
+   "toolCalls": 38,
    "toolErrors": 4
   },
   "stages": {
@@ -181,33 +181,11 @@
    }
   },
   "declaredOutcomes": {
-   "ELITEA-2448": "blocked",
-   "ELITEA-2449": "blocked",
-   "ELITEA-2447": "blocked",
-   "ELITEA-2446": "blocked"
-  },
-  "outcomeDrift": [
-   {
-    "id": "ELITEA-2448",
-    "receipt": "automated",
-    "declared": "blocked"
-   },
-   {
-    "id": "ELITEA-2449",
-    "receipt": "automated",
-    "declared": "blocked"
-   },
-   {
-    "id": "ELITEA-2446",
-    "receipt": "automated",
-    "declared": "blocked"
-   },
-   {
-    "id": "ELITEA-2447",
-    "receipt": "automated",
-    "declared": "blocked"
-   }
-  ]
+   "ELITEA-2448": "automated",
+   "ELITEA-2449": "automated",
+   "ELITEA-2447": "automated",
+   "ELITEA-2446": "automated"
+  }
  },
  "cases": [
   {
@@ -230,8 +208,8 @@
     "toolErrors": 0
    },
    "loaded": {
-    "costUsd": 1.61,
-    "tokens": 3496447,
+    "costUsd": 1.62,
+    "tokens": 3537083,
     "activeMin": 16
    }
   },
@@ -255,8 +233,8 @@
     "toolErrors": 0
    },
    "loaded": {
-    "costUsd": 0.84,
-    "tokens": 2570233,
+    "costUsd": 0.85,
+    "tokens": 2610869,
     "activeMin": 13
    }
   },
@@ -280,8 +258,8 @@
     "toolErrors": 0
    },
    "loaded": {
-    "costUsd": 0.49,
-    "tokens": 1251177,
+    "costUsd": 0.5,
+    "tokens": 1291813,
     "activeMin": 7
    }
   },
@@ -305,8 +283,8 @@
     "toolErrors": 0
    },
    "loaded": {
-    "costUsd": 0.49,
-    "tokens": 1251177,
+    "costUsd": 0.5,
+    "tokens": 1291813,
     "activeMin": 7
    }
   }
@@ -335,10 +313,10 @@
    "n": 2
   },
   "loadedCostUsd": {
-   "avg": 0.86,
-   "median": 0.67,
-   "min": 0.49,
-   "max": 1.61,
+   "avg": 0.87,
+   "median": 0.68,
+   "min": 0.5,
+   "max": 1.62,
    "n": 4
   },
   "loadedActiveMin": {
@@ -351,7 +329,7 @@
  },
  "averages": {
   "totalPerDelivered": {
-   "costUsd": 0.86,
+   "costUsd": 0.87,
    "note": "whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)"
   },
   "directPerCase": {
