@@ -3507,22 +3507,6 @@
       ]
     },
     {
-      "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_context_management_toggle_enables_disables_fields",
-      "markers": [
-        "new_verified",
-        "p2",
-        "regression",
-        "settings",
-        "ui"
-      ],
-      "tms_case_ids": [
-        "ELITEA-2374"
-      ],
-      "tms_case_links": [
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/settings/user-profile/ELITEA-2374_context-management-toggle-enables-and-disables-token-fields.md"
-      ]
-    },
-    {
       "automation_test_id": "tests.ui.settings.test_context_management_toggle.TestContextManagementToggle.test_target_summary_tokens_range_validation",
       "markers": [
         "new_verified",
