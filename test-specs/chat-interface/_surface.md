@@ -1615,3 +1615,10 @@ on DEV.** Three load-bearing findings this pass:
 - Plain-language message in a blank chat -> AI message shows `chat-answer-tool-chip` text `Skill: <name>` and the skill's instruction marker token; ~9 s. No participant row is added.
 - Leftover project skills from crashed runs also match intents (extra chips) - assert chips by exact fixture name.
 - DEV had a transient 503 window on skills endpoints; wait/retry.
+
+**Added during ELITEA-3744 adjustment (implementation-time facts, verify before reuse):**
+- Settings -> Memory `/settings/memory`: Context window radio (`memory-context-window-mode`; options `context-window-mode-balanced|full` are `<label>`s wrapping a native `input[type=radio]`; checked state lives on the input). Selecting fires `PUT /social/author/` + `PUT /social/module_settings/<project>`; persists across reload. The "What's New" announcement dialog can intercept clicks on a fresh session.
+- In-chat widget: after the first message, expand the Participants panel (`chat-participants-panel-toggle-button`) -> `context-budget-panel` holds `context-window-mode-selector` with toggle buttons `context-window-mode-balanced|full` (`aria-pressed`), text `Balanced · 272K` / `Full · 400K`, and `context-budget-tokens` "of N tokens" (N = window minus safety margin; Balanced on a 400K model showed 269 280). There is NO literal "Total window" label on DEV; the mode tab label carries the window size.
+- Oracle: `GET /configurations/models/<project>` -> items[].display_name / context_window (`CredentialAPI.list_models`). Selected model's display name = `model-selector-name`.
+- `ChatPage.wait_for_ai_response` waits on the retired `button[aria-label="Copy to clipboard"]` (DEV split it into `chat-copy-markdown-button`/`chat-copy-text-button`) and times out on DEV; ELITEA-3744 waits on `chat-copy-text-button` instead. `wait_for_context_budget_panel` (text "Context Budget") is also stale (heading now "Context management"). Both are legacy-helper regressions, not touched here.
+- Env note: with no `automation/.env.test` present, `APP_PREFIX` defaults to '' and `/chat` 404s - run with `APP_PREFIX=/app`.

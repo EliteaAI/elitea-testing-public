@@ -1,8 +1,9 @@
 """UI Tests for Default Context Management Settings.
 
-Verifies that context management settings configured in the user profile
-propagate correctly to new chat conversations — specifically that the
-Context Budget panel reflects the Max Context Tokens value the user set.
+Verifies that the Context window mode (Balanced / Full) configured in the
+personal Settings -> Memory page propagates to a brand-new chat — the
+Context management widget shows the matching mode and window size
+(EliteaAI/elitea_issues#6898 replaced the old Max Context Tokens field).
 
 Test class:
     TestContextManagementSettings
@@ -24,6 +25,7 @@ import logging
 import pytest
 from pages.chat_page import ChatPage
 from pages.user_profile_settings_page import UserProfileSettingsPage
+from playwright.sync_api import expect
 import allure
 
 logger = logging.getLogger(__name__)
@@ -39,67 +41,71 @@ NAVIGATION_TIMEOUT = 15_000    # SPA route changes
 AUTOSAVE_TIMEOUT = 5_000       # Profile setting autosave round-trip
 
 
+BALANCED_CAP_TOKENS = 272_000  # Balanced window cap (contextStrategy.constants.js BALANCED_WINDOW_TOKENS)
+
+
+def _window_label(tokens: int) -> str:
+    """Format a window size the way the widget does (formatWindowSize: 272000 -> '272K', 1048576 -> '1M')."""
+    if tokens >= 1_000_000:
+        return f"{round(tokens / 1_000_000, 1):g}M"
+    return f"{round(tokens / 1000)}K"
+
+
 class TestContextManagementSettings:
-    """Verify that Default Context Management profile settings propagate to chat.
+    """Verify that the personal Context window mode propagates to new chats.
 
     Flow under test:
-        1. User opens profile settings and enables context management.
-        2. User sets a specific Max Context Tokens value.
-        3. User navigates to chat and starts a new conversation.
-        4. User sends a message (required for Context Budget panel to appear).
-        5. The Context Budget panel shows the correct max-token limit.
+        1. User opens Settings -> Memory and picks a Context window mode.
+        2. The choice autosaves and survives a page reload.
+        3. User starts a new chat and sends a message.
+        4. The Context management widget shows the same mode, and the mode's
+           window size matches the selected model's window from the model catalog.
 
     Cleanup:
-        Each test restores profile settings to a known state (re-enables
-        context management with the original token limit) so subsequent
-        tests are not affected.  Conversations created during the test are
+        The user's original mode is restored and the created conversation is
         deleted via the API in the finally block.
     """
 
-    @pytest.mark.skip(reason="Context management section removed from UI - feature may have been relocated or removed")
-    @pytest.mark.parametrize("expected_max_tokens", [
-        pytest.param(10_000, marks=pytest.mark.p1, id="10k_tokens"),
-        pytest.param(32_000, marks=pytest.mark.p2, id="32k_tokens"),
+    @pytest.mark.parametrize("expected_mode", [
+        pytest.param("full", marks=pytest.mark.p1, id="full_mode"),
+        pytest.param("balanced", marks=pytest.mark.p2, id="balanced_mode"),
     ])
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-3744_context-budget-panel-reflects-profile-max-tokens.md", "onetest-ai Test Case link")
     @pytest.mark.tms("ELITEA-3744")
-    def test_context_budget_reflects_profile_max_tokens(self, page, conversation_api, expected_max_tokens):
-        """Context Budget panel in chat shows the max tokens set in profile.
+    def test_context_budget_reflects_profile_max_tokens(self, page, conversation_api, credential_api, expected_mode):
+        """New chat's Context management widget reflects the personal Context window mode.
 
         Parameterized to verify:
-        - P1 (10,000 tokens): Standard value propagates correctly
-        - P2 (32,000 tokens): Updated value propagates (not cached)
+        - P1 (Full): window = the model's full context window
+        - P2 (Balanced): window = min(272,000, model window); updated value is not cached
 
-        Cleanup: deletes the created conversation via API.
+        Cleanup: restores the original mode, deletes the created conversation via API.
         """
         conv_id = None
 
-        # Fetch original_tokens before try so finally can always restore it
         profile = UserProfileSettingsPage(page)
         profile.navigate_to_profile()
-        profile.enable_context_management()
-        original_tokens = profile.get_max_context_tokens()
+        original_mode = profile.get_context_window_mode()
 
         try:
             # ------------------------------------------------------------------
-            # Step 1-3 — Navigate to profile; enable context management; set max tokens
+            # Step 1-2 — Settings -> Memory: select the mode, reload, verify persisted
             # ------------------------------------------------------------------
-            with allure.step(f"Step 1-3 — Set Max Context Tokens to {expected_max_tokens}"):
-                profile.set_max_context_tokens(expected_max_tokens)
+            with allure.step(f"Step 1-2 — Set Context window to {expected_mode} and verify it persists after reload"):
+                expect(profile.context_window_mode_group).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                profile.select_context_window_mode(expected_mode)
 
                 page.reload()
                 profile.wait_for_page_load()
 
-                saved_tokens = profile.get_max_context_tokens()
-                assert saved_tokens == expected_max_tokens, (
-                    f"Profile should show {expected_max_tokens} tokens after reload, "
-                    f"got {saved_tokens}"
+                assert profile.get_context_window_mode() == expected_mode, (
+                    f"Context window should still be '{expected_mode}' after reload"
                 )
 
             # ------------------------------------------------------------------
-            # Step 4 — Navigate to chat and create a new conversation
+            # Step 3 — Navigate to chat and create a new conversation
             # ------------------------------------------------------------------
-            with allure.step("Step 4 — Navigate to chat and create a new conversation"):
+            with allure.step("Step 3 — Navigate to chat and create a new conversation"):
                 chat = ChatPage(page)
                 chat.navigate_to_chat()
                 chat.wait_for_page_load()
@@ -111,71 +117,67 @@ class TestContextManagementSettings:
                     logger.info("Conversation created with ID: %s", conv_id)
 
             # ------------------------------------------------------------------
-            # Step 5 — Send a short message to trigger Context Budget panel
+            # Step 4 — Send a short message; wait for the AI answer
             # ------------------------------------------------------------------
-            with allure.step("Step 5 — Send a short message to trigger Context Budget panel"):
-                chat.send_message(f"at_ctx_budget_test_{expected_max_tokens // 1000}k", use_enter=True)
+            with allure.step("Step 4 — Send a short message and wait for the AI response"):
+                chat.send_message(f"at_ctx_window_test_{expected_mode}", use_enter=True)
                 chat.wait_for_input_ready(timeout=NAVIGATION_TIMEOUT)
 
                 if not conv_id:
-                    try:
-                        page.wait_for_url(
-                            lambda url: re.search(r"/chat/\d+", url) is not None,
-                            timeout=5000,
-                        )
-                        match = re.search(r"/chat/(\d+)", page.url)
-                        if match:
-                            conv_id = match.group(1)
-                            logger.info("Conversation ID found after first message: %s", conv_id)
-                    except Exception:
-                        logger.info("URL did not update to /chat/{id}")
+                    page.wait_for_url(lambda url: re.search(r"/chat/\d+", url) is not None, timeout=NAVIGATION_TIMEOUT)
+                    conv_id = re.search(r"/chat/(\d+)", page.url).group(1)
+                    logger.info("Conversation ID found after first message: %s", conv_id)
 
-                chat.wait_for_ai_response(initial_count=0, timeout=AI_RESPONSE_TIMEOUT)
+                # The AI answer is done once its action icons render.
+                expect(chat.copy_text_action_button.first).to_be_attached(timeout=AI_RESPONSE_TIMEOUT * 3)
+                chat.wait_for_context_management_widget(timeout=UI_ELEMENT_TIMEOUT * 6)
 
             # ------------------------------------------------------------------
-            # Step 6 — Verify the panel is visible
+            # Step 5 — Widget shows the matching mode and the model's window
             # ------------------------------------------------------------------
-            with allure.step("Step 6 — Verify Context Budget panel is visible"):
-                try:
-                    chat.wait_for_context_budget_panel(timeout=UI_ELEMENT_TIMEOUT)
-                except Exception:
-                    pytest.skip(
-                        "Context Budget panel not visible after sending message — "
-                        "feature may be disabled or renamed in current UI version"
-                    )
+            with allure.step(f"Step 5 — Verify widget shows {expected_mode} and the correct window size"):
+                # Independent oracle: the model catalog, not the widget itself.
+                model_name = (chat.model_selector_name.first.text_content() or "").strip()
+                catalog = credential_api.list_models(include_shared=True)
+                windows = {m.get("display_name"): m.get("context_window") for m in catalog.get("items", [])}
+                assert model_name in windows, (
+                    f"Selected model '{model_name}' not found in the model catalog {sorted(windows)}"
+                )
+                model_window = windows[model_name]
+                assert model_window, f"Catalog has no context_window for '{model_name}'"
 
-                assert chat.is_context_budget_panel_visible(), (
-                    "Context Budget panel should be visible after sending the first message"
+                expected_window = (
+                    model_window if expected_mode == "full" else min(BALANCED_CAP_TOKENS, model_window)
                 )
 
-            # ------------------------------------------------------------------
-            # Step 7 — Verify the max tokens displayed equals the configured value
-            # ------------------------------------------------------------------
-            with allure.step(f"Step 7 — Verify max tokens equals {expected_max_tokens}"):
-                actual_max_tokens = chat.get_context_budget_max_tokens()
-                assert actual_max_tokens == expected_max_tokens, (
-                    f"Context Budget panel should show {expected_max_tokens} tokens "
-                    f"(matching the profile setting), but showed {actual_max_tokens}"
+                state = chat.get_context_window_mode_state()
+                assert state["selected"] == expected_mode, (
+                    f"Widget should show window mode '{expected_mode}', got '{state['selected']}'"
+                )
+
+                tab_label = state["full_label"] if expected_mode == "full" else state["balanced_label"]
+                expected_label = f"{expected_mode.capitalize()} · {_window_label(expected_window)}"
+                assert tab_label == expected_label, (
+                    f"Selected mode's window should read '{expected_label}' "
+                    f"(model '{model_name}' window {model_window}), got '{tab_label}'"
+                )
+
+                # The usable budget ('of N tokens') is the window minus a small safety margin.
+                available = chat.get_context_budget_available_tokens()
+                assert 0.9 * expected_window <= available <= expected_window, (
+                    f"Available tokens {available} should be within 10% below the {expected_mode} "
+                    f"window {expected_window}"
                 )
 
         finally:
-            # Restore profile Max Context Tokens to avoid poisoning subsequent tests.
-            # This is critical because max_context_tokens is a global persistent setting.
-            if original_tokens is not None:
-                try:
-                    profile = UserProfileSettingsPage(page)
-                    profile.navigate_to_profile()
-                    profile.set_max_context_tokens(original_tokens)
-                    # Reload to confirm the restore was persisted — same guard as the
-                    # main test body; without this the debounced autosave may not have
-                    # fired before the next parametrized variant reads original_tokens.
-                    page.reload()
-                    profile.wait_for_page_load()
-                    logger.info("Restored profile max_context_tokens to %d", original_tokens)
-                except Exception as exc:
-                    logger.warning(
-                        "Failed to restore profile max_context_tokens: %s", exc
-                    )
+            # Restore the user's original mode (a persistent personal setting).
+            try:
+                profile = UserProfileSettingsPage(page)
+                profile.navigate_to_profile()
+                profile.select_context_window_mode(original_mode)
+                logger.info("Restored Context window mode to %s", original_mode)
+            except Exception as exc:
+                logger.warning("Failed to restore Context window mode: %s", exc)
             if conv_id:
                 try:
                     conversation_api.delete_conversation(int(conv_id))
