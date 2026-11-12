@@ -9,19 +9,20 @@
     "ELITEA-2065"
   ],
   "declaredAt": "2026-11-12T11:10:28.827Z",
-  "updatedAt": "2026-11-12T11:30:36.732Z",
+  "updatedAt": "2026-11-12T15:56:05.812Z",
   "outcomes": {
     "ELITEA-2036": {
-      "outcome": "blocked",
-      "at": "2026-11-12T11:30:36.732Z"
+      "outcome": "retired",
+      "at": "2026-11-12T15:56:05.773Z"
     },
     "ELITEA-2010": {
-      "outcome": "blocked",
-      "at": "2026-11-12T11:30:36.732Z"
+      "outcome": "automated",
+      "at": "2026-11-12T15:56:05.773Z"
     },
     "ELITEA-2065": {
-      "outcome": "blocked",
-      "at": "2026-11-12T11:30:36.732Z"
+      "outcome": "automated",
+      "at": "2026-11-12T15:56:05.773Z"
     }
-  }
+  },
+  "closedAt": "2026-11-12T15:56:05.812Z"
 }
