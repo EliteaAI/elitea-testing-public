@@ -143,3 +143,16 @@ None. All 10 case steps were executed to completion against the live local envir
 
 - **Cause:** EliteaUI@d16f8caf (EL-3872) removed the Interrupt before / Interrupt after toggles from pipeline node cards (CommonInterruptSettings moved into CommonNodeSettings, structured output only). Class A UI drift.
 - **Expected-result changes:** the Interrupt before/after toggle expectations are dropped from this case's step expectations, per human sign-off (#2541, batch #2534). All other expectations are unchanged. Not executed locally (requires GIT_HUB_TOKEN).
+
+## Adjustment — EL-7159 / #2942 (class A, UI drift)
+
+TOOLS "+ Toolkit" (`agent-add-toolkit-button`) no longer exists; the toolkit is attached only by picking it in the Toolkit node's `ProjectToolkitPicker` (persisted on Save). Node fields live in the node side panel (EL-7157), Input/Output under collapsed "Advanced".
+
+| Old handle | New handle (all rung 1, testid on DEV) |
+|---|---|
+| `agent-add-toolkit-button` + popper | removed; node picker `pipeline-toolkit-node-toolkit-select` / `-select-option` / `-select-menu-search` |
+| `agent-toolkit-card` | `pipeline-tool-card`, `pipeline-tools-section` |
+| "Input mapping (required N)" heading | count of `pipeline-toolkit-node-input-mapping-value-*` in `pipeline-node-panel-basic-section` |
+| "Input mapping (optional N)" heading | union of rendered Advanced Value fields + `pipeline-toolkit-node-optional-parameter-{key}` menu |
+
+**Expected-result change (human-sanctioned):** case step 2 "attach toolkit via + Toolkit" precondition removed; replaced by: after the node picker selection the toolkit is auto-attached and its card appears in the left TOOLS section (Step 5b, asserted after the pick). Everything else unchanged. Implemented by re-applying the repair from 33c8ea5b (previously parked for lack of GIT_HUB_TOKEN); verified green on DEV.
