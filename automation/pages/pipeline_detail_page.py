@@ -1588,6 +1588,7 @@ class PipelineDetailPage(PipelineFormPage):
     TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="pipeline-tool-card-remove"]'
     TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="pipeline-tool-card-show-tools"]'
     TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
+    TOOLKIT_CARD_USED_BY = '[data-testid="pipeline-tool-card-used-by"]'
 
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
     # `main` (ToolMenu.jsx) and is already a field on AgentDetailPage — only
@@ -6972,6 +6973,30 @@ class PipelineDetailPage(PipelineFormPage):
         item = card.locator(self.TOOLKIT_CARD_TOOL_ITEM.format(tool_name))
         try:
             item.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_toolkit_card_used_by_node(
+        self, toolkit_name: str, node_name: str, timeout: int = 5000
+    ) -> bool:
+        """Check that a TOOLS-section card's "Used by" chips include *node_name* (EL-7159).
+
+        ``PipelineToolCard.jsx`` renders one ``pipeline-tool-card-used-by`` chip per
+        node that references the attachment.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            node_name: Node display name expected in the "Used by" chips.
+            timeout: How long to wait for the chip to appear.
+
+        Returns:
+            True if a matching chip is visible in that card, False otherwise.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        chip = card.locator(self.TOOLKIT_CARD_USED_BY).filter(has_text=node_name).first
+        try:
+            chip.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
