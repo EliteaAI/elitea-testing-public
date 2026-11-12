@@ -183,7 +183,7 @@
     },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_DELETE_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 862,
+      "line": 890,
       "kind": "role",
       "selector": "button[name='Delete entity']",
       "suggested_testid": "generated-entity-chip-delete-button",
@@ -195,7 +195,7 @@
     },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_OPEN_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 856,
+      "line": 884,
       "kind": "role",
       "selector": "button[name='Open entity']",
       "suggested_testid": "generated-entity-chip-open-button",
@@ -225,7 +225,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
-      "line": 6971,
+      "line": 7034,
       "kind": "xpath",
       "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
       "suggested_testid": "chat-participant-attention-card-{}",
@@ -237,7 +237,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
       "file": "pages/chat_page.py",
-      "line": 6960,
+      "line": 7023,
       "kind": "css",
       "selector": "svg path",
       "suggested_testid": "chat-participant-icon-path",
@@ -261,7 +261,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
       "file": "pages/chat_page.py",
-      "line": 6949,
+      "line": 7012,
       "kind": "xpath",
       "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
       "suggested_testid": "chat-participants-section-title-{}",
@@ -285,7 +285,7 @@
     },
     "pages/chat_page.py::ChatPage.USER_MESSAGE_AVATAR": {
       "file": "pages/chat_page.py",
-      "line": 1516,
+      "line": 1544,
       "kind": "xpath",
       "selector": ".//*[contains(@class, 'MuiAvatar-root')]",
       "suggested_testid": "chat-message-user-avatar",
@@ -297,7 +297,7 @@
     },
     "pages/chat_page.py::ChatPage.conversation_menu_item_icon": {
       "file": "pages/chat_page.py",
-      "line": 1289,
+      "line": 1317,
       "kind": "css",
       "selector": "svg",
       "suggested_testid": "chat-conversation-menu-item-icon",
@@ -309,7 +309,7 @@
     },
     "pages/chat_page.py::ChatPage.export_chat_modal_option_radio": {
       "file": "pages/chat_page.py",
-      "line": 1272,
+      "line": 1300,
       "kind": "css",
       "selector": "input[type=\"radio\"]",
       "suggested_testid": "export-chat-modal-option-radio",
@@ -321,7 +321,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_items": {
       "file": "pages/chat_page.py",
-      "line": 1471,
+      "line": 1499,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "chat-folder-menu-item-{}",
@@ -333,7 +333,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_new_chat_item": {
       "file": "pages/chat_page.py",
-      "line": 1477,
+      "line": 1505,
       "kind": "role",
       "selector": "menuitem[name='New chat']",
       "suggested_testid": "chat-folder-menu-new-chat-menuitem",
@@ -345,7 +345,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_own_menu_button": {
       "file": "pages/chat_page.py",
-      "line": 1488,
+      "line": 1516,
       "kind": "xpath",
       "selector": ".//*[@data-testid=\"conversation-menu-menu-button\"][not(ancestor::*[starts-with(@data-testid, \"chat-conversation-item-\")])]",
       "suggested_testid": "chat-folder-menu-button",
@@ -357,7 +357,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 6908,
+      "line": 6971,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -369,7 +369,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 6877,
+      "line": 6940,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -381,7 +381,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 6869,
+      "line": 6932,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -393,7 +393,7 @@
     },
     "pages/chat_page.py::ChatPage.speaking_mode_button": {
       "file": "pages/chat_page.py",
-      "line": 1509,
+      "line": 1537,
       "kind": "role",
       "selector": "button[name='enter speaking mode']",
       "suggested_testid": "chat-speaking-mode-button",
@@ -405,7 +405,7 @@
     },
     "pages/chat_page.py::ChatPage.voice_input_button": {
       "file": "pages/chat_page.py",
-      "line": 1526,
+      "line": 1554,
       "kind": "role",
       "selector": "button[name='start voice input']",
       "suggested_testid": "chat-voice-input-button",
@@ -585,7 +585,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1820,
+      "line": 1809,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -597,7 +597,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1893,
+      "line": 1882,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -609,7 +609,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_cron_input": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1544,
+      "line": 1531,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('input[type=\"text\"]').first",
       "suggested_testid": null,
@@ -621,7 +621,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1524,
+      "line": 1511,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').first",
       "suggested_testid": null,
@@ -633,7 +633,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_apply_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1539,
+      "line": 1526,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Save\")').first",
       "suggested_testid": null,
@@ -645,7 +645,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_cancel_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1534,
+      "line": 1521,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cancel\")').first",
       "suggested_testid": null,
@@ -657,7 +657,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_advanced": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1558,
+      "line": 1545,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cron Expression\")').first",
       "suggested_testid": null,
@@ -669,7 +669,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_default": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1553,
+      "line": 1540,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Builder\")').first",
       "suggested_testid": null,
@@ -681,7 +681,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_summary_text": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1529,
+      "line": 1516,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('text=/At \\\\d+:\\\\d+|Every |Daily|Weekly|Monthly/').first",
       "suggested_testid": null,
@@ -701,6 +701,18 @@
       "state": "raw",
       "added": "2026-10-05",
       "updated": "2026-10-05",
+      "history": []
+    },
+    "pages/pipeline_form_page.py::PipelineFormPage.name_input_in_dialog": {
+      "file": "pages/pipeline_form_page.py",
+      "line": 68,
+      "kind": "css",
+      "selector": "[role=\"dialog\"] input[name=\"name\"]",
+      "suggested_testid": "pipeline-create-dialog-name-input",
+      "description": "Name input rendered inside a dialog/modal (must be absent: editor-first create flow)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
       "history": []
     },
     "pages/project_context_chat_canvas_page.py::ProjectContextChatCanvasPage.close_button": {
@@ -847,9 +859,69 @@
       "updated": "2026-10-20",
       "history": []
     },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.COLUMN_HEADER": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 66,
+      "kind": "css",
+      "selector": ":text-is(\"{}\")",
+      "suggested_testid": "settings-default-modules-column-header-{}",
+      "description": "Default Modules column header text ('Chats' / 'Agents')",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.MIDTURN_INPUT_SWITCH": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 32,
+      "kind": "css",
+      "selector": "div:has(> div > :text-is(\"Mid-turn input\")) input[role=\"switch\"]",
+      "suggested_testid": "settings-midturn-input-switch",
+      "description": "Mid-turn input card's MUI Switch input, scoped to the card whose title is 'Mid-turn input'",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.WEB_SEARCH_MODULE_DESCRIPTION": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 60,
+      "kind": "css",
+      "selector": ":text-is(\"Allow the LLM to search the Internet, read web pages, and cite its sources.\")",
+      "suggested_testid": "settings-default-modules-web-search-description",
+      "description": "Web Search row description paragraph (the row's only tooltip text in Default Modules)",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.WEB_SEARCH_MODULE_ROW": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 45,
+      "kind": "css",
+      "selector": "div:has(> div > :text-is(\"Web Search\"))",
+      "suggested_testid": "settings-default-modules-web-search-row",
+      "description": "Web Search row of Default Modules: the box holding title+description and the two switch cells",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/project_general_settings_page.py::ProjectGeneralSettingsPage.WEB_SEARCH_MODULE_SWITCHES": {
+      "file": "pages/project_general_settings_page.py",
+      "line": 51,
+      "kind": "css",
+      "selector": "input[role=\"switch\"]",
+      "suggested_testid": "settings-default-modules-web-search-switch",
+      "description": "The Web Search row's switch inputs, enumerated: DOM order is the column order (first = Chats, second = Agents); neither carries a label/testid on DEV",
+      "state": "raw",
+      "added": "2026-11-11",
+      "updated": "2026-11-11",
+      "history": []
+    },
     "pages/run_analytics_page.py::RunAnalyticsPage.KPI_CARD_VALUE": {
       "file": "pages/run_analytics_page.py",
-      "line": 42,
+      "line": 43,
       "kind": "xpath",
       "selector": ".//span[normalize-space()='{}' and not(@role)]/../following-sibling::div/span",
       "suggested_testid": "run-analytics-costs-kpi-value-{}",
@@ -861,7 +933,7 @@
     },
     "pages/run_analytics_page.py::RunAnalyticsPage.TABLE_CELLS": {
       "file": "pages/run_analytics_page.py",
-      "line": 48,
+      "line": 49,
       "kind": "xpath",
       "selector": ".//span[normalize-space()='{}']/../following-sibling::div//p",
       "suggested_testid": "run-analytics-costs-table-cell-{}",
@@ -869,6 +941,18 @@
       "state": "raw",
       "added": "2026-11-11",
       "updated": "2026-11-11",
+      "history": []
+    },
+    "pages/run_analytics_page.py::RunAnalyticsPage.TABLE_USER_NAMES": {
+      "file": "pages/run_analytics_page.py",
+      "line": 55,
+      "kind": "xpath",
+      "selector": ".//span[normalize-space()='{}']/../following-sibling::div//span[contains(@class,'user-label-name')]",
+      "suggested_testid": "run-analytics-costs-table-user-name-{}",
+      "description": "User-name labels (UserLabel span.user-label-name, a stable app class) in the table titled {}; rungs 1-4 failed: name span has no testid/role/label",
+      "state": "raw",
+      "added": "2026-11-12",
+      "updated": "2026-11-12",
       "history": []
     },
     "pages/skill_detail_page.py::SkillDetailPage.TEST_PANEL_ALERT": {
@@ -1086,25 +1170,37 @@
       "added": "2026-10-05",
       "updated": "2026-10-05",
       "history": []
+    },
+    "pages/user_profile_settings_page.py::UserProfileSettingsPage.context_window_option_radio": {
+      "file": "pages/user_profile_settings_page.py",
+      "line": 77,
+      "kind": "css",
+      "selector": "input[type=\"radio\"]",
+      "suggested_testid": "memory-context-window-mode-radio",
+      "description": "Native radio input inside a Context window option label (carries the checked state).",
+      "state": "raw",
+      "added": "2026-11-12",
+      "updated": "2026-11-12",
+      "history": []
     }
   },
-  "last_sync": "2026-11-11",
+  "last_sync": "2026-11-12",
   "metric": {
-    "declared_total": 1383,
-    "declared_testid": 1294,
-    "declared_non_testid": 89,
-    "non_testid_with_hint": 68,
+    "declared_total": 1398,
+    "declared_testid": 1301,
+    "declared_non_testid": 97,
+    "non_testid_with_hint": 76,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 13,
+      "css": 20,
       "fallback": 20,
       "label": 1,
       "locator": 1,
       "role": 30,
-      "testid": 1294,
-      "xpath": 24
+      "testid": 1301,
+      "xpath": 25
     },
-    "locator_debt": 0.0644,
+    "locator_debt": 0.0694,
     "unmanaged_handles": 312
   }
 }

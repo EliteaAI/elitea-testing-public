@@ -119,8 +119,10 @@ class TestSkillRunAnalytics:
                 assert model_cells[0] == models[0]["display_name"], model_cells
                 assert model_cells[1] == analytics.format_cost(models[0]["total_cost"]), model_cells
                 assert model_cells[-1] == "100.0%", model_cells
+                user_names = analytics.table_user_names("Cost by User")
+                assert user_names[0] == analytics.format_user_name(payload_b["by_user"][0]), user_names
+                assert payload_b["by_user"][0]["user_email"], payload_b["by_user"][0]
                 user_cells = analytics.table_cells("Cost by User")
-                assert user_cells[0] == payload_b["by_user"][0]["user_email"], user_cells
                 assert user_cells[-1] == "100.0%", user_cells
 
             with allure.step("Step 10 — Manual formula: cost = input_tokens x input_rate + output_tokens x output_rate"):

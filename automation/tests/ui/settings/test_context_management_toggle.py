@@ -1,18 +1,13 @@
-"""UI test for Context Management — Automatic Summarization toggle disables/enables fields (ELITEA-2374).
+"""UI tests for Settings -> Memory: Automatic Summarization toggle and Target Summary Tokens range.
+
+Covers ELITEA-2377 (Automatic Summarization toggle disables/enables its own
+fields) and ELITEA-2378 (Target Summary Tokens client-side range validation).
 
 Context management is always-on on DEV (EL-6898): the former parent toggle and
-Max Context Tokens input were removed. The Settings -> Memory page now shows a
+Max Context Tokens input were removed. The Settings -> Memory page shows a
 "Context window" block (Balanced / Full) and an "Automatic Summarization" toggle.
-Turning the summarization toggle OFF leaves its fields rendered but ``disabled``;
-turning it back ON makes them editable again.
 
-AFS: test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md
-
-Known case-text vs live-product notes (see AFS Adjustment section):
-- Case step 1 says "Personalization -> DEFAULT CONTEXT MANAGEMENT"; the live
-  route is Settings -> Memory (/settings/memory).
-- Case step 3 text duplicates step 2 ("options Balanced and Full"); only the
-  toggle's presence is asserted.
+AFS: test-specs/settings-user-profile/ (ELITEA-2377, ELITEA-2378)
 
 Markers:
     - ui: requires browser
@@ -64,80 +59,7 @@ def _is_autosave_get_response(response: Response) -> bool:
 
 
 class TestContextManagementToggle:
-    """Verify the Context Management toggle mounts/unmounts token fields + Automatic Summarization."""
-
-    @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings/user-profile/ELITEA-2374_context-management-toggle-enables-and-disables-token-fields.md",
-        "onetest-ai Test Case link",
-    )
-    @pytest.mark.tms("ELITEA-2374")
-    def test_context_management_toggle_enables_disables_fields(self, page):
-        """Context window (Balanced/Full) is present; Automatic Summarization toggle disables/enables its fields.
-
-        Context management is always-on (EL-6898): the former parent toggle and
-        Max Context Tokens input no longer exist. The case now verifies the
-        Context window Balanced/Full options, the Automatic Summarization toggle,
-        and that toggling it back ON makes the fields editable again.
-        Case step 3 text ("Automatic Summarization toggle ... with options
-        Balanced and Full") is a copy of step 2; the toggle's presence is asserted.
-        """
-        profile = UserProfileSettingsPage(page)
-
-        with allure.step("Step 1 — Navigate to Settings -> Memory (Context Management) and verify it loads"):
-            profile.navigate_to_profile()
-            expect(profile.context_management_section).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-
-        with allure.step('Step 2 — Verify the "Context window" block is present with options Balanced and Full'):
-            expect(profile.context_window_mode_group).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(profile.context_window_balanced_option).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(profile.context_window_balanced_option).to_contain_text("Balanced")
-            expect(profile.context_window_full_option).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(profile.context_window_full_option).to_contain_text("Full")
-
-        with allure.step('Step 3 — Verify the "Automatic Summarization" toggle is present'):
-            expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            if not profile.is_automatic_summarization_enabled():
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.enable_automatic_summarization()
-                assert put_info.value.status == 200, (
-                    f"Turning Automatic Summarization ON (precondition) should autosave -> 200, "
-                    f"got {put_info.value.status}"
-                )
-                _ = get_info.value
-            expect(profile.preserve_recent_messages_input).to_be_enabled()
-            expect(profile.target_summary_tokens_input).to_be_enabled()
-
-        try:
-            with allure.step("Step 4 — Click the Automatic Summarization toggle OFF; its token fields become disabled"):
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.disable_automatic_summarization()
-                assert put_info.value.status == 200, (
-                    f"Toggling Automatic Summarization OFF should autosave -> 200, got {put_info.value.status}"
-                )
-                _ = get_info.value
-                expect(profile.preserve_recent_messages_input).to_be_disabled()
-                expect(profile.target_summary_tokens_input).to_be_disabled()
-                expect(profile.summarization_instructions_textarea).to_be_disabled()
-
-            with allure.step("Step 5 — Click the toggle back ON; both fields and summarization become editable again"):
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                    profile.enable_automatic_summarization()
-                assert put_info.value.status == 200, (
-                    f"Toggling Automatic Summarization back ON should autosave -> 200, got {put_info.value.status}"
-                )
-                _ = get_info.value
-                expect(profile.preserve_recent_messages_input).to_be_enabled()
-                expect(profile.target_summary_tokens_input).to_be_enabled()
-                expect(profile.summarization_instructions_textarea).to_be_enabled()
-        finally:
-            # Safety net (not a case step): leave the shared account with summarization ON.
-            if not profile.is_automatic_summarization_enabled():
-                logger.info("Cleanup: restoring Automatic Summarization to ON")
-                profile.enable_automatic_summarization()
+    """Verify Automatic Summarization toggle behaviour and Target Summary Tokens validation on Settings -> Memory."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
@@ -148,20 +70,15 @@ class TestContextManagementToggle:
     def test_automatic_summarization_toggle_enables_disables_own_fields(self, page):
         """Toggling Automatic Summarization OFF disables its own fields; ON re-enables them (ELITEA-2377).
 
-        Distinct observable from ``test_context_management_toggle_enables_disables_fields``
-        (ELITEA-2374): that test drives the *parent* Context Management toggle
-        and observes the Automatic Summarization sub-section mount/unmount as
-        a unit from the OUTSIDE. This test drives the Automatic Summarization
-        toggle itself and observes its own two children (Summarization
-        Instructions, Target Summary Tokens) — a DIFFERENT disable mechanism:
-        a real ``disabled`` prop (``MemorySummarization.jsx``), not a
-        conditional unmount. Fields stay mounted; assert
-        ``to_be_disabled()`` / ``to_be_enabled()``, never ``to_have_count(0)``.
+        Drives the Automatic Summarization toggle itself and observes its own
+        children (Summarization Instructions, Target Summary Tokens): a real
+        ``disabled`` prop (``MemorySummarization.jsx``), not a conditional
+        unmount. Fields stay mounted; assert ``to_be_disabled()`` /
+        ``to_be_enabled()``, never ``to_have_count(0)``.
 
-        Context management is always-on (EL-6898), so the former Step 2
-        precondition (turn the parent toggle ON) now asserts the always-on
-        state instead: the section's Preserve Recent Messages input is
-        visible and enabled.
+        Context management is always-on (EL-6898), so the case's former
+        Step 2 precondition (ensure Context Management is enabled) was
+        removed from the case text (2026-11-12) and from this test.
 
         AFS: test-specs/settings-user-profile/
         lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md
@@ -176,14 +93,7 @@ class TestContextManagementToggle:
             expect(profile.context_management_section).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(
-            "Step 2 — Ensure Context Management is enabled (precondition — "
-            "always-on since EL-6898: Automatic Summarization is reachable)"
-        ):
-            expect(profile.preserve_recent_messages_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(profile.preserve_recent_messages_input).to_be_enabled()
-
-        with allure.step(
-            "Step 3 — Verify the Automatic Summarization toggle is present; "
+            "Step 2 — Verify the Automatic Summarization toggle is present; "
             "if OFF, turn it ON first (precondition for the rest of the flow)"
         ):
             expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
@@ -200,7 +110,7 @@ class TestContextManagementToggle:
                 _ = get_info.value
 
         with allure.step(
-            "Step 4 — With the toggle ON, verify Summarization Instructions "
+            "Step 3 — With the toggle ON, verify Summarization Instructions "
             "and Target Summary Tokens are visible and enabled"
         ):
             expect(profile.summarization_instructions_textarea).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
@@ -209,8 +119,8 @@ class TestContextManagementToggle:
             expect(profile.target_summary_tokens_input).to_be_enabled()
 
         with allure.step(
-            "Step 5 — Read the current Target Summary Tokens value and assert "
-            "it is a non-empty positive integer; store for the step-8 round-trip check"
+            "Step 4 — Read the current Target Summary Tokens value and assert "
+            "it is a non-empty positive integer; store for the step-7 round-trip check"
         ):
             original_target_tokens = profile.get_target_summary_tokens()
             assert original_target_tokens > 0, (
@@ -219,7 +129,7 @@ class TestContextManagementToggle:
 
         try:
             with allure.step(
-                "Step 6 — Click the Automatic Summarization toggle OFF; "
+                "Step 5 — Click the Automatic Summarization toggle OFF; "
                 "verify the autosave PUT returns 200"
             ):
                 with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
@@ -236,7 +146,7 @@ class TestContextManagementToggle:
                 )
 
             with allure.step(
-                "Step 7 — Verify Summarization Instructions and Target Summary "
+                "Step 6 — Verify Summarization Instructions and Target Summary "
                 "Tokens become disabled (real `disabled` prop, NOT unmounted — "
                 "both fields stay present in the DOM)"
             ):
@@ -244,10 +154,10 @@ class TestContextManagementToggle:
                 expect(profile.target_summary_tokens_input).to_be_disabled()
 
             with allure.step(
-                "Step 8 — Click the Automatic Summarization toggle back ON; "
+                "Step 7 — Click the Automatic Summarization toggle back ON; "
                 "verify the autosave PUT returns 200, both fields re-enable, "
                 "and Target Summary Tokens' value equals the original read in "
-                "step 5 (state preserved, not reset)"
+                "step 4 (state preserved, not reset)"
             ):
                 with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
                      page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
@@ -273,7 +183,7 @@ class TestContextManagementToggle:
             # assertion failed after step 6 left the toggle OFF, restore it
             # ON so the shared ${TEST_USER} account doesn't stay polluted
             # for this or a sibling settings-user-profile test. No-op if
-            # already ON (step 8 succeeded normally).
+            # already ON (step 7 succeeded normally).
             if not profile.is_automatic_summarization_enabled():
                 logger.info("Cleanup: restoring Automatic Summarization to ON after test failure")
                 profile.enable_automatic_summarization()

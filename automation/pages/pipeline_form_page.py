@@ -61,6 +61,16 @@ class PipelineFormPage(BasePage):
         "to pass DiscardButton's `dataTestId` prop instead of `data-testid`.",
     )
 
+    # Guard for the Pipelines Editor 2.0 redesign: '+ Pipeline' lands directly in the
+    # editor, so the Name field must NOT live inside a dialog/modal (the old create
+    # flow opened one). Scoped to the Name input (input[name=name]) so the unrelated platform banner
+    # dialog (data-testid="platform-banner-center") never produces a false hit.
+    name_input_in_dialog = LocatorDescriptor(
+        css='[role="dialog"] input[name="name"]',
+        suggested_testid="pipeline-create-dialog-name-input",
+        description="Name input rendered inside a dialog/modal (must be absent: editor-first create flow)",
+    )
+
     # "Save As Version" button (SaveNewVersionButton.jsx, rendered via
     # ApplicationTabBar.jsx — the same shared component AgentFormPage.
     # save_as_version_button already wires; EditPipeline.jsx reuses
@@ -365,6 +375,17 @@ class PipelineFormPage(BasePage):
             True if save button is enabled, False otherwise.
         """
         return self.save_button.is_enabled()
+
+    def is_create_form_in_dialog(self) -> bool:
+        """True if the Name field is rendered inside a dialog/modal (old create flow)."""
+        return self.name_input_in_dialog.count() > 0
+
+    def clear_name(self) -> None:
+        """Clear the Name field completely (real key events so React onChange fires)."""
+        self.name_input.click()
+        self.name_input.select_text()
+        self.name_input.press("Backspace")
+        expect(self.name_input).to_have_value("")
 
     def click_cancel(self):
         """Click the Cancel button."""

@@ -808,19 +808,6 @@ class PipelineDetailPage(PipelineFormPage):
         description="MCP node's Toolkit select (inline on the ReactFlow canvas card)"
     )
 
-    # The outer `pipeline-mcp-node-toolkit-select` testid lands on MUI's
-    # MuiInputBase-root wrapper div — confirmed live (ELITEA-1955) that
-    # `aria-expanded` is NOT on that element but on a nested child div
-    # (role="combobox", MUI's own "display" element). Added via
-    # add-data-testid (SingleSelect.jsx SelectDisplayProps) so open/closed
-    # state can be read even when the dropdown renders zero real options
-    # (no select-option-* row to fall back on — see
-    # open_mcp_node_toolkit_select_allow_empty below).
-    mcp_node_toolkit_select_combobox = LocatorDescriptor(
-        testid="pipeline-mcp-node-toolkit-select-combobox",
-        description="MCP node's Toolkit select — inner combobox div carrying aria-expanded"
-    )
-
     mcp_node_tool_select = LocatorDescriptor(
         testid="pipeline-mcp-node-tool-select",
         description="MCP node's Tool select (inline on the ReactFlow canvas card)"
@@ -1601,6 +1588,7 @@ class PipelineDetailPage(PipelineFormPage):
     TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="pipeline-tool-card-remove"]'
     TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="pipeline-tool-card-show-tools"]'
     TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
+    TOOLKIT_CARD_USED_BY = '[data-testid="pipeline-tool-card-used-by"]'
 
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
     # `main` (ToolMenu.jsx) and is already a field on AgentDetailPage — only
@@ -1725,6 +1713,7 @@ class PipelineDetailPage(PipelineFormPage):
     AGENT_NODE_PICKER_SEARCH = '[data-testid="pipeline-agent-node-agent-select-menu-search"]'
     MCP_NODE_PICKER_OPTION = '[data-testid="pipeline-mcp-node-toolkit-select-option"]'
     MCP_NODE_PICKER_SEARCH = '[data-testid="pipeline-mcp-node-toolkit-select-menu-search"]'
+    MCP_NODE_PICKER_CREATE_NEW = '[data-testid="pipeline-mcp-node-toolkit-select-create-new"]'
     TOOLKIT_NODE_PICKER_OPTION = '[data-testid="pipeline-toolkit-node-toolkit-select-option"]'
     TOOLKIT_NODE_PICKER_SEARCH = '[data-testid="pipeline-toolkit-node-toolkit-select-menu-search"]'
     # Required input-mapping Value fields inside the node panel's Basic section
@@ -4854,53 +4843,6 @@ class PipelineDetailPage(PipelineFormPage):
             state="visible", timeout=timeout
         )
 
-    def open_mcp_node_toolkit_select_allow_empty(self, timeout: int = 5000) -> None:
-        """Open the MCP node's Toolkit dropdown, tolerating zero real options.
-
-        Additive sibling to :meth:`open_mcp_node_toolkit_select` (ELITEA-1955)
-        — that method blocks on a ``select-option-*`` testid appearing, which
-        never renders when the dropdown is genuinely empty (MUI's own
-        placeholder ``<MenuItem value=""><em>None</em></MenuItem>`` carries no
-        testid — confirmed live, see ELITEA-1955 AFS § Concrete Handles).
-        This variant instead waits on the ``mcp_node_toolkit_select_combobox``
-        element's ``aria-expanded="true"`` attribute — that inner div (not the
-        outer ``mcp_node_toolkit_select`` testid, which lands on MUI's
-        MuiInputBase-root wrapper) is the one that actually carries
-        ``aria-expanded``, confirmed to flip regardless of option count.
-        ``open_mcp_node_toolkit_select`` itself is left unmodified
-        (page-objects.md shared-caller rule) — it has an existing merged
-        caller (ELITEA-1954) relying on its option-visible wait.
-
-        Args:
-            timeout: Maximum wait time in milliseconds.
-        """
-        from playwright.sync_api import expect
-
-        self.mcp_node_toolkit_select.click(timeout=timeout)
-        expect(self.mcp_node_toolkit_select_combobox).to_have_attribute(
-            "aria-expanded", "true", timeout=timeout
-        )
-
-    def close_mcp_node_toolkit_select(self, timeout: int = 5000) -> None:
-        """Close the open MCP node Toolkit dropdown via Escape, without selecting.
-
-        Mirrors ``AgentDetailPage.close_model_selector()``'s Escape-key
-        pattern. Waits on ``mcp_node_toolkit_select_combobox``'s
-        ``aria-expanded`` flipping back to ``"false"`` — the same element
-        :meth:`open_mcp_node_toolkit_select_allow_empty` waits on to open, so
-        this works whether or not the dropdown had any real options rendered
-        (ELITEA-1955 AFS step 6).
-
-        Args:
-            timeout: Maximum wait time in milliseconds.
-        """
-        from playwright.sync_api import expect
-
-        self.page.keyboard.press("Escape")
-        expect(self.mcp_node_toolkit_select_combobox).to_have_attribute(
-            "aria-expanded", "false", timeout=timeout
-        )
-
     def open_mcp_node_tool_select(self, timeout: int = 5000) -> None:
         """Open the MCP node's Tool dropdown."""
         self.mcp_node_tool_select.click(timeout=timeout)
@@ -4987,9 +4929,43 @@ class PipelineDetailPage(PipelineFormPage):
         self.mcp_node_toolkit_select.click(timeout=timeout)
         self.page.locator(self.MCP_NODE_PICKER_OPTION).first.wait_for(state="visible", timeout=timeout)
 
+    def get_mcp_node_picker_create_new_count(self) -> int:
+        """Count of the "Create new" action in the open MCP node picker menu (EL-7159)."""
+        return self.page.locator(self.MCP_NODE_PICKER_CREATE_NEW).count()
+
+    def search_mcp_node_picker(self, name: str, timeout: int = 10000) -> None:
+        """Type *name* into the open MCP node picker's search field and wait for a matching row."""
+        search = self.page.locator(self.MCP_NODE_PICKER_SEARCH).first
+        search.wait_for(state="visible", timeout=timeout)
+        search.fill(name)
+        self.page.locator(self.MCP_NODE_PICKER_OPTION).filter(has_text=name).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def select_mcp_node_picker_result(self, name: str, timeout: int = 10000) -> None:
+        """Click the (filtered) picker row whose text contains *name*."""
+        self.page.locator(self.MCP_NODE_PICKER_OPTION).filter(has_text=name).first.click(timeout=timeout)
+
     def get_mcp_node_picker_search_count(self) -> int:
         """Count of the search field in the open MCP node picker menu."""
         return self.page.locator(self.MCP_NODE_PICKER_SEARCH).count()
+
+    def is_mcp_node_picker_listing(self, name: str, timeout: int = 10000) -> bool:
+        """Whether the open MCP node picker lists a row containing *name* (EL-7159).
+
+        The picker is a lazily loaded project-wide list, so the row is looked up through the
+        picker's own search field and waited for rather than read from a point-in-time snapshot.
+        """
+        search = self.page.locator(self.MCP_NODE_PICKER_SEARCH)
+        if search.count() > 0 and search.first.is_visible():
+            search.first.fill(name)
+        try:
+            self.page.locator(self.MCP_NODE_PICKER_OPTION).filter(has_text=name).first.wait_for(
+                state="visible", timeout=timeout
+            )
+        except Exception:
+            return False
+        return True
 
     def get_mcp_node_picker_option_count(self) -> int:
         """Count of rows currently listed in the open MCP node picker menu."""
@@ -6997,6 +6973,30 @@ class PipelineDetailPage(PipelineFormPage):
         item = card.locator(self.TOOLKIT_CARD_TOOL_ITEM.format(tool_name))
         try:
             item.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_toolkit_card_used_by_node(
+        self, toolkit_name: str, node_name: str, timeout: int = 5000
+    ) -> bool:
+        """Check that a TOOLS-section card's "Used by" chips include *node_name* (EL-7159).
+
+        ``PipelineToolCard.jsx`` renders one ``pipeline-tool-card-used-by`` chip per
+        node that references the attachment.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            node_name: Node display name expected in the "Used by" chips.
+            timeout: How long to wait for the chip to appear.
+
+        Returns:
+            True if a matching chip is visible in that card, False otherwise.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        chip = card.locator(self.TOOLKIT_CARD_USED_BY).filter(has_text=node_name).first
+        try:
+            chip.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False

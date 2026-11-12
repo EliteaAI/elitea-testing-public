@@ -72,3 +72,13 @@ Also observed: the "Costs are estimated..." note and the costs-info popover (`ru
 
 ## Blocked Steps
 None. Risk: ingestion lag makes the spec slow (budget 120 s poll); `networkidle` waits are risky on this page. A second concern: Haiku model availability on DEV default model (model name asserted only as non-empty).
+
+## Adjustment (card #2941, 2026-11-12) - Expected-result change: cost display format
+- **Cause:** DEV product `fmtCost` (EliteaUI `analyticsCommon.helpers.js`) now renders costs in tiers; the 0.0001 <= |v| < 0.01 tier rounds UP to 4 decimals (0.000512 -> `$0.0006`). The page-object mirror `RunAnalyticsPage.format_cost` still used the old "< $0.00001 else 5 decimals" rule.
+- **Change:** `format_cost` is an exact mirror of the product (the 0.0001-0.01 tier is plain `math.ceil(a * 10000) / 10000`, identical to JS `Math.ceil(abs * 10_000) / 10_000`; no pre-rounding). Python and JS share IEEE-754 doubles, so float-ceil quirks are deliberately mirrored (e.g. 0.0051 -> `$0.0052`, 0.0099 -> `$0.0100`) - the expected text must equal what the product renders. Tiers: (None/NaN -> `-`; 0 -> `$0.00`; <1e-5 -> `< $0.00001`; <1e-4 -> 5 dp; <0.01 -> ceil to 4 dp; <1 -> 4 dp; <1000 -> 2 dp; K / M suffixes; sign prefix).
+- **Nature preserved:** the test still asserts exact UI text equals the formatted API value (KPI total, Cost by Model cell, tab-switch context); no assertion weakened. Only the expected-format rule moved to match the product.
+
+### Adjustment addendum - Cost by User row identity (Step 9)
+- **Cause (class A, UI drift):** the Cost by User row name now renders through `UserLabel` (`span.user-label-name`) using the product's `formatUserName` (display name, else email, else `User <id>`); the generic table-cell `<p>` collection no longer contains the name (it is a `<span>` inside a `Box`).
+- **Change:** new class-level `RunAnalyticsPage.TABLE_USER_NAMES` (xpath, hinted) + `table_user_names()`; `format_user_name()` mirrors `formatUserName`. Step 9 asserts row 1's name equals `format_user_name(by_user[0])` and additionally that `by_user[0].user_email` is non-empty, so the email is still the identity checked.
+- **Also:** `format_cost` negative sub-1e-5 now `-< $0.00001` (sign before `< `), matching the product; unit test case added.

@@ -1,0 +1,115 @@
+{
+  "batch": "elitea-4655-web-search-default-modules",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-elitea-4655-web-search-default-modules",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "note": "lead-run: 3 separate DEV invocations, each 1 passed (~52s), APP_PREFIX=/app; the workflow gate agent had been red only because the sandbox lacked APP_PREFIX in teardown"
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4655",
+      "outcome": "automated",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 3 says to hover and inspect a tooltip, but in Settings > Default Modules the Web Search row has no (i) icon. The descriptive paragraph is the tooltip text; the (i) InfoTooltip with the same text exists only in the chat Modules panel. The AFS asserts presence of the paragraph. The case text should be corrected.",
+          "ref": "ELITEA-4655"
+        },
+        {
+          "kind": "note",
+          "note": "The Chats default toggle persists per user and project via PUT /api/v2/social/module_settings/{project_id}, with autosave on blur and no Save button. The test must normalise the toggle to OFF first and restore OFF in a finally block. Do not run in parallel with ELITEA-2876, which uses the same module_settings payload."
+        },
+        {
+          "kind": "note",
+          "note": "Hover did not open the Modules flyout on a fresh chat in headless mode, but a click did. The implementer should verify this against the existing open_internal_tools_menu helper, which hovers. The Web Search row has no testids, and its Chats and Agents switches are distinguished by position, which the AFS leaves as an open question."
+        },
+        {
+          "kind": "note",
+          "note": "The intake case snapshot for ELITEA-4655 is missing from .agents/automation/elitea-4655-web-search-default-modules/cases/. I did not re-fetch it from the TMS in this dispatch."
+        },
+        {
+          "kind": "note",
+          "note": "Environment: no automation/.env.test in this sandbox and APP_PREFIX is unset, so runs fail with a 404 'Page Not Found' on /settings/project-general. Run with APP_PREFIX=/app. The gate agent needs it too."
+        },
+        {
+          "kind": "note",
+          "note": "ChatPage.wait_for_ai_response waits for a Copy button that DEV no longer renders for this answer (120s timeout, chip visible well before). Other specs using it may be affected."
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch hazard: my 'git checkout -b' failed because the feature branch already existed. I only noticed after committing on the trunk. I recovered with a mixed reset to 118a8093, which removed nothing the trunk should keep. Existing-branch check (git branch --list) should come before any commit."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 3 'tooltip' is the description paragraph in Default Modules (no (i) icon); case step 5 'save' is blur/change autosave. Already recorded in the AFS.",
+          "ref": "ELITEA-4655"
+        },
+        {
+          "kind": "note",
+          "note": ".venv/bin/ruff is missing, so lint was not run."
+        },
+        {
+          "kind": "defect",
+          "note": "Ruff E501 (line-length 120, rules E,F,I,W,UP) fails on two added lines. Test file line 60 is the Step 3 allure.step string (130 chars). Test file line 84 is the Step 5 allure.step string (121 chars). Shorten both. They are string-only edits, so no behaviour change. conventions.md requires `ruff check .` before review.",
+          "ref": "automation/tests/ui/settings/test_web_search_default_modules_row_and_chat_inheritance.py:60,84"
+        },
+        {
+          "kind": "question",
+          "note": "Chats vs Agents switches are told apart by list index. `web_search_switches()[0]` is Chats and `[1]` is Agents. Both switches are enumerated with `.all()` and the mechanical grep shows 0 hits, but the choice of which switch is which is still positional (DOM order). The AFS raised this as a Question and the implementer did not declare an improvisation. The switches carry no label or testid on DEV, \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/project_general_settings_page.py:WEB_SEARCH_MODULE_SWITCHES / set_web_search_chats_default"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep, run over `git diff main...tests/elitea-4655-web-search-default-modules -- automation/pages automation/tests` with the reviewer pattern (get_by_*, query_selector, page.locator, .locator(, .nth(, locator=, fallback=). It returned 0 hits (no matches). All new locators are class-level `LocatorDescriptor` / `ScopedLocator` fields. The rung matches the AFS (testid for default-mod\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case, AFS and diff. The case snapshot was not at .agents/automation/<slug>/cases/ELITEA-4655.md, so I read the TMS case file directly. Each step has a real assertion at that step: Step 1 section visible; Step 2 description text exact; Step 3 non-empty description (presence-only, matches the case); Step 4 headers plus exactly 2 switches; Step 5 autosave PUT ok, reload shows Chats c\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 3 says to hover the tooltip. The AFS handles this correctly as a clarification: in Default Modules the paragraph is the tooltip and there is no (i) icon. The test asserts paragraph presence. That is honest, and the AFS records it.",
+          "ref": "ELITEA-4655 step 3"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking. Step 3's `inner_text().strip()` assertion is redundant after Step 2's exact-text check. Step 7 clicks the Modules menuitem (the AFS says hover did not open the flyout headless), which is consistent with the AFS. The 120 s response timeout is generous but keyed to a condition, not a sleep."
+        },
+        {
+          "kind": "note",
+          "note": "ruff is not installed in the repo .venv, so `ruff check .` could not be run. E501 was verified by a manual line-length scan only (max 119 on both changed Python files)."
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer-cited line 84 (121 characters) was not over 120 at HEAD. Only line 60 (128 characters) was, and it is fixed."
+        },
+        {
+          "kind": "note",
+          "note": "The earlier blocker is fixed. Commit 990d29bd shortens the Step 3 allure step. A line-length scan of the test file at the branch tip finds no lines over 120 characters, so E501 is cleared. The repo .venv has no ruff binary at ../.venv/bin/ruff, so I could not run ruff itself. The diff-wide scan for lines over 121 characters is also empty.",
+          "ref": "automation/tests/ui/settings/test_web_search_default_modules_row_and_chat_inheritance.py"
+        },
+        {
+          "kind": "note",
+          "note": "The mechanical locator grep on the pages diff returned 0 hits. The command was: git diff main...tests/elitea-4655-web-search-default-modules -- automation/pages | grep -nE '^[+].*(get_by_|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. The spec has no raw locators."
+        },
+        {
+          "kind": "note",
+          "note": "I did not re-triangulate the per-step assertions or the TMS pair in this round. The test steps 1 to 11 each carry an assertion, and the Step 10 positional pick was replaced earlier with a tool-chip wait. The re-review was scoped to the ruff fix. The teardown restores the Chats default to OFF and re-raises on failure, so it does not mask errors."
+        }
+      ],
+      "afs": "test-specs/settings-default-modules/l1_web-search-default-modules-row-and-chat-inheritance_ELITEA-4655.md",
+      "branch": "tests/elitea-4655-web-search-default-modules"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": [],
+  "gate_verdict": "green"
+}

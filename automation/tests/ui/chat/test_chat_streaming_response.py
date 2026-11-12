@@ -103,12 +103,14 @@ class TestStreamingResponse:
             expect(chat.answer_loading_placeholder).to_have_count(0)
             expect(ChatPage.regenerate_action_button.resolve(ai_msg)).to_be_attached(timeout=GENERATION_TIMEOUT)
             ai_msg.hover()
-            expect(ChatPage.copy_action_button.resolve(ai_msg)).to_be_visible()
+            expect(ChatPage.copy_markdown_action_button.resolve(ai_msg)).to_be_visible()
+            expect(ChatPage.copy_text_action_button.resolve(ai_msg)).to_be_visible()
 
         with allure.step("Step 8 — Read-out, Copy, Regenerate and Delete icons appear on hover"):
             ai_msg.hover()
             expect(ChatPage.read_out_button.resolve(ai_msg)).to_be_visible()
-            expect(ChatPage.copy_action_button.resolve(ai_msg)).to_be_visible()
+            expect(ChatPage.copy_markdown_action_button.resolve(ai_msg)).to_be_visible()
+            expect(ChatPage.copy_text_action_button.resolve(ai_msg)).to_be_visible()
             expect(ChatPage.regenerate_action_button.resolve(ai_msg)).to_be_visible()
             expect(ChatPage.delete_action_button.resolve(ai_msg)).to_be_visible()
 

@@ -1,0 +1,1 @@
+{"slug":"adjust-elitea-0864","cases":[{"id":"ELITEA-0864","outcome":"automated","class":"A","review":"APPROVED","gate":"3/3 green on DEV","spec":"tests.ui.pipelines_2.test_pipeline_management.TestCreatePipeline.test_create_pipeline_required_fields_validation"}],"gate":{"n":3,"verdict":"green"}}

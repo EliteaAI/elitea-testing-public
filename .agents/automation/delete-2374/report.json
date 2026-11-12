@@ -1,0 +1,1 @@
+{"slug":"delete-2374","cards":[2949],"cases":[{"id":"ELITEA-2374","outcome":"retired","review":"APPROVED","note":"test removed; case deprecated per elitea_issues#6898 AC4"}],"gate":{"runs":3,"green":3,"specs":["tests/ui/settings/test_context_management_toggle.py (2377, 2378 remain)"]}}
