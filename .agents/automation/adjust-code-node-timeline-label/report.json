@@ -1,0 +1,7 @@
+{"slug":"adjust-code-node-timeline-label","card":2926,"cases":[
+{"id":"ELITEA-2448","outcome":"automated","triage":"A (intentional UI change, elitea_issues#3513)","node":"tests.ui.pipelines.test_pipeline_code_node_elitea_client_user_info.test_code_node_elitea_client_user_info","review":"APPROVED (fresh, round 2)","gate":"3/3 green on DEV"},
+{"id":"ELITEA-2449","outcome":"automated","triage":"A","node":"tests.ui.pipelines.test_pipeline_code_node_input_filtering.test_code_node_input_filtering_selective_state_access","review":"APPROVED (fresh, round 2)","gate":"3/3 green on DEV"},
+{"id":"ELITEA-2446","outcome":"automated","triage":"A","node":"tests.ui.pipelines.test_pipeline_code_node_reads_state_variable.test_code_node_reads_elitea_state_variable","review":"APPROVED (fresh, round 2)","gate":"3/3 green on DEV"},
+{"id":"ELITEA-2447","outcome":"automated","triage":"A","node":"tests.ui.pipelines.test_pipeline_code_node_multi_var_dict_return.test_code_node_return_dict_multiple_state_vars","review":"APPROVED (fresh, round 2)","gate":"3/3 green on DEV"}],
+"gate":{"n":3,"verdict":"green","detail":"3/3 separate DEV runs of the 4 specs, 4 passed each (73.4s/74.5s/75.0s), APP_PREFIX=/app, on trunk merged with origin/main"},
+"findings":["No .env.test in container: APP_PREFIX must be exported or pipeline detail navigation renders the app 404 page. #2935 was this, not a product bug.","Expected-result change: timeline label for Code nodes is the node's own name, was 'pyodide' (EliteaUI#1406)."]}

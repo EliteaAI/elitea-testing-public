@@ -271,3 +271,13 @@ Pipelines 2.0 moved the embedded chat into a "Test Pipeline" side panel
 detail page loads fine). Fix: `send_message_in_embedded_chat` now calls the
 idempotent `open_test_pipeline_panel()` when the chat input is not visible.
 No assertion changed.
+
+## Adjustment 2026-11-11 (product change EliteaUI#1406 / elitea_issues#3513)
+
+Run Details timeline label for a Code node changed from the Python-sandbox
+name `pyodide` to the node's own display name. Expected result for the
+Code-node timeline step is now: label ends with `Code1` (this test's Code node
+id). Every earlier mention of `pyodide` as the expected label in this AFS
+(incl. the #1385 amendment) is superseded. Assertion strength is unchanged:
+a specific name is asserted, not a generic substring. Confirmed live on DEV
+2026-11-12: all 4 specs pass; ELITEA-2448 label read 'Timeline step:Code1'.

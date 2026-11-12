@@ -11,7 +11,7 @@ expression (`user_info`) as the script's LAST statement. Verifies:
   - the canvas shows a single `code`-type node (`Code 1`)
   - the Code node's Value/Output/Structured-output config matches what the
     fixture built, including the script's literal text
-  - Run Details shows the ONE timeline step (`Code 1`, labelled `"pyodide"`)
+  - Run Details shows the ONE timeline step (`Code 1`, labelled with the node's own name `"Code1"`)
     completed, with `user_info`'s After value containing real account
     fields (`email`, `name`) confirming `elitea_client` resolves to the
     currently-authenticated test user
@@ -146,11 +146,12 @@ def test_code_node_elitea_client_user_info(page, pipeline_code_node_elitea_clien
         # Index 0 -- the ONLY timeline entry, this is a single-node pipeline.
         pipeline_page.select_run_details_timeline_step(0, timeout=UI_ELEMENT_TIMEOUT)
         timeline_text = pipeline_page.get_run_details_selected_timeline_step_id()
-        # Code node timeline labels show the Python-sandbox executor's name
-        # ("pyodide"), NOT the space-stripped YAML id -- same convention
+        # Code node timeline labels show the node's own display name
+        # (space-stripped YAML id "Code1"; product change EliteaUI#1406 /
+        # elitea_issues#3513 -- previously the sandbox name "pyodide") -- same convention
         # ELITEA-2446/ELITEA-2447 already established.
-        assert "pyodide" in timeline_text.lower(), (
-            f"Timeline label should show the pyodide sandbox name after selecting step 0, got {timeline_text!r}"
+        assert timeline_text.strip().endswith("Code1"), (
+            f"Timeline label should show the Code node's own name 'Code1' after selecting step 0, got {timeline_text!r}"
         )
         assert pipeline_page.get_run_details_timeline_step_status(0) == "completed", (
             "Code 1 timeline step should show status 'completed'"

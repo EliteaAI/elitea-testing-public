@@ -14,7 +14,7 @@ Code node execution. Verifies:
   - the pipeline's 3 custom state variables (summary/count/tags) all exist
   - the Code node's Input/Output/Value/Structured-output config matches
     what the fixture built
-  - Run Details shows a single `pyodide`-labelled timeline step for CODE1,
+  - Run Details shows a single `CODE1`-labelled timeline step for CODE1,
     with all three variables' Before/After rows transitioning under it
   - no second Code-node timeline entry exists (atomic multi-var update)
 
@@ -164,12 +164,13 @@ def test_code_node_return_dict_multiple_state_vars(
         # Index 1 -- the SECOND timeline entry, CODE1 (index 0 is STATE1).
         pipeline_page.select_run_details_timeline_step(1, timeout=UI_ELEMENT_TIMEOUT)
         timeline_text = pipeline_page.get_run_details_selected_timeline_step_id()
-        # Code node timeline labels show the Python-sandbox executor's name
-        # ("pyodide"), NOT the space-stripped YAML id -- same convention
+        # Code node timeline labels show the node's own display name
+        # ("CODE1"; product change EliteaUI#1406 / elitea_issues#3513 --
+        # previously the sandbox name "pyodide") -- same convention
         # ELITEA-2446 already confirmed (EliteaAI/elitea-testing-public#1385),
-        # reconfirmed live this session on a DIFFERENT Code-node fixture.
-        assert "pyodide" in timeline_text.lower(), (
-            f"Timeline label should show the pyodide sandbox name after selecting step 1, "
+        # applied here on this different Code-node fixture.
+        assert timeline_text.strip().endswith("CODE1"), (
+            f"Timeline label should show the Code node's own name 'CODE1' after selecting step 1, "
             f"got {timeline_text!r}"
         )
 
@@ -214,7 +215,7 @@ def test_code_node_return_dict_multiple_state_vars(
 
     with allure.step(
         "Step 8 — Confirm multiple state variables updated in a single Code node execution "
-        "(exactly one pyodide timeline entry, not a second one per variable)"
+        "(exactly one CODE1 timeline entry, not a second one per variable)"
     ):
         assert pipeline_page.get_run_details_timeline_step_count() == 2, (
             "Timeline should show exactly 2 steps (STATE1 + CODE1) — a second Code-node "

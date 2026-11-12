@@ -33,8 +33,8 @@ as ELITEA-2446/2447 on this same Code-node family):
     4-node YAML reproduces it too; step 5's verification reads
     `pipeline_api.get_pipeline()` server-truth instead of the YAML-tab DOM.
   - `EliteaAI/elitea-testing-public#1385`: a Code node's Run Details timeline
-    label renders as `"pyodide"` (the Python-sandbox executor's name), NOT
-    the space-stripped YAML id (`"Code1"`/`"CODE1"`).
+    label USED to render as `"pyodide"` (the Python-sandbox executor's name; now
+    the node's own name `"CODE1"`, EliteaUI#1406).
   - `EliteaAI/elitea-testing-public#1267`: Run Details panel's Timeline
     Stepper prop-leak React warning -- same signature as every other
     Run-Details-opening test in this suite; excluded from the console-error
@@ -199,8 +199,8 @@ def test_code_node_input_filtering_selective_state_access(
 
     with allure.step(
         "Step 7 — Open Run Details, select the Code node timeline step (index 3 -- the FOURTH "
-        "entry: STATE_A, STATE_B, STATE_C, then the Code node, which renders as 'pyodide', not "
-        "'CODE1' -- EliteaAI/elitea-testing-public#1385)"
+        "entry: STATE_A, STATE_B, STATE_C, then the Code node, which renders as its own name 'CODE1'; "
+        "was 'pyodide' before EliteaUI#1406)"
     ):
         pipeline_page.open_run_details_panel(timeout=UI_ELEMENT_TIMEOUT)
         expect(pipeline_page.run_details_panel).to_be_visible()
@@ -209,8 +209,8 @@ def test_code_node_input_filtering_selective_state_access(
         )
         pipeline_page.select_run_details_timeline_step(3, timeout=UI_ELEMENT_TIMEOUT)
         timeline_text = pipeline_page.get_run_details_selected_timeline_step_id()
-        assert "pyodide" in timeline_text.lower(), (
-            f"Timeline label should show the pyodide sandbox name after selecting step 3, got {timeline_text!r}"
+        assert timeline_text.strip().endswith("CODE1"), (
+            f"Timeline label should show the Code node's own name 'CODE1' after selecting step 3, got {timeline_text!r}"
         )
         for index in range(4):
             assert pipeline_page.get_run_details_timeline_step_status(index) == "completed", (
