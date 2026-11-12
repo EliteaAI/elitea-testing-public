@@ -7,11 +7,12 @@
     "ELITEA-4632"
   ],
   "declaredAt": "2026-11-12T10:44:31.488Z",
-  "updatedAt": "2026-11-12T10:44:31.524Z",
+  "updatedAt": "2026-11-12T12:30:35.964Z",
   "outcomes": {
     "ELITEA-4632": {
-      "outcome": "blocked",
-      "at": "2026-11-12T10:44:31.524Z"
+      "outcome": "automated",
+      "at": "2026-11-12T12:30:11.062Z"
     }
-  }
+  },
+  "closedAt": "2026-11-12T12:30:35.964Z"
 }

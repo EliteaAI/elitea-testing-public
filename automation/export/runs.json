@@ -3656,6 +3656,47 @@
       "scenarios_automated": 1,
       "scenarios_executed": 1,
       "notes": "gate green (3/3 (2 params each)x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-2943/cost.json (v1); batch slug 'adjust-2943'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-adjust-2941",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 2,
+      "turns": 69,
+      "subagent_dispatches": 30,
+      "orchestrator_cost_pct": 22.8,
+      "tokens": {
+        "input": 255920,
+        "output": 214477,
+        "cache_read": 40515146,
+        "cache_create": 4109132
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5",
+        "<synthetic>"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 255920,
+          "output": 214477,
+          "cache_read": 40515146,
+          "cache_create": 4109132
+        },
+        "<synthetic>": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_create": 0
+        }
+      },
+      "cost_api_equivalent_usd": 18.68,
+      "cache_read_share_pct": 38.5,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate green; outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-2941/cost.json (v1); batch slug 'adjust-2941'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
