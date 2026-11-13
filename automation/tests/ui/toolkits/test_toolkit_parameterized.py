@@ -23,6 +23,7 @@ from config import settings
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
 from pages.credential_create_page import CredentialCreatePage
+from pages.credentials_list_page import CredentialsListPage
 from pages.toolkit_detail_page import ToolkitDetailPage
 from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from playwright.sync_api import expect
@@ -297,6 +298,15 @@ class TestCreateCredential:
                 finally:
                     fresh_api.close()
 
+            with allure.step("Step 8 — Verify the credential is visible in the Credentials list"):
+                # Case expected result (ELITEA-1140 step 4, ELITEA-1141 step 1):
+                # "visible in list" — the API lookup above proves persistence,
+                # this proves the UI list renders it. Runs after Step 7 so a
+                # failure here still leaves `created_id` set for cleanup.
+                expect(CredentialsListPage(page).credential_card_name(cred_name)).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+
         finally:
             if created_id:
                 try:
@@ -327,7 +337,11 @@ class TestCreateToolkit:
     ):
         """Create a toolkit through the UI form for any toolkit type."""
         cfg = toolkit_config
-        tk_name = f"AutoTest {cfg.display_name} Toolkit {_ts()}"
+        # The Toolkit Name field caps input at 32 chars; the former
+        # "AutoTest <Type> Toolkit <ts>" overflowed it for GitHub (34) and
+        # Confluence (38), so the saved name was truncated and the API lookup
+        # below never matched. Longest form here: "AutoTest Confluence <ts>" = 30.
+        tk_name = f"AutoTest {cfg.display_name} {_ts()}"
         cred_name = managed_credential["name"]
         created_id = None
 
@@ -352,7 +366,7 @@ class TestCreateToolkit:
                 name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
                 name_field.click()
                 name_field.type(tk_name)
-                page.wait_for_timeout(300)
+                expect(name_field).to_have_value(tk_name, timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step("Step 4 — Fill Description"):
                 desc_field = page.get_by_role("textbox", name="Description")
@@ -376,12 +390,34 @@ class TestCreateToolkit:
             with allure.step("Step 8 — Verify navigation away from create form"):
                 assert "/toolkits/create" not in page.url
 
-                toolkits = toolkit_api.list_toolkits()
-                rows = toolkits if isinstance(toolkits, list) else toolkits.get("rows", [])
-                for t in rows:
+                # list_all_toolkits(), not list_toolkits(): the single-page call
+                # returns only the first page, so on a project with more toolkits
+                # than one page holds the new one was silently missed — the
+                # unasserted lookup left created_id None and leaked the toolkit
+                # past the finally-cleanup on every run.
+                all_toolkits = toolkit_api.list_all_toolkits()
+                for t in all_toolkits:
                     if t.get("name") == tk_name:
                         created_id = t["id"]
                         break
+                assert created_id is not None, (
+                    f"Toolkit '{tk_name}' not found via API after Save. "
+                    f"Toolkits listed: {[t.get('name') for t in all_toolkits]}"
+                )
+
+            with allure.step("Step 9 — Verify the toolkit is linked to the selected credential"):
+                # Case expected result (ELITEA-1141 step 3 "Toolkit linked to
+                # credential", ELITEA-1140 step 6 "correct credential
+                # association"). The toolkit's settings reference its
+                # credential as `<type>_configuration.elitea_title`, the same
+                # shape `toolkit_factories.*_toolkit_settings` POSTs.
+                tk_settings = toolkit_api.get_toolkit(created_id).get("settings", {})
+                linked = tk_settings.get(f"{cfg.toolkit_type}_configuration") or {}
+                assert linked.get("elitea_title") == managed_credential["elitea_title"], (
+                    f"Toolkit '{tk_name}' should reference credential "
+                    f"'{managed_credential['elitea_title']}', got "
+                    f"{cfg.toolkit_type}_configuration={linked!r}"
+                )
 
         finally:
             if created_id:
