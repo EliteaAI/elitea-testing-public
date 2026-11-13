@@ -1,0 +1,19 @@
+{
+ "slug": "adjust-elitea-4629",
+ "cases": [
+  {
+   "id": "ELITEA-4629",
+   "outcome": "automated",
+   "class": "A",
+   "review": "APPROVED",
+   "node": "tests.ui.chat.test_chat_tilde_mention_skill_without_agent.TestChatTildeMentionSkillWithoutAgent.test_tilde_mention_skill_without_agent"
+  }
+ ],
+ "gate": {
+  "n": 3,
+  "verdict": "green",
+  "detail": "3 separate DEV runs, --reruns 0, ~36s each, APP_PREFIX=/app"
+ },
+ "card": 2955,
+ "findings": []
+}

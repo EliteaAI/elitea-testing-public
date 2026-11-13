@@ -125,11 +125,15 @@ class TestChatTildeMentionSkillWithoutAgent:
                 )
                 chat.wait_for_message_count(initial_count + 1, timeout=UI_ELEMENT_TIMEOUT)
 
-            with allure.step("Step 9 — Response comes from the mentioned skill (marker token present)"):
-                # The marker lives only in the skill's instructions, so a message containing it
-                # (and distinct from the user's "~<A> tell me a joke" message) is the skill-driven reply.
-                expect(chat.messages_container.filter(has_text=MARKER)).to_have_count(1, timeout=RESPONSE_TIMEOUT)
+            with allure.step("Step 9 — The mentioned skill is present in the thinking steps (at least once)"):
+                # The reply may involve other skills/tools too, so assert only that the mentioned skill's
+                # name shows up in the thinking (tool-call) chips of the AI reply — not an exact reply.
                 chat.wait_for_generation_complete(timeout=RESPONSE_TIMEOUT)
+                ai_reply = chat.messages_container.filter(has=chat.answer_thought_accordion).last
+                expect(ai_reply).to_be_visible(timeout=RESPONSE_TIMEOUT)
+                expect(ChatPage.answer_tool_chip.resolve(ai_reply).filter(has_text=name_a).first).to_be_visible(
+                    timeout=RESPONSE_TIMEOUT
+                )
         finally:
             with allure.step("Cleanup — delete conversation and skills"):
                 if conv_id:

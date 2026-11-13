@@ -53,7 +53,7 @@ So the only way to satisfy "skill appears in `~` autocomplete, no agent" is: add
 6. Click `skill-mention-item-A`. **Verify** popper hidden and composer value `~A ` (assert startswith `~A`).
 7. Press-type `tell me a joke`. **Verify** composer value == `~A tell me a joke`.
 8. Send (`chat-send-button`). **Verify** user message item contains `~A tell me a joke`.
-9. Wait for generation complete. **Verify** the response contains `ANIMALJOKE:` (marker from skill A's instructions) - response comes from the mentioned skill.
+9. Wait for generation complete. **Verify** the mentioned skill A is present in the thinking steps (the `chat-answer-tool-chip` chips inside the AI reply's Thought accordion) at least once. Other skills may be called too - do NOT assert exact reply text or an exact chip count.
 10. Teardown: delete conversation (id from URL) and skills A, B.
 
 ## Coverage Map
@@ -65,7 +65,7 @@ So the only way to satisfy "skill appears in `~` autocomplete, no agent" is: add
 | 4 select -> reference in input | `~animal-joke` | AFS 6 | covered (`~name ` with trailing space) |
 | 5 full message in input | | AFS 7 | covered |
 | 6 send | sends | AFS 8 | covered |
-| 7-8 skill executes, response from skill | joke appears | AFS 9 | covered via deterministic marker `ANIMALJOKE:` instead of a real joke |
+| 7-8 skill executes, response from skill | joke appears | AFS 9 | covered via mentioned-skill chip in thinking steps (2026-11-13) |
 | Fail: works only with agent | | AFS 1-9 (no agent anywhere) | covered |
 Axis 2 extras: negative control (AFS 2) and "active participant excluded" (AFS 4) - both grounded in observed behaviour/source and issue #6924 S5.
 
@@ -82,5 +82,12 @@ None.
 - Typing MUST use `press_sequentially`; `fill()` skips the mention trigger.
 - Order matters: first-added skill = mention target; last-added = active/excluded.
 - Conversation is persisted on send -> delete in `finally` (find existing conversation cleanup fixture used by chat specs).
-- Wait for response by condition (speaking-mode button returns / response text contains marker), never sleep. LLM output must start with the marker: instructions say so; DEV model followed it 2/2.
+- Wait for response by condition (speaking-mode button returns / mentioned skill chip present in thinking steps), never sleep. LLM output must start with the marker: instructions say so; DEV model followed it 2/2.
 - Markers: `@pytest.mark.tms("ELITEA-4629")` + `@allure.issue` pair; ui, chat, skills, p0, regression.
+
+
+## Adjustment (2026-11-13, #2955)
+
+- Triage class: **A** (assertion drifted: the reply no longer reliably contains the `ANIMALJOKE:` marker - CI failed 0 matches after 90 s; other skills may be invoked).
+- Step 9 now checks only that the `~`-mentioned skill name appears at least once in the thinking-step tool chips (`testid on DEV ✓` `chat-answer-tool-chip`, scoped to the last AI reply).
+- Expected-result change: yes, requested by the card - response-text marker check replaced by thinking-step presence check (TMS case step 8 updated alongside).
