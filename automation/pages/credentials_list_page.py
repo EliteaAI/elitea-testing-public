@@ -14,10 +14,10 @@ l1_credential-pin-unpin_ELITEA-1974.md, Concrete Handles).
 """
 
 import logging
-
-from playwright.sync_api import Locator, Page, Response
+import re
 
 from config import settings
+from playwright.sync_api import Locator, Page, Response
 
 from .base_page import BasePage
 from .credentials_list_recovery import recover_from_credentials_list_crash
@@ -229,6 +229,15 @@ class CredentialsListPage(BasePage):
         """
         names = self.entity_card_name
         return [names.nth(i).text_content() or "" for i in range(names.count())]
+
+    def credential_card_name(self, display_name: str) -> Locator:
+        """Return the card title(s) whose text is exactly *display_name*.
+
+        Filters the declared ``entity_card_name`` collection — no new handle.
+        Used to assert a just-saved credential is listed (ELITEA-1140 step 4 /
+        ELITEA-1141 step 1: "visible in list").
+        """
+        return self.entity_card_name.filter(has_text=re.compile(rf"^{re.escape(display_name)}$"))
 
     def click_credential_card(self, display_name: str) -> None:
         """Click the already-rendered credential card matching *display_name*.
