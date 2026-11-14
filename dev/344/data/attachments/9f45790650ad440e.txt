@@ -1,0 +1,5 @@
+
+🍪 Using fresh cookies from browser context: 4 cookies
+🔗 CredentialAPI: base_url=https://dev.elitea.ai/api/v2 project_id=576
+📊 Raw API response: {'total': 1, 'items': [{'id': 757, 'uuid': 'c6d0895a-a205-4dfd-b650-48f991f22a6b', 'project_id': 576, 'elitea_title': 'autotest_jira_1794542507', 'label': 'AutoTest Jira 1794542507', 'type': 'jira', 'section': 'credentials', 'data': {'api_key': '{{secret.998d85a7f7ff4e1592bb9ba6c7d75772}}', 'hosting': 'Auto', 'base_url': 'https://epamelitea.atlassian.net', 'username': 'aliaksei_breilian@epam.com'}, 'meta': {}, 'shared': False, 'status_ok': False, 'status_logs': None, 'source': 'user', 'author_id': 942, 'created_at': '2026-11-13T04:02:04.723637', 'updated_at': None, 'is_pinned': False, 'folder_id': None, 'folder_name': None, 'options': {}}], 'offset': 0, 'limit': 20}
+✅ API returned 1 credentials total

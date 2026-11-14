@@ -1,0 +1,1 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Catalog and capture the agent categories response — Page.expect_response: Timeout 45000ms exceeded while waiting for event "response"

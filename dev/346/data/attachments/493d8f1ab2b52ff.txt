@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Enable image creation — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[role=\"switch\"]").first to be visible
+ERROR    elitea.steps:actions.py:49 Step failed: Enable image creation — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[role=\"switch\"]").first to be visible

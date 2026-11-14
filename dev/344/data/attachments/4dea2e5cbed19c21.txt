@@ -1,0 +1,5 @@
+
+🍪 Using fresh cookies from browser context: 4 cookies
+🔗 CredentialAPI: base_url=https://dev.elitea.ai/api/v2 project_id=576
+📊 Raw API response: {'total': 1, 'items': [{'id': 758, 'uuid': 'df4930e5-4e74-42c9-a6dc-06d2a3613fd6', 'project_id': 576, 'elitea_title': 'autotest_confluence_1794542525', 'label': 'AutoTest Confluence 1794542525', 'type': 'confluence', 'section': 'credentials', 'data': {'api_key': '{{secret.cafe4ccb7d32442e9fcb73a76d8c00de}}', 'hosting': 'Auto', 'base_url': 'https://epamelitea.atlassian.net', 'username': 'aliaksei_breilian@epam.com'}, 'meta': {}, 'shared': False, 'status_ok': False, 'status_logs': None, 'source': 'user', 'author_id': 942, 'created_at': '2026-11-13T04:02:23.275666', 'updated_at': None, 'is_pinned': False, 'folder_id': None, 'folder_name': None, 'options': {}}], 'offset': 0, 'limit': 20}
+✅ API returned 1 credentials total

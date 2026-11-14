@@ -1,0 +1,10 @@
+WARNING  elitea.pages.chat:chat_page.py:2153 Timeout waiting for AI response. Copy button seen: False, Current text: No pages found with the label 'test' in the Confluence space.
+If you'd like, I can:
+Check another label
+Search a different Confluence space (if accessible)
+Verify the label spelling/case
+Let me know h
+WARNING  elitea.pages.chat:chat_page.py:2153 Timeout waiting for AI response. Copy button seen: False, Current text: No pages found with the label 'test' in the Confluence space (ELITEATEST, as configured for this toolkit).
+If you expected results, a few things to check:
+Confirm the label is spelled/cased exactly as
+WARNING  elitea.pages.chat:chat_page.py:2153 Timeout waiting for AI response. Copy button seen: False, Current text: No pages found with the label 'test' in the ELITEATEST Confluence space. The search returned an empty list — either no pages currently carry that label, or the label name/casing differs from what's ex

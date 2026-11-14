@@ -1,0 +1,2 @@
+This attachment (fd3442800fbb0dcf.webm, 7.2 MB) was removed from the GitHub Pages copy of this report: the GitHub Pages site is kept under 450 MB and videos are dropped oldest-run-first.
+The original is in the allure-results artifact of https://github.com/EliteaAI/elitea-testing-public/actions/runs/43551729542 (artifacts are kept for 14 days).

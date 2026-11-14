@@ -1,0 +1,2 @@
+WARNING  elitea.pages.chat:chat_page.py:2153 Timeout waiting for AI response. Copy button seen: False, Current text: Sure—what should the message say, and who is it for?
+WARNING  elitea.pages.chat:chat_page.py:2153 Timeout waiting for AI response. Copy button seen: False, Current text: What message would you like me to write, and who is it for? Tell me the tone you want too, if you have a preference.
