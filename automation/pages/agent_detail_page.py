@@ -196,6 +196,14 @@ class AgentDetailPage(AgentFormPage):
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
     toolkit_warning_banner = LocatorDescriptor(testid="credential-warning-banner")
     toolkit_reload_button = LocatorDescriptor(testid="toolkit-reload-button")
+    open_tooltips = LocatorDescriptor(
+        role="tooltip",
+        suggested_testid="agent-open-tooltip",
+        description=(
+            "Any open MUI tooltip popper (role=tooltip). Left open by a prior hover "
+            "(e.g. warning label), it intercepts pointer events over toolkit cards."
+        ),
+    )
     toolkit_open_button = LocatorDescriptor(testid="toolkit-open-button")
 
     # Agent/Pipeline-type tool card's version selector (ELITEA-1951 — added
@@ -1903,6 +1911,10 @@ class AgentDetailPage(AgentFormPage):
         """
         self.ensure_toolkits_section_visible()
         toolkit_card = self._get_toolkit_card(toolkit_name, timeout)
+        # A tooltip left open by an earlier hover (warning label / status
+        # indicator) intercepts pointer events over the card — dismiss first.
+        self.page.mouse.move(0, 0)
+        expect(self.open_tooltips).to_have_count(0, timeout=timeout)
         toolkit_card.hover()
         self.page.wait_for_timeout(500)
 

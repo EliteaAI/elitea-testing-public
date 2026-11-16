@@ -1,0 +1,30 @@
+{
+ "batch": "adjust-elitea-1182",
+ "card": 2962,
+ "cases": [
+  {
+   "id": "ELITEA-1182",
+   "outcome": "automated",
+   "triage": "D (timing/scoping \u2014 stale MuiTooltip intercepts hover)",
+   "node": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestAgentCredentialIndicators.test_agent_credential_indicators_e2e",
+   "review": "APPROVED",
+   "expected_result_changes": "none"
+  }
+ ],
+ "gate": {
+  "n": 3,
+  "verdict": "green",
+  "reruns": 0,
+  "runs": [
+   "48.61s",
+   "50.15s",
+   "48.98s"
+  ]
+ },
+ "slug": "adjust-elitea-1182",
+ "locatorDelta": {
+  "declared": "1404->1405",
+  "nonTestid": "97->98",
+  "unmanaged": "310->310"
+ }
+}
