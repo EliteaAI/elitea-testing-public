@@ -653,6 +653,13 @@ class ChatPage(BasePage):
         description="Copy-as-text icon on a completed AI message (hover-revealed).",
     )
 
+    # Same split on the user's own message (UserMessage.jsx, EL-5838). Before
+    # the split the user-message copy icon carried no testid at all.
+    user_copy_markdown_action_button = LocatorDescriptor(
+        testid="user-message-copy-markdown-button",
+        description="Copy-as-markdown icon on a user message (hover-revealed).",
+    )
+
     regenerate_action_button = LocatorDescriptor(
         testid="chat-regenerate-button",
         description=(
@@ -2123,8 +2130,17 @@ class ChatPage(BasePage):
         logger.info("AI response element appeared at index %d", ai_response_index)
 
         # Step 2: Wait for the Copy button within that message to appear
-        # The Copy button only renders when the message is fully generated
-        copy_button = ai_message.locator('button[aria-label="Copy to clipboard"]')
+        # The Copy button only renders when the message is fully generated.
+        # EL-5838 (EliteaUI 1e7385ae4) split the single `chat-copy-button`
+        # ("Copy to clipboard") into Copy markdown / Copy text — same render
+        # condition, same visibility (ApplicationAnswerActions.jsx). Accept
+        # either build: DEV serves the split, older envs (stage2) still the
+        # single button. The former raw `aria-label="Copy to clipboard"`
+        # lookup matched only the old build, so every caller timed out on DEV.
+        cls = type(self)
+        copy_button = cls.copy_markdown_action_button.resolve(ai_message).or_(
+            cls.copy_action_button.resolve(ai_message)
+        )
         deadline = time.monotonic() + timeout / 1000.0
         poll_interval = 0.5
         copy_button_seen = False
@@ -2728,8 +2744,16 @@ class ChatPage(BasePage):
         message_block.hover()
         self.page.wait_for_timeout(500)  # Wait for hover effect
 
-        # Find and click the copy button within this message
-        copy_button = message_block.locator('button[aria-label="Copy to clipboard"]')
+        # Find and click the copy button within this message. "Copy markdown"
+        # keeps the pre-split behaviour (the single icon copied markdown):
+        # AI answer or user message on the EL-5838 build, or the single
+        # `chat-copy-button` on an older build (see wait_for_ai_response).
+        cls = type(self)
+        copy_button = (
+            cls.copy_markdown_action_button.resolve(message_block)
+            .or_(cls.user_copy_markdown_action_button.resolve(message_block))
+            .or_(cls.copy_action_button.resolve(message_block))
+        )
         if copy_button.count() == 0:
             from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
             raise PlaywrightTimeoutError(
