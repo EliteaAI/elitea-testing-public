@@ -3,7 +3,8 @@
 Spec: test-specs/chat-interface/l1_export-option-in-conversation-context-menu_ELITEA-3779.md
 
 Case-text drift (declared in the AFS): the menu opens from the hover 3-dot button
-(right-click opens nothing), "Duplicate" does not exist on DEV, and keyboard
+(right-click opens nothing), "Duplicate" does not exist on DEV, the former
+"Share externally" item is now "Share" (opens the 'Share Chat' modal), and keyboard
 navigation to the items is unsupported (case steps 13-14 are conditional, not automated).
 """
 
@@ -21,7 +22,7 @@ logger = logging.getLogger("elitea.tests.chat")
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression]
 
 UI_ELEMENT_TIMEOUT = 10_000
-EXPECTED_MENU_ORDER = ["rename", "move-to", "playback", "export", "share-external", "pin", "delete"]
+EXPECTED_MENU_ORDER = ["rename", "move-to", "playback", "export", "share", "pin", "delete"]
 
 
 class TestChatExportMenuOption:
@@ -62,12 +63,12 @@ class TestChatExportMenuOption:
             with allure.step("Step 6 — Export option is visible"):
                 expect(export_item).to_be_visible()
 
-            with allure.step("Step 7-8 — Menu order is Rename, Move to, Playback, Export, Share externally, Pin on top, Delete"):
+            with allure.step("Step 7-8 — Menu order is Rename, Move to, Playback, Export, Share, Pin on top, Delete"):
                 keys = chat.get_open_conversation_menu_item_keys()
                 assert keys == EXPECTED_MENU_ORDER, f"Unexpected context-menu order: {keys}"
                 assert keys.index("export") == 3
                 assert keys[keys.index("export") - 1] == "playback"
-                assert keys[keys.index("export") + 1] == "share-external"
+                assert keys[keys.index("export") + 1] == "share"
 
             with allure.step("Step 9 — Export is enabled (not greyed out)"):
                 expect(export_item).to_be_enabled()
@@ -85,6 +86,14 @@ class TestChatExportMenuOption:
                     0, timeout=UI_ELEMENT_TIMEOUT
                 )
                 expect(chat.export_chat_modal).to_have_count(0)
+                expect(chat.get_conversation_item(conv_id)).to_be_visible()
+
+            with allure.step("Step 13 — Share item opens the 'Share Chat' modal for this chat; closing it changes nothing"):
+                chat.open_conversation_context_menu(conv_id, timeout=UI_ELEMENT_TIMEOUT)
+                chat.get_conversation_menu_item("share").click()
+                expect(chat.share_chat_name).to_have_text(chat_name, timeout=UI_ELEMENT_TIMEOUT)
+                chat.share_close_button.click()
+                expect(chat.share_chat_name).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
                 expect(chat.get_conversation_item(conv_id)).to_be_visible()
         finally:
             if conv_id:

@@ -1,0 +1,1 @@
+{"slug":"adjust-elitea-3779","cases":[{"id":"ELITEA-3779","outcome":"automated","triage":"A","review":"APPROVED"}],"gate":{"n":3,"result":"green","node":"tests/ui/chat/test_chat_export_menu_option.py::TestChatExportMenuOption::test_export_option_in_conversation_context_menu"}}

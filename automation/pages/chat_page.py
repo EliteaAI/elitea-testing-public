@@ -1281,6 +1281,21 @@ class ChatPage(BasePage):
     TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
 
     # ------------------------------------------------------------------
+    # Share Chat modal (ELITEA-3779) — ShareChatModal.jsx, opened from the
+    # context menu's "Share" item. Team/Externally tabs render only in owner
+    # mode (share-tab-team / share-tab-externally); a Private-project chat
+    # opens the links-only form without tabs, so they are not declared here.
+    # ------------------------------------------------------------------
+    share_chat_name = LocatorDescriptor(
+        testid="share-chat-name",
+        description="Chat-name subtitle under the 'Share Chat' title of the share modal.",
+    )
+    share_close_button = LocatorDescriptor(
+        testid="share-close",
+        description="Close (X) button of the 'Share Chat' modal.",
+    )
+
+    # ------------------------------------------------------------------
     # Export-chat modal (ELITEA-3784) — ExportConversationModal.jsx.
     # All testids observed on DEV by the analyst.
     # ------------------------------------------------------------------
