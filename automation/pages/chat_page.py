@@ -732,6 +732,9 @@ class ChatPage(BasePage):
     RENDERED_TABLE_HEADER_CELL = "table thead th"
     RENDERED_TABLE_ROW = "table tbody tr"
     RENDERED_TABLE_CELL = "td"
+    # Fenced code blocks (``` ... ```) rendered by react-markdown inside an AI
+    # message — third-party markdown output, no testid possible (permanent css rung).
+    RENDERED_CODE_BLOCK = "pre"
 
     diagram_svg_container = LocatorDescriptor(
         testid="chat-mermaid-diagram-svg-container",
@@ -2080,6 +2083,22 @@ class ChatPage(BasePage):
         text = self._extract_message_body(last_msg)
         logger.info(f"Last message: {text[:50]}...")
         return text
+
+    def get_last_message_full_text(self) -> str:
+        """Last message body PLUS rendered table cells and fenced code blocks.
+
+        :meth:`get_last_message_text` only reads ``<p>``/``<li>`` text, so a
+        branch list rendered as a code block or table is invisible to it.
+        Additive helper (ELITEA-0143 adjust) — existing readers are unchanged.
+        """
+        last_msg = self.messages_container.last
+        parts = [self._extract_message_body(last_msg)]
+        for row in self.get_rendered_table_data(last_msg):
+            parts.extend(row.values())
+        blocks = last_msg.locator(self.RENDERED_CODE_BLOCK)
+        for i in range(blocks.count()):
+            parts.append(blocks.nth(i).text_content() or "")
+        return "\n".join(p for p in parts if p and p.strip())
 
     def get_message_text_at(self, index: int) -> str:
         """Get the text content of the message body at *index* (ELITEA-2369).
