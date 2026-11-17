@@ -90,10 +90,13 @@ class TestSkillEditorTestButtonExecution:
                 expect(chat.message_input).to_have_value(TEST_MESSAGE)
                 expect(chat.send_button).to_be_visible()
 
-            with allure.step("Step 5 — Send: the user message appears in the thread with the author name"):
+            with allure.step("Step 5 — Send: the user message appears in the thread addressed to the skill"):
                 chat.send_button.click()
                 expect(chat.messages_container.first).to_contain_text(TEST_MESSAGE, timeout=UI_ELEMENT_TIMEOUT)
-                expect(chat.messages_container.first).to_contain_text("autotest_user_admin")
+                # Sender label reads "<user> to <skill name>" — assert the skill name, never the account name.
+                expect(chat.messages_container.first).to_contain_text(
+                    re.compile(rf"to\s*{re.escape(skill_name)}"), timeout=UI_ELEMENT_TIMEOUT
+                )
 
             with allure.step("Step 6 — Wait for completion; 'Thought for N secs' indicator is shown"):
                 detail.wait_for_test_response(initial_count=1, timeout=AI_RESPONSE_TIMEOUT)
