@@ -3,7 +3,7 @@
 Spec: test-specs/chat-interface/l1_export-option-in-conversation-context-menu_ELITEA-3779.md
 
 Case-text drift (declared in the AFS): the menu opens from the hover 3-dot button
-(right-click opens nothing), "Duplicate" does not exist on DEV, the former
+(right-click opens nothing), "Duplicate" exists but carries no testid (unkeyed in ConversationItem.jsx), the former
 "Share externally" item is now "Share" (opens the 'Share Chat' modal), and keyboard
 navigation to the items is unsupported (case steps 13-14 are conditional, not automated).
 """
@@ -22,7 +22,12 @@ logger = logging.getLogger("elitea.tests.chat")
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression]
 
 UI_ELEMENT_TIMEOUT = 10_000
+# Testid-keyed items only ("Duplicate" is unkeyed => no testid; covered by the role-based list below).
 EXPECTED_MENU_ORDER = ["rename", "move-to", "playback", "export", "share", "pin", "delete"]
+# The whole rendered menu by accessible name, in visual order.
+EXPECTED_MENU_LABELS = [
+    "Rename", "Move to", "Playback", "Duplicate", "Export", "Share", "Pin on top", "Delete",
+]
 
 
 class TestChatExportMenuOption:
@@ -59,11 +64,24 @@ class TestChatExportMenuOption:
                 expect(chat.get_open_conversation_menu_items()).to_have_count(
                     len(EXPECTED_MENU_ORDER), timeout=UI_ELEMENT_TIMEOUT
                 )
+                # Real rendered menu (role=menuitem), not just testid-keyed items.
+                expect(chat.conversation_menu_all_items).to_have_count(
+                    len(EXPECTED_MENU_LABELS), timeout=UI_ELEMENT_TIMEOUT
+                )
 
             with allure.step("Step 6 — Export option is visible"):
                 expect(export_item).to_be_visible()
 
-            with allure.step("Step 7-8 — Menu order is Rename, Move to, Playback, Export, Share, Pin on top, Delete"):
+            with allure.step(
+                "Step 7-8 — Menu order is Rename, Move to, Playback, Duplicate, Export, Share, Pin on top, Delete"
+            ):
+                expect(chat.conversation_menu_all_items).to_have_text(EXPECTED_MENU_LABELS)
+                duplicate_item = chat.conversation_menu_duplicate_item
+                expect(duplicate_item).to_be_visible()
+                expect(duplicate_item).to_be_enabled()
+                expect(duplicate_item).not_to_have_attribute("aria-disabled", "true")
+                # Export directly follows Duplicate and precedes Share: pinned by the live-DOM
+                # exact-order to_have_text above.
                 keys = chat.get_open_conversation_menu_item_keys()
                 assert keys == EXPECTED_MENU_ORDER, f"Unexpected context-menu order: {keys}"
                 assert keys.index("export") == 3
@@ -85,10 +103,13 @@ class TestChatExportMenuOption:
                 expect(chat.get_open_conversation_menu_items()).to_have_count(
                     0, timeout=UI_ELEMENT_TIMEOUT
                 )
+                expect(chat.conversation_menu_all_items).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
                 expect(chat.export_chat_modal).to_have_count(0)
                 expect(chat.get_conversation_item(conv_id)).to_be_visible()
 
-            with allure.step("Step 13 — Share item opens the 'Share Chat' modal for this chat; closing it changes nothing"):
+            with allure.step(
+                "Step 13 — Share item opens the 'Share Chat' modal for this chat; closing it changes nothing"
+            ):
                 chat.open_conversation_context_menu(conv_id, timeout=UI_ELEMENT_TIMEOUT)
                 chat.get_conversation_menu_item("share").click()
                 expect(chat.share_chat_name).to_have_text(chat_name, timeout=UI_ELEMENT_TIMEOUT)

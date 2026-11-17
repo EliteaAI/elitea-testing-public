@@ -1,0 +1,1 @@
+{"slug":"adjust-elitea-3779b","cases":[{"id":"ELITEA-3779","outcome":"automated","triage":"A","review":"CHANGES_REQUESTED(E501 only)->fixed; static re-check by lead of line length"}],"gate":{"n":3,"result":"green"}}

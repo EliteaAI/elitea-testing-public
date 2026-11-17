@@ -17,10 +17,10 @@
 1. Chat list shows the created item `chat-conversation-item-{id}` (bg while hovered: `rgba(106, 232, 250, 0.1)`).
 2. Hover item -> hover state (computed background changes; 3-dot `conversation-menu-menu-button` becomes visible inside the item).
 3. **Right-click opens NO menu** (0 `chat-conversation-menu-*-menuitem` after `button="right"`). Case text drift (same as ELITEA-3784): the menu opens from the hover 3-dot button (`ChatPage.open_conversation_context_menu`). Clarification, not a defect.
-4. After clicking the 3-dot button, `[role="menu"]` is present with exactly 7 items, in DOM order:
-   1. `rename` "Rename" 2. `move-to` "Move to" (2 svgs: icon + chevron) 3. `playback` "Playback" 4. `export` "Export" 5. `share` "Share" 6. `pin` "Pin on top" 7. `delete` "Delete".
-   Case lists "Duplicate" - it does NOT exist on DEV (drift). `make-public` key is in `CONVERSATION_MENU_ITEM_KEYS` but not rendered for a private-project chat.
-5. Export item: `role="menuitem"`, `aria-disabled` absent (not disabled), `is_enabled()` true, text exactly "Export", 1 `svg` icon (no testid on the svg). Position: 4th of 7, directly after Playback and before Share.
+4. After clicking the 3-dot button, `[role="menu"]` is present with exactly **8** items (role=menuitem), in DOM order (corrected 2026-11, card #2967 follow-up):
+   1. `rename` "Rename" 2. `move-to` "Move to" (2 svgs: icon + chevron) 3. `playback` "Playback" 4. **"Duplicate" (no testid)** 5. `export` "Export" 6. `share` "Share" 7. `pin` "Pin on top" 8. `delete` "Delete".
+   "Duplicate" EXISTS on DEV (earlier claim of absence was wrong: ConversationItem.jsx gives it no `key`, so no testid, and a testid-suffix enumeration misses it). `make-public` key is in `CONVERSATION_MENU_ITEM_KEYS` but not rendered for a private-project chat.
+5. Export item: `role="menuitem"`, `aria-disabled` absent (not disabled), `is_enabled()` true, text exactly "Export", 1 `svg` icon (no testid on the svg). Position: 5th of 8, directly after Duplicate and before Share.
 6. Clicking elsewhere (`page.mouse.click(1000,500)`) closes the menu (menuitem count 0), conversation item still visible/unchanged.
 7. Keyboard (case step 13-14 "if supported"): focus lands on the menu container (DIV, no role/testid, tabindex -1); ArrowDown/Tab do NOT move focus to items, Enter does nothing (no export modal). Keyboard navigation to Export is NOT supported on DEV -> per the case's own conditional, do not automate step 14. Optional: Escape closes the menu (Escape on the later-opened modal verified to leave 0 modals).
 
@@ -30,6 +30,8 @@
 | 1 | `chat-conversation-item-{id}` (`ChatPage.CONVERSATION_ITEM`, `get_conversation_item`) | - | testid on DEV ✓ |
 | 1 | `conversation-menu-menu-button` scoped in item (`get_conversation_menu_button(id)`) | - | testid on DEV ✓ (shared non-unique, scope to item) |
 | 1 | `chat-conversation-menu-{key}-menuitem` (`get_conversation_menu_item(key)`; keys rename, move-to, playback, export, share, pin, delete) | - | testid on DEV ✓ |
+| ladder | `conversation_menu_all_items` role=menuitem (whole rendered menu) | `chat-conversation-menu-item-{}` | ladder - no testid on DEV; enumerates unkeyed items |
+| ladder | `conversation_menu_duplicate_item` role=menuitem name='Duplicate' | `chat-conversation-menu-duplicate-menuitem` | ladder - no testid on DEV (unkeyed in ConversationItem.jsx), unique in open menu |
 | 1 | prefix enumerator `CONVERSATION_MENU_ITEM_PREFIX` (+ `get_open_conversation_menu_item_count()`) | - | testid on DEV ✓; DOM order = visual order (enumerate with a loop over `.count()`, read `data-testid` of each) |
 | ladder | export item icon: `svg` inside the export menuitem | `chat-conversation-menu-export-icon` | ladder css `svg` scoped under the testid'd menuitem (exactly 1); declare as ScopedLocator within the item |
 | 1 | `share-chat-name` (`ChatPage.share_chat_name`) - Share Chat modal chat-name subtitle | - | testid on DEV ✓ (2026-11 adjust) |
@@ -41,10 +43,10 @@
 | Step 1-2 chat list / conversation visible | item visible | `get_conversation_item` visible | covered |
 | Step 3 hover | hover state | item hover; assert 3-dot button becomes visible (and/or bg colour changes) | covered |
 | Step 4 right-click | context menu appears | hover + 3-dot button | **clarification** (right-click opens nothing; assert 0 items after right-click optional as Axis 2 only if stable) |
-| Step 5 menu has multiple options | multiple options | count == 7 | covered |
+| Step 5 menu has multiple options | multiple options | role=menuitem count == 8 (and testid-keyed count 7) | covered |
 | Step 6 Export visible | visible | `to_be_visible` on export item | covered |
-| Step 7 order Rename, Move to, Playback, Duplicate, Export, Share, Pin on top, Delete | that order | assert ordered list == [rename, move-to, playback, export, share, pin, delete] | covered with **clarification** (no Duplicate on DEV) |
-| Step 8 positioning | between other options | Export index 3 of 7, neighbours playback/share | covered |
+| Step 7 order Rename, Move to, Playback, Duplicate, Export, Share, Pin on top, Delete | that order | assert role=menuitem texts == [Rename, Move to, Playback, Duplicate, Export, Share, Pin on top, Delete]; testid keys order kept; Duplicate visible+enabled | covered (Duplicate present, unkeyed; asserted via role enumeration) |
+| Step 8 positioning | between other options | Export directly after Duplicate, before Share | covered |
 | Step 9 enabled | not greyed | `to_be_enabled` + no `aria-disabled="true"` | covered |
 | Step 10 label | text "Export" | `to_have_text("Export")` | covered |
 | Step 11 icon | icon present | 1 `svg` in export item | covered |
@@ -53,7 +55,7 @@
 Axis 2 extra: opening the menu does not open the export modal (`export-chat-modal` count 0) - guards accidental trigger.
 
 ## Open items / findings
-- Clarifications: right-click does not open the menu; "Duplicate" absent; keyboard navigation unsupported (arrow/tab do not move focus to items; arguably an a11y gap - menu items are `role=menuitem tabindex=-1` but focus stays on container). Not filed as a bug: case says "if supported"; no explicit requirement.
+- Clarifications: right-click does not open the menu; keyboard navigation unsupported (arrow/tab do not move focus to items; arguably an a11y gap - menu items are `role=menuitem tabindex=-1` but focus stays on container). Not filed as a bug: case says "if supported"; no explicit requirement.
 - No console instrumentation in scratch run; no product defect.
 
 ## Automation Hints
@@ -61,7 +63,11 @@ Axis 2 extra: opening the menu does not open the export modal (`export-chat-moda
 - `@pytest.mark.tms("ELITEA-3779")`, markers ui/chat/regression/p1. No sleeps; wait for first menuitem visible, and for `to_have_count(0)` after click-away.
 
 ## Adjustment (2026-11, [Update][ELITEA-3779] card #2967)
-- **Triage: class A (intentional UI change).** DEV menu keys are now `rename, move-to, playback, export, share, pin, delete`; the `share-external` item ("Share externally") became `share` ("Share"), which opens a **Share Chat** modal. `Duplicate` is still absent on DEV (verified live; the issue screenshot's Duplicate item is not rendered).
+- **Triage: class A (intentional UI change).** DEV menu keys are now `rename, move-to, playback, export, share, pin, delete`; the `share-external` item ("Share externally") became `share` ("Share"), which opens a **Share Chat** modal. (Superseded below.)
 - Expected-result change: step 7/8 order and Export's right-hand neighbour: `share-external` -> `share`.
 - Added (Axis 2, to keep the Share item's intent): Step 13 - Share opens the 'Share Chat' modal (`share-chat-name` text == chat name), close via `share-close`, conversation unchanged. No share link is created.
 - Not asserted: the Team | Externally tabs. For the test account (project Private) the modal opens in links-only mode (no tabs; "Create link" form with Messages/Attachments, All/Selected messages, Link expiration, Password, Generate Link). Tabs (`share-tab-team` / `share-tab-externally`) render only in owner mode per ShareChatModal.jsx; not observable for this chat on DEV.
+
+## Adjustment 2 (2026-11, card #2967 follow-up) - Duplicate exists
+- Human screenshot showed 8 items incl. Duplicate. The first adjustment wrongly concluded it was absent: the item has no `key` in ConversationItem.jsx, so no data-testid, and the testid-suffix enumeration missed it.
+- Test now enumerates the real menu by role=menuitem (`conversation_menu_all_items`): count 8, exact text order Rename, Move to, Playback, Duplicate, Export, Share, Pin on top, Delete; Duplicate visible+enabled (`conversation_menu_duplicate_item`). Duplicate is NOT clicked (would create a conversation). Existing assertions unchanged.

@@ -1342,6 +1342,23 @@ class ChatPage(BasePage):
         description="Leading icon svg of a conversation context-menu item; scope with .within(menu_item).",
     )
 
+    # Whole open conversation context menu by ARIA role (ELITEA-3779). ConversationItem.jsx
+    # gives the "Duplicate" item no `key`, so DEV serves it no testid and the
+    # CONVERSATION_MENU_ITEM_PREFIX enumeration cannot see it. Role enumeration sees every
+    # rendered item. Only the open conversation's menu is mounted, so this is unambiguous.
+    conversation_menu_all_items = LocatorDescriptor(
+        role="menuitem",
+        suggested_testid="chat-conversation-menu-item-{}",
+        description="Every item of the open conversation context menu (enumerated, never picked).",
+    )
+
+    conversation_menu_duplicate_item = LocatorDescriptor(
+        role="menuitem",
+        name="Duplicate",
+        suggested_testid="chat-conversation-menu-duplicate-menuitem",
+        description="'Duplicate' item of the open conversation context menu (no key => no testid on DEV).",
+    )
+
     # CSS selectors for the in-page MutationObserver in click_export_capturing_progress
     # (JS cannot take a Playwright Locator). Derived from the declarations above so
     # each testid is written exactly once.
