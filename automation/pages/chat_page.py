@@ -4133,13 +4133,14 @@ class ChatPage(BasePage):
         self.plus_menu_button.click()
         self.page.wait_for_timeout(300)  # Menu animation
 
-        # Step 2: Hover "Modules" menuitem to reveal submenu
-        # The submenu is triggered by onMouseEnter, not onClick
+        # Step 2: Click the "Modules" menuitem to reveal the submenu.
+        # DEV no longer opens the submenu on hover (adjusted 2026-11,
+        # ELITEA-3370 / #2966) — an explicit click is required.
         self.internal_tools_menuitem.wait_for(state="visible", timeout=timeout)
-        self.internal_tools_menuitem.hover()
+        self.internal_tools_menuitem.click()
 
         # Wait for the tools panel with switches to appear
-        self.page.locator('[role="switch"]').first.wait_for(
+        self.page.locator(self.MODULES_TOGGLE_SWITCH_PREFIX).first.wait_for(
             state="visible", timeout=timeout
         )
         logger.info("Modules menu opened")
