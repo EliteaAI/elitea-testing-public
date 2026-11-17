@@ -15,14 +15,14 @@
 1. Open `/app/chat/<conversation_id>`, send two prompts, wait for each AI response (`wait_for_ai_response(initial_count=<count before send>)`). Timeline has 4 `chat-message-item` (user, AI, user, AI).
    - Verify: 2 AI items (filter with `ChatPage._is_ai_message`).
 2. Scroll to / hover the LAST AI item.
-   - Verify: `chat-read-out-button`, `chat-copy-button`, `chat-regenerate-button`, `chat-delete-button` all visible within that item (observed count 1 each).
+   - Verify: `chat-read-out-button`, `chat-copy-markdown-button`, `chat-copy-text-button`, `chat-regenerate-button`, `chat-delete-button` all visible within that item (observed count 1 each; the former single `chat-copy-button` no longer exists on DEV).
 3. Hover the EARLIER AI item (move mouse to (0,0) first to clear residual hover).
-   - Verify: `chat-regenerate-button` count == 0 and `chat-delete-button` count == 0 within it (not in DOM at all). Read-out and Copy ARE present (count 1, hover-revealed), so do not assert "no action icons" on earlier responses.
+   - Verify: `chat-regenerate-button` count == 0 and `chat-delete-button` count == 0 within it (not in DOM at all). Read-out, Copy markdown and Copy text ARE present (count 1 each, hover-revealed; asserted as a positive control), so do not assert "no action icons" on earlier responses.
 4. Page-level: `chat-regenerate-button` count over whole page == 1, and it lives inside the last AI item.
 
 ## Observations (live, 2026-10-20)
 - Source (`ChatMessageWrapper.jsx` `onRegenerate={... isLastMessage && ...}`, `ApplicationAnswerActions.jsx:114-121`): Regenerate is rendered only when `onRegenerate` is passed, i.e. last message; Delete likewise (`isLastMessage && ...onDelete`).
-- Earlier AI item: read-out 1, copy 1, regenerate 0, delete 0. Last AI item: 1,1,1,1.
+- Earlier AI item: read-out 1, copy markdown 1, copy text 1, regenerate 0, delete 0. Last AI item: all five 1 (re-verified on DEV 2026-11-17 via testid dump of each item).
 - Last item's Regenerate remained visible after moving the mouse to (0,0) (not hover-only on the last message in this run); the earlier item's Copy/Read-out are hover-gated. Do not assert hover-gating for Regenerate; assert visibility after hovering (case step 2 wording still satisfied).
 - Regenerate button has testid `chat-regenerate-button` on DEV, but no aria-label (`BUTTON:` empty). Note ELITEA-2181 AFS said testid "needed"; it is now served.
 - Console/network: not inspected beyond test pass (no errors surfaced).
@@ -33,7 +33,7 @@
 |---|---|---|---|---|
 | Precond: logged in; conversation with LLM response | - | setup | fixtures + 2 sends | asserted (2 responses needed to define "earlier") |
 | 1 Scroll to last LLM response | visible | step 2 | last AI item visible | asserted |
-| 2 Hover last response | regenerate + speaker, copy, delete visible | step 2 | 4 testids visible | asserted |
+| 2 Hover last response | regenerate + speaker, copy (markdown + text), delete visible | step 2 | 5 testids visible | asserted |
 | 3 Hover earlier response | no Regenerate | step 3 | count==0 | asserted |
 | 4 Regenerate only on last | exactly one | step 4 | page-wide count==1, inside last item | asserted |
 ### Axis 2
@@ -47,7 +47,8 @@
 | AI-authored filter | - | `ChatPage._is_ai_message` / `AI_MESSAGE_LOGO` (img alt "Elitea") | - | existing, used live ✓ |
 | Regenerate | 1 | `chat-regenerate-button` (`ChatPage.regenerate_action_button`) | - | testid on DEV ✓ |
 | Read-out | 1 | `chat-read-out-button` | - | testid on DEV ✓ |
-| Copy | 1 | `chat-copy-button` (`copy_action_button`) | - | testid on DEV ✓ |
+| Copy markdown | 1 | `chat-copy-markdown-button` (`copy_markdown_action_button`) | - | testid on DEV ✓ |
+| Copy text | 1 | `chat-copy-text-button` (`copy_text_action_button`) | - | testid on DEV ✓ |
 | Delete | 1 | `chat-delete-button` (`delete_action_button`) | - | testid on DEV ✓ |
 Use `.within(ai_item)` scoping; do not use `.nth()` sibling picks except enumerating all AI items.
 
@@ -58,3 +59,10 @@ Use `.within(ai_item)` scoping; do not use `.nth()` sibling picks except enumera
 
 ## Known Defects / Blocked
 None.
+
+## Adjustment (2026-11-17, issue #2969)
+- **Triage:** class A, UI drift. `chat-copy-button` is gone from DEV; `ApplicationAnswerActions.jsx` now renders `chat-copy-markdown-button` ("Copy markdown") and `chat-copy-text-button` ("Copy text").
+- **Old -> new:** `ChatPage.copy_action_button` assertion -> `copy_markdown_action_button` + `copy_text_action_button` (existing fields; no page-object change).
+- **Expected-result changes:** last response offers read out, copy markdown, copy text, regenerate, delete; earlier responses offer read out, copy markdown, copy text only (no regenerate, no delete). Case step 2 expectation "copy" now means both copy variants. Earlier-response step now asserts the three present actions as a positive control (nothing removed).
+- Live: read-out (`chat-read-out-button`) IS present on DEV for both items. Possible extra buttons without testids are not asserted.
+- Spec change: ELITEA-2187 Step 4 (3-response test) dismisses the late corner announcement banner (`dismiss_banner_if_present`) before clicking Regenerate; it intercepted the click once.

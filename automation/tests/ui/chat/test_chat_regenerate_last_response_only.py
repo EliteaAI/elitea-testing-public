@@ -1,9 +1,10 @@
 """UI Test for ELITEA-2184 — Regenerate (and Delete) are offered only on the LAST LLM response.
 
 Two exchanges are sent so "earlier" and "last" both exist. The last AI item carries
-read-out, copy, regenerate and delete; the earlier AI item carries no Regenerate and no
-Delete (they are not in the DOM at all), and the whole timeline holds exactly one
-Regenerate button, inside the last AI item.
+read-out, copy markdown, copy text, regenerate and delete; the earlier AI item carries
+read-out, copy markdown and copy text but no Regenerate and no Delete (they are not in the
+DOM at all), and the whole timeline holds exactly one Regenerate button, inside the last
+AI item. (The single Copy icon was split into Copy markdown / Copy text on DEV.)
 
 AFS: test-specs/chat-interface/l2_regenerate-only-on-last-llm-response_ELITEA-2184.md
 
@@ -57,12 +58,13 @@ class TestChatRegenerateLastResponseOnly:
             last_item.scroll_into_view_if_needed()
             expect(last_item).to_be_visible(timeout=UI_TIMEOUT)
 
-        with allure.step("Step 2 — Last response shows speaker, copy, regenerate and delete"):
+        with allure.step("Step 2 — Last response shows speaker, copy markdown, copy text, regenerate and delete"):
             last_item.scroll_into_view_if_needed()
             last_item.hover()
             for action in (
                 ChatPage.read_out_button,
-                ChatPage.copy_action_button,
+                ChatPage.copy_markdown_action_button,
+                ChatPage.copy_text_action_button,
                 ChatPage.regenerate_action_button,
                 ChatPage.delete_action_button,
             ):
@@ -75,6 +77,14 @@ class TestChatRegenerateLastResponseOnly:
             earlier_item.scroll_into_view_if_needed()
             earlier_item.hover()
             expect(earlier_item).to_be_visible(timeout=UI_TIMEOUT)
+            # Positive control: the hover revealed the earlier item's action bar (read-out,
+            # copy markdown, copy text), so the absence checks cannot pass on an empty bar.
+            for shown in (
+                ChatPage.read_out_button,
+                ChatPage.copy_markdown_action_button,
+                ChatPage.copy_text_action_button,
+            ):
+                expect(shown.resolve(earlier_item)).to_have_count(1, timeout=UI_TIMEOUT)
             expect(earlier_item.filter(has=chat.regenerate_action_button)).to_have_count(0)
             expect(earlier_item.filter(has=chat.delete_action_button)).to_have_count(0)
 
@@ -123,7 +133,11 @@ class TestChatRegenerateLastResponseOnly:
                 expect(earlier).to_be_visible(timeout=UI_TIMEOUT)
                 # Positive control: the hover revealed this item's action bar (AFS Gap assertion 1),
                 # so the absence checks below cannot pass merely because nothing rendered.
-                for shown in (ChatPage.copy_action_button, ChatPage.read_out_button):
+                for shown in (
+                    ChatPage.read_out_button,
+                    ChatPage.copy_markdown_action_button,
+                    ChatPage.copy_text_action_button,
+                ):
                     expect(shown.resolve(earlier)).to_have_count(1, timeout=UI_TIMEOUT)
                 expect(ChatPage.regenerate_action_button.resolve(earlier)).to_have_count(0)
                 expect(ChatPage.delete_action_button.resolve(earlier)).to_have_count(0)
@@ -137,6 +151,8 @@ class TestChatRegenerateLastResponseOnly:
             expect(regenerate).to_be_visible(timeout=UI_TIMEOUT)
 
         with allure.step("Step 4 — Click Regenerate: a new generation runs and completes in place"):
+            # The corner announcement banner can render late and cover the action bar.
+            chat.dismiss_banner_if_present()
             regenerate.click()
             expect(chat.chat_inject_button).to_have_count(1, timeout=UI_TIMEOUT)
             expect(chat.chat_inject_button).to_have_count(0, timeout=60_000)

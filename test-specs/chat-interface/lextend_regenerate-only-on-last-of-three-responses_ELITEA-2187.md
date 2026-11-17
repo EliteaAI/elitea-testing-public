@@ -11,7 +11,7 @@
 2184 already proves, with two exchanges, that the last AI item holds Regenerate (+Delete/Copy/Read-out) and the earlier AI item holds none of Regenerate/Delete, and that the page has exactly one Regenerate button. 2187 states the same observable with "at least 3 pairs" and "any earlier response", plus a click on the last Regenerate that triggers a new generation. Same expected result, different amount of data - not a different flow.
 
 ## Gap assertions (what 2184 does not cover)
-1. **Three exchanges, every earlier item.** Send 3 prompts (6 `chat-message-item`, 3 AI). Loop over ALL earlier AI items (enumerate, no positional pick): each has `chat-regenerate-button` count 0 and `chat-delete-button` count 0; Copy/Read-out count 1 (do not assert absence). Observed live: items 0,1 -> regen 0, delete 0, copy 1, read-out 1; item 2 (last) -> 1,1,1,1.
+1. **Three exchanges, every earlier item.** Send 3 prompts (6 `chat-message-item`, 3 AI). Loop over ALL earlier AI items (enumerate, no positional pick): each has `chat-regenerate-button` count 0 and `chat-delete-button` count 0; Read-out, Copy markdown and Copy text count 1 each (do not assert absence). Observed live: items 0,1 -> regen 0, delete 0, copy markdown 1, copy text 1, read-out 1; item 2 (last) -> all five 1.
 2. **Click on the last Regenerate triggers a generation.** Hover last AI item, click `chat-regenerate-button`; expect `chat-inject-button` (Stop) count 1, then count 0 (<=60s). Message count stays 6 (replaced in place).
 3. **After regeneration the exclusivity still holds.** Page-wide `chat-regenerate-button` count == 1 and it is inside the (new) last AI item; earlier items still 0. Observed: count 1, 3 AI items.
 
@@ -35,7 +35,7 @@ Implementer: extend 2184's spec (add the third exchange, loop the earlier items,
 | Message item | 1 | `chat-message-item` (`ChatPage.messages_container`) | - | testid on DEV ✓ |
 | AI filter | - | `ChatPage._is_ai_message` | - | used live ✓ |
 | Regenerate | 1 | `chat-regenerate-button` (`ChatPage.regenerate_action_button`) | - | testid on DEV ✓ |
-| Delete / Copy / Read-out | 1 | `chat-delete-button` / `chat-copy-button` / `chat-read-out-button` | - | testid on DEV ✓ |
+| Delete / Copy / Read-out | 1 | `chat-delete-button` / `chat-copy-markdown-button` + `chat-copy-text-button` / `chat-read-out-button` | - | testid on DEV ✓ |
 | Stop | 1 | `chat-inject-button` (`ChatPage.chat_inject_button`) | - | testid on DEV ✓ |
 
 ## Automation Hints
@@ -46,3 +46,9 @@ Implementer: extend 2184's spec (add the third exchange, loop the earlier items,
 
 ## Known Defects / Blocked
 None.
+
+## Adjustment (2026-11-17, issue #2969)
+- **Triage:** class A, UI drift: single `chat-copy-button` split into `chat-copy-markdown-button` / `chat-copy-text-button` on DEV.
+- **Old -> new:** earlier-item positive control `copy_action_button` -> `copy_markdown_action_button` + `copy_text_action_button` (+ read-out kept).
+- **Expected-result changes:** earlier responses offer read out, copy markdown, copy text (no regenerate/delete); last offers those plus regenerate and delete.
+- Click on Regenerate now preceded by `dismiss_banner_if_present()` (corner banner intercepted the click once).
