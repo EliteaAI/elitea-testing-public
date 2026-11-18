@@ -1823,6 +1823,47 @@ class PipelineDetailPage(PipelineFormPage):
         description="Add Node menu popup listing every node type"
     )
 
+    # Empty-canvas state of a pipeline with no user node (FlowEmptyState.jsx) —
+    # ELITEA-4714. END also vanishes from the canvas while it is shown.
+    empty_state = LocatorDescriptor(
+        testid="pipeline-empty-state",
+        description="Empty-canvas card 'Start by adding your first node to the canvas!' (shown only while no node exists)"
+    )
+
+    empty_state_add_node_button = LocatorDescriptor(
+        testid="pipeline-empty-state-add-node-button",
+        description="'Add Node' button on the empty-canvas card — opens the node-type selector"
+    )
+
+    node_type_selector = LocatorDescriptor(
+        testid="pipeline-node-type-selector",
+        description="Node-type selector popup opened from the empty-state card's Add Node button"
+    )
+
+    connection_dropdown_menu = LocatorDescriptor(
+        testid="pipeline-connection-dropdown-menu",
+        description="Dropdown shown when an output-handle drag is released on empty canvas (ConnectionDropdown.jsx)"
+    )
+
+    connection_dropdown_create = LocatorDescriptor(
+        testid="pipeline-connection-dropdown-create",
+        description="'+ Create new node' entry of the connection dropdown"
+    )
+
+    # MUI Tooltip popper (no testid on DEV): `role=tooltip` is unique while a single hover is active.
+    tooltip = LocatorDescriptor(
+        role="tooltip",
+        suggested_testid="pipeline-test-button-tooltip",
+        description="Currently shown MUI tooltip (the Test Pipeline gate reason after hovering the disabled button)"
+    )
+
+    # Per-node templated testid constants, scoped to one ReactFlow node wrapper (`rf__node-{id}`).
+    NODE_ENTRYPOINT_BADGE = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-entrypoint-badge"]'
+    NODE_SUMMARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary"]'
+    NODE_SUMMARY_PRIMARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary-primary"]'
+    NODE_SUMMARY_SECONDARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary-secondary"]'
+    NODE_OUTPUT_HANDLE = '[data-testid="pipeline-node-add-from-output-{}-source"]'
+
     # Dynamic (runtime-parameterized) testid — one per node type rendered in
     # the Add Node menu, keyed by the INTERNAL type (FlowEditorConstants.
     # PipelineNodeTypes value, e.g. "llm", "hitl", "state_modifier"), not the
@@ -1857,6 +1898,12 @@ class PipelineDetailPage(PipelineFormPage):
         suggested_testid="pipeline-add-node-menu-item-label",
         description="Label span inside an Add Node menu item; sibling bodySmall span holds the description",
     )
+
+    # ReactFlow edge groups — third-party library output, no testid can be placed (permanent css rung,
+    # #579 exception; ELITEA-4714).
+    # Declared improvisation: LocatorDescriptor rejects a css= rung without suggested_testid=, and no hint can
+    # ever be honoured here, so this is an UPPER_CASE class constant (same idiom as chat_page RENDERED_CODE_BLOCK).
+    CANVAS_EDGE = ".react-flow__edge"
 
     # Generic "any canvas popup menu" check — shared DOM shape across two
     # distinct app components, each with its own real testid (not a raw
@@ -7237,6 +7284,20 @@ class PipelineDetailPage(PipelineFormPage):
             self.save_button.evaluate("el => el.click()")
         return response_info.value.json()
 
+    def save_and_wait_for_saved(self, timeout: int = 20000) -> None:
+        """Click Save and wait for the save request's successful response (no ids needed).
+
+        Replaces the ``wait_for_network()`` (networkidle) wait after Save, which cannot settle
+        while the app's Socket.IO polling stays open (#1847).
+        """
+        with self.page.expect_response(
+            lambda r: "/application/prompt_lib/" in r.url
+            and r.request.method in ("PUT", "POST", "PATCH")
+            and r.ok,
+            timeout=timeout,
+        ):
+            self.save_button.click()
+
     def save_and_wait_for_error_response(
         self, project_id: str, pipeline_id: int, timeout: int = 15000
     ) -> dict:
@@ -10135,3 +10196,113 @@ class PipelineDetailPage(PipelineFormPage):
             yield frames
         finally:
             self.page.remove_listener("websocket", _on_websocket)
+
+    # ------------------------------------------------------------------
+    # New-pipeline empty canvas / Test Pipeline gate (ELITEA-4714)
+    # ------------------------------------------------------------------
+
+    def read_test_button_tooltip(self, timeout: int = 5000) -> str:
+        """Hover the Test Pipeline button and return the tooltip text ('' when none shows).
+
+        The disabled state lives on the inner button and the tooltip on its wrapper, so the
+        hover is forced. The pointer is parked away first so a previous tooltip is gone and the
+        text read always belongs to THIS hover.
+        """
+        self.page.mouse.move(0, 0)
+        expect(self.tooltip).to_have_count(0, timeout=timeout)
+        self.test_pipeline_button.wait_for(state="visible", timeout=timeout)
+        self.test_pipeline_button.hover(force=True)
+        try:
+            self.tooltip.first.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError:
+            return ""
+        return (self.tooltip.first.inner_text() or "").strip()
+
+    def _stable_handle_box(self, handle: Locator, timeout: int = 5000, max_reads: int = 20) -> dict:
+        """Bounding box of ``handle`` once two consecutive reads (one animation frame apart) agree.
+
+        A ReactFlow node re-lays-out after a save; a box read mid-layout is a wrong drag start.
+        """
+        prev = None
+        for _ in range(max_reads):
+            box = handle.bounding_box()
+            if box is not None and box == prev:
+                return box
+            prev = box
+            # Frame-boundary wait (not a sleep): lets pending layout/paint commit between reads.
+            self.page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+        raise RuntimeError(f"Handle box never stabilised within {max_reads} reads (last={prev})")
+
+    def _drag_handle_once(self, handle: Locator, dx: int, dy: int, timeout: int) -> None:
+        handle.wait_for(state="visible", timeout=timeout)
+        # Hover FIRST: the handle moves/grows (12px resting -> 16px hovered) when the node is hovered, so the
+        # box that matters is the hovered one. Read it once stable, then centre the pointer on it.
+        handle.hover(timeout=timeout)
+        box = self._stable_handle_box(handle, timeout)
+        sx = box["x"] + box["width"] / 2
+        sy = box["y"] + box["height"] / 2
+        viewport = self.page.viewport_size or {"width": 1280, "height": 720}
+        tx = min(sx + dx, viewport["width"] - 20)
+        ty = min(sy + dy, viewport["height"] - 20)
+        self.page.mouse.move(sx, sy)
+        self.page.mouse.down()
+        steps = 15
+        for i in range(1, steps + 1):
+            self.page.mouse.move(sx + (tx - sx) * i / steps, sy + (ty - sy) * i / steps)
+        # A few extra moves at the release point so onConnectEnd sees a settled pointer.
+        for _ in range(3):
+            self.page.mouse.move(tx, ty)
+        self.page.mouse.up()
+
+    def drag_output_handle_to_empty_canvas(self, node_id: str, dx: int = 260, dy: int = 300, timeout: int = 10000):
+        """Drag from a node's Output (+) handle and release on empty canvas; wait for the connection dropdown.
+
+        Real mouse events (hover, down, stepped move, up) — the handle is 16x16 px. The start box is read
+        only once stable; a missed drag (no dropdown within ~3s) is idempotent, so it is retried once.
+        """
+        handle = self.page.locator(self.NODE_OUTPUT_HANDLE.format(node_id))
+        self._drag_handle_once(handle, dx, dy, timeout)
+        try:
+            self.connection_dropdown_menu.wait_for(state="visible", timeout=3000)
+            return
+        except PlaywrightTimeoutError:
+            pass
+        self._drag_handle_once(handle, dx, dy, timeout)
+        self.connection_dropdown_menu.wait_for(state="visible", timeout=timeout)
+
+    def node_type_menu_labels(self, timeout: int = 5000) -> list[str]:
+        """Labels (first line of each item) of the OPEN node-type menu, in DOM order."""
+        items = self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        return [
+            (self.ADD_NODE_MENU_ITEM_LABEL.within(items.nth(i)).text_content() or "").strip()
+            for i in range(items.count())
+        ]
+
+    def node_type_menu_items(self) -> Locator:
+        """Every item currently rendered in an open node-type menu (count 0 when closed)."""
+        return self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
+
+    def click_outside_menus(self, x: int = 60, y: int = 500) -> None:
+        """Click on blank page area (outside any popup) to dismiss an open menu."""
+        self.page.mouse.click(x, y)
+
+    def node_entrypoint_badge(self, node_id: str) -> Locator:
+        """The 'Entrypoint' badge inside one node card."""
+        return self.page.locator(self.NODE_ENTRYPOINT_BADGE.format(node_id))
+
+    def node_summary(self, node_id: str) -> Locator:
+        """The summary block of one node card ('Not configured' while unconfigured)."""
+        return self.page.locator(self.NODE_SUMMARY.format(node_id))
+
+    def node_summary_primary(self, node_id: str) -> Locator:
+        """Primary summary line of a configured node card (absent while unconfigured)."""
+        return self.page.locator(self.NODE_SUMMARY_PRIMARY.format(node_id))
+
+    def node_summary_secondary(self, node_id: str) -> Locator:
+        """Secondary summary line of a configured node card."""
+        return self.page.locator(self.NODE_SUMMARY_SECONDARY.format(node_id))
+
+    def expect_edge_count(self, count: int, timeout: int = 10000) -> None:
+        """Wait until the canvas shows exactly *count* edges (ReactFlow draws them after the save settles)."""
+        expect(self.page.locator(self.CANVAS_EDGE)).to_have_count(count, timeout=timeout)
