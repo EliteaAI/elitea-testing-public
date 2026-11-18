@@ -30,8 +30,8 @@ EMPTY_TEXT = "Tools you select in nodes will appear here."
     "ELITEA-4718_pipeline-tools-selected-in-nodes-auto-attach-and-read-only-tools-section.md",
     "onetest-ai Test Case link",
 )
-def test_tools_selected_in_nodes_auto_attach_and_read_only_tools(page, artifact_toolkit, agent_id, agent_api,
-                                                                 pipeline_api):
+def test_tools_selected_in_nodes_auto_attach_and_read_only_tools(page, artifact_toolkit, mcp_toolkit_with_tools,
+                                                                 agent_id, agent_api, pipeline_api):
     """Node pickers attach to TOOLS (shared, 'Used by'), clear detaches, Discard restores, saved YAML is clean."""
     tk = artifact_toolkit["name"]
     agent_name = agent_api.get_agent(agent_id)["name"]
@@ -65,6 +65,10 @@ def test_tools_selected_in_nodes_auto_attach_and_read_only_tools(page, artifact_
             expect(pp.toolkit_picker_option_named(tk)).to_have_count(1)
             row_texts = pp.get_toolkit_picker_row_texts()
             assert any(tk in t for t in row_texts), f"Fixture toolkit {tk!r} missing from picker rows {row_texts}"
+            # 'no MCPs': the project's MCP toolkit exists (fixture) yet must not be offered by the Toolkit picker
+            mcp_names = {mcp_toolkit_with_tools["name"], mcp_toolkit_with_tools["toolkit_name"]}
+            leaked = [t for t in row_texts if any(n in t for n in mcp_names)]
+            assert not leaked, f"MCP toolkit {mcp_names} must be absent from the Toolkit picker, found rows {leaked}"
 
         with allure.step("Step 3 — Select the toolkit and a tool: ONE TOOLS card, Used by Toolkit 1, Show tools"):
             pp.select_toolkit_node_toolkit(tk, timeout=T)
