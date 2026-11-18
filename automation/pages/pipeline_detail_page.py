@@ -7577,6 +7577,61 @@ class PipelineDetailPage(PipelineFormPage):
         """Read the current value of the EDITOR NOTES textarea."""
         return self.editor_notes_input.input_value()
 
+    # ReactFlow auto-pans while a connection is dragged near the pane edge: keep both handles at
+    # least this many px inside (Fit View leaves ~35px; the measured failure was 2px).
+    _CONNECT_PANE_EDGE_MARGIN_PX = 20
+
+    def _ensure_connection_handles_clear_of_pane_edges(
+        self, source_node_id: str, target_node_id: str, source_handle: str | None
+    ) -> None:
+        """Fit the view if the source or target handle sits in the pane's auto-pan edge zone.
+
+        ELITEA-2016 (issue #2835 reopened, 2026-11-18): intermittently the
+        ``feature_responder -> END`` drag created no edge. Measured on the failing
+        run: the source handle was at y=738.9 inside a flow pane ending at y=741, so
+        the drag started inside ReactFlow's connection auto-pan zone; the viewport
+        slid while the pointer moved and the End target handle left the drop point
+        (the handle itself was hittable, so the existing hit test passed). The layout
+        varies run to run, so this is checked (and cured with Fit View) before every
+        drag rather than assumed from Step 2. Geometry measurement only -- the drag
+        is still a real mouse gesture.
+
+        The mechanism (auto-pan shifting the viewport) is INFERRED from the
+        geometry; the viewport shift itself was not captured. Both the SOURCE
+        and the TARGET handle are measured. The 20 px margin targets the
+        observed edge case (2 px) only: xyflow's autoPanOnConnect band is
+        probably wider (~40 px, unverified), so handles 20-40 px from the pane
+        edge remain a known residual risk. The margin cannot simply be raised --
+        Fit View leaves ~35 px and a 56 px margin never settles.
+        """
+        measure = """([srcId, tgtId, handleSuffix, margin]) => {
+            const pane = document.querySelector('.react-flow');
+            const srcNode = document.querySelector(`[data-id="${srcId}"]`);
+            const tgtNode = document.querySelector(`[data-id="${tgtId}"]`);
+            if (!pane || !srcNode || !tgtNode) return true;
+            let sh = null;
+            if (handleSuffix) {
+                sh = srcNode.querySelector(`[data-handlepos="bottom"][data-handleid$="_${handleSuffix}"]`)
+                  || srcNode.querySelector(`[data-handlepos="bottom"][data-handleid="${handleSuffix}"]`);
+            }
+            sh = sh || srcNode.querySelector('[data-handlepos="bottom"]');
+            const th = tgtNode.querySelector('[data-handlepos="top"]');
+            if (!sh || !th) return true;
+            const p = pane.getBoundingClientRect();
+            return [sh, th].every((h) => {
+                const r = h.getBoundingClientRect();
+                return r.left >= p.left + margin && r.right <= p.right - margin
+                    && r.top >= p.top + margin && r.bottom <= p.bottom - margin;
+            });
+        }"""
+        args = [source_node_id, target_node_id, source_handle, self._CONNECT_PANE_EDGE_MARGIN_PX]
+        for _ in range(2):
+            if self.page.evaluate(measure, args):
+                return
+            logger.info("Handle(s) of %s -> %s inside the pane auto-pan edge zone; fitting the view",
+                        source_node_id, target_node_id)
+            self.fit_view()
+
     def connect_nodes(
         self,
         source_node_id: str,
@@ -7645,6 +7700,8 @@ class PipelineDetailPage(PipelineFormPage):
         """
         handle_desc = f" (handle={source_handle})" if source_handle else ""
         logger.info("Connecting %s%s -> %s", source_node_id, handle_desc, target_node_id)
+
+        self._ensure_connection_handles_clear_of_pane_edges(source_node_id, target_node_id, source_handle)
 
         # Geometry measurement only -- handle rects and hit-testing. The drag
         # itself is performed below with real mouse events.

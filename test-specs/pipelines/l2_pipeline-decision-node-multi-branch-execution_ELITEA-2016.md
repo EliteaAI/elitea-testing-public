@@ -265,3 +265,13 @@ None.
   - `fill_printer_node_value_for_node` / `get_printer_node_value_for_node`: card-scoped `rf__node-<id>` + `PRINTER_NODE_VALUE_TESTID` with zoom/scroll logic -> `open_node_panel(node_id)`, act on the panel's `printer_node_value`, close the panel. The zoom-in / restore-Fit-View logic and the card-scoped constant are removed.
   - Spec Step 4: closes the Decision side panel (`close_node_panel`) before dragging the branch -> END edges.
 - Expected-result changes: none (all assertions, counts, steps and markers unchanged).
+
+## Adjustment — 2026-11-18 (issue #2835 reopened, class D robustness)
+
+- Symptom: Step 4 `wait_for_edge_present` timed out intermittently (~2 of 6 runs on DEV); `connect_nodes` did not raise (source handle hit-test passed) yet no edge was created.
+- Evidence (handle/drop-target rects + `elementFromPoint` logged on a failing run): the drop target (End top handle) was hittable, but the source handle of `feature_responder` sat at y=738.9 inside a flow pane ending at y=741, i.e. ~2 px from the pane edge. Layout/zoom after Steps 1-3 varies run to run, so it was intermittent.
+- Mechanism is INFERRED, not observed: the working hypothesis is that a drag starting that close to the edge triggers ReactFlow's connection auto-pan, shifting the viewport so the End handle leaves the pre-computed drop point. The viewport shift itself was NOT captured. The 10/10 green result after the fix is consistent with the hypothesis but does not prove it.
+- Fix (page object only): `connect_nodes` first calls new `_ensure_connection_handles_clear_of_pane_edges`, which measures both handles against the `.react-flow` pane and runs Fit View (up to twice) when either is within 20 px of the pane edge. No timeout change.
+- Known residual risk: 20 px targets the observed edge case only. xyflow's autoPanOnConnect band is likely wider (~40 px recalled, UNVERIFIED: the xyflow source was not readable locally and was not fetched); handles at 20-40 px from the pane edge remain uncovered. The margin was not raised because Fit View itself leaves ~35 px (a 56 px margin never settled and failed a run).
+- Result: 10/10 consecutive green (separate processes, `--reruns=0`); 4 failures in the preceding runs without the fix.
+- Expected-result changes: none (all assertions, counts, steps and markers unchanged).
