@@ -14,6 +14,7 @@ slightly (quotes / trailing period).
 """
 
 import re
+import warnings
 
 import allure
 import pytest
@@ -166,7 +167,10 @@ def test_new_pipeline_empty_canvas_first_node_and_test_gate(page, agent_id, agen
             expect(pp.empty_state_add_node_button).to_be_visible()
 
         if soft_failures:
-            pytest.fail("Soft tooltip checks failed:\n" + "\n".join(soft_failures))
+            # Tooltip wording is SOFT per the case/AFS: record it, never fail the test on it.
+            report = "Soft tooltip checks differ from case wording:\n" + "\n".join(soft_failures)
+            allure.attach(report, name="soft tooltip mismatches", attachment_type=allure.attachment_type.TEXT)
+            warnings.warn(report, stacklevel=1)
     finally:
         if created_id is not None:
             try:

@@ -1899,6 +1899,12 @@ class PipelineDetailPage(PipelineFormPage):
         description="Label span inside an Add Node menu item; sibling bodySmall span holds the description",
     )
 
+    # ReactFlow edge groups — third-party library output, no testid can be placed (permanent css rung,
+    # #579 exception; ELITEA-4714).
+    # Declared improvisation: LocatorDescriptor rejects a css= rung without suggested_testid=, and no hint can
+    # ever be honoured here, so this is an UPPER_CASE class constant (same idiom as chat_page RENDERED_CODE_BLOCK).
+    CANVAS_EDGE = ".react-flow__edge"
+
     # Generic "any canvas popup menu" check — shared DOM shape across two
     # distinct app components, each with its own real testid (not a raw
     # role/class selector): the Add Node menu above, and the ReactFlow
@@ -10256,4 +10262,4 @@ class PipelineDetailPage(PipelineFormPage):
 
     def expect_edge_count(self, count: int, timeout: int = 10000) -> None:
         """Wait until the canvas shows exactly *count* edges (ReactFlow draws them after the save settles)."""
-        expect(self.page.locator(".react-flow__edge")).to_have_count(count, timeout=timeout)
+        expect(self.page.locator(self.CANVAS_EDGE)).to_have_count(count, timeout=timeout)
