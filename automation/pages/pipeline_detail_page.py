@@ -10640,7 +10640,11 @@ class PipelineDetailPage(PipelineFormPage):
         """Wait until the page-level YAML editor rendered the whole document, not just its first 4 lines."""
         self.yaml_editor.wait_for(state="visible", timeout=timeout)
         lines = self.yaml_editor.locator(self.YAML_LINE_SELECTOR)
-        expect.poll(lines.count, timeout=timeout).to_be_greater_than(5)
+        deadline = time.monotonic() + timeout / 1000
+        while lines.count() <= 5:
+            if time.monotonic() > deadline:
+                raise AssertionError(f"YAML editor rendered only {lines.count()} lines")
+            self.yaml_editor.wait_for(state="visible", timeout=500)
 
     def get_yaml_node_blocks(self) -> dict:
         """Parse the page YAML view into ``{node id: node dict}`` (call after ``wait_for_page_yaml_rendered``)."""
