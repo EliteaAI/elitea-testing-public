@@ -1912,9 +1912,9 @@ class PipelineDetailPage(PipelineFormPage):
         description="CodeMirror replace-all button (third-party internals, #579 exception); scope = node YAML editor",
     )
     NODE_YAML_LINE = ScopedLocator(
-        css='.cm-line:text-is("{}")',
+        css='.cm-line:has-text("{}")',
         suggested_testid="pipeline-node-yaml-line-{}",
-        description="One CodeMirror line by exact text (third-party internals, #579 exception); scope = YAML content",
+        description="One CodeMirror line by text (has-text: lines are split into styled spans so text-is never matches; strict mode rejects ambiguity) — third-party internals, #579 exception; scope = YAML content",
     )
     # Any editable control inside one canvas node wrapper (scope = `rf__node-{id}` locator via .within()).
     NODE_EDITABLE_CONTROL = ScopedLocator(
@@ -10507,7 +10507,7 @@ class PipelineDetailPage(PipelineFormPage):
     def set_node_yaml_line(self, current_line_text: str, new_line_text: str, timeout: int = 10000) -> None:
         """Replace one node-YAML line (exact, indentation-preserving: ``Home`` skips leading blanks).
 
-        *current_line_text* is matched against the line's text with ``exact=True`` (leading ``- `` of the
+        *current_line_text* is matched as a unique substring of the line's text (strict-mode locator) (leading ``- `` of the
         first list item is part of the line text). Writes via ``insert_text`` (CodeMirror ignores fill()).
         """
         line = self.NODE_YAML_LINE.within(self.node_yaml_content(), current_line_text)
