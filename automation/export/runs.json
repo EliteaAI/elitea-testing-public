@@ -4283,6 +4283,47 @@
       "scenarios_automated": 2,
       "scenarios_executed": 2,
       "notes": "gate green (2 passed 61.9s,2 passed 45.2s,2 passed 44.2sx); outcomes: automated 2. Telemetry cohort: reconstructed from .agents/automation/elitea-4716-4717/cost.json (v1); batch slug 'elitea-4716-4717'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-elitea-4718",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 21,
+      "subagent_dispatches": 15,
+      "orchestrator_cost_pct": 24,
+      "tokens": {
+        "input": 122428,
+        "output": 130800,
+        "cache_read": 20277768,
+        "cache_create": 2406664
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5",
+        "<synthetic>"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 122428,
+          "output": 130800,
+          "cache_read": 20277768,
+          "cache_create": 2406664
+        },
+        "<synthetic>": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_create": 0
+        }
+      },
+      "cost_api_equivalent_usd": 10.56,
+      "cache_read_share_pct": 34.9,
+      "scenarios_authored": 1,
+      "scenarios_automated": 1,
+      "scenarios_executed": 1,
+      "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/elitea-4718/cost.json (v1); batch slug 'elitea-4718'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
