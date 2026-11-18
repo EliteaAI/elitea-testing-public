@@ -10527,3 +10527,124 @@ class PipelineDetailPage(PipelineFormPage):
         self.node_yaml_content().click(timeout=timeout)
         self.page.keyboard.press("Control+a")
         self.page.keyboard.insert_text(new_text)
+
+    # ------------------------------------------------------------------
+    # TOOLS section is read-only; tools attach via node pickers (ELITEA-4718, EL-7159)
+    # ------------------------------------------------------------------
+
+    tools_section_empty = LocatorDescriptor(
+        testid="pipeline-tools-section-empty",
+        description="TOOLS section's 'Tools you select in nodes will appear here.' placeholder (no attachments)",
+    )
+    tool_card_version = LocatorDescriptor(
+        testid="pipeline-tool-card-version",
+        description="Version label on a TOOLS card of an attached agent/pipeline (e.g. 'base')",
+    )
+    toolkit_node_toolkit_select_clear = LocatorDescriptor(
+        testid="pipeline-toolkit-node-toolkit-select-clear",
+        description="Toolkit node panel's clear (X) button next to the Toolkit picker",
+    )
+    toolkit_node_picker_menu = LocatorDescriptor(
+        testid="pipeline-toolkit-node-toolkit-select-menu",
+        description="Toolkit node's project toolkit picker menu",
+    )
+    toolkit_node_picker_search = LocatorDescriptor(
+        testid="pipeline-toolkit-node-toolkit-select-menu-search",
+        description="Search field of the Toolkit node's picker menu",
+    )
+    toolkit_node_picker_create_new = LocatorDescriptor(
+        testid="pipeline-toolkit-node-toolkit-select-create-new",
+        description="'Create new' entry of the Toolkit node's picker menu",
+    )
+    agent_node_picker_menu = LocatorDescriptor(
+        testid="pipeline-agent-node-agent-select-menu",
+        description="Agent node's 'Agents & Pipelines' picker menu",
+    )
+    agent_node_picker_create_agent = LocatorDescriptor(
+        testid="pipeline-agent-node-agent-select-create-agent",
+        description="'Create agent' entry of the Agent node's picker menu",
+    )
+    agent_node_picker_create_pipeline = LocatorDescriptor(
+        testid="pipeline-agent-node-agent-select-create-pipeline",
+        description="'Create pipeline' entry of the Agent node's picker menu",
+    )
+    discard_confirm_button = LocatorDescriptor(
+        testid="discard-confirm-button",
+        description="'Discard' confirm button of the 'Are you sure you want to discard changes?' dialog",
+    )
+    TOOLKIT_NODE_PICKER_IN_USE = '[data-testid="pipeline-toolkit-node-toolkit-select-option-in-use"]'
+    PICKER_GROUP_TITLE = ScopedLocator(
+        xpath=".//span[normalize-space(text())='{}']",
+        suggested_testid="pipeline-agent-node-agent-select-group-title-{}",
+        description=(
+            "rungs 1-4 failed: group titles 'Agents'/'Pipelines' are plain MUI typography spans without testid "
+            "(PickerMenu.jsx); scoped under the picker menu testid, exact text"
+        ),
+    )
+
+    def expand_tools_section(self, timeout: int = 10000) -> None:
+        """Make the left TOOLS section visible (an open node panel collapses it) — closes the panel if needed."""
+        self.ensure_toolkits_section_visible(timeout=timeout)
+
+    def tool_card_named(self, name: str) -> Locator:
+        """TOOLS cards whose text contains *name* (toolkit / agent / pipeline name)."""
+        return self.toolkit_card.filter(has_text=name)
+
+    def tool_card_used_by_chips(self, name: str) -> Locator:
+        """The 'Used by' chips of the TOOLS card named *name*."""
+        return self.tool_card_named(name).first.locator(self.TOOLKIT_CARD_USED_BY)
+
+    def click_used_by_chip(self, name: str, node_name: str, timeout: int = 10000) -> None:
+        """Click the 'Used by' chip *node_name* of the TOOLS card *name* (selects the node, opens its panel)."""
+        self.tool_card_used_by_chips(name).filter(has_text=node_name).first.click(timeout=timeout)
+
+    def toolkit_picker_option_named(self, name: str) -> Locator:
+        """The Toolkit picker row whose text contains *name*."""
+        return self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION).filter(has_text=name)
+
+    def toolkit_picker_in_use_marker(self, name: str) -> Locator:
+        """The 'In use' marker inside the Toolkit picker row *name*."""
+        return self.toolkit_picker_option_named(name).first.locator(self.TOOLKIT_NODE_PICKER_IN_USE)
+
+    def get_toolkit_picker_row_texts(self) -> list[str]:
+        """Texts of all currently rendered Toolkit picker rows."""
+        rows = self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION)
+        return [(rows.nth(i).text_content() or "").strip() for i in range(rows.count())]
+
+    def clear_toolkit_node_toolkit(self, timeout: int = 10000) -> None:
+        """Click the X next to the open Toolkit node panel's Toolkit field."""
+        self.toolkit_node_toolkit_select_clear.click(timeout=timeout)
+        expect(self.toolkit_node_toolkit_select_clear).to_have_count(0, timeout=timeout)
+
+    def open_toolkit_node_by_card(self, node_id: str, timeout: int = 10000) -> None:
+        """Open a Toolkit node's panel by clicking its canvas card (closes another open panel first)."""
+        if self.node_panel_close_button.is_visible():
+            self.node_panel_close_button.click(timeout=timeout)
+            self.node_panel_close_button.wait_for(state="detached", timeout=timeout)
+        self.node_card(node_id).click(force=True, timeout=timeout)
+        expect(self.node_panel_name_input).to_have_value(node_id, timeout=timeout)
+
+    def start_discard(self, timeout: int = 10000):
+        """Click Discard (banner-safe) and return the confirmation dialog locator once visible."""
+        self.dismiss_banner_if_present()
+        self.discard_button.wait_for(state="visible", timeout=timeout)
+        self.discard_button.evaluate("el => el.click()")
+        return Dialog.wait_for(self.page, timeout=timeout)
+
+    def confirm_discard(self, timeout: int = 10000) -> None:
+        """Confirm the open discard dialog and wait for it to close."""
+        self.discard_confirm_button.click(timeout=timeout)
+        expect(self.discard_confirm_button).to_have_count(0, timeout=timeout)
+
+    def wait_for_page_yaml_rendered(self, timeout: int = 15000) -> None:
+        """Wait until the page-level YAML editor rendered the whole document, not just its first 4 lines."""
+        self.yaml_editor.wait_for(state="visible", timeout=timeout)
+        lines = self.yaml_editor.locator(self.YAML_LINE_SELECTOR)
+        expect.poll(lines.count, timeout=timeout).to_be_greater_than(5)
+
+    def get_yaml_node_blocks(self) -> dict:
+        """Parse the page YAML view into ``{node id: node dict}`` (call after ``wait_for_page_yaml_rendered``)."""
+        import yaml
+
+        doc = yaml.safe_load(self.get_yaml_content()) or {}
+        return {n.get("id"): n for n in doc.get("nodes", [])}
