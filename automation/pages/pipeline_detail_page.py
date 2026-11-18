@@ -7284,6 +7284,20 @@ class PipelineDetailPage(PipelineFormPage):
             self.save_button.evaluate("el => el.click()")
         return response_info.value.json()
 
+    def save_and_wait_for_saved(self, timeout: int = 20000) -> None:
+        """Click Save and wait for the save request's successful response (no ids needed).
+
+        Replaces the ``wait_for_network()`` (networkidle) wait after Save, which cannot settle
+        while the app's Socket.IO polling stays open (#1847).
+        """
+        with self.page.expect_response(
+            lambda r: "/application/prompt_lib/" in r.url
+            and r.request.method in ("PUT", "POST", "PATCH")
+            and r.ok,
+            timeout=timeout,
+        ):
+            self.save_button.click()
+
     def save_and_wait_for_error_response(
         self, project_id: str, pipeline_id: int, timeout: int = 15000
     ) -> dict:
