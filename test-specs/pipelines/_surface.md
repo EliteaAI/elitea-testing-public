@@ -5,6 +5,13 @@
 > place, don't append duplicate entries. Last updated: 2026-09-10 (card #2139 — delete-redirect arrival-path rule; prior: ELITEA-2002 repair
 > pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
 
+## Duplicate node (confirmed live on DEV, 2026-11-18, ELITEA-4719)
+
+- Footer `pipeline-node-panel-duplicate` (aria "Duplicate node"); toast `"<id> duplicated as <id>_copy"` (`_copy_2`, ... first free name; duplicating a copy gives `_copy_copy`). Copy: panel opens on it, Save enabled, no `transition`/edges, no entrypoint badge, shares ONE TOOLS card ("Used by" both). Copy is offset +40,+40 over the original: force-click on the original's centre hits the copy; click at position (10,10) or JS click.
+- Run highlight = `data-status="running"` on `pipeline-node-card-{name}` (NodeCard.jsx), absent otherwise; thinking chip names the node space-stripped `(MCP1_copy)`.
+- `platform-banner-corner` intercepts footer/chat-send clicks: use JS click. `chat-input` testid is a wrapper div (use `PipelineDetailPage.chat_input`).
+- Seed: `create_pipeline_with_nodes(..., tools=[toolkit_api.get_toolkit(id)])` with an mcp node using DeepWiki fixture (`read_wiki_structure`, mapping `repoName`).
+
 ## Node tool pickers and read-only TOOLS section (confirmed live on DEV, 2026-11-18, ELITEA-4718)
 
 - TOOLS (`pipeline-tools-section`, empty text `-empty`) is read-only: no `agent-add-*-button`. It is HIDDEN while a node panel is open (left panel collapses) - expand via `pipeline-config-collapse-button`. Cards `pipeline-tool-card` (+ `-name/-version/-used-by/-show-tools/-not-used`), one per attachment; chips `-used-by` click opens that node's panel.
