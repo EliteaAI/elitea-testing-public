@@ -1873,6 +1873,54 @@ class PipelineDetailPage(PipelineFormPage):
     NODE_PANEL = '[data-testid="pipeline-node-panel"]'
     NODE_ENTRYPOINT_BADGE_ANY = '[data-testid="pipeline-node-entrypoint-badge"]'
     NODE_PANEL_ENTRYPOINT_STATE = '[data-testid="pipeline-node-panel-entrypoint-state"]'
+
+    # Node-panel YAML tab (ELITEA-4716 / ELITEA-4717) — all testids served by DEV.
+    node_yaml_copied_message = LocatorDescriptor(
+        xpath="//*[normalize-space(text())='Copied']",
+        suggested_testid="pipeline-node-panel-yaml-copied-toast",
+        description="rungs 1-4 failed: the 'Copied' confirmation after the node YAML copy has no testid/role",
+    )
+    NODE_PANEL_VIEW_FLOW = '[data-testid="pipeline-node-panel-view-flow"]'
+    NODE_PANEL_VIEW_YAML = '[data-testid="pipeline-node-panel-view-yaml"]'
+    NODE_PANEL_YAML = '[data-testid="pipeline-node-panel-yaml"]'
+    NODE_PANEL_YAML_CONTENT = '[data-testid="pipeline-node-panel-yaml-content"]'
+    NODE_PANEL_YAML_ERROR = '[data-testid="pipeline-node-panel-yaml-error"]'
+    NODE_PANEL_YAML_COPY = '[data-testid="pipeline-node-panel-yaml-copy"]'
+    NODE_YAML_LEAVE_DIALOG = '[data-testid="pipeline-node-yaml-leave-dialog"]'
+    NODE_YAML_LEAVE_FIX = '[data-testid="pipeline-node-yaml-leave-fix"]'
+    NODE_YAML_LEAVE_DISCARD = '[data-testid="pipeline-node-yaml-leave-discard"]'
+    # Sanctioned #579 exception (third-party CodeMirror internals, scoped under the testid-bearing
+    # `pipeline-node-panel-yaml` parent): search panel, its match highlights and replace buttons.
+    CM_SEARCH_PANEL = ScopedLocator(
+        css=".cm-search",
+        suggested_testid="pipeline-node-yaml-search-panel",
+        description="CodeMirror search panel (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    CM_SEARCH_MATCH = ScopedLocator(
+        css=".cm-searchMatch",
+        suggested_testid="pipeline-node-yaml-search-match",
+        description="CodeMirror match highlight (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    CM_REPLACE_BUTTON = ScopedLocator(
+        css='.cm-search button[name="replace"]',
+        suggested_testid="pipeline-node-yaml-replace-button",
+        description="CodeMirror replace button (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    CM_REPLACE_ALL_BUTTON = ScopedLocator(
+        css='.cm-search button[name="replaceAll"]',
+        suggested_testid="pipeline-node-yaml-replace-all-button",
+        description="CodeMirror replace-all button (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    NODE_YAML_LINE_ITEM = ScopedLocator(
+        css=".cm-line",
+        suggested_testid="pipeline-node-yaml-line-item",
+        description="CodeMirror line (third-party internals, #579 exception); scope = node YAML content",
+    )
+    NODE_YAML_LINE = ScopedLocator(
+        css='.cm-line:has-text("{}")',
+        suggested_testid="pipeline-node-yaml-line-{}",
+        description="One CodeMirror line by text (has-text: lines are split into styled spans so text-is never matches; strict mode rejects ambiguity) — third-party internals, #579 exception; scope = YAML content",
+    )
     # Any editable control inside one canvas node wrapper (scope = `rf__node-{id}` locator via .within()).
     NODE_EDITABLE_CONTROL = ScopedLocator(
         css='input, select, textarea, [contenteditable="true"]',
@@ -10393,3 +10441,89 @@ class PipelineDetailPage(PipelineFormPage):
     def expect_edge_count(self, count: int, timeout: int = 10000) -> None:
         """Wait until the canvas shows exactly *count* edges (ReactFlow draws them after the save settles)."""
         expect(self.page.locator(self.CANVAS_EDGE)).to_have_count(count, timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Node-panel YAML tab (ELITEA-4716 / ELITEA-4717)
+    # ------------------------------------------------------------------
+
+    def node_panel_view_flow_button(self) -> Locator:
+        """Flow tab of the node panel's Flow/YAML toggle."""
+        return self.page.locator(self.NODE_PANEL_VIEW_FLOW)
+
+    def node_panel_view_yaml_button(self) -> Locator:
+        """YAML tab of the node panel's Flow/YAML toggle."""
+        return self.page.locator(self.NODE_PANEL_VIEW_YAML)
+
+    def node_yaml_content(self) -> Locator:
+        """The node YAML CodeMirror content (``pipeline-node-panel-yaml-content``)."""
+        return self.page.locator(self.NODE_PANEL_YAML_CONTENT)
+
+    def node_yaml_error(self) -> Locator:
+        """Inline error under the node YAML editor (absent when the YAML is valid)."""
+        return self.page.locator(self.NODE_PANEL_YAML_ERROR)
+
+    def node_yaml_leave_dialog(self) -> Locator:
+        """'Invalid node YAML' leave-guard modal."""
+        return self.page.locator(self.NODE_YAML_LEAVE_DIALOG)
+
+    def node_yaml_leave_fix_button(self) -> Locator:
+        """'Fix' button of the leave-guard modal."""
+        return self.page.locator(self.NODE_YAML_LEAVE_FIX)
+
+    def node_yaml_leave_discard_button(self) -> Locator:
+        """'Discard YAML changes' button of the leave-guard modal."""
+        return self.page.locator(self.NODE_YAML_LEAVE_DISCARD)
+
+    def node_yaml_copy_button(self) -> Locator:
+        """Copy icon of the node YAML editor."""
+        return self.page.locator(self.NODE_PANEL_YAML_COPY)
+
+    def node_yaml_search_panel(self) -> Locator:
+        """CodeMirror search panel inside the node YAML editor."""
+        return self.CM_SEARCH_PANEL.within(self.page.locator(self.NODE_PANEL_YAML))
+
+    def node_yaml_search_matches(self) -> Locator:
+        """CodeMirror search-match highlights inside the node YAML editor."""
+        return self.CM_SEARCH_MATCH.within(self.page.locator(self.NODE_PANEL_YAML))
+
+    def node_yaml_replace_button(self) -> Locator:
+        """CodeMirror 'replace' button (visible once the search panel is open)."""
+        return self.CM_REPLACE_BUTTON.within(self.page.locator(self.NODE_PANEL_YAML))
+
+    def node_yaml_replace_all_button(self) -> Locator:
+        """CodeMirror 'replace all' button (visible once the search panel is open)."""
+        return self.CM_REPLACE_ALL_BUTTON.within(self.page.locator(self.NODE_PANEL_YAML))
+
+    def open_node_yaml_tab(self, timeout: int = 10000) -> None:
+        """Switch the open node panel to its YAML tab and wait for the editor."""
+        self.node_panel_view_yaml_button().click(timeout=timeout)
+        expect(self.node_yaml_content()).to_be_visible(timeout=timeout)
+
+    def open_node_flow_tab(self, timeout: int = 10000) -> None:
+        """Switch the open node panel to its Flow tab (the Name input returns)."""
+        self.node_panel_view_flow_button().click(timeout=timeout)
+        expect(self.node_panel_name_input).to_be_visible(timeout=timeout)
+
+    def node_yaml_text(self) -> str:
+        """Current node YAML, one ``.cm-line`` per line joined with newlines."""
+        lines = self.NODE_YAML_LINE_ITEM.within(self.node_yaml_content())
+        return "\n".join(lines.all_text_contents())
+
+    def set_node_yaml_line(self, current_line_text: str, new_line_text: str, timeout: int = 10000) -> None:
+        """Replace one node-YAML line (exact, indentation-preserving: ``Home`` skips leading blanks).
+
+        *current_line_text* is matched as a unique substring of the line's text (strict-mode locator; the leading ``- `` of the
+        first list item is part of the line text). Writes via ``insert_text`` (CodeMirror ignores fill()).
+        """
+        line = self.NODE_YAML_LINE.within(self.node_yaml_content(), current_line_text)
+        line.click(timeout=timeout)
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self._wait_for_yaml_line_selection_applied(line)
+        self.page.keyboard.insert_text(new_line_text)
+
+    def replace_node_yaml_text(self, new_text: str, timeout: int = 10000) -> None:
+        """Select the whole node YAML and replace it with *new_text* (``insert_text``)."""
+        self.node_yaml_content().click(timeout=timeout)
+        self.page.keyboard.press("Control+a")
+        self.page.keyboard.insert_text(new_text)
