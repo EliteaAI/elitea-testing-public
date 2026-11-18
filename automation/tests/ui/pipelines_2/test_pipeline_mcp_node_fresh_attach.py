@@ -303,9 +303,24 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
     with allure.step("Steps 14-15 (ext) — Test Pipeline: send `test`; MCP tool call shown, run completes"):
         pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.send_message_in_embedded_chat("test", timeout=UI_ELEMENT_TIMEOUT)
+        errors_before_run = len(console_errors)
         pipeline_page.wait_for_embedded_chat_run_completion(timeout=120_000)
+        # Settled completion: the last message's text must stop changing (no partial stream).
+        pipeline_page.wait_for_embedded_chat_response(initial_count=0, stable_duration_ms=3000, timeout=60_000)
+        settled_answer = pipeline_page.get_last_embedded_chat_message_text()
         chip_texts = pipeline_page.get_embedded_chat_tool_chip_texts()
         assert any("ask_wiki_question" in t for t in chip_texts), (
             f"A tool chip for the MCP tool ask_wiki_question should show the MCP call; chips: {chip_texts}"
         )
-        assert pipeline_page.get_last_embedded_chat_message_text(), "The run should return a non-empty answer"
+        final_answer = pipeline_page.get_last_embedded_chat_message_text()
+        assert final_answer, "The run should return a non-empty answer"
+        assert final_answer == settled_answer, (
+            f"The run answer should be settled, but it changed after completion: {settled_answer!r} -> {final_answer!r}"
+        )
+        error_markers = ("something went wrong", "error occurred", "failed", "traceback", "exception")
+        assert not any(m in final_answer.lower() for m in error_markers), (
+            f"The run should complete without errors, but the answer shows an error state: {final_answer[:300]!r}"
+        )
+        assert len(console_errors) == errors_before_run, (
+            f"The pipeline run should not introduce console errors: {console_errors[errors_before_run:]}"
+        )
