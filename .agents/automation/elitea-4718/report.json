@@ -1,0 +1,98 @@
+{
+ "batch": "elitea-4718",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-elitea-4718",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   47,
+   46,
+   47
+  ],
+  "failures": [],
+  "note": "first workflow gate red = env (APP_PREFIX unset, 404); lead re-ran 3x with APP_PREFIX=/app, 0 reruns"
+ },
+ "cases": [
+  {
+   "id": "ELITEA-4718",
+   "outcome": "automated",
+   "note": "3/3 green on trunk; review APPROVED",
+   "findings": [
+    {
+     "kind": "clarification",
+     "note": "Case text drift on step 10. After the toolkit is cleared and saved, the YAML keeps an empty `input_mapping: {}` key. The case says no `input_mapping`. Assert no `toolkit_name:`, no `tool:` line, and an empty input_mapping.",
+     "ref": "ELITEA-4718"
+    },
+    {
+     "kind": "note",
+     "note": "The TOOLS section is hidden while a node panel is open, because the left config panel collapses. It has to be re-expanded with `pipeline-config-collapse-button` before reading the cards. The Discard button does not exist on an unsaved new pipeline, so the test must Save once before steps 8-9. The YAML editor first renders only 4 lines, so wait for more than 5 `.cm-line` elements before reading it.",
+     "ref": "ELITEA-4718"
+    },
+    {
+     "kind": "note",
+     "note": "Step 2 (no MCPs in the Toolkit picker) was not observed live because the DEV project had no other toolkit. It rests on the source (`ProjectToolkitPicker.jsx` filters MCP out). The test asserts the MCP name is absent.",
+     "ref": "ELITEA-4718"
+    },
+    {
+     "kind": "note",
+     "note": "The 'Agents' / 'Pipelines' group titles in the agent picker have no testid. They are plain MUI spans, so use a ladder locator scoped to the menu with a `suggested_testid`.",
+     "ref": "ELITEA-4718"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case text drift: Discard exists only on a saved pipeline, so the spec saves once after Step 5 and Steps 6-9 run on the saved pipeline."
+    },
+    {
+     "kind": "clarification",
+     "note": "Case text drift: after clearing a toolkit, the saved YAML keeps an empty `input_mapping: {}` key. The spec asserts no entries, not no key."
+    },
+    {
+     "kind": "note",
+     "note": "The sandbox has no `automation/.env.test`, so every run needs `APP_PREFIX=/app` exported or pages 404 and fixtures 401. The gate agent will need the same."
+    },
+    {
+     "kind": "note",
+     "note": "ruff is not installed in the repo `.venv`, so lint was not run."
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation of case, AFS and diff: all 12 case steps have a real assertion at their own step. Step 1 checks the placeholder text and count 0 for all four add buttons. Step 2 checks the menu, search, Create new, the fixture row, and MCP names absent from the rows. Step 3 checks one card, 'Show tools' and chips ['Toolkit 1']. Step 4 checks the in-use marker and 'In use' text. Step 5 checks one car\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "Mechanical ladder grep: command `git diff main...tests/ELITEA-4718-tools-auto-attach -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'`. It returned 6 hits (diff lines 74, 82, 86, 90, 121, 318). Lines 74, 82, 86, 90 and 318 \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/pages/pipeline_detail_page.py"
+    },
+    {
+     "kind": "note",
+     "note": "TMS pair is present at function scope: `@pytest.mark.tms(\"ELITEA-4718\")` plus an `@allure.issue` link. The link's file name matches the case file in the TMS clone (ELITEA-4718_pipeline-tools-selected-in-nodes-auto-attach-and-read-only-tools-section.md exists). Every step is wrapped in `allure.step`. Cleanup runs in `finally` and does not mask the test verdict."
+    },
+    {
+     "kind": "clarification",
+     "note": "The declared case-text drifts are handled as the AFS records them. The pipeline is saved once in Step 5 because Discard does not exist on an unsaved pipeline. The YAML check asserts that `input_mapping` has no entries, not that the key is absent. TOOLS is re-expanded before every read. 'Toolkit selected on the canvas' (case step 6) is asserted only through the panel opening, which is declared in t\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "note",
+     "note": "Nit: `wait_for_page_yaml_rendered` loops on `yaml_editor.wait_for(state='visible', timeout=500)`. The editor is already visible, so this returns at once and the loop spins hot for up to 15s instead of waiting. It works because it is bounded, but a condition wait on the line count, such as `page.wait_for_function`, would be cleaner. Also `import yaml` sits inside `get_yaml_node_blocks`, and `expand\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/pages/pipeline_detail_page.py"
+    },
+    {
+     "kind": "question",
+     "note": "Environment risk for the gate. The test depends on `mcp_toolkit_with_tools`, which needs the external DeepWiki MCP endpoint (the fixture asserts on it), so an endpoint outage errors the whole case even though the other 11 steps do not need it. Step 11 expects both 'Agents' and 'Pipelines' groups in the picker. The case precondition requires another pipeline, and the test seeds none. It relies on D\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    }
+   ],
+   "afs": "test-specs/pipelines/l1_pipeline-tools-selected-in-nodes-auto-attach-read-only-tools_ELITEA-4718.md",
+   "branch": "tests/ELITEA-4718-tools-auto-attach",
+   "spec": "tests.ui.pipelines.test_pipeline_tools_auto_attach_read_only.test_tools_selected_in_nodes_auto_attach_and_read_only_tools"
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": []
+}

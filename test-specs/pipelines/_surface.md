@@ -5,6 +5,14 @@
 > place, don't append duplicate entries. Last updated: 2026-09-10 (card #2139 — delete-redirect arrival-path rule; prior: ELITEA-2002 repair
 > pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
 
+## Node tool pickers and read-only TOOLS section (confirmed live on DEV, 2026-11-18, ELITEA-4718)
+
+- TOOLS (`pipeline-tools-section`, empty text `-empty`) is read-only: no `agent-add-*-button`. It is HIDDEN while a node panel is open (left panel collapses) - expand via `pipeline-config-collapse-button`. Cards `pipeline-tool-card` (+ `-name/-version/-used-by/-show-tools/-not-used`), one per attachment; chips `-used-by` click opens that node's panel.
+- Pickers: `pipeline-{toolkit,agent}-node-{toolkit,agent}-select` + `-menu/-menu-search/-create-new|-create-agent|-create-pipeline/-option/-option-in-use/-clear`. Agent picker rows scroll-load (~76); group titles "Agents"/"Pipelines" are testid-less spans.
+- Discard button (`discard-button`) does not exist until the new pipeline is first saved; dialog confirm `discard-confirm-button`.
+- YAML view: wait `.cm-line` > 5 before reading (early render shows 4 lines only). Cleared toolkit node leaves `input_mapping: {}`.
+- Artifact toolkit via API needs no secrets: POST `/elitea_core/tools/prompt_lib/{pid}` type artifact.
+
 ## New-pipeline EMPTY CANVAS, first node, Test Pipeline gate (confirmed live on DEV, 2026-11-18, ELITEA-4714)
 
 - Create: `sidebar-create-button` -> `/pipelines/create?viewMode=owner`; `pipeline-empty-state` (+ `-add-node-button`) shows only while NO user node exists (END also vanishes). Selector testid `pipeline-node-type-selector`; items `pipeline-add-node-menu-item-{agent,code,decision,hitl,llm,mcp,printer,router,state_modifier,toolkit}` (10, label = first line of item text).

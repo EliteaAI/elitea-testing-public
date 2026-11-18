@@ -751,6 +751,18 @@
       "updated": "2026-11-18",
       "history": []
     },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.PICKER_GROUP_TITLE": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 10576,
+      "kind": "xpath",
+      "selector": ".//span[normalize-space(text())='{}']",
+      "suggested_testid": "pipeline-agent-node-agent-select-group-title-{}",
+      "description": "rungs 1-4 failed: group titles 'Agents'/'Pipelines' are plain MUI typography spans without testid (PickerMenu.jsx); scoped under the picker menu testid, exact text",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
     "pages/pipeline_detail_page.py::PipelineDetailPage.node_yaml_copied_message": {
       "file": "pages/pipeline_detail_page.py",
       "line": 1878,
@@ -1366,10 +1378,10 @@
   },
   "last_sync": "2026-11-18",
   "metric": {
-    "declared_total": 1451,
-    "declared_testid": 1339,
-    "declared_non_testid": 112,
-    "non_testid_with_hint": 91,
+    "declared_total": 1463,
+    "declared_testid": 1350,
+    "declared_non_testid": 113,
+    "non_testid_with_hint": 92,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 27,
@@ -1377,8 +1389,8 @@
       "label": 1,
       "locator": 1,
       "role": 34,
-      "testid": 1339,
-      "xpath": 29
+      "testid": 1350,
+      "xpath": 30
     },
     "locator_debt": 0.0772,
     "unmanaged_handles": 309
