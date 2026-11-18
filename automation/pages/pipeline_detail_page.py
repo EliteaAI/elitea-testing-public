@@ -10235,14 +10235,15 @@ class PipelineDetailPage(PipelineFormPage):
 
     def _drag_handle_once(self, handle: Locator, dx: int, dy: int, timeout: int) -> None:
         handle.wait_for(state="visible", timeout=timeout)
+        # Hover FIRST: the handle moves/grows (12px resting -> 16px hovered) when the node is hovered, so the
+        # box that matters is the hovered one. Read it once stable, then centre the pointer on it.
+        handle.hover(timeout=timeout)
         box = self._stable_handle_box(handle, timeout)
         sx = box["x"] + box["width"] / 2
         sy = box["y"] + box["height"] / 2
         viewport = self.page.viewport_size or {"width": 1280, "height": 720}
         tx = min(sx + dx, viewport["width"] - 20)
         ty = min(sy + dy, viewport["height"] - 20)
-        # Prime the handle: hover (arms ReactFlow's handle hit-test), then centre the pointer.
-        handle.hover(timeout=timeout)
         self.page.mouse.move(sx, sy)
         self.page.mouse.down()
         steps = 15

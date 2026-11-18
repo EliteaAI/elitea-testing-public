@@ -136,7 +136,7 @@ def test_new_pipeline_empty_canvas_first_node_and_test_gate(page, agent_id, agen
             expect(pp.node_summary_primary("Agent 1")).to_have_text(agent_name, timeout=UI_ELEMENT_TIMEOUT)
             expect(pp.node_summary_secondary("Agent 1")).to_have_text(TASK_TEXT, timeout=UI_ELEMENT_TIMEOUT)
             expect(pp.node_entrypoint_badge("Agent 1")).to_have_count(1)
-            pp.wait_for_edge_present("Agent 1", "END", timeout=POST_SAVE_TIMEOUT)
+            pp.wait_for_edge("Agent 1", "EliteAPipelineEnd", timeout=POST_SAVE_TIMEOUT)  # END node's internal edge id
             pp.expect_edge_count(1)  # Agent 1 is connected to END after the configured save
 
         with allure.step("Step 13 — Test Pipeline is ENABLED"):
