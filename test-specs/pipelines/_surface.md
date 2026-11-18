@@ -5,6 +5,13 @@
 > place, don't append duplicate entries. Last updated: 2026-09-10 (card #2139 — delete-redirect arrival-path rule; prior: ELITEA-2002 repair
 > pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
 
+## Router node in the node panel (confirmed live on DEV, 2026-11-18, ELITEA-2033)
+
+- Router config is in the node PANEL: Basic = `pipeline-router-node-condition-input` (textarea), `-routes-select`, `-default-output-select`; Advanced (collapsed, `pipeline-node-panel-advanced-section-toggle`) = `pipeline-router-node-input-select`. Options `select-option-{value}` (Input lists `input`,`messages`; Routes/Default list other node ids + `END`).
+- Routes edges appear pre-save: `rf__edge-xy-edge__Router 1---approve`. Default-output edge `rf__edge-xy-edge__Router 1default_output---END` is absent pre-save (clicking `END` on a fresh node is a no-op: MUI no onChange; YAML `default_output: ''`) but present after Save + reload.
+- Rename: panel `pipeline-node-panel-name-input` fill + Enter commits (data-id becomes bare name). Panel auto-opens on add.
+- Empty-state add button `pipeline-empty-state-add-node-button`, later `pipeline-add-node-button`; first save of a create-flow pipeline = POST `.../applications/prompt_lib/{pid}` 201 and URL becomes `/pipelines/all/{id}`.
+
 ## Test Pipeline panel (confirmed live on DEV, 2026-11-18, ELITEA-4720)
 
 - `pipeline-test-panel` stays mounted but hidden until `pipeline-test-button`; while open the button is hidden. Controls `pipeline-test-panel-controls`: `pipeline-history-tab` (tooltip "Run History"; click navigates to `/pipelines/all/{id}/history`, back returns with panel CLOSED and conversation EMPTY), `context-budget-pill` (only once a conversation exists; click -> `context-budget-popover` with `-tokens/-messages-count/-summaries-count/-percentage/-edit-button`), `chat-clear-button` (disabled while no messages), `pipeline-test-panel-close`; handle `pipeline-test-panel-resize-handle` (default width 373 px; width persisted in localStorage `pipelineTestPanelWidth:{id}`).
