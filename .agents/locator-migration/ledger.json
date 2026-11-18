@@ -753,7 +753,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.PICKER_GROUP_TITLE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10622,
+      "line": 10688,
       "kind": "xpath",
       "selector": ".//span[normalize-space(text())='{}']",
       "suggested_testid": "pipeline-agent-node-agent-select-group-title-{}",

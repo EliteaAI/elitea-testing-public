@@ -1,0 +1,1 @@
+{"verdict":"green","n":3,"cmd":"APP_PREFIX=/app HEADLESS=true pytest tests/ui/pipelines/test_pipeline_router_node_configuration.py (x3 separate)","at":"2026-11-18T17:00:00Z","by":"lead"}
