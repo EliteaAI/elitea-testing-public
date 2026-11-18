@@ -1823,6 +1823,47 @@ class PipelineDetailPage(PipelineFormPage):
         description="Add Node menu popup listing every node type"
     )
 
+    # Empty-canvas state of a pipeline with no user node (FlowEmptyState.jsx) —
+    # ELITEA-4714. END also vanishes from the canvas while it is shown.
+    empty_state = LocatorDescriptor(
+        testid="pipeline-empty-state",
+        description="Empty-canvas card 'Start by adding your first node to the canvas!' (shown only while no node exists)"
+    )
+
+    empty_state_add_node_button = LocatorDescriptor(
+        testid="pipeline-empty-state-add-node-button",
+        description="'Add Node' button on the empty-canvas card — opens the node-type selector"
+    )
+
+    node_type_selector = LocatorDescriptor(
+        testid="pipeline-node-type-selector",
+        description="Node-type selector popup opened from the empty-state card's Add Node button"
+    )
+
+    connection_dropdown_menu = LocatorDescriptor(
+        testid="pipeline-connection-dropdown-menu",
+        description="Dropdown shown when an output-handle drag is released on empty canvas (ConnectionDropdown.jsx)"
+    )
+
+    connection_dropdown_create = LocatorDescriptor(
+        testid="pipeline-connection-dropdown-create",
+        description="'+ Create new node' entry of the connection dropdown"
+    )
+
+    # MUI Tooltip popper (no testid on DEV): `role=tooltip` is unique while a single hover is active.
+    tooltip = LocatorDescriptor(
+        role="tooltip",
+        suggested_testid="pipeline-test-button-tooltip",
+        description="Currently shown MUI tooltip (the Test Pipeline gate reason after hovering the disabled button)"
+    )
+
+    # Per-node templated testid constants, scoped to one ReactFlow node wrapper (`rf__node-{id}`).
+    NODE_ENTRYPOINT_BADGE = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-entrypoint-badge"]'
+    NODE_SUMMARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary"]'
+    NODE_SUMMARY_PRIMARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary-primary"]'
+    NODE_SUMMARY_SECONDARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary-secondary"]'
+    NODE_OUTPUT_HANDLE = '[data-testid="pipeline-node-add-from-output-{}-source"]'
+
     # Dynamic (runtime-parameterized) testid — one per node type rendered in
     # the Add Node menu, keyed by the INTERNAL type (FlowEditorConstants.
     # PipelineNodeTypes value, e.g. "llm", "hitl", "state_modifier"), not the
@@ -10135,3 +10176,84 @@ class PipelineDetailPage(PipelineFormPage):
             yield frames
         finally:
             self.page.remove_listener("websocket", _on_websocket)
+
+    # ------------------------------------------------------------------
+    # New-pipeline empty canvas / Test Pipeline gate (ELITEA-4714)
+    # ------------------------------------------------------------------
+
+    def read_test_button_tooltip(self, timeout: int = 5000) -> str:
+        """Hover the Test Pipeline button and return the tooltip text ('' when none shows).
+
+        The disabled state lives on the inner button and the tooltip on its wrapper, so the
+        hover is forced. The pointer is parked away first so a previous tooltip is gone and the
+        text read always belongs to THIS hover.
+        """
+        self.page.mouse.move(0, 0)
+        expect(self.tooltip).to_have_count(0, timeout=timeout)
+        self.test_pipeline_button.wait_for(state="visible", timeout=timeout)
+        self.test_pipeline_button.hover(force=True)
+        try:
+            self.tooltip.first.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError:
+            return ""
+        return (self.tooltip.first.inner_text() or "").strip()
+
+    def drag_output_handle_to_empty_canvas(self, node_id: str, dx: int = 260, dy: int = 300, timeout: int = 10000):
+        """Drag from a node's Output (+) handle and release on empty canvas; wait for the connection dropdown.
+
+        Real mouse events (down, stepped move, up) — the handle is 16x16 px.
+        """
+        handle = self.page.locator(self.NODE_OUTPUT_HANDLE.format(node_id))
+        handle.wait_for(state="visible", timeout=timeout)
+        box = handle.bounding_box()
+        if box is None:
+            raise RuntimeError(f"Output handle of '{node_id}' has no bounding box")
+        sx = box["x"] + box["width"] / 2
+        sy = box["y"] + box["height"] / 2
+        viewport = self.page.viewport_size or {"width": 1280, "height": 720}
+        tx = min(sx + dx, viewport["width"] - 20)
+        ty = min(sy + dy, viewport["height"] - 20)
+        self.page.mouse.move(sx, sy)
+        self.page.mouse.down()
+        steps = 15
+        for i in range(1, steps + 1):
+            self.page.mouse.move(sx + (tx - sx) * i / steps, sy + (ty - sy) * i / steps)
+        self.page.mouse.up()
+        self.connection_dropdown_menu.wait_for(state="visible", timeout=timeout)
+
+    def node_type_menu_labels(self, timeout: int = 5000) -> list[str]:
+        """Labels (first line of each item) of the OPEN node-type menu, in DOM order."""
+        items = self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        return [
+            (self.ADD_NODE_MENU_ITEM_LABEL.within(items.nth(i)).text_content() or "").strip()
+            for i in range(items.count())
+        ]
+
+    def node_type_menu_items(self) -> Locator:
+        """Every item currently rendered in an open node-type menu (count 0 when closed)."""
+        return self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
+
+    def click_outside_menus(self, x: int = 60, y: int = 500) -> None:
+        """Click on blank page area (outside any popup) to dismiss an open menu."""
+        self.page.mouse.click(x, y)
+
+    def node_entrypoint_badge(self, node_id: str) -> Locator:
+        """The 'Entrypoint' badge inside one node card."""
+        return self.page.locator(self.NODE_ENTRYPOINT_BADGE.format(node_id))
+
+    def node_summary(self, node_id: str) -> Locator:
+        """The summary block of one node card ('Not configured' while unconfigured)."""
+        return self.page.locator(self.NODE_SUMMARY.format(node_id))
+
+    def node_summary_primary(self, node_id: str) -> Locator:
+        """Primary summary line of a configured node card (absent while unconfigured)."""
+        return self.page.locator(self.NODE_SUMMARY_PRIMARY.format(node_id))
+
+    def node_summary_secondary(self, node_id: str) -> Locator:
+        """Secondary summary line of a configured node card."""
+        return self.page.locator(self.NODE_SUMMARY_SECONDARY.format(node_id))
+
+    def expect_edge_count(self, count: int, timeout: int = 10000) -> None:
+        """Wait until the canvas shows exactly *count* edges (ReactFlow draws them after the save settles)."""
+        expect(self.page.locator(".react-flow__edge")).to_have_count(count, timeout=timeout)
