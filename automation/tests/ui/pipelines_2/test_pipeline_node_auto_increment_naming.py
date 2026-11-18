@@ -59,7 +59,7 @@ def _add_node_and_get_new_id(pipeline_page, internal_type: str) -> str:
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
-    "ELITEA-2061_pipeline-node-duplicate-via-node-menu.md",
+    "ELITEA-2061_pipeline-node-auto-increment-naming.md",
     "onetest-ai Test Case link",
 )
 def test_node_auto_increment_naming_by_type(page, pipeline_id):

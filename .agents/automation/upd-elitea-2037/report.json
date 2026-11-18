@@ -1,0 +1,116 @@
+{
+  "batch": "upd-elitea-2037",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-upd-elitea-2037",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "by": "lead",
+    "note": "Workflow gate run 0 was red from missing APP_PREFIX (no automation/.env.test in sandbox) \u2014 env gap, not a test defect. Lead re-ran 3 separate invocations with APP_PREFIX=/app HEADLESS=true: 3/3 passed (54s/53s/52s), reruns 0."
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2037",
+      "outcome": "automated",
+      "note": "extend-existing; reviewer APPROVED after 1 fix round; lead gate 3/3 green",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 10 says to change the mapping type before Save. The lead's constraint forbids changing the existing Step 9 and reload assertions, which read `question` as Fixed. The AFS resolves this by changing the type after the existing reload assertions, then re-saving and reloading to prove it persists. The lead should confirm this is acceptable.",
+          "ref": "ELITEA-2037"
+        },
+        {
+          "kind": "note",
+          "note": "When Type=Variable, the Value select renders with the id `simple-select-[object Object]` and no testid. It is declared on the ladder as a role=combobox handle with a suggested_testid hint."
+        },
+        {
+          "kind": "note",
+          "note": "The MCP card shows a 'Log in' button even though the public MCP works and the run succeeds. Do not assert on that button."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 10 says to change Type before Save. Applying it before the existing Step 12 assertions would break them (they read `question` as Fixed text). So it runs after Step 12, with a second Save and reload. This is declared in the AFS notes as a canon-gap improvisation.",
+          "ref": "ELITEA-2037"
+        },
+        {
+          "kind": "note",
+          "note": "automation/.env.test is absent in this checkout and the shell has no APP_PREFIX. Every pipeline spec 404s at navigate unless APP_PREFIX=/app is exported. This is an environment gap, not a product regression. The lead's gate runs need it exported."
+        },
+        {
+          "kind": "note",
+          "note": "tms_backwrite.py check fails on ELITEA-2061 (test_pipeline_node_auto_increment_naming): the linked case file does not exist on TMS main. This is outside this unit, but it will turn the landing check red unless it is resolved.",
+          "ref": "ELITEA-2061"
+        },
+        {
+          "kind": "note",
+          "note": "MCP node Input-mapping Type select and Variable-mode Value select still have no testid on DEV. BaseToolNode.jsx gates typeTestIdPrefix to Toolkit nodes only, as seen on origin/main. They are declared as ScopedLocator xpath rows with suggested_testid hints, for the testid-migrator queue."
+        },
+        {
+          "kind": "note",
+          "note": "ruff is not installed in the venv, so the lint step was not run."
+        },
+        {
+          "kind": "defect",
+          "note": "Steps 14-15 'run completes without errors': the only completion assertions are a visible Thought accordion, a non-empty answer body, and a chip containing ask_wiki_question. An error message rendered as the answer, or a partially streamed body, would pass. The AFS gap table lists 'no error state', but no assertion checks it. wait_for_embedded_chat_run_completion also has no settled-state check. Co\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines_2/test_pipeline_mcp_node_fresh_attach.py (final allure step, 'Steps 14-15 (ext)'); automation/pages/pipeline_detail_page.py wait_for_embedded_chat_run_completion"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on `git diff main...tests/elitea-2037-mcp-ext -- automation/pages automation/tests`, using the ladder pattern from role-overrides, gave 8 hits, all compliant. Five are page.locator(self.<UPPER_CASE testid constant>), which are NODE_PANEL_BASIC_SECTION x3, SELECT_OPTION and MCP_NODE_INPUT_MAPPING_VALUE. Two are `.locator(self.CHAT_ANSWER_TOOL_CHIP/THOUGHT_ACCORDION)` on `[da\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation: the Fixed->Variable change is applied after the unmodified existing Step 12 reload assertions, then saved a second time and reloaded. The reasoning is sound, since the existing assertions read `question` as Fixed text. The case's 'before Save' wording for step 10 is met via the second save, so it is acceptable. Recommend adding it to the canon. The AFS carries the declarati\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case steps 10, 12, 13 against the diff. Step 10 asserts Type reads Variable, the Value text input is absent, and the Value select reads `input`. Step 12 asserts Variable and `input` persist after reload, and that repoName stays Fixed with its text. Step 13 asserts the TOOLS card is attached with a 'Used by: MCP 1' chip after reload. Case steps 1-9 and 11 stay covered by the untouc\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The Step 11 (ext) console check asserts over all console errors accumulated since test start. That is stricter than a delta, and acceptable for now. If a pre-save console error appeared it would fail here, not at the step that caused it."
+        },
+        {
+          "kind": "note",
+          "note": "automation/.env.test is absent in the working tree, so APP_PREFIX defaults to empty and all pipeline specs 404 at navigate() (the 15s wait_for_function timeout). Set APP_PREFIX=/app for the gate, or restore the symlink to the master .env.test."
+        },
+        {
+          "kind": "note",
+          "note": "The error-state check on the pipeline run answer uses substring markers. No dedicated error locator exists on the embedded chat page object, so a product-side error rendering with different wording would pass it."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocker (steps 14-15) is fixed. The spec now asserts, at the step where the run happens: (a) a tool chip containing ask_wiki_question; (b) wait_for_embedded_chat_run_completion (thought accordion visible AND last response body non-empty); (c) wait_for_embedded_chat_response with a 3s stable window, then final_answer == settled_answer; (d) an error-marker scan of the answer; (e) len(console_e\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines_2/test_pipeline_mcp_node_fresh_attach.py"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the error-marker list includes the bare word 'failed'. A legitimate deepwiki answer that mentions 'failed' (for example a description of failure handling) would turn the run red. This is low probability but non-zero. Consider dropping 'failed', or anchoring the check to the error-chip or error-state element if DEV renders one. Not blocking.",
+          "ref": "automation/tests/ui/pipelines_2/test_pipeline_mcp_node_fresh_attach.py"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: errors_before_run is captured after the earlier `assert not console_errors` checks, so it is always 0 at that point. The delta check is therefore equivalent to `not console_errors`. It is still correct and still reaches the run window."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation, case to AFS to diff. Step 10: type change Fixed to Variable with the value-input-absent check and picking `input`, asserted. Step 11: second save, with the PUT 201 guard through save_and_wait_for_update. Step 12: Variable/`input` persists, repoName stays Fixed with its value. Step 13: Used by 'MCP 1' via is_toolkit_card_used_by_node. Steps 14-15: tool chip plus settled non-error ans\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator mechanical grep, run on `git diff main...tests/elitea-2037-mcp-ext -- automation/pages automation/tests` with the role-overrides pattern. Hits, all compliant: pipeline_detail_page.py `self.page.locator(self.NODE_PANEL_BASIC_SECTION)` x3, whose constant is a [data-testid=] string; `self.page.locator(self.SELECT_OPTION.format(...))`, a testid template; `self.page.locator(self.MCP_NODE_INPUT_\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md",
+      "branch": "tests/elitea-2037-mcp-ext"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

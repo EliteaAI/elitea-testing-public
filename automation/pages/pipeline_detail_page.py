@@ -1755,6 +1755,37 @@ class PipelineDetailPage(PipelineFormPage):
     TOOLKIT_NODE_OPTIONAL_PARAMETER_OPTIONS = '[data-testid^="pipeline-toolkit-node-optional-parameter-"]'
     TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
 
+    NODE_PANEL_BASIC_SECTION = '[data-testid="pipeline-node-panel-basic-section"]'
+    CHAT_ANSWER_TOOL_CHIP = '[data-testid="chat-answer-tool-chip"]'
+    CHAT_ANSWER_THOUGHT_ACCORDION = '[data-testid="chat-answer-thought-accordion"]'
+
+    # MCP node Input-mapping row Type select / Variable-mode Value select (ELITEA-2037 ext).
+    # BaseToolNode.jsx gates typeTestIdPrefix to Toolkit nodes only, so DEV serves no testid
+    # here. Row = the smallest div holding the parameter's display label AND exactly one Type
+    # select; resolved inside the panel Basic section (see mcp_node_input_mapping_row_scope()).
+    MCP_NODE_INPUT_MAPPING_TYPE_SELECT = ScopedLocator(
+        xpath=(
+            ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]"
+            "//*[@id='simple-select-Type']"
+        ),
+        suggested_testid="pipeline-mcp-node-input-mapping-type-{}",
+        description=(
+            "rungs 1-4 failed: MCP nodeType gets no typeTestIdPrefix on DEV and the MUI id "
+            "simple-select-Type is duplicated per row; row scoped by its parameter label"
+        ),
+    )
+    MCP_NODE_INPUT_MAPPING_VARIABLE_VALUE_SELECT = ScopedLocator(
+        xpath=(
+            ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]"
+            "//*[@role='combobox' and @id!='simple-select-Type']"
+        ),
+        suggested_testid="pipeline-mcp-node-input-mapping-value-select-{}",
+        description=(
+            "rungs 1-4 failed: Variable-mode Value select has no testid on DEV (id is "
+            "'simple-select-[object Object]'); row scoped by its parameter label"
+        ),
+    )
+
     # Same mechanism, gated to nodeType==custom in DefaultNode.jsx (ELITEA-2036).
     CUSTOM_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-custom-node-input-mapping-value-{}"]'
     CUSTOM_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-custom-node-input-mapping-type-{}"]'
@@ -5151,6 +5182,67 @@ class PipelineDetailPage(PipelineFormPage):
         field.press("Delete")
         field.press_sequentially(value, delay=20)
 
+    def _mcp_node_mapping_row_label(self, param_name: str) -> str:
+        """Display label the panel renders for a raw schema key (first letter capitalised)."""
+        return param_name[:1].upper() + param_name[1:]
+
+    def get_mcp_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the Type select text (Fixed/F-String/Variable) of an MCP node Input-mapping row."""
+        scope = self.page.locator(self.NODE_PANEL_BASIC_SECTION)
+        select = self.MCP_NODE_INPUT_MAPPING_TYPE_SELECT.within(
+            scope, self._mcp_node_mapping_row_label(param_name)
+        )
+        select.wait_for(state="visible", timeout=timeout)
+        return (select.text_content() or "").replace("\u200b", "").strip()
+
+    def select_mcp_node_input_mapping_type(self, param_name: str, type_value: str, timeout: int = 5000) -> None:
+        """Open an MCP node Input-mapping row's Type select and choose *type_value*."""
+        scope = self.page.locator(self.NODE_PANEL_BASIC_SECTION)
+        select = self.MCP_NODE_INPUT_MAPPING_TYPE_SELECT.within(
+            scope, self._mcp_node_mapping_row_label(param_name)
+        )
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        select.scroll_into_view_if_needed(timeout=timeout)
+        select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def _mcp_node_variable_value_select(self, param_name: str) -> Locator:
+        scope = self.page.locator(self.NODE_PANEL_BASIC_SECTION)
+        return self.MCP_NODE_INPUT_MAPPING_VARIABLE_VALUE_SELECT.within(
+            scope, self._mcp_node_mapping_row_label(param_name)
+        )
+
+    def select_mcp_node_input_mapping_variable_value(
+        self, param_name: str, variable_name: str, timeout: int = 5000
+    ) -> None:
+        """Pick a state variable in a Variable-mode Value select of an MCP node row."""
+        select = self._mcp_node_variable_value_select(param_name)
+        select.wait_for(state="visible", timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        select.click(timeout=timeout)
+        self.select_open_listbox_option(variable_name, timeout=timeout)
+
+    def get_mcp_node_input_mapping_variable_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the Variable-mode Value select text of an MCP node row."""
+        select = self._mcp_node_variable_value_select(param_name)
+        select.wait_for(state="visible", timeout=timeout)
+        return (select.text_content() or "").replace("\u200b", "").strip()
+
+    def is_mcp_node_input_mapping_value_input_absent(self, param_name: str, timeout: int = 5000) -> bool:
+        """True once the text Value input of *param_name* is gone (row switched to Variable mode)."""
+        from playwright.sync_api import expect
+
+        try:
+            expect(self.page.locator(self.MCP_NODE_INPUT_MAPPING_VALUE.format(param_name))).to_have_count(
+                0, timeout=timeout
+            )
+            return True
+        except Exception:
+            return False
+
     def is_mcp_node_input_mapping_value_visible(self, param_name: str, timeout: int = 5000) -> bool:
         """Check whether an Input-mapping "Value" field is visible for *param_name*.
 
@@ -8119,6 +8211,19 @@ class PipelineDetailPage(PipelineFormPage):
         self.chat_send_button.wait_for(state="visible", timeout=timeout)
         self.chat_send_button.click()
         logger.info("Message sent in embedded chat")
+
+    def get_embedded_chat_tool_chip_texts(self) -> list[str]:
+        """Text of every ``chat-answer-tool-chip`` in the embedded chat (tool calls of the run)."""
+        chips = self.chat_message_list.locator(self.CHAT_ANSWER_TOOL_CHIP)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def wait_for_embedded_chat_run_completion(self, timeout: int = 90000) -> None:
+        """Wait until the run produced a Thought accordion AND a settled final answer body."""
+        from playwright.sync_api import expect
+
+        accordion = self.chat_message_list.locator(self.CHAT_ANSWER_THOUGHT_ACCORDION)
+        expect(accordion.first).to_be_visible(timeout=timeout)
+        expect(self.skill_test_last_response.last).not_to_be_empty(timeout=timeout)
 
     def wait_for_embedded_chat_response(
         self,

@@ -207,3 +207,51 @@ the existing `get_node_ids`).
 **Expected-result changes:** (1) the MCP is picked after the MCP node exists (Steps 5/6 precede 2/3/4 in execution order; step numbers/labels unchanged); (2) the attach PATCH 201 guard moved from select-time to Save (Step 11) — still asserted; (3) "Input mapping (required N)" heading is not rendered in the panel layout — replaced by exact count of required Value fields in the Basic section (same precedent as ELITEA-1954); the pre-toolkit absence check becomes count == 0. No assertion removed or weakened.
 
 **Handles (ladder):** all rung 1 testids on DEV — `pipeline-mcp-node-toolkit-select`, `-select-option`, `-select-menu-search`, `pipeline-node-panel-advanced-section-toggle`, `pipeline-node-panel-basic-section`, `pipeline-tools-section`, `pipeline-tool-card`, `pipeline-node-panel-close`.
+
+## Extension — 2026-11-18 (card #2971, `extend-existing`): input-mapping type change + Used-by + pipeline run
+
+Covering spec (merged to main, unchanged steps): `automation/tests/ui/pipelines_2/test_pipeline_mcp_node_fresh_attach.py::test_mcp_node_fresh_attach`. All new work is ADDITIVE: new allure steps/assertions only; existing steps are not edited, reordered or renumbered. Case steps 10, 12, 13, 14, 15 are the gap. Executed live on DEV 2026-11-18 (same fixture MCP `mcp_toolkit_with_tools` = deepwiki, tool `ask_wiki_question`, deterministic and needs no extra external input).
+
+### Gap assertions
+
+| Case step | Insert where | Action | Expected (observed live) |
+|---|---|---|---|
+| 10 | new step after existing "Step 9" fill, BEFORE Save (existing Step 11) | On the `question` row change Type Fixed -> Variable, then pick `input` in the Value select | Type shows `Variable`; the Value text input is replaced by a select (role=combobox) showing `input` |
+| 12 | inside/after existing reload step | After reload + panel reopen, read the `question` row | Type = `Variable`, Value = `input`. `repoName` still `Fixed` + typed text |
+| 13 | after reload | open TOOLS (`ensure_toolkits_section_visible`), read `pipeline-tool-card` | card text contains MCP name and `Used by` / `MCP 1` |
+| 14-15 | new final step | `open_test_pipeline_panel()`, `send_message_in_embedded_chat("test")`, wait for response | `chat-answer-tool-chip` text `<mcp name>: ask_wiki_question (MCP1) · N s`; `chat-answer-thought-accordion` "Thought for N secs" lists the MCP tool call; a final answer message renders; no error state (~7s tool call, ~15s total) |
+
+IMPORTANT ordering interaction: existing Step 9 asserts `question` value == typed text and existing reload step asserts `question` value == `_QUESTION_VALUE` (Fixed). Changing `question` to Variable would break that unmodified assertion. Therefore change the type on a row the existing assertions do not read as text. Existing assertions read BOTH `repoName` and `question` as inputs. Resolution (declared improvisation, canon gap): the implementer must either (a) change Type on `question` AFTER the existing Step 12 reload assertions — i.e. do the type change as a post-reload extension then Save + reload again to prove persistence, or (b) ask lead to relax. Recommended (a): new steps after existing Step 12: [Step 10-ext] change type on `question` to Variable/`input`, Save (PUT application 201 guard), reload, assert Variable/`input` persisted [Step 12-ext] and `repoName` still Fixed, [Step 13-ext] Used-by, [Steps 14-15-ext] run. The run then sends `input` -> `question`=`test`, still a valid tool call (observed: with question=Variable/input and message `test`, tool call succeeded).
+Note: with (a) the case's "before Save" wording for step 10 is met by a second save; flag to lead that literal ordering conflicts with the "do not change existing assertions" constraint.
+
+### Handles (verified on DEV 2026-11-18)
+
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| css (id) | `[data-testid="pipeline-node-panel-basic-section"] #simple-select-Type` — ONE PER required-param row, in param order (rows: repoName, question). Pick the row by scoping to the row that contains the Value field `pipeline-mcp-node-input-mapping-value-{param}`; Value input and Type select share a row container. Do NOT use `.nth()` | `pipeline-mcp-node-input-mapping-type-{}` | ladder — no testid on DEV for MCP node (BaseToolNode.jsx gates `typeTestIdPrefix` to Toolkit nodeType only, origin/main). Id `simple-select-Type` is duplicated per row so a ScopedLocator needs a row scope: row container has no testid; implementer: use xpath `ancestor::` from the declared Value field per row, or a `has=` filter on the Value testid, with description. Raise as `question` if no non-positional scope works |
+| testid | option `select-option-variable` (also `select-option-fixed`, `select-option-fstring`) | - | testid on DEV ✓ (existing `SELECT_OPTION` template; `TYPE_OPTION_VALUE_BY_LABEL` exists) |
+| role | Variable-mode Value select: `role=combobox` showing `input`, id `simple-select-[object Object]` (UI bug, harmless id), no testid | `pipeline-mcp-node-input-mapping-value-select-{}` | ladder — no testid on DEV; when Type=Variable the `pipeline-mcp-node-input-mapping-value-{param}` input is NOT rendered (replaced by the select) |
+| testid | `pipeline-tool-card` (text contains name, "Show tools", "Log in", "Used by", "MCP 1"); `pipeline-tool-card-name` | - | testid on DEV ✓ |
+| testid | `pipeline-test-button` -> existing `test_pipeline_button` / `open_test_pipeline_panel()`; `chat-input`, `chat-answer-tool-chip`, `chat-answer-thought-accordion`, `chat-message-item` | - | testid on DEV ✓ (existing page-object fields/methods) |
+
+Existing page-object support: `select_toolkit_node_input_mapping_type` is Toolkit-only; MCP equivalents `select_mcp_node_input_mapping_type` / `get_mcp_node_input_mapping_type` / `get_mcp_node_input_mapping_variable_value` do not exist and must be added (class-level declarations on the ladder).
+
+### Side-channel notes
+- "Log in" button shows on the MCP card even though the public deepwiki MCP works and the run succeeds; do not assert on it.
+- No console errors observed in the probe flow beyond what the existing test already tolerates.
+- Run output is not deterministic text; assert tool chip + accordion + non-empty final answer, never wording.
+
+### Coverage Map (extension)
+| Case element | Expected | Covered by | Disposition |
+|---|---|---|---|
+| Step 10 | Variable/`input` selector | new step (ext) | add |
+| Step 12 (type persists) | Variable/`input` after reload | ext reload assertions | add |
+| Step 13 | TOOLS card "Used by: MCP 1" | ext assertion | add |
+| Steps 14-15 | tool call shown, run completes | ext run step | add |
+| Steps 1-9, 11 and existing 12 | unchanged | existing spec | covered, untouched |
+
+### Implementation notes — ELITEA-2037 extension (implementer, 2026-11-18)
+
+- Ordering improvisation (declared; canon gap, AFS option (a)): the Fixed -> Variable change is applied AFTER the unmodified Step 12 reload assertions, saved a second time (PUT 201), reloaded again; then Used-by (step 13) and the run (steps 14-15). Reason: existing assertions read `question` as Fixed text and must stay byte-identical. Case text says "before Save" for step 10; met via the second save.
+- Handles: Type select and Variable-mode Value select are declared as class-level `ScopedLocator(xpath=…)` rows keyed by the parameter's display label (`question` -> `Question`) because `simple-select-Type` is duplicated per row and the row has no testid. Hints: `pipeline-mcp-node-input-mapping-type-{}`, `pipeline-mcp-node-input-mapping-value-select-{}`. Used-by uses existing `pipeline-tool-card-used-by`; run uses existing `chat-answer-tool-chip` / `chat-answer-thought-accordion`.
+- Env note: with no `APP_PREFIX` set (the shell had none and `automation/.env.test` is absent in this checkout) navigation 404s; the run needed `APP_PREFIX=/app` exported.
