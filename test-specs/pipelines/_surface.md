@@ -5,6 +5,15 @@
 > place, don't append duplicate entries. Last updated: 2026-09-10 (card #2139 — delete-redirect arrival-path rule; prior: ELITEA-2002 repair
 > pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
 
+## New-pipeline EMPTY CANVAS, first node, Test Pipeline gate (confirmed live on DEV, 2026-11-18, ELITEA-4714)
+
+- Create: `sidebar-create-button` -> `/pipelines/create?viewMode=owner`; `pipeline-empty-state` (+ `-add-node-button`) shows only while NO user node exists (END also vanishes). Selector testid `pipeline-node-type-selector`; items `pipeline-add-node-menu-item-{agent,code,decision,hitl,llm,mcp,printer,router,state_modifier,toolkit}` (10, label = first line of item text).
+- `pipeline-test-button`: disabled state on inner button, tooltip on wrapper span (`title`) and as `[role=tooltip]` after `hover(force=True)`. Texts (source `pipelineReadiness.helpers.js`): unsaved "Save the pipeline to test it"; no nodes "Add and configure at least one node connected to End."; unconfigured `Configure node "X": Select an agent`; `...: Fill in the required input: task`; no entry `Set an entry point to test the pipeline.`. Button turns enabled as soon as config is valid (before Save).
+- First node gets `pipeline-node-entrypoint-badge`, no edge to END until configured+saved. Unconfigured card: `pipeline-node-summary` "Not configured" (no `-primary`); configured: primary = agent name, secondary = task text.
+- Output-handle drag: `pipeline-node-add-from-output-{node}-source` (16px) + real mouse -> `pipeline-connection-dropdown-menu` / `-create`; nodes listed excludes END.
+- Delete: panel `pipeline-node-panel-delete` -> dialog `delete-confirm-button`. DEV banners (`platform-banner-center` dialog, `platform-banner-corner`) intercept clicks: close via `platform-banner-close` / corner button, or use viewport height >=1400.
+- Playwright MCP browser may be unavailable in the sandbox (no Chrome binary); scripted Python Playwright with `.playwright-mcp/dev-storage-state.json` works.
+
 ## Delete-pipeline REDIRECT depends on HOW you reached the detail page (confirmed live on DEV, 2026-09-10, card #2139 / `#1332`)
 
 The post-delete redirect is `navigate(-1)` — React Router "go back one history entry"

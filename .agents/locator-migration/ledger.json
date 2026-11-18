@@ -621,7 +621,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1855,
+      "line": 1896,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -657,7 +657,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1928,
+      "line": 1975,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -749,6 +749,18 @@
       "state": "raw",
       "added": "2026-10-05",
       "updated": "2026-10-05",
+      "history": []
+    },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.tooltip": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 1854,
+      "kind": "role",
+      "selector": "tooltip",
+      "suggested_testid": "pipeline-test-button-tooltip",
+      "description": "Currently shown MUI tooltip (the Test Pipeline gate reason after hovering the disabled button)",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
       "history": []
     },
     "pages/pipeline_form_page.py::PipelineFormPage.cancel_button": {
@@ -1246,21 +1258,21 @@
   },
   "last_sync": "2026-11-18",
   "metric": {
-    "declared_total": 1414,
-    "declared_testid": 1312,
-    "declared_non_testid": 102,
-    "non_testid_with_hint": 81,
+    "declared_total": 1425,
+    "declared_testid": 1322,
+    "declared_non_testid": 103,
+    "non_testid_with_hint": 82,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 20,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 33,
-      "testid": 1312,
+      "role": 34,
+      "testid": 1322,
       "xpath": 27
     },
-    "locator_debt": 0.0721,
+    "locator_debt": 0.0723,
     "unmanaged_handles": 309
   }
 }
