@@ -1,0 +1,40 @@
+{
+  "batch": "adjust-2982",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/2017-2058-model-name",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "by": "lead",
+    "note": "3 separate invocations, APP_PREFIX=/app HEADLESS=true, reruns 0: 3/3 passed (34s/35s/36s)."
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2017",
+      "outcome": "automated",
+      "note": "maintenance: MODEL_DISPLAY_NAME GPT-5.4-mini -> Anthropic Claude Haiku 5.5; reviewer APPROVED",
+      "branch": "tests/2017-2058-model-name"
+    },
+    {
+      "id": "ELITEA-2058",
+      "outcome": "automated",
+      "note": "same test function; reviewer APPROVED",
+      "branch": "tests/2017-2058-model-name"
+    }
+  ],
+  "findings": [
+    {
+      "kind": "bug",
+      "note": "Bedrock-GPT-5.6-Luna fails pipeline runs with 400 'Unknown parameter reasoning' \u2014 filed #2986"
+    }
+  ],
+  "totals": {
+    "cases": 2,
+    "automated": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

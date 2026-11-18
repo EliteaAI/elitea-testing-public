@@ -269,7 +269,7 @@ class TestExecutePipelineStreaming:
     """
 
     USER_PROMPT = "Write a 500-word essay on AI"
-    MODEL_DISPLAY_NAME = "GPT-5.4-mini"  # "GPT-5 mini" retired from DEV catalog (case says e.g.)
+    MODEL_DISPLAY_NAME = "Anthropic Claude Haiku 5.5"  # single place to edit when the DEV model catalog changes
     MIN_RESPONSE_LENGTH = 200
 
     @pytest.mark.tms("ELITEA-2017", "ELITEA-2058")
@@ -301,13 +301,13 @@ class TestExecutePipelineStreaming:
            (fixture — API-created, ready for execution).
         2. [ELITEA-2058] Verify the Model Selector Menu button is visible
            and shows a non-empty default model name before any switch.
-        3. Select "GPT-5.4-mini" via the Model Selector Menu.
+        3. Select "Anthropic Claude Haiku 5.5" via the Model Selector Menu.
         4. Send "Write a 500-word essay on AI".
         5. Verify the response streams progressively (tokens appear
            incrementally, not all at once).
         6. Verify the final response is complete and exceeds 200 characters.
         7. [ELITEA-2058] Verify the settled response's model-attribution
-           chip names the selected model ("GPT-5.4-mini"), proving execution
+           chip names the selected model ("Anthropic Claude Haiku 5.5"), proving execution
            used the selected model, not the pipeline's prior default.
         8. Verify no timeout or error occurs during streaming.
         """
