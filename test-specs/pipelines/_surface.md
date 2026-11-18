@@ -4251,3 +4251,10 @@ declared defaults (`""` / absent / `[]` / `{}`) survive. Filed as
 state needs an explicit, bounded, loudly-failing precondition guard; a system
 prompt that names the required answer FORM ("a single JSON object and nothing
 else") is a strong mitigation but not a guarantee (9/9 at n=9).
+
+## MCP node — input-mapping Type + Test Pipeline run (ELITEA-2037 ext, verified DEV 2026-11-18)
+- MCP node required-param rows each render `#simple-select-Type` (id duplicated per row, NO testid — BaseToolNode.jsx gates `typeTestIdPrefix` to Toolkit); options `select-option-fixed|fstring|variable`. Choosing Variable swaps the Value text input for a role=combobox select (no testid) showing e.g. `input`; the `pipeline-mcp-node-input-mapping-value-{param}` input disappears.
+- Variable type/value persist after Save + reload (reopen the node panel; basic-section combos read `Fixed`,`Variable`,`input`).
+- TOOLS card (`pipeline-tool-card`) text: name / Show tools / Log in / Used by / MCP 1.
+- Test Pipeline run on an MCP-node pipeline (message `test`): `chat-answer-tool-chip` = `<mcp>: ask_wiki_question (MCP1) · 7s`, `chat-answer-thought-accordion` "Thought for N secs"; whole run ~15s.
+- Local env note: no `.env.test` in this checkout; scratch runs needed `APP_PREFIX=/app`, `-o addopts=""` (no rerunfailures plugin) and a PLAYWRIGHT_BROWSERS_PATH symlink dir (browser build 1254 vs expected 1255).
