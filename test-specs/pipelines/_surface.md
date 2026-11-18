@@ -14,6 +14,15 @@
 - Delete: panel `pipeline-node-panel-delete` -> dialog `delete-confirm-button`. DEV banners (`platform-banner-center` dialog, `platform-banner-corner`) intercept clicks: close via `platform-banner-close` / corner button, or use viewport height >=1400.
 - Playwright MCP browser may be unavailable in the sandbox (no Chrome binary); scripted Python Playwright with `.playwright-mcp/dev-storage-state.json` works.
 
+## Node panel YAML view (confirmed live on DEV, 2026-11-18, ELITEA-4716/4717)
+
+- Panel toggle `pipeline-node-panel-view-flow` / `-view-yaml`; wrapper `pipeline-node-panel-yaml`, editor `-yaml-editor`, content `-yaml-content` (read `.cm-line`), `-yaml-copy`, `-yaml-full-screen`, error `pipeline-node-panel-yaml-error` (exists only while error). Leave modal `pipeline-node-yaml-leave-dialog` / `-leave-fix` / `-leave-discard` (label "Discard YAML changes").
+- Node YAML is a one-item LIST (`- id: LLM 1` ...), 400 ms apply debounce. Edit: click `.cm-line` text, Home, Shift+End, `keyboard.insert_text`. Added keys must be indented 2 spaces (col 0 -> "Invalid YAML: end of the stream...").
+- Errors: dup "The name has been used by other nodes, please input a new name!"; empty "Name is required"; "Node type can't be changed in the node YAML."; "Invalid YAML: ...". Save enablement = dirtiness only (never disabled by an error).
+- Panel Name input exists only in Flow view. LLM `pipeline-llm-node-system-value` / `-task-value` are textareas.
+- Edge testid `rf__edge-xy-edge__{src}---{dst}`. `connect_nodes` fails "not hittable" when panel open/layout; hand-rolled drag from `[data-handlepos=bottom]` to target `[data-handlepos=top]` did not replace an existing edge in the probe.
+- Sandbox: no `automation/.env.test` -> export `APP_PREFIX=/app`, use `--reruns 0` when probing.
+
 ## Node cards (view-only) and node config panel (confirmed live on DEV, 2026-11-18, ELITEA-4715)
 
 - Card: `pipeline-node-card-{name}` (inside `rf__node-{id}`); children `pipeline-node-name/-type/-summary(-primary/-secondary)/-icon-tile/-entrypoint-badge`, handle `pipeline-node-add-from-output-{name}-source`. 0 editable controls. END = `pipeline-end-node`.
