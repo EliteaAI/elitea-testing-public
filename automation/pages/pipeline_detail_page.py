@@ -1610,6 +1610,27 @@ class PipelineDetailPage(PipelineFormPage):
     # TODO: Once testids deployed, change to testid pattern: '[data-testid^="schedule-cron-"]'
     SCHEDULE_CRON_SELECT = ".MuiAutocomplete-root"  # MUI Autocomplete root class (fallback)
 
+    # SCHEDULES section (EL-7011 redesign: schedules live in their own section + New Schedule page)
+    schedules_add_button = LocatorDescriptor(
+        testid="pipeline-schedules-section-add",
+        description='"+ Schedule" button of the pipeline SCHEDULES section',
+    )
+    unsaved_leave_button = LocatorDescriptor(
+        role="button",
+        name="Leave",
+        suggested_testid="unsaved-changes-leave-button",
+        description='"Leave" button of the unsaved-changes warning shown when "+ Schedule" is clicked with a dirty canvas',
+    )
+    # Schedule card rule line (`At 09:30`) / state chip (`Active`); scope arg = the schedule id.
+    SCHEDULE_CARD_RULE = ScopedLocator(
+        testid="pipeline-schedule-card-rule-{}",
+        description="Schedule card rule line; {} = schedule id (EntityScheduleCard)",
+    )
+    SCHEDULE_CARD_STATE = ScopedLocator(
+        testid="pipeline-schedule-card-state-{}",
+        description="Schedule card state chip; {} = schedule id (EntityScheduleCard)",
+    )
+
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
     # (confirmed via PipelineConfigurationForm.jsx import) — same testids as
@@ -5241,6 +5262,41 @@ class PipelineDetailPage(PipelineFormPage):
         if toggle.get_attribute("aria-expanded") != "true":
             toggle.click(timeout=timeout)
             expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
+    def open_new_schedule_page(self, timeout: int = 15000) -> None:
+        """Click "+ Schedule" in the SCHEDULES section and wait for the create URL.
+
+        Dismisses the platform banners first (the corner banner intercepts clicks),
+        closes the node panel and, if the left column is collapsed, expands it.
+        """
+        while self.platform_banner_close.count() > 0:
+            self.platform_banner_close.first.click(timeout=timeout)
+        self.close_node_panel(timeout=timeout)
+        if self.schedules_add_button.count() == 0:
+            self.config_panel_collapse_button.click(timeout=timeout)
+        self.schedules_add_button.click(timeout=timeout)
+        # A dirty (unsaved) canvas raises "There are unsaved changes" - leaving discards them.
+        self._leave_if_prompted()
+        self.page.wait_for_url(re.compile(r"/schedules/create"), timeout=timeout)
+
+    def _leave_if_prompted(self, timeout: int = 3000) -> bool:
+        """Confirm the unsaved-changes warning if it appears; True when it did."""
+        try:
+            self.unsaved_leave_button.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError:
+            return False
+        self.unsaved_leave_button.click(timeout=timeout)
+        return True
+
+    def wait_for_schedule_card_rule(self, schedule_id, timeout: int = 20000) -> str:
+        """Wait for the schedule card to render (the section populates ~3-6s after load); return its rule line."""
+        rule = self.SCHEDULE_CARD_RULE.within(self.page, schedule_id)
+        expect(rule).to_have_count(1, timeout=timeout)
+        return (rule.text_content() or "").strip()
+
+    def expect_schedule_card_state(self, schedule_id, text: str, timeout: int = 10000) -> None:
+        """Assert the schedule card's state chip reads `text` (e.g. "Active")."""
+        expect(self.SCHEDULE_CARD_STATE.within(self.page, schedule_id)).to_have_text(text, timeout=timeout)
 
     def close_node_panel(self, timeout: int = 10000) -> None:
         """Close the node config side panel if open and wait until it is gone (restores the left TOOLS column)."""

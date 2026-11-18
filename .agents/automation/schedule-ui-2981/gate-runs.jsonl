@@ -1,0 +1,1 @@
+{"verdict":"sanctioned-red","n":3,"cmd":"APP_PREFIX=/app HEADLESS=true pytest <2007 spec> <2008 spec> (x3 separate)","at":"2026-11-18T17:50:00Z","by":"lead","note":"2007 green 3/3; 2008 identical RED 3/3 = #2984 soft-failure signature (interrupt_before not blocked)"}

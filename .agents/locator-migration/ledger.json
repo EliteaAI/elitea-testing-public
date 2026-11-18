@@ -621,7 +621,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2010,
+      "line": 2031,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -633,7 +633,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_REPLACE_ALL_BUTTON": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1953,
+      "line": 1974,
       "kind": "css",
       "selector": ".cm-search button[name=\"replaceAll\"]",
       "suggested_testid": "pipeline-node-yaml-replace-all-button",
@@ -645,7 +645,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_REPLACE_BUTTON": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1948,
+      "line": 1969,
       "kind": "css",
       "selector": ".cm-search button[name=\"replace\"]",
       "suggested_testid": "pipeline-node-yaml-replace-button",
@@ -657,7 +657,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_SEARCH_MATCH": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1943,
+      "line": 1964,
       "kind": "css",
       "selector": ".cm-searchMatch",
       "suggested_testid": "pipeline-node-yaml-search-match",
@@ -669,7 +669,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_SEARCH_PANEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1938,
+      "line": 1959,
       "kind": "css",
       "selector": ".cm-search",
       "suggested_testid": "pipeline-node-yaml-search-panel",
@@ -681,7 +681,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.MCP_NODE_INPUT_MAPPING_TYPE_SELECT": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1810,
+      "line": 1831,
       "kind": "xpath",
       "selector": ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]//*[@id='simple-select-Type']",
       "suggested_testid": "pipeline-mcp-node-input-mapping-type-{}",
@@ -693,7 +693,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.MCP_NODE_INPUT_MAPPING_VARIABLE_VALUE_SELECT": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1821,
+      "line": 1842,
       "kind": "xpath",
       "selector": ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]//*[@role='combobox' and @id!='simple-select-Type']",
       "suggested_testid": "pipeline-mcp-node-input-mapping-value-select-{}",
@@ -705,7 +705,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_EDITABLE_CONTROL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1969,
+      "line": 1990,
       "kind": "css",
       "selector": "input, select, textarea, [contenteditable=\"true\"]",
       "suggested_testid": "pipeline-node-editable-control",
@@ -717,7 +717,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_PANEL_NAME_ERROR": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1975,
+      "line": 1996,
       "kind": "xpath",
       "selector": ".//p[normalize-space(text())='Name is required']",
       "suggested_testid": "pipeline-node-panel-name-error",
@@ -729,7 +729,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_YAML_LINE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1963,
+      "line": 1984,
       "kind": "css",
       "selector": ".cm-line:has-text(\"{}\")",
       "suggested_testid": "pipeline-node-yaml-line-{}",
@@ -741,7 +741,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_YAML_LINE_ITEM": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1958,
+      "line": 1979,
       "kind": "css",
       "selector": ".cm-line",
       "suggested_testid": "pipeline-node-yaml-line-item",
@@ -753,7 +753,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.PICKER_GROUP_TITLE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10688,
+      "line": 10744,
       "kind": "xpath",
       "selector": ".//span[normalize-space(text())='{}']",
       "suggested_testid": "pipeline-agent-node-agent-select-group-title-{}",
@@ -765,7 +765,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.canvas_edges": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2018,
+      "line": 2039,
       "kind": "css",
       "selector": ".react-flow__edge",
       "suggested_testid": "pipeline-canvas-edge",
@@ -777,7 +777,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.node_yaml_copied_message": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1922,
+      "line": 1943,
       "kind": "xpath",
       "selector": "//*[normalize-space(text())='Copied']",
       "suggested_testid": "pipeline-node-panel-yaml-copied-toast",
@@ -789,7 +789,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2091,
+      "line": 2112,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -885,11 +885,23 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.tooltip": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1898,
+      "line": 1919,
       "kind": "role",
       "selector": "tooltip",
       "suggested_testid": "pipeline-test-button-tooltip",
       "description": "Currently shown MUI tooltip (the Test Pipeline gate reason after hovering the disabled button)",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.unsaved_leave_button": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 1618,
+      "kind": "role",
+      "selector": "button[name='Leave']",
+      "suggested_testid": "unsaved-changes-leave-button",
+      "description": "\"Leave\" button of the unsaved-changes warning shown when \"+ Schedule\" is clicked with a dirty canvas",
       "state": "raw",
       "added": "2026-11-18",
       "updated": "2026-11-18",
@@ -1159,6 +1171,102 @@
       "updated": "2026-11-12",
       "history": []
     },
+    "pages/schedule_form_page.py::ScheduleFormPage.CRON_INNER_INPUT": {
+      "file": "pages/schedule_form_page.py",
+      "line": 49,
+      "kind": "css",
+      "selector": "input",
+      "suggested_testid": "pipeline-schedule-cron-text-input",
+      "description": "The <input> inside the cron-expression wrapper (testid sits on the wrapper on DEV); scope = cron_input",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/schedule_form_page.py::ScheduleFormPage.CRON_OPTION": {
+      "file": "pages/schedule_form_page.py",
+      "line": 77,
+      "kind": "role",
+      "selector": "option[name='{}']",
+      "suggested_testid": "schedule-cron-option-{}",
+      "description": "",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/schedule_form_page.py::ScheduleFormPage.breadcrumb_current": {
+      "file": "pages/schedule_form_page.py",
+      "line": 56,
+      "kind": "css",
+      "selector": "[aria-current=\"page\"]",
+      "suggested_testid": "schedule-breadcrumb-current-text",
+      "description": "Current breadcrumb item (reads 'New Schedule'); only on-page aria-current element",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/schedule_form_page.py::ScheduleFormPage.builder_button": {
+      "file": "pages/schedule_form_page.py",
+      "line": 29,
+      "kind": "role",
+      "selector": "button[name='Builder']",
+      "suggested_testid": "pipeline-schedule-mode-builder-button",
+      "description": "Builder toggle (ToggleButton, role button not tab); unique page-wide",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/schedule_form_page.py::ScheduleFormPage.cron_button": {
+      "file": "pages/schedule_form_page.py",
+      "line": 35,
+      "kind": "role",
+      "selector": "button[name='Cron Expression']",
+      "suggested_testid": "pipeline-schedule-mode-cron-button",
+      "description": "Cron Expression toggle (ToggleButton, role button not tab); unique page-wide",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/schedule_form_page.py::ScheduleFormPage.name_input": {
+      "file": "pages/schedule_form_page.py",
+      "line": 20,
+      "kind": "role",
+      "selector": "textbox[name='Name']",
+      "suggested_testid": "schedule-name-input",
+      "description": "Schedule Name input on the New Schedule page (unique textbox named Name)",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/schedule_form_page.py::ScheduleFormPage.risk_hint": {
+      "file": "pages/schedule_form_page.py",
+      "line": 64,
+      "kind": "css",
+      "selector": "#schedule-risk-hint",
+      "suggested_testid": "schedule-risk-hint-text",
+      "description": "'Fix the risk check to save' hint beside Save (id referenced by Save aria-describedby)",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/schedule_form_page.py::ScheduleFormPage.risk_open_pipeline_link": {
+      "file": "pages/schedule_form_page.py",
+      "line": 69,
+      "kind": "role",
+      "selector": "link[name='Open pipeline to change steps']",
+      "suggested_testid": "schedule-risk-block-open-pipeline-link",
+      "description": "target=_blank link inside the risk box; scope = risk_block_box",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
     "pages/skill_detail_page.py::SkillDetailPage.TEST_PANEL_ALERT": {
       "file": "pages/skill_detail_page.py",
       "line": 65,
@@ -1390,21 +1498,21 @@
   },
   "last_sync": "2026-11-18",
   "metric": {
-    "declared_total": 1476,
-    "declared_testid": 1362,
-    "declared_non_testid": 114,
-    "non_testid_with_hint": 93,
+    "declared_total": 1500,
+    "declared_testid": 1377,
+    "declared_non_testid": 123,
+    "non_testid_with_hint": 102,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 28,
+      "css": 31,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 34,
-      "testid": 1362,
+      "role": 40,
+      "testid": 1377,
       "xpath": 30
     },
-    "locator_debt": 0.0772,
+    "locator_debt": 0.082,
     "unmanaged_handles": 309
   }
 }
