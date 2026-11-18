@@ -126,3 +126,4 @@ Save = PUT application version; no failing requests seen in the probe; console n
 
 ## Blocked Steps
 - 4716 step 8 pending implementer probe (see above).
+- **Resolved during ELITEA-4716 implementation (Axel):** step 8 is NOT automatable with real mouse events in this layout. After step 6 LLM 1's Output handle (`pipeline-node-add-from-output-LLM 1-source`) is fully covered by the edge's `.react-flow__edgeupdater-source` (hover fails: "intercepts pointer events"), and `connect_nodes` finds the bottom sliver covered by the card's own Box. Dragging the edge's TARGET end onto Printer 1 draws a new edge visually, but the app's `onReconnect` only does `reconnectEdge` on edges (no `onConnect`), so node YAML `transition` stays `Code 1` after reload of the panel. Spec omits step 8 (commented in the test); not faked via YAML. Case 4716 coverage is therefore step 1-7 + 9; step 8 goes to the lead as a finding (possible product gap / case drift).
