@@ -4028,17 +4028,17 @@
     {
       "work_item_ref": "T-adjust-elitea-0143",
       "work_item_level": "feature",
-      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 0 delivered.",
+      "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
       "maturity": "pilot",
       "sessions": 1,
-      "turns": 22,
-      "subagent_dispatches": 0,
-      "orchestrator_cost_pct": 100,
+      "turns": 50,
+      "subagent_dispatches": 6,
+      "orchestrator_cost_pct": 48.6,
       "tokens": {
-        "input": 11074,
-        "output": 8383,
-        "cache_read": 2258060,
-        "cache_create": 242099
+        "input": 76762,
+        "output": 46453,
+        "cache_read": 9622521,
+        "cache_create": 1108245
       },
       "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
       "models_used": [
@@ -4046,18 +4046,18 @@
       ],
       "tokens_by_model": {
         "1_eu.anthropic.claude-sonnet-5-5": {
-          "input": 11074,
-          "output": 8383,
-          "cache_read": 2258060,
-          "cache_create": 242099
+          "input": 76762,
+          "output": 46453,
+          "cache_read": 9622521,
+          "cache_create": 1108245
         }
       },
-      "cost_api_equivalent_usd": 1.05,
-      "cache_read_share_pct": 38.8,
+      "cost_api_equivalent_usd": 4.79,
+      "cache_read_share_pct": 36.2,
       "scenarios_authored": 1,
-      "scenarios_automated": 0,
+      "scenarios_automated": 1,
       "scenarios_executed": 1,
-      "notes": "gate not-run; outcomes: blocked 1. Telemetry cohort: reconstructed from .agents/automation/adjust-elitea-0143/cost.json (v1); batch slug 'adjust-elitea-0143'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+      "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/adjust-elitea-0143/cost.json (v1); batch slug 'adjust-elitea-0143'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     },
     {
       "work_item_ref": "T-adjust-elitea-3370",
