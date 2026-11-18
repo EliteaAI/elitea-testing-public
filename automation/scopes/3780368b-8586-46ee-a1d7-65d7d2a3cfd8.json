@@ -2,11 +2,11 @@
   "v": 1,
   "session": "3780368b-8586-46ee-a1d7-65d7d2a3cfd8",
   "intent": "automation",
-  "batch": "adjust-2835",
+  "batch": "adjust-2835b",
   "cases": [
     "ELITEA-2016"
   ],
   "declaredAt": "2026-11-01T03:56:01.700Z",
-  "updatedAt": "2026-11-01T04:11:13.432Z",
-  "closedAt": "2026-11-01T04:11:13.432Z"
+  "updatedAt": "2026-11-18T16:25:34.869Z",
+  "closedAt": "2026-11-18T16:25:34.869Z"
 }
