@@ -53,7 +53,7 @@ New handles needed (class-level): `pipeline-tools-section-empty`, `-in-use` suff
 | Case element | Expected | Covered by | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 | empty text, no 4 add buttons | step 1 | text + counts 0 | asserted |
-| 2 | picker lists toolkits (no MCP), search, Create new | step 2 | row names, search/create-new visible, MCP name absent | asserted (MCP absence by fixture, not live-observed) |
+| 2 | picker lists toolkits (no MCP), search, Create new | step 2 | row names, search/create-new visible, MCP name absent | asserted (MCP absence asserted live via `mcp_toolkit_with_tools` fixture: MCP name absent from picker rows) |
 | 3 | toolkit in TOOLS, Used by Toolkit 1, Show tools | step 3 | card text/chip/toggle | asserted |
 | 4 | "In use" marker | step 4 | in-use testid | asserted |
 | 5 | one entry, Used by both | step 5 | card count 1, chips | asserted |
