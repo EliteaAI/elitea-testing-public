@@ -1,0 +1,20 @@
+{
+ "batch": "elitea-4719",
+ "base": "origin/main",
+ "pr_unit": "case-branch (batch of one)",
+ "integration_branch": null,
+ "gate": {"verdict": "green", "runs": 3, "seconds": [32, 33, 33], "failures": [],
+  "note": "workflow merge/report/triage agents failed (403 haiku model not allowed); lead gated 3x separately on DEV with APP_PREFIX=/app on the case branch and wrote this report"},
+ "cases": [
+  {"id": "ELITEA-4719", "outcome": "automated", "note": "3/3 green; reviewer APPROVED after 1 fix round",
+   "branch": "tests/ELITEA-4719-duplicate-node",
+   "afs": "test-specs/pipelines/l2_pipeline-duplicate-node-end-to-end_ELITEA-4719.md",
+   "spec": "automation/tests/ui/pipelines/test_pipeline_duplicate_node.py",
+   "findings": [
+    {"kind": "clarification", "note": "Case text names test-github-mcp/get_me; AFS uses fixture DeepWiki MCP + read_wiki_structure."},
+    {"kind": "clarification", "note": "Run thinking chip renders the name space-stripped (MCP1_copy); asserted via regex."},
+    {"kind": "note", "note": "Copy overlaps original at +40,+40; selecting the original needs a JS click, else _copy_copy."}
+   ]}
+ ],
+ "totals": {"automated": 1}
+}

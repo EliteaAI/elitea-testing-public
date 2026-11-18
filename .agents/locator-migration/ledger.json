@@ -753,11 +753,23 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.PICKER_GROUP_TITLE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10576,
+      "line": 10578,
       "kind": "xpath",
       "selector": ".//span[normalize-space(text())='{}']",
       "suggested_testid": "pipeline-agent-node-agent-select-group-title-{}",
       "description": "rungs 1-4 failed: group titles 'Agents'/'Pipelines' are plain MUI typography spans without testid (PickerMenu.jsx); scoped under the picker menu testid, exact text",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.canvas_edges": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 1974,
+      "kind": "css",
+      "selector": ".react-flow__edge",
+      "suggested_testid": "pipeline-canvas-edge",
+      "description": "ReactFlow edge group <g class=react-flow__edge>; carries its own data-testid rf__edge-...",
       "state": "raw",
       "added": "2026-11-18",
       "updated": "2026-11-18",
@@ -777,7 +789,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2045,
+      "line": 2047,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -1378,21 +1390,21 @@
   },
   "last_sync": "2026-11-18",
   "metric": {
-    "declared_total": 1463,
-    "declared_testid": 1350,
-    "declared_non_testid": 113,
-    "non_testid_with_hint": 92,
+    "declared_total": 1465,
+    "declared_testid": 1351,
+    "declared_non_testid": 114,
+    "non_testid_with_hint": 93,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 27,
+      "css": 28,
       "fallback": 20,
       "label": 1,
       "locator": 1,
       "role": 34,
-      "testid": 1350,
+      "testid": 1351,
       "xpath": 30
     },
-    "locator_debt": 0.0772,
+    "locator_debt": 0.0778,
     "unmanaged_handles": 309
   }
 }

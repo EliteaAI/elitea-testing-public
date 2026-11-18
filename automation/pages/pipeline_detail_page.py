@@ -1969,11 +1969,13 @@ class PipelineDetailPage(PipelineFormPage):
         description="Label span inside an Add Node menu item; sibling bodySmall span holds the description",
     )
 
-    # ReactFlow edge groups — third-party library output, no testid can be placed (permanent css rung,
-    # #579 exception; ELITEA-4714).
-    # Declared improvisation: LocatorDescriptor rejects a css= rung without suggested_testid=, and no hint can
-    # ever be honoured here, so this is an UPPER_CASE class constant (same idiom as chat_page RENDERED_CODE_BLOCK).
-    CANVAS_EDGE = ".react-flow__edge"
+    # ReactFlow edge groups — third-party library output (ELITEA-4714/4719). Declared at class level on the css
+    # rung; the hint is the closest honest name should DEV ever render a testid on the edge group.
+    canvas_edges = LocatorDescriptor(
+        css=".react-flow__edge",
+        suggested_testid="pipeline-canvas-edge",
+        description="ReactFlow edge group <g class=react-flow__edge>; carries its own data-testid rf__edge-...",
+    )
 
     # Generic "any canvas popup menu" check — shared DOM shape across two
     # distinct app components, each with its own real testid (not a raw
@@ -10440,7 +10442,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     def expect_edge_count(self, count: int, timeout: int = 10000) -> None:
         """Wait until the canvas shows exactly *count* edges (ReactFlow draws them after the save settles)."""
-        expect(self.page.locator(self.CANVAS_EDGE)).to_have_count(count, timeout=timeout)
+        expect(self.canvas_edges).to_have_count(count, timeout=timeout)
 
     # ------------------------------------------------------------------
     # Node-panel YAML tab (ELITEA-4716 / ELITEA-4717)
@@ -10652,3 +10654,77 @@ class PipelineDetailPage(PipelineFormPage):
 
         doc = yaml.safe_load(self.get_yaml_content()) or {}
         return {n.get("id"): n for n in doc.get("nodes", [])}
+
+    # ------------------------------------------------------------------
+    # Duplicate node (ELITEA-4719)
+    # ------------------------------------------------------------------
+
+    node_panel_duplicate_button = LocatorDescriptor(
+        testid="pipeline-node-panel-duplicate",
+        description="Node side panel footer's 'Duplicate node' icon button (NodeConfigFooter.jsx)",
+    )
+
+    def select_node_by_js_click(self, node_id: str, timeout: int = 10000) -> None:
+        """Select a node whose card is partly covered (a duplicate overlaps its original by +40,+40).
+
+        A forced click at the card centre lands on the covering copy, so click the card element itself
+        via JS and assert the panel bound to *node_id*.
+        """
+        self.node_card(node_id).evaluate("el => el.click()", timeout=timeout)
+        expect(self.node_panel_name_input).to_have_value(node_id, timeout=timeout)
+
+    def duplicate_selected_node(self, timeout: int = 10000) -> None:
+        """Click 'Duplicate node' in the open panel's footer (banner-safe JS click)."""
+        self.dismiss_banner_if_present()
+        self.node_panel_duplicate_button.wait_for(state="visible", timeout=timeout)
+        expect(self.node_panel_duplicate_button).to_be_enabled(timeout=timeout)
+        self.node_panel_duplicate_button.evaluate("el => el.click()")
+
+    def make_selected_node_entrypoint(self, timeout: int = 10000) -> None:
+        """Click 'Make Entrypoint' in the open panel's footer (banner-safe JS click); the state marker replaces it."""
+        self.dismiss_banner_if_present()
+        self.node_panel_make_entrypoint_button.wait_for(state="visible", timeout=timeout)
+        self.node_panel_make_entrypoint_button.evaluate("el => el.click()")
+        expect(self.node_panel_entrypoint_state()).to_be_visible(timeout=timeout)
+
+    def node_card_ids(self) -> list[str]:
+        """Names of every node card on the canvas, sorted (END is not a card)."""
+        cards = self.all_node_cards()
+        prefix = "pipeline-node-card-"
+        ids = [(cards.nth(i).get_attribute("data-testid") or "")[len(prefix):] for i in range(cards.count())]
+        return sorted(ids)
+
+    def canvas_edge_testids(self) -> list[str]:
+        """``data-testid`` of every edge currently drawn on the canvas."""
+        edges = self.canvas_edges
+        return [edges.nth(i).get_attribute("data-testid") or "" for i in range(edges.count())]
+
+    def start_running_node_recorder(self) -> None:
+        """Record, in the page, every node card that ever carries ``data-status="running"`` (set by NodeCard.jsx).
+
+        Installs a MutationObserver (plus an initial scan) so a short-lived highlight cannot be missed between
+        two polls. Read the result with :meth:`recorded_running_nodes`.
+        """
+        self.page.evaluate(
+            """(sel) => {
+                const seen = new Set();
+                const scan = (el) => {
+                    if (el.getAttribute('data-status') === 'running') {
+                        seen.add((el.getAttribute('data-testid') || '').replace('pipeline-node-card-', ''));
+                    }
+                };
+                const all = () => document.querySelectorAll(sel).forEach(scan);
+                new MutationObserver((muts) => {
+                    muts.forEach((m) => m.target.nodeType === 1 && m.target.matches(sel) && scan(m.target));
+                    all();
+                }).observe(document.body, {subtree: true, attributes: true, childList: true,
+                                           attributeFilter: ['data-status']});
+                all();
+                window.__runningNodes = seen;
+            }""",
+            self.NODE_CARD_ANY,
+        )
+
+    def recorded_running_nodes(self) -> list[str]:
+        """Sorted node names recorded by :meth:`start_running_node_recorder`."""
+        return sorted(self.page.evaluate("() => Array.from(window.__runningNodes || [])"))
