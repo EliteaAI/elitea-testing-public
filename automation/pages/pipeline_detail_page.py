@@ -9925,6 +9925,15 @@ class PipelineDetailPage(PipelineFormPage):
         text = (self.router_node_default_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
+    def expand_router_node_advanced_section(self, timeout: int = 10000) -> None:
+        """Expand the open Router panel's collapsed-by-default "Advanced" accordion (Input). Idempotent."""
+        toggle = self.node_panel_advanced_toggle
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click(timeout=timeout)
+            expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+        self.router_node_input_select.wait_for(state="visible", timeout=timeout)
+
     # ------------------------------------------------------------------
     # Decision node inline config (ELITEA-2034)
     # ------------------------------------------------------------------
