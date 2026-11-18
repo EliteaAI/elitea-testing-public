@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "session": "c17a2f2a-92e3-439a-aa97-f88f1eced1a5",
+  "intent": "automation",
+  "batch": "schedule-ui-2981",
+  "cases": [
+    "ELITEA-2007",
+    "ELITEA-2008"
+  ],
+  "declaredAt": "2026-11-18T16:58:14.515Z",
+  "updatedAt": "2026-11-18T17:53:23.388Z",
+  "outcomes": {
+    "ELITEA-2007": {
+      "outcome": "automated",
+      "at": "2026-11-18T17:50:47.826Z"
+    },
+    "ELITEA-2008": {
+      "outcome": "automated",
+      "at": "2026-11-18T17:50:47.826Z"
+    }
+  },
+  "closedAt": "2026-11-18T17:53:23.388Z"
+}
