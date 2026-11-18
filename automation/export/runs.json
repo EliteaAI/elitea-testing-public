@@ -4522,6 +4522,40 @@
       "scenarios_automated": 2,
       "scenarios_executed": 2,
       "notes": "gate sanctioned-red; outcomes: automated 2. Telemetry cohort: reconstructed from .agents/automation/schedule-ui-2981/cost.json (v1); batch slug 'schedule-ui-2981'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-adjust-2982",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 2 TMS case(s) through analyse → implement → review → merge → gate; 2 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 28,
+      "subagent_dispatches": 2,
+      "orchestrator_cost_pct": 52,
+      "tokens": {
+        "input": 34236,
+        "output": 24124,
+        "cache_read": 6092845,
+        "cache_create": 535708
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 34236,
+          "output": 24124,
+          "cache_read": 6092845,
+          "cache_create": 535708
+        }
+      },
+      "cost_api_equivalent_usd": 2.48,
+      "cache_read_share_pct": 42.5,
+      "scenarios_authored": 2,
+      "scenarios_automated": 2,
+      "scenarios_executed": 2,
+      "notes": "gate green (3x); outcomes: automated 2. Telemetry cohort: reconstructed from .agents/automation/adjust-2982/cost.json (v1); batch slug 'adjust-2982'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
