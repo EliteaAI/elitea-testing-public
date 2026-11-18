@@ -249,3 +249,63 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.get_mcp_node_output_value() == "messages", (
             "Output should persist as 'messages' after reload"
         )
+
+    # ------------------------------------------------------------------
+    # Extension (card #2971, AFS § Extension): case steps 10 (mapping type), 12 (type persists),
+    # 13 (Used by), 14-15 (run). Declared improvisation: the Fixed -> Variable change is applied
+    # AFTER the unmodified Step 12 reload assertions (which read `question` as Fixed text), then
+    # saved a second time and reloaded again to prove persistence.
+    # ------------------------------------------------------------------
+    with allure.step(
+        "Step 10 (ext) — Change the `question` mapping Type Fixed -> Variable and pick `input`; "
+        "the Value text field becomes a state-variable select"
+    ):
+        assert pipeline_page.get_mcp_node_input_mapping_type("question") == "Fixed"
+        pipeline_page.select_mcp_node_input_mapping_type("question", "Variable", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_mcp_node_input_mapping_type("question") == "Variable", (
+            "Type should read Variable after the change"
+        )
+        assert pipeline_page.is_mcp_node_input_mapping_value_input_absent("question", timeout=UI_ELEMENT_TIMEOUT), (
+            "The text Value input must be replaced by a select once Type is Variable"
+        )
+        pipeline_page.select_mcp_node_input_mapping_variable_value(
+            "question", "input", timeout=UI_ELEMENT_TIMEOUT
+        )
+        assert pipeline_page.get_mcp_node_input_mapping_variable_value("question") == "input"
+
+    with allure.step("Step 11 (ext) — Save again; PUT application returns 201"):
+        pipeline_page.save_and_wait_for_update(project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT)
+        assert not console_errors, f"Second save should not introduce console errors: {console_errors}"
+
+    with allure.step("Step 12 (ext) — Reload; the changed mapping type persists, repoName stays Fixed"):
+        page.goto(canonical_url)
+        pipeline_page.wait_for_detail_page_load()
+        pipeline_page.wait_for_canvas()
+        pipeline_page.wait_for_node_on_canvas("mcp", timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.ensure_mcp_node_panel_open(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_mcp_node_input_mapping_type("question") == "Variable", (
+            "question mapping Type should persist as Variable after reload"
+        )
+        assert pipeline_page.get_mcp_node_input_mapping_variable_value("question") == "input", (
+            "question mapping value should persist as the state variable `input` after reload"
+        )
+        assert pipeline_page.get_mcp_node_input_mapping_type("repoName") == "Fixed"
+        assert pipeline_page.get_mcp_node_input_mapping_value("repoName") == _REPO_NAME_VALUE
+
+    with allure.step('Step 13 (ext) — TOOLS still lists the MCP with "Used by: MCP 1"'):
+        pipeline_page.close_node_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.ensure_toolkits_section_visible(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_toolkit_attached(mcp_display_name, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_toolkit_card_used_by_node(
+            mcp_display_name, "MCP 1", timeout=UI_ELEMENT_TIMEOUT
+        ), "MCP card in TOOLS should show the 'Used by' chip for node 'MCP 1' after reload"
+
+    with allure.step("Steps 14-15 (ext) — Test Pipeline: send `test`; MCP tool call shown, run completes"):
+        pipeline_page.open_test_pipeline_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.send_message_in_embedded_chat("test", timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.wait_for_embedded_chat_run_completion(timeout=120_000)
+        chip_texts = pipeline_page.get_embedded_chat_tool_chip_texts()
+        assert any("ask_wiki_question" in t for t in chip_texts), (
+            f"A tool chip for the MCP tool ask_wiki_question should show the MCP call; chips: {chip_texts}"
+        )
+        assert pipeline_page.get_last_embedded_chat_message_text(), "The run should return a non-empty answer"

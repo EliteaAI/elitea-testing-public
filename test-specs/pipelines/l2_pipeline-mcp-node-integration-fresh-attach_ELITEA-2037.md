@@ -249,3 +249,9 @@ Existing page-object support: `select_toolkit_node_input_mapping_type` is Toolki
 | Step 13 | TOOLS card "Used by: MCP 1" | ext assertion | add |
 | Steps 14-15 | tool call shown, run completes | ext run step | add |
 | Steps 1-9, 11 and existing 12 | unchanged | existing spec | covered, untouched |
+
+### Implementation notes — ELITEA-2037 extension (implementer, 2026-11-18)
+
+- Ordering improvisation (declared; canon gap, AFS option (a)): the Fixed -> Variable change is applied AFTER the unmodified Step 12 reload assertions, saved a second time (PUT 201), reloaded again; then Used-by (step 13) and the run (steps 14-15). Reason: existing assertions read `question` as Fixed text and must stay byte-identical. Case text says "before Save" for step 10; met via the second save.
+- Handles: Type select and Variable-mode Value select are declared as class-level `ScopedLocator(xpath=…)` rows keyed by the parameter's display label (`question` -> `Question`) because `simple-select-Type` is duplicated per row and the row has no testid. Hints: `pipeline-mcp-node-input-mapping-type-{}`, `pipeline-mcp-node-input-mapping-value-select-{}`. Used-by uses existing `pipeline-tool-card-used-by`; run uses existing `chat-answer-tool-chip` / `chat-answer-thought-accordion`.
+- Env note: with no `APP_PREFIX` set (the shell had none and `automation/.env.test` is absent in this checkout) navigation 404s; the run needed `APP_PREFIX=/app` exported.
