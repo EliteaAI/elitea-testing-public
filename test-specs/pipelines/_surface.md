@@ -5,6 +5,13 @@
 > place, don't append duplicate entries. Last updated: 2026-09-10 (card #2139 — delete-redirect arrival-path rule; prior: ELITEA-2002 repair
 > pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
 
+## Test Pipeline panel (confirmed live on DEV, 2026-11-18, ELITEA-4720)
+
+- `pipeline-test-panel` stays mounted but hidden until `pipeline-test-button`; while open the button is hidden. Controls `pipeline-test-panel-controls`: `pipeline-history-tab` (tooltip "Run History"; click navigates to `/pipelines/all/{id}/history`, back returns with panel CLOSED and conversation EMPTY), `context-budget-pill` (only once a conversation exists; click -> `context-budget-popover` with `-tokens/-messages-count/-summaries-count/-percentage/-edit-button`), `chat-clear-button` (disabled while no messages), `pipeline-test-panel-close`; handle `pipeline-test-panel-resize-handle` (default width 373 px; width persisted in localStorage `pipelineTestPanelWidth:{id}`).
+- Send blocked while the pipeline YAML is dirty: `chat-send-button` natively disabled, tooltip (`[role=tooltip]` after `hover(force=True)`) "Save the pipeline to test the latest changes.". Description edits do NOT make it dirty (only node/YAML edits). Reload drops the conversation.
+- Running node: `pipeline-node-card-{name}[data-status="running"]` appears ~2 s after send, persists after the panel is closed until the run ends. Closing mid-run does not stop it; reopen shows the completed answer.
+- DEV banners (`platform-banner-*`) re-appear ~6 s after load and intercept clicks.
+
 ## Duplicate node (confirmed live on DEV, 2026-11-18, ELITEA-4719)
 
 - Footer `pipeline-node-panel-duplicate` (aria "Duplicate node"); toast `"<id> duplicated as <id>_copy"` (`_copy_2`, ... first free name; duplicating a copy gives `_copy_copy`). Copy: panel opens on it, Save enabled, no `transition`/edges, no entrypoint badge, shares ONE TOOLS card ("Used by" both). Copy is offset +40,+40 over the original: force-click on the original's centre hits the copy; click at position (10,10) or JS click.
