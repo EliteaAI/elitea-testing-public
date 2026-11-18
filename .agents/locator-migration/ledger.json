@@ -237,7 +237,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
-      "line": 7058,
+      "line": 7091,
       "kind": "xpath",
       "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
       "suggested_testid": "chat-participant-attention-card-{}",
@@ -249,7 +249,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
       "file": "pages/chat_page.py",
-      "line": 7047,
+      "line": 7080,
       "kind": "css",
       "selector": "svg path",
       "suggested_testid": "chat-participant-icon-path",
@@ -273,7 +273,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
       "file": "pages/chat_page.py",
-      "line": 7036,
+      "line": 7069,
       "kind": "xpath",
       "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
       "suggested_testid": "chat-participants-section-title-{}",
@@ -297,7 +297,7 @@
     },
     "pages/chat_page.py::ChatPage.USER_MESSAGE_AVATAR": {
       "file": "pages/chat_page.py",
-      "line": 1551,
+      "line": 1583,
       "kind": "xpath",
       "selector": ".//*[contains(@class, 'MuiAvatar-root')]",
       "suggested_testid": "chat-message-user-avatar",
@@ -307,9 +307,33 @@
       "updated": "2026-10-22",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.conversation_menu_all_items": {
+      "file": "pages/chat_page.py",
+      "line": 1349,
+      "kind": "role",
+      "selector": "menuitem",
+      "suggested_testid": "chat-conversation-menu-item-{}",
+      "description": "Every item of the open conversation context menu (enumerated, never picked).",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.conversation_menu_duplicate_item": {
+      "file": "pages/chat_page.py",
+      "line": 1355,
+      "kind": "role",
+      "selector": "menuitem[name='Duplicate']",
+      "suggested_testid": "chat-conversation-menu-duplicate-menuitem",
+      "description": "'Duplicate' item of the open conversation context menu (no key => no testid on DEV).",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.conversation_menu_item_icon": {
       "file": "pages/chat_page.py",
-      "line": 1324,
+      "line": 1339,
       "kind": "css",
       "selector": "svg",
       "suggested_testid": "chat-conversation-menu-item-icon",
@@ -321,7 +345,7 @@
     },
     "pages/chat_page.py::ChatPage.export_chat_modal_option_radio": {
       "file": "pages/chat_page.py",
-      "line": 1307,
+      "line": 1322,
       "kind": "css",
       "selector": "input[type=\"radio\"]",
       "suggested_testid": "export-chat-modal-option-radio",
@@ -333,7 +357,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_items": {
       "file": "pages/chat_page.py",
-      "line": 1506,
+      "line": 1538,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "chat-folder-menu-item-{}",
@@ -345,7 +369,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_new_chat_item": {
       "file": "pages/chat_page.py",
-      "line": 1512,
+      "line": 1544,
       "kind": "role",
       "selector": "menuitem[name='New chat']",
       "suggested_testid": "chat-folder-menu-new-chat-menuitem",
@@ -357,7 +381,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_own_menu_button": {
       "file": "pages/chat_page.py",
-      "line": 1523,
+      "line": 1555,
       "kind": "xpath",
       "selector": ".//*[@data-testid=\"conversation-menu-menu-button\"][not(ancestor::*[starts-with(@data-testid, \"chat-conversation-item-\")])]",
       "suggested_testid": "chat-folder-menu-button",
@@ -369,7 +393,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 6995,
+      "line": 7028,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -381,7 +405,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 6964,
+      "line": 6997,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -393,7 +417,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 6956,
+      "line": 6989,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -405,7 +429,7 @@
     },
     "pages/chat_page.py::ChatPage.speaking_mode_button": {
       "file": "pages/chat_page.py",
-      "line": 1544,
+      "line": 1576,
       "kind": "role",
       "selector": "button[name='enter speaking mode']",
       "suggested_testid": "chat-speaking-mode-button",
@@ -417,7 +441,7 @@
     },
     "pages/chat_page.py::ChatPage.voice_input_button": {
       "file": "pages/chat_page.py",
-      "line": 1561,
+      "line": 1593,
       "kind": "role",
       "selector": "button[name='start voice input']",
       "suggested_testid": "chat-voice-input-button",
@@ -597,7 +621,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1824,
+      "line": 1855,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -607,9 +631,33 @@
       "updated": "2026-10-23",
       "history": []
     },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.MCP_NODE_INPUT_MAPPING_TYPE_SELECT": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 1766,
+      "kind": "xpath",
+      "selector": ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]//*[@id='simple-select-Type']",
+      "suggested_testid": "pipeline-mcp-node-input-mapping-type-{}",
+      "description": "rungs 1-4 failed: MCP nodeType gets no typeTestIdPrefix on DEV and the MUI id simple-select-Type is duplicated per row; row scoped by its parameter label",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.MCP_NODE_INPUT_MAPPING_VARIABLE_VALUE_SELECT": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 1777,
+      "kind": "xpath",
+      "selector": ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]//*[@role='combobox' and @id!='simple-select-Type']",
+      "suggested_testid": "pipeline-mcp-node-input-mapping-value-select-{}",
+      "description": "rungs 1-4 failed: Variable-mode Value select has no testid on DEV (id is 'simple-select-[object Object]'); row scoped by its parameter label",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1897,
+      "line": 1928,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -1196,23 +1244,23 @@
       "history": []
     }
   },
-  "last_sync": "2026-11-16",
+  "last_sync": "2026-11-18",
   "metric": {
-    "declared_total": 1405,
-    "declared_testid": 1307,
-    "declared_non_testid": 98,
-    "non_testid_with_hint": 77,
+    "declared_total": 1414,
+    "declared_testid": 1312,
+    "declared_non_testid": 102,
+    "non_testid_with_hint": 81,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 20,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 31,
-      "testid": 1307,
-      "xpath": 25
+      "role": 33,
+      "testid": 1312,
+      "xpath": 27
     },
-    "locator_debt": 0.0698,
-    "unmanaged_handles": 310
+    "locator_debt": 0.0721,
+    "unmanaged_handles": 309
   }
 }

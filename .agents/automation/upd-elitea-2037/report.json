@@ -4,24 +4,16 @@
   "pr_unit": "trunk",
   "integration_branch": "tests/batch-upd-elitea-2037",
   "gate": {
-    "verdict": "red",
-    "runs": 0,
-    "seconds": [],
-    "failures": [
-      {
-        "spec": "automation/tests/ui/pipelines_2/test_pipeline_mcp_node_fresh_attach.py::test_mcp_node_fresh_attach",
-        "signature": "playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 15000ms exceeded. at test line 73 pipeline_page.navigate(pipeline_id) -> pages/pipeline_detail_page.py:2047 navigate -> :2071 wait_for_detail_page_load. Failed 3 times (initial + 2 reruns) in 91s.",
-        "case_ids": [
-          "ELITEA-2037"
-        ]
-      }
-    ]
+    "verdict": "green",
+    "runs": 3,
+    "by": "lead",
+    "note": "Workflow gate run 0 was red from missing APP_PREFIX (no automation/.env.test in sandbox) \u2014 env gap, not a test defect. Lead re-ran 3 separate invocations with APP_PREFIX=/app HEADLESS=true: 3/3 passed (54s/53s/52s), reruns 0."
   },
   "cases": [
     {
       "id": "ELITEA-2037",
-      "outcome": "blocked",
-      "note": "gate red: playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 15000ms exceeded. at test line 73 pipeline_page.navigate(pipeline_id) -> pages/pipeline_detail_page.py:2047 navigate -> :2071 wai",
+      "outcome": "automated",
+      "note": "extend-existing; reviewer APPROVED after 1 fix round; lead gate 3/3 green",
       "findings": [
         {
           "kind": "clarification",
@@ -60,20 +52,20 @@
         },
         {
           "kind": "defect",
-          "note": "Steps 14-15 'run completes without errors': the only completion assertions are a visible Thought accordion, a non-empty answer body, and a chip containing ask_wiki_question. An error message rendered as the answer, or a partially streamed body, would pass. The AFS gap table lists 'no error state', but no assertion checks it. wait_for_embedded_chat_run_completion also has no settled-state check. Co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Steps 14-15 'run completes without errors': the only completion assertions are a visible Thought accordion, a non-empty answer body, and a chip containing ask_wiki_question. An error message rendered as the answer, or a partially streamed body, would pass. The AFS gap table lists 'no error state', but no assertion checks it. wait_for_embedded_chat_run_completion also has no settled-state check. Co\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/tests/ui/pipelines_2/test_pipeline_mcp_node_fresh_attach.py (final allure step, 'Steps 14-15 (ext)'); automation/pages/pipeline_detail_page.py wait_for_embedded_chat_run_completion"
         },
         {
           "kind": "note",
-          "note": "Mechanical locator grep on `git diff main...tests/elitea-2037-mcp-ext -- automation/pages automation/tests`, using the ladder pattern from role-overrides, gave 8 hits, all compliant. Five are page.locator(self.<UPPER_CASE testid constant>), which are NODE_PANEL_BASIC_SECTION x3, SELECT_OPTION and MCP_NODE_INPUT_MAPPING_VALUE. Two are `.locator(self.CHAT_ANSWER_TOOL_CHIP/THOUGHT_ACCORDION)` on `[da… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Mechanical locator grep on `git diff main...tests/elitea-2037-mcp-ext -- automation/pages automation/tests`, using the ladder pattern from role-overrides, gave 8 hits, all compliant. Five are page.locator(self.<UPPER_CASE testid constant>), which are NODE_PANEL_BASIC_SECTION x3, SELECT_OPTION and MCP_NODE_INPUT_MAPPING_VALUE. Two are `.locator(self.CHAT_ANSWER_TOOL_CHIP/THOUGHT_ACCORDION)` on `[da\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
-          "note": "Declared improvisation: the Fixed->Variable change is applied after the unmodified existing Step 12 reload assertions, then saved a second time and reloaded. The reasoning is sound, since the existing assertions read `question` as Fixed text. The case's 'before Save' wording for step 10 is met via the second save, so it is acceptable. Recommend adding it to the canon. The AFS carries the declarati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Declared improvisation: the Fixed->Variable change is applied after the unmodified existing Step 12 reload assertions, then saved a second time and reloaded. The reasoning is sound, since the existing assertions read `question` as Fixed text. The case's 'before Save' wording for step 10 is met via the second save, so it is acceptable. Recommend adding it to the canon. The AFS carries the declarati\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
-          "note": "Triangulation of case steps 10, 12, 13 against the diff. Step 10 asserts Type reads Variable, the Value text input is absent, and the Value select reads `input`. Step 12 asserts Variable and `input` persist after reload, and that repoName stays Fixed with its text. Step 13 asserts the TOOLS card is attached with a 'Used by: MCP 1' chip after reload. Case steps 1-9 and 11 stay covered by the untouc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Triangulation of case steps 10, 12, 13 against the diff. Step 10 asserts Type reads Variable, the Value text input is absent, and the Value select reads `input`. Step 12 asserts Variable and `input` persist after reload, and that repoName stays Fixed with its text. Step 13 asserts the TOOLS card is attached with a 'Used by: MCP 1' chip after reload. Case steps 1-9 and 11 stay covered by the untouc\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
@@ -89,7 +81,7 @@
         },
         {
           "kind": "note",
-          "note": "Prior blocker (steps 14-15) is fixed. The spec now asserts, at the step where the run happens: (a) a tool chip containing ask_wiki_question; (b) wait_for_embedded_chat_run_completion (thought accordion visible AND last response body non-empty); (c) wait_for_embedded_chat_response with a 3s stable window, then final_answer == settled_answer; (d) an error-marker scan of the answer; (e) len(console_e… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Prior blocker (steps 14-15) is fixed. The spec now asserts, at the step where the run happens: (a) a tool chip containing ask_wiki_question; (b) wait_for_embedded_chat_run_completion (thought accordion visible AND last response body non-empty); (c) wait_for_embedded_chat_response with a 3s stable window, then final_answer == settled_answer; (d) an error-marker scan of the answer; (e) len(console_e\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/tests/ui/pipelines_2/test_pipeline_mcp_node_fresh_attach.py"
         },
         {
@@ -103,11 +95,11 @@
         },
         {
           "kind": "note",
-          "note": "Triangulation, case to AFS to diff. Step 10: type change Fixed to Variable with the value-input-absent check and picking `input`, asserted. Step 11: second save, with the PUT 201 guard through save_and_wait_for_update. Step 12: Variable/`input` persists, repoName stays Fixed with its value. Step 13: Used by 'MCP 1' via is_toolkit_card_used_by_node. Steps 14-15: tool chip plus settled non-error ans… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Triangulation, case to AFS to diff. Step 10: type change Fixed to Variable with the value-input-absent check and picking `input`, asserted. Step 11: second save, with the PUT 201 guard through save_and_wait_for_update. Step 12: Variable/`input` persists, repoName stays Fixed with its value. Step 13: Used by 'MCP 1' via is_toolkit_card_used_by_node. Steps 14-15: tool chip plus settled non-error ans\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
-          "note": "Locator mechanical grep, run on `git diff main...tests/elitea-2037-mcp-ext -- automation/pages automation/tests` with the role-overrides pattern. Hits, all compliant: pipeline_detail_page.py `self.page.locator(self.NODE_PANEL_BASIC_SECTION)` x3, whose constant is a [data-testid=] string; `self.page.locator(self.SELECT_OPTION.format(...))`, a testid template; `self.page.locator(self.MCP_NODE_INPUT_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Locator mechanical grep, run on `git diff main...tests/elitea-2037-mcp-ext -- automation/pages automation/tests` with the role-overrides pattern. Hits, all compliant: pipeline_detail_page.py `self.page.locator(self.NODE_PANEL_BASIC_SECTION)` x3, whose constant is a [data-testid=] string; `self.page.locator(self.SELECT_OPTION.format(...))`, a testid template; `self.page.locator(self.MCP_NODE_INPUT_\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         }
       ],
       "afs": "test-specs/pipelines/l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md",
@@ -115,7 +107,7 @@
     }
   ],
   "totals": {
-    "blocked": 1
+    "automated": 1
   },
   "quality_flags": [],
   "quota_halted": false,
