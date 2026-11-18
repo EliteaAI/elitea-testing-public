@@ -296,6 +296,7 @@ def test_node_yaml_view_validation_and_invalid_yaml(page, node_yaml_pipeline):
         expect(pp.node_yaml_search_matches()).to_have_count(expected_matches, timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 13 — Ctrl+H shows the replace controls"):
+        # Declared weak (AFS step 12): the replace row already shows at Ctrl+F in this CM6 setup, so this is non-discriminating.
         page.keyboard.press("Control+h")
         expect(pp.node_yaml_replace_button()).to_have_count(1)
         expect(pp.node_yaml_replace_all_button()).to_have_count(1)

@@ -1911,6 +1911,11 @@ class PipelineDetailPage(PipelineFormPage):
         suggested_testid="pipeline-node-yaml-replace-all-button",
         description="CodeMirror replace-all button (third-party internals, #579 exception); scope = node YAML editor",
     )
+    NODE_YAML_LINE_ITEM = ScopedLocator(
+        css=".cm-line",
+        suggested_testid="pipeline-node-yaml-line-item",
+        description="CodeMirror line (third-party internals, #579 exception); scope = node YAML content",
+    )
     NODE_YAML_LINE = ScopedLocator(
         css='.cm-line:has-text("{}")',
         suggested_testid="pipeline-node-yaml-line-{}",
@@ -10501,13 +10506,13 @@ class PipelineDetailPage(PipelineFormPage):
 
     def node_yaml_text(self) -> str:
         """Current node YAML, one ``.cm-line`` per line joined with newlines."""
-        lines = self.node_yaml_content().locator(self.YAML_LINE_SELECTOR)
+        lines = self.NODE_YAML_LINE_ITEM.within(self.node_yaml_content())
         return "\n".join(lines.all_text_contents())
 
     def set_node_yaml_line(self, current_line_text: str, new_line_text: str, timeout: int = 10000) -> None:
         """Replace one node-YAML line (exact, indentation-preserving: ``Home`` skips leading blanks).
 
-        *current_line_text* is matched as a unique substring of the line's text (strict-mode locator) (leading ``- `` of the
+        *current_line_text* is matched as a unique substring of the line's text (strict-mode locator; the leading ``- `` of the
         first list item is part of the line text). Writes via ``insert_text`` (CodeMirror ignores fill()).
         """
         line = self.NODE_YAML_LINE.within(self.node_yaml_content(), current_line_text)
