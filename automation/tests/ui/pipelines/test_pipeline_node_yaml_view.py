@@ -277,7 +277,7 @@ def test_node_yaml_view_validation_and_invalid_yaml(page, node_yaml_pipeline):
     with allure.step("Step 11 — Discard reverts to the last valid YAML and the error disappears"):
         pp.node_yaml_leave_discard_button().click()
         expect(pp.node_yaml_leave_dialog()).to_have_count(0)
-        expect(pp.node_panel_name_input).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)  # close completed
+        expect(pp.node_panel_close_button).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)  # panel closed
         expect(pp.node_card("LLM main")).to_have_count(1)
         pp.open_node_panel_by_card("LLM main", timeout=UI_ELEMENT_TIMEOUT)
         pp.open_node_yaml_tab(timeout=UI_ELEMENT_TIMEOUT)

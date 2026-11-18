@@ -1891,10 +1891,31 @@ class PipelineDetailPage(PipelineFormPage):
     NODE_YAML_LEAVE_DISCARD = '[data-testid="pipeline-node-yaml-leave-discard"]'
     # Sanctioned #579 exception (third-party CodeMirror internals, scoped under the testid-bearing
     # `pipeline-node-panel-yaml` parent): search panel, its match highlights and replace buttons.
-    CM_SEARCH_PANEL = ".cm-search"
-    CM_SEARCH_MATCH = ".cm-searchMatch"
-    CM_REPLACE_BUTTON = '.cm-search button[name="replace"]'
-    CM_REPLACE_ALL_BUTTON = '.cm-search button[name="replaceAll"]'
+    CM_SEARCH_PANEL = ScopedLocator(
+        css=".cm-search",
+        suggested_testid="pipeline-node-yaml-search-panel",
+        description="CodeMirror search panel (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    CM_SEARCH_MATCH = ScopedLocator(
+        css=".cm-searchMatch",
+        suggested_testid="pipeline-node-yaml-search-match",
+        description="CodeMirror match highlight (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    CM_REPLACE_BUTTON = ScopedLocator(
+        css='.cm-search button[name="replace"]',
+        suggested_testid="pipeline-node-yaml-replace-button",
+        description="CodeMirror replace button (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    CM_REPLACE_ALL_BUTTON = ScopedLocator(
+        css='.cm-search button[name="replaceAll"]',
+        suggested_testid="pipeline-node-yaml-replace-all-button",
+        description="CodeMirror replace-all button (third-party internals, #579 exception); scope = node YAML editor",
+    )
+    NODE_YAML_LINE = ScopedLocator(
+        css='.cm-line:text-is("{}")',
+        suggested_testid="pipeline-node-yaml-line-{}",
+        description="One CodeMirror line by exact text (third-party internals, #579 exception); scope = YAML content",
+    )
     # Any editable control inside one canvas node wrapper (scope = `rf__node-{id}` locator via .within()).
     NODE_EDITABLE_CONTROL = ScopedLocator(
         css='input, select, textarea, [contenteditable="true"]',
@@ -10454,19 +10475,19 @@ class PipelineDetailPage(PipelineFormPage):
 
     def node_yaml_search_panel(self) -> Locator:
         """CodeMirror search panel inside the node YAML editor."""
-        return self.page.locator(self.NODE_PANEL_YAML).locator(self.CM_SEARCH_PANEL)
+        return self.CM_SEARCH_PANEL.within(self.page.locator(self.NODE_PANEL_YAML))
 
     def node_yaml_search_matches(self) -> Locator:
         """CodeMirror search-match highlights inside the node YAML editor."""
-        return self.page.locator(self.NODE_PANEL_YAML).locator(self.CM_SEARCH_MATCH)
+        return self.CM_SEARCH_MATCH.within(self.page.locator(self.NODE_PANEL_YAML))
 
     def node_yaml_replace_button(self) -> Locator:
         """CodeMirror 'replace' button (visible once the search panel is open)."""
-        return self.page.locator(self.NODE_PANEL_YAML).locator(self.CM_REPLACE_BUTTON)
+        return self.CM_REPLACE_BUTTON.within(self.page.locator(self.NODE_PANEL_YAML))
 
     def node_yaml_replace_all_button(self) -> Locator:
         """CodeMirror 'replace all' button (visible once the search panel is open)."""
-        return self.page.locator(self.NODE_PANEL_YAML).locator(self.CM_REPLACE_ALL_BUTTON)
+        return self.CM_REPLACE_ALL_BUTTON.within(self.page.locator(self.NODE_PANEL_YAML))
 
     def open_node_yaml_tab(self, timeout: int = 10000) -> None:
         """Switch the open node panel to its YAML tab and wait for the editor."""
@@ -10489,7 +10510,7 @@ class PipelineDetailPage(PipelineFormPage):
         *current_line_text* is matched against the line's text with ``exact=True`` (leading ``- `` of the
         first list item is part of the line text). Writes via ``insert_text`` (CodeMirror ignores fill()).
         """
-        line = self.node_yaml_content().get_by_text(current_line_text, exact=True).first
+        line = self.NODE_YAML_LINE.within(self.node_yaml_content(), current_line_text)
         line.click(timeout=timeout)
         self.page.keyboard.press("Home")
         self.page.keyboard.press("Shift+End")
