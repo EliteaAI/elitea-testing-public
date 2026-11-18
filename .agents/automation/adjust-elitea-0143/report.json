@@ -1,0 +1,11 @@
+{
+  "batch": "adjust-elitea-0143",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-adjust-elitea-0143",
+  "gate": {"verdict": "green", "runs": 3, "by": "lead",
+    "note": "3 separate invocations on DEV with APP_PREFIX=/app HEADLESS=true: 3/3 passed (68s/66s/67s). Sandbox lacks automation/.env.test; GIT_HUB_TOKEN supplied via env."},
+  "cases": [{"id": "ELITEA-0143", "outcome": "automated",
+    "note": "adjust class A/D (assertion relaxation approved by humans in #2964/#2965: 'main' not required); reviewer APPROVED after 2 fix rounds; lead gate 3/3 green",
+    "findings": [{"kind": "clarification", "note": "TMS case ELITEA-0143 step 'Start chat ... ask GitHub-related question' wording unchanged; test now accepts any >=2-entry branch listing, no 'main' required."}]}]
+}

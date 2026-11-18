@@ -23,6 +23,7 @@ Usage:
 """
 
 import logging
+import re
 
 import pytest
 
@@ -33,6 +34,34 @@ from pages.chat_page import ChatPage
 import allure
 
 logger = logging.getLogger(__name__)
+
+_ERROR_REPLY_RE = re.compile(
+    r"(?i)\b(unable|cannot|can't|couldn't|could not|sorry|error|failed|don't have access|"
+    r"no access|not authorized|unauthorized|forbidden|permission denied|rate limit)\b"
+)
+
+_ENTRY_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/\-]*")
+
+
+def _scan_listing_reply(text: str) -> tuple[list[str], list[str]]:
+    """Split a reply into branch entries (single tokens) and error-looking prose lines."""
+    entries: list[str] = []
+    errors: list[str] = []
+    for ln in text.splitlines():
+        t = re.sub(r"^\s*(?:[-*\u2022]|\d+[.)])\s+", "", ln.strip())
+        t = t.replace("`", "").replace("**", "").replace("|", " ").strip()
+        t = re.sub(r"\s+\((?:default|protected)\)$", "", t, flags=re.I)
+        if not t:
+            continue
+        if len(t.split()) == 1:
+            if _ENTRY_RE.fullmatch(t):
+                entries.append(t)
+            continue
+        m = _ERROR_REPLY_RE.search(t)
+        if m:
+            errors.append(f"matched '{m.group(0)}': {t[:200]}")
+    return entries, errors
+
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.toolkits, pytest.mark.p0]
 
@@ -109,7 +138,6 @@ class TestAgentWithToolkitInChat:
         This tests the agent-owns-toolkit execution path in real chat (/chat).
         """
         toolkit_name = github_toolkit["name"]
-        expected_branch = github_toolkit["branch"]
 
         agent_id = agent_with_toolkit_instructions
 
@@ -186,22 +214,26 @@ class TestAgentWithToolkitInChat:
         # Step 8 — Verify response contains branch/repository data from toolkit
         # ------------------------------------------------------------------
         with allure.step("Step 8 — Verify response contains branch/repository data"):
-            # The model often renders the branch list as a Markdown table —
-            # table cells are outside the p/li body text get_last_message_text()
-            # reads, so fold the rendered table cells in as well.
-            table_text = "\n".join(
-                cell for row in chat.get_rendered_table_data() for cell in row.values()
-            )
-            last_content = "\n".join(filter(None, (chat.get_last_message_text(), table_text)))
+            # The branch list may be a paragraph/list, a Markdown table or a
+            # fenced code block — read all of them from the last message.
+            last_content = chat.get_last_message_full_text()
             assert last_content, "Expected AI to respond with content"
             logger.info("AI response (%d chars): %s", len(last_content), last_content[:500])
 
-            assert expected_branch in last_content, (
-                f"Expected toolkit response to include the known branch '{expected_branch}'. "
-                f"Response: {last_content[:300]}"
+            entries, error_hits = _scan_listing_reply(last_content)
+
+            # Guard (a) NEGATIVE — an error/refusal reply must never pass. Applied to
+            # prose lines only, so branch names like 'fix/error-handling' are exempt.
+            assert not error_hits, f"AI reply looks like an error/refusal: {error_hits[0]}"
+
+            # Guard (b) POSITIVE — at least two single-token branch entries; intro-only
+            # or 'none found' lines do not count. 'main' is not required.
+            assert len(entries) >= 2, (
+                "Expected toolkit response to list at least 2 branch entries "
+                f"(single-token lines). Response: {last_content[:300]}"
             )
 
             logger.info(
-                "Agent executed toolkit successfully — '%s' branch found in response",
-                expected_branch,
+                "Agent executed toolkit successfully — %d listing entries found in response",
+                len(entries),
             )
