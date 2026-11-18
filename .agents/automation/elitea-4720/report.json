@@ -4,26 +4,21 @@
   "pr_unit": "trunk",
   "integration_branch": "tests/batch-elitea-4720",
   "gate": {
-    "verdict": "red",
-    "runs": 0,
+    "verdict": "green",
+    "runs": 3,
     "seconds": [
-      86.2
+      42.9,
+      44.6,
+      48.8
     ],
-    "failures": [
-      {
-        "spec": "tests/ui/pipelines/test_pipeline_test_panel_controls_session.py::test_pipeline_test_panel_controls_and_session",
-        "signature": "playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 15000ms exceeded. Raised at spec line 57 `pp.navigate(pipeline_id)` -> pages/pipeline_detail_page.py:2210 navigate -> :2234 wait_for_detail_page_load (before any test step ran). 2 reruns (pytest-rerunfailures) also failed; 1 failed, 2 rerun in 83.97s.",
-        "case_ids": [
-          "ELITEA-4720"
-        ]
-      }
-    ]
+    "failures": [],
+    "note": "workflow gate red was env (no automation/.env.test -> APP_PREFIX empty); lead re-gated 3 separate runs with APP_PREFIX=/app --reruns 0"
   },
   "cases": [
     {
       "id": "ELITEA-4720",
-      "outcome": "blocked",
-      "note": "gate red: playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 15000ms exceeded. Raised at spec line 57 `pp.navigate(pipeline_id)` -> pages/pipeline_detail_page.py:2210 navigate -> :2234 wait_",
+      "outcome": "automated",
+      "note": "lead 3x gate green; review APPROVED",
       "findings": [
         {
           "kind": "clarification",
@@ -54,7 +49,7 @@
         },
         {
           "kind": "note",
-          "note": "Mechanical locator grep (git diff main...HEAD -- automation/pages automation/tests | grep -nE 'get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=') returned 2 hits. Both are compliant under the one-hop rule. node_card_running passes self.page.locator(self.NODE_CARD_RUNNING.format(...)), where NODE_CARD_RUNNING is an UPPER_CASE class constant that is a [data-testid=...] templat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Mechanical locator grep (git diff main...HEAD -- automation/pages automation/tests | grep -nE 'get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=') returned 2 hits. Both are compliant under the one-hop rule. node_card_running passes self.page.locator(self.NODE_CARD_RUNNING.format(...)), where NODE_CARD_RUNNING is an UPPER_CASE class constant that is a [data-testid=...] templat\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/pages/pipeline_detail_page.py:10780,10830"
         },
         {
@@ -64,12 +59,12 @@
         },
         {
           "kind": "note",
-          "note": "Triangulation of case, AFS and diff, row by row. 1: panel hidden + button visible/enabled. 2: panel, input, model selector, controls, history, clear, close visible, and test button hidden. 3: running node card count 1, 2 items, non-empty last response, model chip. 4: pill regex ^\\d+%$. 5: popover visible, tokens visible, messages ==\"2\", summaries ==\"0\", edit button visible. 6: exact tooltip \"Run H… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Triangulation of case, AFS and diff, row by row. 1: panel hidden + button visible/enabled. 2: panel, input, model selector, controls, history, clear, close visible, and test button hidden. 3: running node card count 1, 2 items, non-empty last response, model chip. 4: pill regex ^\\d+%$. 5: popover visible, tokens visible, messages ==\"2\", summaries ==\"0\", edit button visible. 6: exact tooltip \"Run H\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "test-spec Coverage Map vs spec"
         },
         {
           "kind": "clarification",
-          "note": "Three deviations from the case text are documented in the AFS, declared in the spec docstring and justified by live observation and source. They are not masking. C1: the unsaved edit is an LLM node System edit rather than the Description, because a Description edit does not gate sending. C2: the chat is re-seeded after the Run History route, and again after the reload. C3: the pill shows \"0%\", not… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Three deviations from the case text are documented in the AFS, declared in the spec docstring and justified by live observation and source. They are not masking. C1: the unsaved edit is an LLM node System edit rather than the Description, because a Description edit does not gate sending. C2: the chat is re-seeded after the Run History route, and again after the reload. C3: the pill shows \"0%\", not\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "AFS C1/C2/C3"
         },
         {
@@ -88,7 +83,7 @@
     }
   ],
   "totals": {
-    "blocked": 1
+    "automated": 1
   },
   "quality_flags": [],
   "quota_halted": false,

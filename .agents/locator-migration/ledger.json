@@ -621,7 +621,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1966,
+      "line": 2010,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -633,7 +633,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_REPLACE_ALL_BUTTON": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1909,
+      "line": 1953,
       "kind": "css",
       "selector": ".cm-search button[name=\"replaceAll\"]",
       "suggested_testid": "pipeline-node-yaml-replace-all-button",
@@ -645,7 +645,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_REPLACE_BUTTON": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1904,
+      "line": 1948,
       "kind": "css",
       "selector": ".cm-search button[name=\"replace\"]",
       "suggested_testid": "pipeline-node-yaml-replace-button",
@@ -657,7 +657,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_SEARCH_MATCH": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1899,
+      "line": 1943,
       "kind": "css",
       "selector": ".cm-searchMatch",
       "suggested_testid": "pipeline-node-yaml-search-match",
@@ -669,7 +669,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_SEARCH_PANEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1894,
+      "line": 1938,
       "kind": "css",
       "selector": ".cm-search",
       "suggested_testid": "pipeline-node-yaml-search-panel",
@@ -681,7 +681,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.MCP_NODE_INPUT_MAPPING_TYPE_SELECT": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1766,
+      "line": 1810,
       "kind": "xpath",
       "selector": ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]//*[@id='simple-select-Type']",
       "suggested_testid": "pipeline-mcp-node-input-mapping-type-{}",
@@ -693,7 +693,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.MCP_NODE_INPUT_MAPPING_VARIABLE_VALUE_SELECT": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1777,
+      "line": 1821,
       "kind": "xpath",
       "selector": ".//div[.//span[normalize-space(text())='{}'] and count(.//*[@id='simple-select-Type'])=1]//*[@role='combobox' and @id!='simple-select-Type']",
       "suggested_testid": "pipeline-mcp-node-input-mapping-value-select-{}",
@@ -705,7 +705,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_EDITABLE_CONTROL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1925,
+      "line": 1969,
       "kind": "css",
       "selector": "input, select, textarea, [contenteditable=\"true\"]",
       "suggested_testid": "pipeline-node-editable-control",
@@ -717,7 +717,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_PANEL_NAME_ERROR": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1931,
+      "line": 1975,
       "kind": "xpath",
       "selector": ".//p[normalize-space(text())='Name is required']",
       "suggested_testid": "pipeline-node-panel-name-error",
@@ -729,7 +729,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_YAML_LINE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1919,
+      "line": 1963,
       "kind": "css",
       "selector": ".cm-line:has-text(\"{}\")",
       "suggested_testid": "pipeline-node-yaml-line-{}",
@@ -741,7 +741,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_YAML_LINE_ITEM": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1914,
+      "line": 1958,
       "kind": "css",
       "selector": ".cm-line",
       "suggested_testid": "pipeline-node-yaml-line-item",
@@ -753,7 +753,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.PICKER_GROUP_TITLE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10578,
+      "line": 10622,
       "kind": "xpath",
       "selector": ".//span[normalize-space(text())='{}']",
       "suggested_testid": "pipeline-agent-node-agent-select-group-title-{}",
@@ -765,7 +765,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.canvas_edges": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1974,
+      "line": 2018,
       "kind": "css",
       "selector": ".react-flow__edge",
       "suggested_testid": "pipeline-canvas-edge",
@@ -777,7 +777,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.node_yaml_copied_message": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1878,
+      "line": 1922,
       "kind": "xpath",
       "selector": "//*[normalize-space(text())='Copied']",
       "suggested_testid": "pipeline-node-panel-yaml-copied-toast",
@@ -789,7 +789,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2047,
+      "line": 2091,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -801,7 +801,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_cron_input": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1544,
+      "line": 1588,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('input[type=\"text\"]').first",
       "suggested_testid": null,
@@ -813,7 +813,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1524,
+      "line": 1568,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').first",
       "suggested_testid": null,
@@ -825,7 +825,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_apply_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1539,
+      "line": 1583,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Save\")').first",
       "suggested_testid": null,
@@ -837,7 +837,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_modal_cancel_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1534,
+      "line": 1578,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cancel\")').first",
       "suggested_testid": null,
@@ -849,7 +849,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_advanced": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1558,
+      "line": 1602,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Cron Expression\")').first",
       "suggested_testid": null,
@@ -861,7 +861,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_mode_radio_default": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1553,
+      "line": 1597,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('button:has-text(\"Builder\")').first",
       "suggested_testid": null,
@@ -873,7 +873,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.schedule_summary_text": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1529,
+      "line": 1573,
       "kind": "fallback",
       "selector": "lambda page: page.locator('[role=\"dialog\"]').filter(has_text='Schedule Settings').locator('text=/At \\\\d+:\\\\d+|Every |Daily|Weekly|Monthly/').first",
       "suggested_testid": null,
@@ -885,7 +885,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.tooltip": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1854,
+      "line": 1898,
       "kind": "role",
       "selector": "tooltip",
       "suggested_testid": "pipeline-test-button-tooltip",
@@ -1390,8 +1390,8 @@
   },
   "last_sync": "2026-11-18",
   "metric": {
-    "declared_total": 1465,
-    "declared_testid": 1351,
+    "declared_total": 1476,
+    "declared_testid": 1362,
     "declared_non_testid": 114,
     "non_testid_with_hint": 93,
     "non_testid_without_hint": 21,
@@ -1401,10 +1401,10 @@
       "label": 1,
       "locator": 1,
       "role": 34,
-      "testid": 1351,
+      "testid": 1362,
       "xpath": 30
     },
-    "locator_debt": 0.0778,
+    "locator_debt": 0.0772,
     "unmanaged_handles": 309
   }
 }
