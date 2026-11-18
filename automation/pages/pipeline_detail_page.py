@@ -666,6 +666,50 @@ class PipelineDetailPage(PipelineFormPage):
         description="Test Pipeline side panel (TestPanel) hosting the embedded chat; hidden until opened"
     )
 
+    # Test panel controls (ELITEA-4720)
+    test_panel_controls = LocatorDescriptor(
+        testid="pipeline-test-panel-controls",
+        description="Control strip inside the Test Pipeline panel (history, clear, close)"
+    )
+    test_panel_close_button = LocatorDescriptor(
+        testid="pipeline-test-panel-close",
+        description="Close (X) button of the Test Pipeline panel"
+    )
+    test_panel_resize_handle = LocatorDescriptor(
+        testid="pipeline-test-panel-resize-handle",
+        description="Drag handle between the canvas and the Test Pipeline panel"
+    )
+    context_budget_pill = LocatorDescriptor(
+        testid="context-budget-pill",
+        description="Context percentage pill in the Test panel controls (present once a conversation exists)"
+    )
+    context_budget_popover = LocatorDescriptor(
+        testid="context-budget-popover",
+        description="Popover opened by the context pill"
+    )
+    context_budget_tokens = LocatorDescriptor(
+        testid="context-budget-tokens",
+        description="Tokens line of the context popover"
+    )
+    context_budget_messages_count = LocatorDescriptor(
+        testid="context-budget-messages-count",
+        description="Messages count in the context popover"
+    )
+    context_budget_summaries_count = LocatorDescriptor(
+        testid="context-budget-summaries-count",
+        description="Summaries count in the context popover"
+    )
+    context_budget_edit_button = LocatorDescriptor(
+        testid="context-budget-edit-button",
+        description="Icon-only 'Edit' action in the context popover"
+    )
+    chat_answer_model_chip = LocatorDescriptor(
+        testid="chat-answer-model-chip",
+        description="Model/duration chip on an answer message"
+    )
+    # Node card that currently carries the running state (NodeCard.jsx sets data-status="running" during a run)
+    NODE_CARD_RUNNING = '[data-testid="pipeline-node-card-{}"][data-status="running"]'
+
     # File attachments (ELITEA-2059). Bare icon-only `AttachmentButton`
     # instance rendered directly by `NewChatInput.jsx`'s
     # `!hideAttachments && !fromTheChat` branch — a DIFFERENT call site than
@@ -10728,3 +10772,59 @@ class PipelineDetailPage(PipelineFormPage):
     def recorded_running_nodes(self) -> list[str]:
         """Sorted node names recorded by :meth:`start_running_node_recorder`."""
         return sorted(self.page.evaluate("() => Array.from(window.__runningNodes || [])"))
+
+    # ------------------------------------------------------------------
+    # Test panel controls and session behaviour (ELITEA-4720)
+    # ------------------------------------------------------------------
+
+    def node_card_running(self, node_id: str) -> Locator:
+        """The card of *node_id* only while it carries ``data-status="running"`` (transient)."""
+        return self.page.locator(self.NODE_CARD_RUNNING.format(node_id))
+
+    def hover_history_tab_tooltip(self, timeout: int = 5000) -> str:
+        """Hover the Run History icon and return the tooltip text of THIS hover."""
+        self.page.mouse.move(0, 0)
+        expect(self.tooltip).to_have_count(0, timeout=timeout)
+        self.history_tab.hover()
+        self.tooltip.first.wait_for(state="visible", timeout=timeout)
+        return (self.tooltip.first.inner_text() or "").strip()
+
+    def hover_send_button_hint(self, timeout: int = 5000) -> str:
+        """Hover the (disabled) send button and return the hint tooltip text; hover is forced (native disabled)."""
+        self.page.mouse.move(0, 0)
+        expect(self.tooltip).to_have_count(0, timeout=timeout)
+        self.chat_send_button.hover(force=True)
+        self.tooltip.first.wait_for(state="visible", timeout=timeout)
+        return (self.tooltip.first.inner_text() or "").strip()
+
+    def test_panel_width(self) -> float:
+        """Rendered width (px) of the Test panel (geometry read, not a locator)."""
+        box = self.test_pipeline_panel.bounding_box()
+        assert box is not None, "Test panel has no bounding box (not visible)"
+        return box["width"]
+
+    def drag_test_panel_handle_left(self, dx: int = 150, timeout: int = 10000) -> None:
+        """Drag the resize handle ``dx`` px to the left with a real mouse to widen the panel."""
+        self.test_panel_resize_handle.wait_for(state="visible", timeout=timeout)
+        box = self.test_panel_resize_handle.bounding_box()
+        assert box is not None, "Resize handle has no bounding box"
+        sx = box["x"] + box["width"] / 2
+        sy = box["y"] + box["height"] / 2
+        self.page.mouse.move(sx, sy)
+        self.page.mouse.down()
+        self.page.mouse.move(sx - dx, sy, steps=10)
+        self.page.mouse.up()
+
+    def close_test_panel(self, timeout: int = 10000) -> None:
+        """Click the panel's close (X) and wait for it to hide and the toolbar button to return."""
+        self.test_panel_close_button.click(timeout=timeout)
+        expect(self.test_pipeline_panel).to_be_hidden(timeout=timeout)
+        expect(self.test_pipeline_button).to_be_visible(timeout=timeout)
+
+    def embedded_chat_items(self) -> Locator:
+        """All ``chat-message-item`` rows of the embedded chat (for count assertions)."""
+        return self._embedded_chat_message_items_by_testid()
+
+    def wait_for_run_history_rows(self, timeout: int = 10000) -> None:
+        """Wait until the Run History route has rendered at least one run row."""
+        self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).first.wait_for(state="visible", timeout=timeout)

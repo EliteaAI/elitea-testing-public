@@ -1,0 +1,92 @@
+{
+  "batch": "elitea-4720",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-elitea-4720",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      42.9,
+      44.6,
+      48.8
+    ],
+    "failures": [],
+    "note": "workflow gate red was env (no automation/.env.test -> APP_PREFIX empty); lead re-gated 3 separate runs with APP_PREFIX=/app --reruns 0"
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4720",
+      "outcome": "automated",
+      "note": "lead 3x gate green; review APPROVED",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "C1: the case says to make the unsaved edit on the pipeline Description. The AFS directs the implementer to edit the LLM node's System field instead (pipeline-llm-node-system-value). The AFS records the full reasoning under Clarifications; I did not re-check it.",
+          "ref": "ELITEA-4720"
+        },
+        {
+          "kind": "clarification",
+          "note": "C2: Run History is a route (/pipelines/all/<id>/history), not an inline panel. After navigating back, the panel is closed and the conversation is gone. The implementer must not carry the conversation across the Run History round-trip, so the Run History check should come last in the session or the test should re-send.",
+          "ref": "ELITEA-4720"
+        },
+        {
+          "kind": "note",
+          "note": "On DEV, platform banners (platform-banner-center, then platform-banner-corner) intercept clicks about 6 s after load. The test must dismiss them. The context pill shows only once a conversation exists, and its percentage varies, so assert the regex ^\\d+%$."
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS Step 12 says width persists in localStorage `pipelineTestPanelWidth:<pipelineId>`. Source (useTestPanelWidth.hooks.js) keys it by user id, and max width is 50% of the viewport. Dragging 150 px at 1600 px clamped, and the reloaded width (492) differed from the live width (523). Appended to _surface.md; the AFS body is not amended.",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Container lacks automation/.env.test, so APP_PREFIX is empty and every DEV navigation times out unless APP_PREFIX=/app is exported. The lead's gate runs need it."
+        },
+        {
+          "kind": "note",
+          "note": "Step 10 (close mid-run, running highlight still present) passed on this run with the poem prompt, but it is timing-sensitive per the AFS risks. Watch it at the 3x gate."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep (git diff main...HEAD -- automation/pages automation/tests | grep -nE 'get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=') returned 2 hits. Both are compliant under the one-hop rule. node_card_running passes self.page.locator(self.NODE_CARD_RUNNING.format(...)), where NODE_CARD_RUNNING is an UPPER_CASE class constant that is a [data-testid=...] templat\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:10780,10830"
+        },
+        {
+          "kind": "note",
+          "note": "TMS pair verified statically. The spec has @pytest.mark.tms(\"ELITEA-4720\") plus @allure.issue pointing at ELITEA-4720_pipeline-test-pipeline-panel-controls-and-session-behavior.md under tests/automated-full-regression-ui/pipelines/. That file exists in the sibling TMS clone and its name carries the same id. All 13 steps plus 7a are wrapped in allure.step.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_test_panel_controls_session.py:34-41"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case, AFS and diff, row by row. 1: panel hidden + button visible/enabled. 2: panel, input, model selector, controls, history, clear, close visible, and test button hidden. 3: running node card count 1, 2 items, non-empty last response, model chip. 4: pill regex ^\\d+%$. 5: popover visible, tokens visible, messages ==\"2\", summaries ==\"0\", edit button visible. 6: exact tooltip \"Run H\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-spec Coverage Map vs spec"
+        },
+        {
+          "kind": "clarification",
+          "note": "Three deviations from the case text are documented in the AFS, declared in the spec docstring and justified by live observation and source. They are not masking. C1: the unsaved edit is an LLM node System edit rather than the Description, because a Description edit does not gate sending. C2: the chat is re-seeded after the Run History route, and again after the reload. C3: the pill shows \"0%\", not\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS C1/C2/C3"
+        },
+        {
+          "kind": "note",
+          "note": "This is the flakiness hotspot: the running attribute must be seen within about 2s and the post-close check has a 1s timeout. The AFS flags it. The hardening gate will show it; I did not weaken or change anything.",
+          "ref": "spec lines 128-130 (Step 10)"
+        },
+        {
+          "kind": "note",
+          "note": "The case's 'canvas takes the full width' is covered only by the panel being hidden, with no geometry assertion. The AFS discloses this as the Step 1 disposition, so I accept it.",
+          "ref": "spec lines 46-47 (Step 1)"
+        }
+      ],
+      "afs": "test-specs/pipelines/l1_pipeline-test-panel-controls-and-session-behavior_ELITEA-4720.md",
+      "branch": "tests/elitea-4720-test-panel-controls"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
