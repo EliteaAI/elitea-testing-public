@@ -7,11 +7,12 @@
     "ELITEA-3779"
   ],
   "declaredAt": "2026-11-17T19:37:07.827Z",
-  "updatedAt": "2026-11-17T19:37:07.861Z",
+  "updatedAt": "2026-11-18T11:06:36.655Z",
   "outcomes": {
     "ELITEA-3779": {
       "outcome": "automated",
       "at": "2026-11-17T19:37:07.861Z"
     }
-  }
+  },
+  "closedAt": "2026-11-18T11:06:36.655Z"
 }
