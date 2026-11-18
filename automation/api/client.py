@@ -1019,6 +1019,7 @@ class PipelineAPI:
         *,
         tools: Optional[list[dict]] = None,
         state: Optional[dict] = None,
+        extra_top_level: Optional[dict] = None,
     ) -> dict:
         """Create a pipeline with custom nodes.
 
@@ -1041,6 +1042,9 @@ class PipelineAPI:
                 merged into the generated ``instructions`` YAML. Omitted by
                 default — same no-``state:``-key shape every existing caller
                 already gets.
+            extra_top_level: Optional extra pipeline-level YAML keys (e.g.
+                ``{"interrupt_before": ["Printer 1"]}``) emitted after ``nodes``.
+                Omitted by default (additive; ELITEA-4716).
 
         Returns:
             Created pipeline JSON.
@@ -1050,6 +1054,8 @@ class PipelineAPI:
         pipeline_dict: dict = {"entry_point": entry_point, "nodes": nodes}
         if state:
             pipeline_dict = {"state": state, **pipeline_dict}
+        if extra_top_level:
+            pipeline_dict = {**pipeline_dict, **extra_top_level}
         instructions_yaml = _yaml.dump(
             pipeline_dict,
             default_flow_style=False,
