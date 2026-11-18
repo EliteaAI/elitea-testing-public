@@ -1864,6 +1864,28 @@ class PipelineDetailPage(PipelineFormPage):
     NODE_SUMMARY_SECONDARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary-secondary"]'
     NODE_OUTPUT_HANDLE = '[data-testid="pipeline-node-add-from-output-{}-source"]'
 
+    # View-only node cards (ELITEA-4715). Card testid is `pipeline-node-card-{id}`; END renders `pipeline-end-node`.
+    NODE_CARD = '[data-testid="pipeline-node-card-{}"]'
+    NODE_CARD_ANY = '[data-testid^="pipeline-node-card-"]'
+    END_NODE = '[data-testid="pipeline-end-node"]'
+    NODE_CARD_NAME = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-name"]'
+    NODE_CARD_TYPE = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-type"]'
+    NODE_PANEL = '[data-testid="pipeline-node-panel"]'
+    NODE_ENTRYPOINT_BADGE_ANY = '[data-testid="pipeline-node-entrypoint-badge"]'
+    NODE_PANEL_ENTRYPOINT_STATE = '[data-testid="pipeline-node-panel-entrypoint-state"]'
+    # Any editable control inside one canvas node wrapper (scope = `rf__node-{id}` locator via .within()).
+    NODE_EDITABLE_CONTROL = ScopedLocator(
+        css='input, select, textarea, [contenteditable="true"]',
+        suggested_testid="pipeline-node-editable-control",
+        description="Any editable control; cards are view-only so the count inside a node wrapper must be 0",
+    )
+    # MUI FormHelperText of the panel Name field: no testid, generated id, MUI structural classes are banned.
+    NODE_PANEL_NAME_ERROR = ScopedLocator(
+        xpath=".//p[normalize-space(text())='Name is required']",
+        suggested_testid="pipeline-node-panel-name-error",
+        description="rungs 1-4 failed: MUI FormHelperText has no testid and only a generated id; scoped to the panel",
+    )
+
     # Dynamic (runtime-parameterized) testid — one per node type rendered in
     # the Add Node menu, keyed by the INTERNAL type (FlowEditorConstants.
     # PipelineNodeTypes value, e.g. "llm", "hitl", "state_modifier"), not the
@@ -10302,6 +10324,71 @@ class PipelineDetailPage(PipelineFormPage):
     def node_summary_secondary(self, node_id: str) -> Locator:
         """Secondary summary line of a configured node card."""
         return self.page.locator(self.NODE_SUMMARY_SECONDARY.format(node_id))
+
+    # ------------------------------------------------------------------
+    # View-only node cards + node config panel (ELITEA-4715)
+    # ------------------------------------------------------------------
+
+    def node_card(self, node_id: str) -> Locator:
+        """The view-only card of one node (`pipeline-node-card-{id}`)."""
+        return self.page.locator(self.NODE_CARD.format(node_id))
+
+    def all_node_cards(self) -> Locator:
+        """Every node card on the canvas (END is not one of them)."""
+        return self.page.locator(self.NODE_CARD_ANY)
+
+    def end_node(self) -> Locator:
+        """The End terminal node."""
+        return self.page.locator(self.END_NODE)
+
+    def node_wrapper(self, node_id: str) -> Locator:
+        """The ReactFlow wrapper of one node (`rf__node-{id}`)."""
+        return self.page.locator(self.RF_NODE_TESTID.format(node_id))
+
+    def node_editable_controls(self, node_id: str) -> Locator:
+        """Editable controls (input/select/textarea/contenteditable) inside one node's wrapper."""
+        return self.NODE_EDITABLE_CONTROL.within(self.node_wrapper(node_id))
+
+    def node_card_name(self, node_id: str) -> Locator:
+        """Name label inside one node card."""
+        return self.page.locator(self.NODE_CARD_NAME.format(node_id))
+
+    def node_card_type(self, node_id: str) -> Locator:
+        """Type label inside one node card."""
+        return self.page.locator(self.NODE_CARD_TYPE.format(node_id))
+
+    def all_entrypoint_badges(self) -> Locator:
+        """Every Entrypoint badge on the canvas (exactly one expected)."""
+        return self.page.locator(self.NODE_ENTRYPOINT_BADGE_ANY)
+
+    def node_panel(self) -> Locator:
+        """The node configuration panel."""
+        return self.page.locator(self.NODE_PANEL)
+
+    def node_panel_basic_section(self) -> Locator:
+        """The panel's Basic section."""
+        return self.page.locator(self.NODE_PANEL_BASIC_SECTION)
+
+    def node_panel_entrypoint_state(self) -> Locator:
+        """The 'Entrypoint' state marker that replaces 'Make Entrypoint' in the panel footer."""
+        return self.page.locator(self.NODE_PANEL_ENTRYPOINT_STATE)
+
+    def node_panel_name_error(self) -> Locator:
+        """'Name is required' helper text inside the panel."""
+        return self.NODE_PANEL_NAME_ERROR.within(self.node_panel())
+
+    def open_node_panel_by_card(self, node_id: str, timeout: int = 10000) -> None:
+        """Click a node card and wait until the panel is bound to that node and its Basic section settled."""
+        self.node_card(node_id).click(force=True, timeout=timeout)
+        expect(self.node_panel_name_input).to_have_value(node_id, timeout=timeout)
+        expect(self.node_panel_basic_section()).to_be_visible(timeout=timeout)
+        # Basic section resolves toolkit/agent names asynchronously ("not found" placeholder first).
+        expect(self.node_panel_basic_section()).not_to_contain_text("not found", timeout=timeout)
+
+    def rename_node_in_panel(self, new_name: str, timeout: int = 10000) -> None:
+        """Type a new Name in the panel and commit it with Enter (NodeNameField commits on blur/Enter)."""
+        self.node_panel_name_input.fill(new_name, timeout=timeout)
+        self.node_panel_name_input.press("Enter")
 
     def expect_edge_count(self, count: int, timeout: int = 10000) -> None:
         """Wait until the canvas shows exactly *count* edges (ReactFlow draws them after the save settles)."""

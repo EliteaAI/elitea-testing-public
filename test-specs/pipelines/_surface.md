@@ -14,6 +14,14 @@
 - Delete: panel `pipeline-node-panel-delete` -> dialog `delete-confirm-button`. DEV banners (`platform-banner-center` dialog, `platform-banner-corner`) intercept clicks: close via `platform-banner-close` / corner button, or use viewport height >=1400.
 - Playwright MCP browser may be unavailable in the sandbox (no Chrome binary); scripted Python Playwright with `.playwright-mcp/dev-storage-state.json` works.
 
+## Node cards (view-only) and node config panel (confirmed live on DEV, 2026-11-18, ELITEA-4715)
+
+- Card: `pipeline-node-card-{name}` (inside `rf__node-{id}`); children `pipeline-node-name/-type/-summary(-primary/-secondary)/-icon-tile/-entrypoint-badge`, handle `pipeline-node-add-from-output-{name}-source`. 0 editable controls. END = `pipeline-end-node`.
+- Panel footer: `pipeline-node-panel-make-entrypoint` (only on non-entry node; replaced by `pipeline-node-panel-entrypoint-state`), `-duplicate`, `-delete`, `-build-with-ai`.
+- Name field (`NodeNameField.jsx`): draft is local; error "Name is required" (MUI helper text, no testid); commit on Enter/blur only; Save stays enabled when invalid.
+- API seed of Agent/Toolkit nodes needs matching `tools[]` entries (full toolkit obj + `type: application` entry with application_id/version_id) or the panel says "... not found". Toolkit node `toolkit_name` = `get_toolkit()["toolkit_name"]`.
+- Card summary-primary for toolkit = `<toolkit> › <tool>`, toolkit part truncated ~28 chars.
+
 ## Delete-pipeline REDIRECT depends on HOW you reached the detail page (confirmed live on DEV, 2026-09-10, card #2139 / `#1332`)
 
 The post-delete redirect is `navigate(-1)` — React Router "go back one history entry"

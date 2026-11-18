@@ -621,7 +621,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1896,
+      "line": 1918,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -655,9 +655,33 @@
       "updated": "2026-11-18",
       "history": []
     },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_EDITABLE_CONTROL": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 1877,
+      "kind": "css",
+      "selector": "input, select, textarea, [contenteditable=\"true\"]",
+      "suggested_testid": "pipeline-node-editable-control",
+      "description": "Any editable control; cards are view-only so the count inside a node wrapper must be 0",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_PANEL_NAME_ERROR": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 1883,
+      "kind": "xpath",
+      "selector": ".//p[normalize-space(text())='Name is required']",
+      "suggested_testid": "pipeline-node-panel-name-error",
+      "description": "rungs 1-4 failed: MUI FormHelperText has no testid and only a generated id; scoped to the panel",
+      "state": "raw",
+      "added": "2026-11-18",
+      "updated": "2026-11-18",
+      "history": []
+    },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1975,
+      "line": 1997,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -1258,21 +1282,21 @@
   },
   "last_sync": "2026-11-18",
   "metric": {
-    "declared_total": 1425,
-    "declared_testid": 1322,
-    "declared_non_testid": 103,
-    "non_testid_with_hint": 82,
+    "declared_total": 1435,
+    "declared_testid": 1330,
+    "declared_non_testid": 105,
+    "non_testid_with_hint": 84,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 20,
+      "css": 21,
       "fallback": 20,
       "label": 1,
       "locator": 1,
       "role": 34,
-      "testid": 1322,
-      "xpath": 27
+      "testid": 1330,
+      "xpath": 28
     },
-    "locator_debt": 0.0723,
+    "locator_debt": 0.0732,
     "unmanaged_handles": 309
   }
 }
