@@ -10218,27 +10218,55 @@ class PipelineDetailPage(PipelineFormPage):
             return ""
         return (self.tooltip.first.inner_text() or "").strip()
 
-    def drag_output_handle_to_empty_canvas(self, node_id: str, dx: int = 260, dy: int = 300, timeout: int = 10000):
-        """Drag from a node's Output (+) handle and release on empty canvas; wait for the connection dropdown.
+    def _stable_handle_box(self, handle: Locator, timeout: int = 5000, max_reads: int = 20) -> dict:
+        """Bounding box of ``handle`` once two consecutive reads (one animation frame apart) agree.
 
-        Real mouse events (down, stepped move, up) — the handle is 16x16 px.
+        A ReactFlow node re-lays-out after a save; a box read mid-layout is a wrong drag start.
         """
-        handle = self.page.locator(self.NODE_OUTPUT_HANDLE.format(node_id))
+        prev = None
+        for _ in range(max_reads):
+            box = handle.bounding_box()
+            if box is not None and box == prev:
+                return box
+            prev = box
+            # Frame-boundary wait (not a sleep): lets pending layout/paint commit between reads.
+            self.page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+        raise RuntimeError(f"Handle box never stabilised within {max_reads} reads (last={prev})")
+
+    def _drag_handle_once(self, handle: Locator, dx: int, dy: int, timeout: int) -> None:
         handle.wait_for(state="visible", timeout=timeout)
-        box = handle.bounding_box()
-        if box is None:
-            raise RuntimeError(f"Output handle of '{node_id}' has no bounding box")
+        box = self._stable_handle_box(handle, timeout)
         sx = box["x"] + box["width"] / 2
         sy = box["y"] + box["height"] / 2
         viewport = self.page.viewport_size or {"width": 1280, "height": 720}
         tx = min(sx + dx, viewport["width"] - 20)
         ty = min(sy + dy, viewport["height"] - 20)
+        # Prime the handle: hover (arms ReactFlow's handle hit-test), then centre the pointer.
+        handle.hover(timeout=timeout)
         self.page.mouse.move(sx, sy)
         self.page.mouse.down()
         steps = 15
         for i in range(1, steps + 1):
             self.page.mouse.move(sx + (tx - sx) * i / steps, sy + (ty - sy) * i / steps)
+        # A few extra moves at the release point so onConnectEnd sees a settled pointer.
+        for _ in range(3):
+            self.page.mouse.move(tx, ty)
         self.page.mouse.up()
+
+    def drag_output_handle_to_empty_canvas(self, node_id: str, dx: int = 260, dy: int = 300, timeout: int = 10000):
+        """Drag from a node's Output (+) handle and release on empty canvas; wait for the connection dropdown.
+
+        Real mouse events (hover, down, stepped move, up) — the handle is 16x16 px. The start box is read
+        only once stable; a missed drag (no dropdown within ~3s) is idempotent, so it is retried once.
+        """
+        handle = self.page.locator(self.NODE_OUTPUT_HANDLE.format(node_id))
+        self._drag_handle_once(handle, dx, dy, timeout)
+        try:
+            self.connection_dropdown_menu.wait_for(state="visible", timeout=3000)
+            return
+        except PlaywrightTimeoutError:
+            pass
+        self._drag_handle_once(handle, dx, dy, timeout)
         self.connection_dropdown_menu.wait_for(state="visible", timeout=timeout)
 
     def node_type_menu_labels(self, timeout: int = 5000) -> list[str]:
