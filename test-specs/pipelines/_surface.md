@@ -4306,3 +4306,5 @@ else") is a strong mitigation but not a guarantee (9/9 at n=9).
 - TOOLS card (`pipeline-tool-card`) text: name / Show tools / Log in / Used by / MCP 1.
 - Test Pipeline run on an MCP-node pipeline (message `test`): `chat-answer-tool-chip` = `<mcp>: ask_wiki_question (MCP1) · 7s`, `chat-answer-thought-accordion` "Thought for N secs"; whole run ~15s.
 - Local env note: no `.env.test` in this checkout; scratch runs needed `APP_PREFIX=/app`, `-o addopts=""` (no rerunfailures plugin) and a PLAYWRIGHT_BROWSERS_PATH symlink dir (browser build 1254 vs expected 1255).
+
+**Resolved/added during ELITEA-4720 implementation:** the width localStorage key is `pipelineTestPanelWidth:{userId}` (per USER, not per pipeline; `useTestPanelWidth.hooks.js`) and the max width is 50% of the viewport, so a 150 px drag at 1600 px viewport clamps (373 -> 523 then re-read 492 after reload). The spec drags 100 px and cleans keys by prefix. Local runs need `APP_PREFIX=/app` exported (no `.env.test` in this container). Page-object fields added: `test_panel_controls/_close_button/_resize_handle`, `context_budget_*`, `chat_answer_model_chip`, `NODE_CARD_RUNNING`.
