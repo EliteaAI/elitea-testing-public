@@ -1,0 +1,92 @@
+{
+ "batch": "copy-4760",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "integration_branch": "tests/batch-copy-4760",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "by": "lead",
+  "note": "Gate agent run 1 red (agent-information-section timeout at navigate, pre-assertion; transient DEV load/session, not reproduced). Lead re-ran 3 separate invocations of the spec on the trunk, --reruns 0: 3/3 passed (~22s each). Control: neighbouring 4755 spec failed once on a hover timeout in the same window, consistent with DEV flake."
+ },
+ "cases": [
+  {
+   "id": "ELITEA-4760",
+   "outcome": "automated",
+   "note": "gate green 3/3 (lead re-run)",
+   "findings": [
+    {
+     "kind": "note",
+     "note": "The sandbox has no automation/.env.test, so UI runs need APP_PREFIX=/app set inline. Without it every page returns 404, which looks like a locator failure."
+    },
+    {
+     "kind": "note",
+     "note": "The TMS case file for ELITEA-4760 is under chat/, not agents/. The allure.issue link in the spec points at the chat/ path."
+    },
+    {
+     "kind": "note",
+     "note": "ruff is missing from .venv, so lint was not run. Please lint at the gate or in review."
+    },
+    {
+     "kind": "note",
+     "note": "Mechanical ladder grep on `git diff main...tests/ELITEA-4760-user-message-copy-icons -- automation/pages automation/tests` (pattern from role-overrides \u00a7 Reviewer slot) returned 0 hits (no matches). The two new locators are class-level `LocatorDescriptor(testid=...)` fields, so they sit on rung 1 and need no `suggested_testid`. No `locator=`/`fallback=`, no positional picks, no raw calls in the sp\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/pages/agent_detail_page.py:522"
+    },
+    {
+     "kind": "note",
+     "note": "TMS pair is present: `@pytest.mark.tms(\"ELITEA-4760\")` plus `@allure.issue` pointing at `chat/ELITEA-4760_user-message-copy-markdown-and-copy-text-actions.md`. I checked that this file exists in the sibling TMS clone and its name carries the same id. I did not run `tms_backwrite.py check`; that is the implementer's evidence.",
+     "ref": "automation/tests/ui/agents/test_agent_test_chat_user_message_copy_icons.py:28"
+    },
+    {
+     "kind": "note",
+     "note": "Triangulation of case, AFS and diff: each case step has a real assertion at its own step.\n- Step 1 asserts the Test Agent button, panel and input are visible.\n- Step 2 waits for the response and asserts the message list contains the user text.\n- Step 3 asserts both icons are visible and enabled, which covers the case's 'clickable'.\n- Steps 4 and 5 hover to check the tooltip, click, assert the exac\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    },
+    {
+     "kind": "clarification",
+     "note": "Step 2 of the case expects the user message to show a sender name and timestamp. The spec asserts only the message text. The AFS openly marks the sender and timestamp as not probed and out of scope for the copy observable. This is a declared gap, not a silent one. I am not blocking on it because the case's pass/fail criteria cover only the icons and toasts. The lead may want to know the case's ste\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+     "ref": "automation/tests/ui/agents/test_agent_test_chat_user_message_copy_icons.py:51"
+    },
+    {
+     "kind": "note",
+     "note": "Nit: the step 2 text check is scoped to the whole `chat_message_list`, not the user bubble. This is safe here because the agent replies only 'PONG', so the dragon text can only come from the user message. The icon locators use `.last`, which is acceptable because only one user message exists in this test. It is not a positional sibling pick among several items.",
+     "ref": "automation/tests/ui/agents/test_agent_test_chat_user_message_copy_icons.py:52"
+    },
+    {
+     "kind": "note",
+     "note": "Nit: `click_last_user_message_copy_icon` has no `@action` decorator, unlike neighbouring helpers such as `open_test_agent_panel`. The existing `*_last_response_copy_icon` helpers may also be undecorated, so this is cosmetic. The helpers are additive and sit next to the existing 4755 ones.",
+     "ref": "automation/pages/agent_detail_page.py:3157"
+    },
+    {
+     "kind": "note",
+     "note": "Checked the cleanup, the environment and the AFS doc updates. The agent is created through the API and deleted in `finally`, so there is no leaked state. The spec file is new, so it does not touch the shared 4755 spec. The `_surface.md` digest was updated. The AFS and implementation selectors agree, so no AFS amendment is needed. This was a static review only; the 3x DEV gate needs to confirm the \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+    }
+   ],
+   "afs": "test-specs/agents/l1_agent-test-chat-user-message-copy-markdown-and-copy-text-icons-toast_ELITEA-4760.md",
+   "branch": "tests/ELITEA-4760-user-message-copy-icons",
+   "pr": 3004
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": [],
+ "gate_agent_initial": {
+  "verdict": "red",
+  "runs": 0,
+  "seconds": [
+   86.3
+  ],
+  "failures": [
+   {
+    "spec": "automation/tests/ui/agents/test_agent_test_chat_user_message_copy_icons.py::TestAgentTestChatUserMessageCopyIcons::test_user_message_copy_icons_show_tooltip_and_toast",
+    "signature": "playwright TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. waiting for get_by_test_id(\"agent-information-section\") to be visible \u2014 at AgentDetailPage.navigate -> wait_for_page_load (agent_detail_page.py:768/782), step 'Navigate to agent', in setup/navigation before any assertion of the spec. Gate run 1: 1 failed, 2 reruns burned (86s). Diagnostic re-run with --reruns 0: same failure (28s\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+    "case_ids": [
+     "ELITEA-4760"
+    ]
+   }
+  ]
+ }
+}

@@ -792,3 +792,6 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - After a completed response in the Test Agent panel the last AI message shows `chat-copy-markdown-button` (tooltip "Copy markdown") and `chat-copy-text-button` (tooltip "Copy text") without needing hover; both testids on DEV (EL-5838 split; old `chat-copy-button` gone).
 - Click -> `toast-alert` (data-severity=info) + `toast-message`: "Markdown copied to clipboard." / "Text copied to clipboard."; toast gone within ~6s. Tooltips are MUI `[role=tooltip]` (no testid).
 - Environment gotcha: with no `automation/.env.test`, `APP_PREFIX` defaults "" and `navigate()` 404s on DEV; run with `APP_PREFIX=/app`.
+
+## Agent test-chat USER message copy actions (ELITEA-4760 run, 2026-11-20)
+- After a response the user bubble shows `user-message-copy-markdown-button` / `user-message-copy-text-button` (UserMessage.jsx; visible+enabled w/o hover, count 1 each). Tooltips "Copy markdown"/"Copy text"; toasts "Markdown copied to clipboard." / "Text copied to clipboard." (info). Ancestor: `li[data-testid=chat-message-item]`. Distinct from AI-response `chat-copy-*-button`. Only `ChatPage.user_copy_markdown_action_button` is declared; no text descriptor.

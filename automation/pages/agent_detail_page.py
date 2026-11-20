@@ -519,6 +519,16 @@ class AgentDetailPage(AgentFormPage):
         testid="chat-copy-text-button",
         description="Copy-text icon under an AI response in the embedded chat.",
     )
+    # Copy icons under the USER's own message in the embedded chat (ELITEA-4760;
+    # UserMessage.jsx — distinct testids from the AI-response ones above).
+    user_message_copy_markdown_button = LocatorDescriptor(
+        testid="user-message-copy-markdown-button",
+        description="Copy-markdown icon under the user's own message in the embedded chat.",
+    )
+    user_message_copy_text_button = LocatorDescriptor(
+        testid="user-message-copy-text-button",
+        description="Copy-text icon under the user's own message in the embedded chat.",
+    )
     # Severity-scoped toast alert selector — testid identity + data-severity
     # state filter, the compliant shape for a state-dependent assertion
     # (mirrors ChatPage.TOAST_ALERT_SEVERITY / PipelineDetailPage.TOAST_ALERT_SEVERITY).
@@ -3119,6 +3129,38 @@ class AgentDetailPage(AgentFormPage):
         if kind == "text":
             return self.chat_copy_text_button.last
         raise ValueError(f"kind must be 'markdown' or 'text', got {kind!r}")
+
+    def _last_user_message_copy_icon(self, kind: str) -> Locator:
+        if kind == "markdown":
+            return self.user_message_copy_markdown_button.last
+        if kind == "text":
+            return self.user_message_copy_text_button.last
+        raise ValueError(f"kind must be 'markdown' or 'text', got {kind!r}")
+
+    def is_last_user_message_copy_icon_visible(self, kind: str) -> bool:
+        """True when the latest user message's copy icon (markdown/text) is visible."""
+        return self._last_user_message_copy_icon(kind).is_visible()
+
+    def is_last_user_message_copy_icon_enabled(self, kind: str) -> bool:
+        """True when the latest user message's copy icon is enabled (clickable)."""
+        return self._last_user_message_copy_icon(kind).is_enabled()
+
+    def hover_last_user_message_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Hover the latest user message's copy icon and return its tooltip text."""
+        icon = self._last_user_message_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        icon.hover()
+        self.open_tooltips.last.wait_for(state="visible", timeout=timeout)
+        return (self.open_tooltips.last.text_content() or "").strip()
+
+    def click_last_user_message_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Click the latest user message's copy icon; return the toast message text."""
+        icon = self._last_user_message_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        expect(icon).to_be_enabled(timeout=timeout)
+        icon.click()
+        self.toast_message.last.wait_for(state="visible", timeout=timeout)
+        return (self.toast_message.last.text_content() or "").strip()
 
     @action("Open the Test Agent panel")
     def open_test_agent_panel(self, timeout: int = 10000):
