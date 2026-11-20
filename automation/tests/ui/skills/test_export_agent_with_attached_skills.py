@@ -11,14 +11,16 @@ exported YAML frontmatter — not merely referenced by ID.
 ELITEA-1896 is a behavioural duplicate of ELITEA-1794 (same objective, same
 steps, same pass criteria under different literal test-data names) — see
 test-specs/agents/lextend_export-agent-with-attached-skills-exported-md-contains-skill_ELITEA-1896.md
-for the dedup proof. No new assertions were added for it; only the
-traceability tag above.
+for the dedup proof. Updated 2026-11 (#2991, Agent Skills spec frontmatter): the embedded Skill
+now carries a ``frontmatter`` mapping (license + ELITEA fields under
+``metadata``); both cases assert it (base version: no elitea-version).
 
 No product defect found.
 
 Spec: test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md
 """
 
+import json
 import logging
 import tempfile
 import uuid
@@ -27,6 +29,7 @@ from pathlib import Path
 import allure
 import pytest
 import yaml
+from playwright.sync_api import expect
 
 from pages.agent_detail_page import AgentDetailPage
 from pages.agent_form_page import AgentFormPage
@@ -44,9 +47,14 @@ FORM_SAVE_TIMEOUT = 15_000
 logger = logging.getLogger("elitea.tests.skills")
 
 MARKER = "ELITEA_1794_MARKER_TEXT"
+SKILL_TAG = "regression"
+SKILL_LICENSE = "MIT"
 
 
-def _create_skill(page, name: str, description: str, instructions: str) -> int:
+def _create_skill(
+    page, name: str, description: str, instructions: str,
+    tag: str | None = None, license_id: str | None = None,
+) -> int:
     """Create a skill via the UI and return its numeric ID.
 
     Mirrors the create flow shared across ELITEA-1735/1737/1738/1739/1789/1792:
@@ -60,6 +68,8 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
     form_page = SkillFormPage(page)
     form_page.wait_for_form_load()
     form_page.fill_form(name=name, instructions=instructions, description=description)
+    if tag:
+        form_page.add_tag(tag)
     form_page.wait_for_form_validation()
     assert form_page.is_save_enabled(), (
         f"Save should be enabled after filling all required fields for skill '{name}'"
@@ -70,6 +80,14 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
     detail_page.verify_on_detail_page()
     skill_id = int(detail_page.get_skill_id())
     logger.info("Created skill %r with id=%d", name, skill_id)
+    if license_id:
+        # The create form has no frontmatter editor: add the licence on the
+        # saved base version via edit mode (same sequence as
+        # test_skill_export_import.py Step 3b).
+        detail_page.click_edit_mode()
+        expect(detail_page.instructions_editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+        detail_page.add_frontmatter_license(license_id)
+        detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
     return skill_id
 
 
@@ -141,6 +159,7 @@ class TestExportAgentWithAttachedSkills:
             ):
                 skill_id = _create_skill(
                     page, skill_name, skill_description, skill_instructions,
+                    tag=SKILL_TAG, license_id=SKILL_LICENSE,
                 )
 
             with allure.step("Step 2 — Create an Agent via UI"):
@@ -272,9 +291,40 @@ class TestExportAgentWithAttachedSkills:
                     f"planted marker {MARKER!r} verbatim, got: "
                     f"{exported_instructions!r}"
                 )
-                assert exported_instructions == skill_instructions, (
+                # The export now carries the skill body with a leading blank
+                # line (its frontmatter is stripped out into `frontmatter`).
+                assert exported_instructions.strip() == skill_instructions, (
                     "Exported skills[0].instructions should match the "
                     "attached Skill's full instructions text verbatim"
+                )
+
+                # Agent Skills spec frontmatter (#2991): spec keys at the top
+                # level, ELITEA fields namespaced under `metadata`.
+                skill_fm = exported_skill.get("frontmatter")
+                assert isinstance(skill_fm, dict), (
+                    f"Exported skills[0] should embed a `frontmatter` mapping, got: {skill_fm!r}"
+                )
+                assert skill_fm.get("license") == SKILL_LICENSE, (
+                    f"Embedded Skill frontmatter license should be {SKILL_LICENSE!r}, "
+                    f"got: {skill_fm.get('license')!r}"
+                )
+                assert set(skill_fm) == {"license", "metadata"}, (
+                    "Embedded Skill frontmatter should hold only spec keys "
+                    f"(license, metadata), got: {sorted(skill_fm)}"
+                )
+                fm_metadata = skill_fm["metadata"]
+                assert json.loads(fm_metadata["elitea-tags"]) == [SKILL_TAG], (
+                    "ELITEA tags should live under metadata.elitea-tags, got: "
+                    f"{fm_metadata.get('elitea-tags')!r}"
+                )
+                assert "elitea-version" not in fm_metadata, (
+                    "A base-version Skill should not export metadata.elitea-version, "
+                    f"got: {fm_metadata!r}"
+                )
+                legacy_keys = {"tags", "elitea_version", "elitea_run_settings"}
+                assert not legacy_keys & (set(skill_fm) | set(exported_skill)), (
+                    "Legacy top-level ELITEA keys must not be exported, got: "
+                    f"{sorted(legacy_keys & (set(skill_fm) | set(exported_skill)))}"
                 )
 
         finally:
