@@ -4054,6 +4054,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.skills.test_skill_test_panel_copy_icons.test_skill_test_panel_copy_icons_show_tooltip_and_toast",
+      "markers": [
+        "p1",
+        "regression",
+        "skills",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4757"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-4757_skill-test-panel-copy-markdown-and-copy-text-actions.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.skills.test_skill_test_panel_response_actions.TestSkillTestPanelResponseActions.test_test_panel_response_actions_enabled",
       "markers": [
         "new_verified",
