@@ -81,3 +81,11 @@ concluding a defect.
   texts) require an API-key credential not provisioned in this environment —
   substitute the DeepWiki fixture and note it in the AFS Preconditions, same
   precedent set at ELITEA-1933.
+
+## Test result copy icons (ELITEA-4759, analyst 2026-11-20, DEV as deployed)
+
+- MCP detail route is `/mcps/all/{id}` (bare path via `navigate`; `ToolkitDetailPage.navigate_to_toolkit` targets `/toolkits/all/`). Test button `toolkit-test-button` -> `/app/mcps/all/{id}/test`, same `ToolkitTestSettingsPage` as toolkits.
+- Result card copy icons: `chat-copy-markdown-button` / `chat-copy-text-button` (count 1 each), tooltips "Copy markdown"/"Copy text", toasts "Markdown/Text copied to clipboard." Helpers already on `ToolkitTestSettingsPage`.
+- `toolkit-test-param-{key}` is a wrapper div: use `fill_param_field`, never `.fill` on the testid.
+- DeepWiki fixture MCP shows `toolkit-connection-status` "Not Connected" (+ Login button) yet Test/Run work: case text's "Connected!" banner is not reproducible on it.
+- `read_wiki_structure` runs in ~3 s (no model turn).

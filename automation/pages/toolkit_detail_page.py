@@ -213,7 +213,7 @@ class ToolkitDetailPage(BasePage):
         self.test_button.wait_for(state="visible", timeout=timeout)
         self.test_button.click()
         self.page.wait_for_url(
-            re.compile(r".*/toolkits/[^/]+/\d+/test"), timeout=timeout
+            re.compile(r".*/(?:toolkits|mcps)/[^/]+/\d+/test"), timeout=timeout
         )
         logger.info("Opened the Test Toolkit surface")
 

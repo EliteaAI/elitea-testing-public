@@ -1,0 +1,67 @@
+{
+  "batch": "mcp-copy-4759",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-mcp-copy-4759",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "by": "lead",
+    "note": "3 separate pytest invocations on trunk with APP_PREFIX=/app inline; workflow gate was red only because sandbox lacks .env.test (404s)"
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4759",
+      "outcome": "automated",
+      "note": "gate green 3/3 (lead)",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text says the MCP page shows a 'Connected!' banner. The DeepWiki fixture MCP shows 'Not Connected' (it needs no OAuth) and its tools still run. The spec asserts only that the Test button is visible, not the banner.",
+          "ref": "ELITEA-4759"
+        },
+        {
+          "kind": "note",
+          "note": "ruff is missing from the repo .venv (automation/../.venv/bin/ruff), so I could not lint locally."
+        },
+        {
+          "kind": "note",
+          "note": "The sandbox has no automation/.env.test. Without APP_PREFIX=/app set inline, every UI page returns 404, which looks like a locator failure."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 1 expects a 'Connected!' banner. The DeepWiki fixture MCP shows 'Not Connected' (a Login button renders) yet Test works. The AFS records this as case-text drift, and the spec asserts only the Test button. The reverse-masking guard is satisfied. The lead should route a case-text clarification for the TMS case, since the precondition 'connected MCP' doesn't match the fixture.",
+          "ref": "test-specs/mcp/l1_mcp-test-result-copy-markdown-and-copy-text-icons-toast_ELITEA-4759.md"
+        },
+        {
+          "kind": "note",
+          "note": "Declared substitution: the DeepWiki fixture MCP (`mcp_toolkit_with_tools`) and tool `read_wiki_structure` replace the case's 'test / Epam Onehub Core / Current user id'. Step 4 asserts the result text contains the tool name `read_wiki_structure` rather than a returned value. This is reasonable, and the AFS Axis 1 documents it. Same precedent as ELITEA-1933/1937.",
+          "ref": "automation/tests/ui/mcp/test_mcp_test_result_copy_icons.py:55"
+        },
+        {
+          "kind": "note",
+          "note": "The only shared-file change is widening the URL regex in `ToolkitDetailPage.open_test_surface` to `(?:toolkits|mcps)`. It is additive: existing toolkit callers still match, and the docstring still says `/toolkits/...` only. Cosmetic.",
+          "ref": "automation/pages/toolkit_detail_page.py:216"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation, case to AFS to diff, ticks every case step. Steps 1-9 each have an assertion at that step. Step 1 checks the Test button. Step 2 checks the start_search field and 3 chips. Step 3 checks tool_select, the run button and the model name. Step 4 checks that the result contains the tool name. Step 5 checks both icons enabled. Steps 6 and 8 check the tooltip text. Steps 7 and 9 check the t\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep, run by hand on `git diff main...tests/ELITEA-4759-mcp-copy-icons -- automation/pages automation/tests` for `get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=`: 0 hits. The diff adds no locator declarations; it reuses existing page-object methods and testids. The TMS pair is present and correct: `@pytest.mark.tms(\"ELITEA-4759\")` plus `@allure.issue`. T\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/mcp/l1_mcp-test-result-copy-markdown-and-copy-text-icons-toast_ELITEA-4759.md",
+      "branch": "tests/ELITEA-4759-mcp-copy-icons",
+      "pr": 3003
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
