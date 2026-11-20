@@ -1534,8 +1534,8 @@
   },
   "last_sync": "2026-11-20",
   "metric": {
-    "declared_total": 1503,
-    "declared_testid": 1377,
+    "declared_total": 1505,
+    "declared_testid": 1379,
     "declared_non_testid": 126,
     "non_testid_with_hint": 105,
     "non_testid_without_hint": 21,
@@ -1545,10 +1545,10 @@
       "label": 1,
       "locator": 1,
       "role": 42,
-      "testid": 1377,
+      "testid": 1379,
       "xpath": 30
     },
-    "locator_debt": 0.0838,
+    "locator_debt": 0.0837,
     "unmanaged_handles": 309
   }
 }

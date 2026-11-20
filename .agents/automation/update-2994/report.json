@@ -1,0 +1,3 @@
+{"batch":"update-2994","base":"main","pr_unit":"trunk","integration_branch":"tests/batch-update-2994",
+"gate":{"verdict":"green","runs":3,"by":"lead","note":"3 separate invocations, APP_PREFIX=/app HEADLESS=true; first attempt hit DEV 503 outage (no healthy upstream) and was discarded, re-gated after recovery: 55s/23s/22s"},
+"cases":[{"id":"ELITEA-4755","outcome":"automated","note":"reviewer APPROVED (round 2, decorator fix); workflow merge agent failed on model 403 so lead merged branch into trunk by hand","afs":"test-specs/agents/l1_agent-test-chat-copy-markdown-and-copy-text-icons-toast_ELITEA-4755.md","findings":[{"kind":"note","note":"Copy text clipboard content intentionally not asserted (elitea_issues#7641)"}]}]}

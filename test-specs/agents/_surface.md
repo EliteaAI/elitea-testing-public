@@ -787,3 +787,8 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - **API call for empty results**: likely `GET /api/v2/elitea_core/applications/prompt_lib/{projectId}?query={searchTerm}&...` returning `{ total: 0, rows: [] }` or similar; implementer can use network capture to verify the backend's response structure
 - **Testid gaps (needs-adding)**: Search input itself has no `data-testid` (TBD); empty-state message container/heading may need a testid for reliable querying depending on implementation
 - **Known issue**: Category/tag filter variant mentioned in case text ("Apply a category filter that has no agents") is NOT yet explored — the Tags section on the right is currently non-interactive (shows "No tags to display."), so it's unclear whether tag filtering exists on this page or only on the Catalog. Filed as clarification in ELITEA-2367 AFS.
+
+## Agent test-chat response copy actions (ELITEA-4755 run, 2026-11-20)
+- After a completed response in the Test Agent panel the last AI message shows `chat-copy-markdown-button` (tooltip "Copy markdown") and `chat-copy-text-button` (tooltip "Copy text") without needing hover; both testids on DEV (EL-5838 split; old `chat-copy-button` gone).
+- Click -> `toast-alert` (data-severity=info) + `toast-message`: "Markdown copied to clipboard." / "Text copied to clipboard."; toast gone within ~6s. Tooltips are MUI `[role=tooltip]` (no testid).
+- Environment gotcha: with no `automation/.env.test`, `APP_PREFIX` defaults "" and `navigate()` 404s on DEV; run with `APP_PREFIX=/app`.

@@ -507,6 +507,18 @@ class AgentDetailPage(AgentFormPage):
         testid="toast-message",
         description="App-wide toast message text body.",
     )
+
+    # Copy icons under an AI response in the embedded chat (ELITEA-4755;
+    # ApplicationAnswerActions.jsx — same testids ChatPage declares). Several
+    # messages may carry them; callers use the last (= latest AI response).
+    chat_copy_markdown_button = LocatorDescriptor(
+        testid="chat-copy-markdown-button",
+        description="Copy-markdown icon under an AI response in the embedded chat.",
+    )
+    chat_copy_text_button = LocatorDescriptor(
+        testid="chat-copy-text-button",
+        description="Copy-text icon under an AI response in the embedded chat.",
+    )
     # Severity-scoped toast alert selector — testid identity + data-severity
     # state filter, the compliant shape for a state-dependent assertion
     # (mirrors ChatPage.TOAST_ALERT_SEVERITY / PipelineDetailPage.TOAST_ALERT_SEVERITY).
@@ -3075,6 +3087,38 @@ class AgentDetailPage(AgentFormPage):
         )
         has_delete_button = last_msg.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
         return (has_read_out, has_answer_marker, has_delete_button)
+
+    def hover_last_response_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Hover the last AI response's copy icon and return its tooltip text.
+
+        Args:
+            kind: ``"markdown"`` or ``"text"``.
+        """
+        icon = self._last_response_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        icon.hover()
+        self.open_tooltips.last.wait_for(state="visible", timeout=timeout)
+        return (self.open_tooltips.last.text_content() or "").strip()
+
+    def click_last_response_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Click the last AI response's copy icon; return the toast message text."""
+        icon = self._last_response_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        expect(icon).to_be_enabled(timeout=timeout)
+        icon.click()
+        self.toast_message.last.wait_for(state="visible", timeout=timeout)
+        return (self.toast_message.last.text_content() or "").strip()
+
+    def is_last_response_copy_icon_visible(self, kind: str) -> bool:
+        """True when the last AI response's copy icon (markdown/text) is visible."""
+        return self._last_response_copy_icon(kind).is_visible()
+
+    def _last_response_copy_icon(self, kind: str) -> Locator:
+        if kind == "markdown":
+            return self.chat_copy_markdown_button.last
+        if kind == "text":
+            return self.chat_copy_text_button.last
+        raise ValueError(f"kind must be 'markdown' or 'text', got {kind!r}")
 
     @action("Open the Test Agent panel")
     def open_test_agent_panel(self, timeout: int = 10000):
