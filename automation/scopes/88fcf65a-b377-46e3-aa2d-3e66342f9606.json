@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "88fcf65a-b377-46e3-aa2d-3e66342f9606",
+  "intent": "automation",
+  "batch": "toolkit-copy-4758",
+  "cases": [
+    "ELITEA-4758"
+  ],
+  "declaredAt": "2026-11-20T12:29:08.287Z",
+  "updatedAt": "2026-11-20T12:59:21.216Z",
+  "outcomes": {
+    "ELITEA-4758": {
+      "outcome": "automated",
+      "at": "2026-11-20T12:59:10.476Z"
+    }
+  },
+  "closedAt": "2026-11-20T12:59:21.216Z"
+}
