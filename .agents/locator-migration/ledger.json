@@ -1279,9 +1279,45 @@
       "updated": "2026-11-11",
       "history": []
     },
+    "pages/skill_detail_page.py::SkillDetailPage.model_settings_max_tokens_custom_radio": {
+      "file": "pages/skill_detail_page.py",
+      "line": 131,
+      "kind": "role",
+      "selector": "radio[name='Custom']",
+      "suggested_testid": "model-settings-max-tokens-custom-radio",
+      "description": "'Custom' option of the Max Completion Tokens radio group in the Model settings dialog",
+      "state": "raw",
+      "added": "2026-11-20",
+      "updated": "2026-11-20",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.model_settings_max_tokens_input": {
+      "file": "pages/skill_detail_page.py",
+      "line": 137,
+      "kind": "css",
+      "selector": "#max_tokens",
+      "suggested_testid": "model-settings-max-tokens-input",
+      "description": "Max Tokens number input (revealed by the Custom radio) in the Model settings dialog; stable element id, no label association or testid on DEV",
+      "state": "raw",
+      "added": "2026-11-20",
+      "updated": "2026-11-20",
+      "history": []
+    },
+    "pages/skill_detail_page.py::SkillDetailPage.model_settings_reasoning_slider_input": {
+      "file": "pages/skill_detail_page.py",
+      "line": 143,
+      "kind": "role",
+      "selector": "slider[name='Reasoning level']",
+      "suggested_testid": "model-settings-reasoning-slider-input",
+      "description": "The <input type=range> of the Reasoning slider in the Model settings dialog",
+      "state": "raw",
+      "added": "2026-11-20",
+      "updated": "2026-11-20",
+      "history": []
+    },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_analytics_menuitem": {
       "file": "pages/skill_detail_page.py",
-      "line": 200,
+      "line": 222,
       "kind": "role",
       "selector": "menuitem[name='Analytics']",
       "suggested_testid": "run-history-analytics-menuitem",
@@ -1293,7 +1329,7 @@
     },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_menu_items": {
       "file": "pages/skill_detail_page.py",
-      "line": 216,
+      "line": 238,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "run-history-menu-item-{}",
@@ -1305,7 +1341,7 @@
     },
     "pages/skill_detail_page.py::SkillDetailPage.run_history_restore_chat_menuitem": {
       "file": "pages/skill_detail_page.py",
-      "line": 210,
+      "line": 232,
       "kind": "role",
       "selector": "menuitem[name='Restore chat']",
       "suggested_testid": "run-history-restore-chat-menuitem",
@@ -1498,21 +1534,21 @@
   },
   "last_sync": "2026-11-20",
   "metric": {
-    "declared_total": 1500,
+    "declared_total": 1503,
     "declared_testid": 1377,
-    "declared_non_testid": 123,
-    "non_testid_with_hint": 102,
+    "declared_non_testid": 126,
+    "non_testid_with_hint": 105,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 31,
+      "css": 32,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 40,
+      "role": 42,
       "testid": 1377,
       "xpath": 30
     },
-    "locator_debt": 0.082,
+    "locator_debt": 0.0838,
     "unmanaged_handles": 309
   }
 }

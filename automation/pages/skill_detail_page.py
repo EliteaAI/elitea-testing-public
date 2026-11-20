@@ -125,6 +125,28 @@ class SkillDetailPage(SkillFormPage):
     )
     model_settings_max_tokens_section = LocatorDescriptor(testid="model-settings-max-tokens-section")
 
+    # Run-settings controls inside the Model settings dialog (ELITEA-3749
+    # adjust, licence + run settings). DEV serves testids only on the section
+    # wrappers, so the interactive controls take the next ladder rungs.
+    model_settings_max_tokens_custom_radio = LocatorDescriptor(
+        role="radio",
+        name="Custom",
+        description="'Custom' option of the Max Completion Tokens radio group in the Model settings dialog",
+        suggested_testid="model-settings-max-tokens-custom-radio",
+    )
+    model_settings_max_tokens_input = LocatorDescriptor(
+        css="#max_tokens",
+        description="Max Tokens number input (revealed by the Custom radio) in the Model settings dialog; "
+                     "stable element id, no label association or testid on DEV",
+        suggested_testid="model-settings-max-tokens-input",
+    )
+    model_settings_reasoning_slider_input = LocatorDescriptor(
+        role="slider",
+        name="Reasoning level",
+        description="The <input type=range> of the Reasoning slider in the Model settings dialog",
+        suggested_testid="model-settings-reasoning-slider-input",
+    )
+
     # Dynamic (runtime-parameterized) testid for a model-selector dropdown
     # option, keyed by the model's stable API `name` (mirrors
     # AgentDetailPage's identical constant/pattern).
@@ -798,6 +820,89 @@ class SkillDetailPage(SkillFormPage):
         logger.info("Closing Model settings dialog via Cancel")
         self.model_settings_cancel_button.click()
         self.model_settings_dialog.wait_for(state="hidden", timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Run settings + licence on the saved version (ELITEA-3749 adjust)
+    # ------------------------------------------------------------------
+
+    def get_model_option_names(self) -> list[str]:
+        """Return the API names of every fixed model in the OPEN model dropdown.
+
+        Reads the dynamic ``model-selector-option-{name}`` testids (excluding
+        the ``-description-`` twins and the auto-routing entry). Call after
+        :meth:`open_model_selector`.
+        """
+        names = self.page.eval_on_selector_all(
+            self.MODEL_SELECTOR_OPTION_ANY_SELECTOR,
+            "els => els.map(e => e.dataset.testid)",
+        )
+        prefix = "model-selector-option-"
+        return [
+            n[len(prefix):]
+            for n in names
+            if not n.startswith(prefix + "description-") and n != prefix + "__elitea_auto__"
+        ]
+
+    @action("Select a non-default reasoning-capable model")
+    def select_non_default_reasoning_model(self, timeout: int = 5000) -> tuple[str, str]:
+        """Pick the first fixed model, other than the current one, whose
+        Model settings dialog offers the Reasoning slider.
+
+        Options are read from the live dropdown (nothing hardcoded). Leaves
+        the dialog CLOSED and the chosen model selected on the version.
+
+        Returns:
+            ``(api_name, display_name)`` of the selected model.
+        """
+        self.open_model_selector(timeout=timeout)
+        current = self.get_selected_model_name()
+        candidates = self.get_model_option_names()
+        self.page.keyboard.press("Escape")
+        for name in candidates:
+            self.open_model_selector(timeout=timeout)
+            self.select_llm_model(name, timeout=timeout)
+            display = self.get_selected_model_name()
+            if display == current:
+                continue
+            self.open_model_settings_dialog(timeout=timeout)
+            has_reasoning = self.is_reasoning_slider_visible(timeout=2000)
+            self.close_model_settings_dialog_via_cancel(timeout=timeout)
+            if has_reasoning:
+                logger.info("Selected reasoning model %s (%s)", name, display)
+                return name, display
+        raise AssertionError(f"No non-default reasoning-capable model among: {candidates}")
+
+    @action("Set Custom max tokens and reasoning level, then Apply")
+    def set_run_settings_in_dialog(self, max_tokens: int, timeout: int = 5000):
+        """Open Model settings, choose Custom max tokens, move the Reasoning
+        slider to its highest level (End key; the number of levels is
+        model-dependent) and Apply.
+        """
+        self.open_model_settings_dialog(timeout=timeout)
+        self.model_settings_max_tokens_custom_radio.check(force=True)
+        self.model_settings_max_tokens_input.click()
+        self.model_settings_max_tokens_input.press("Control+a")
+        self.model_settings_max_tokens_input.type(str(max_tokens))
+        self.model_settings_reasoning_slider_input.focus()
+        self.page.keyboard.press("End")
+        self.click_apply_model_settings(timeout=timeout)
+
+    def read_run_settings_from_dialog(self, timeout: int = 5000) -> dict:
+        """Open Model settings, read Custom-max-tokens state, max tokens value
+        and Reasoning level mark, then close via Cancel.
+
+        Returns:
+            ``{"custom": bool, "max_tokens": str, "reasoning_level": int}``
+        """
+        self.open_model_settings_dialog(timeout=timeout)
+        self.model_settings_reasoning_slider_input.wait_for(state="attached", timeout=timeout)
+        settings = {
+            "custom": self.model_settings_max_tokens_custom_radio.is_checked(),
+            "max_tokens": self.model_settings_max_tokens_input.input_value(),
+            "reasoning_level": int(self.model_settings_reasoning_slider_input.get_attribute("value")),
+        }
+        self.close_model_settings_dialog_via_cancel(timeout=timeout)
+        return settings
 
     # ------------------------------------------------------------------
     # Actions menu (overflow/three-dot menu)

@@ -271,3 +271,31 @@ up during this analysis).
   (`'["regression"]'`). The test parses it with `json.loads` and asserts exact equality
   `== [skill_tag]` (no substring/`in`).
 - Expected-result changes: none — same value, new location.
+
+## Adjustment — licence and run settings in Agent Skills spec format (#2990, EliteaAI/elitea_issues#7183)
+
+**Triage:** case updated (onetest-ai-tm-Elitea PR #314); flow unchanged. Coverage extended, nothing dropped.
+**Verified on DEV 2026-11-20** (frontend source: `skillEliteaMetadata.helpers.js`, `SkillRunSettings.jsx`, `LLMSettingsDialog`/`MaxTokensSection`/`ReasoningSlider` on `origin/main`).
+
+| Step | Old | New |
+|---|---|---|
+| 1-3 | create form: name/description/tag/instructions, Save | unchanged |
+| 3b (new) | - | On the saved skill (the create form has no frontmatter editor; run settings are only in the Test panel's model selector): Instructions Edit mode, insert `license: MIT` in the frontmatter, Save; open Test panel, pick a non-default reasoning-capable model (read from the dropdown, first fixed model whose Model settings shows the Reasoning slider), Model settings: Max Completion Tokens = Custom 5000, Reasoning slider to top mark, Apply, Save. Effort and settings are read back from the UI, not hardcoded. |
+| 5 | frontmatter name/description/`metadata.elitea-tags`/body | top-level keys == {name, description, license, metadata}; no `tags`/`version`/`elitea_version`/`elitea_run_settings`; `license == MIT`; metadata `elitea-model`, `elitea-max-tokens == "5000"`, `elitea-reasoning-effort` == selected; no `elitea-version` |
+| 9 | name, description, tags, instructions | + licence and metadata (tags/model) restored in the frontmatter editor; model selector shows the model; Model settings dialog shows Custom / 5000 / same reasoning level as the source |
+
+Temperature is not asserted (unused by the app).
+
+### Handles Reference (additions)
+| rung | handle | suggested_testid | provenance |
+|---|---|---|---|
+| testid | `model-selector-button`, `model-selector-name`, `model-selector-option-{api-name}`, `model-settings-button`, `model-settings-dialog`, `model-settings-apply-button`, `model-settings-cancel-button`, `model-settings-reasoning-slider`, `skill-instructions-editor-content`, `skill-test-panel` | - | testid on DEV ✓ |
+| role+name | `radio` "Custom" (Max Completion Tokens, scoped to Model settings dialog) | `model-settings-max-tokens-custom-radio` | ladder — no testid on DEV; unique inside the dialog |
+| role+name | `slider` "Reasoning level" (Reasoning slider input) | `model-settings-reasoning-slider-input` | ladder — no testid on DEV; unique inside the dialog |
+| css | `#max_tokens` (Max Tokens number input) | `model-settings-max-tokens-input` | ladder — no testid/label on DEV; stable element id |
+
+### Quirks found
+- With unsaved edits the app renders a second, hidden `skill-test-panel` ("Testing unsaved changes"): save the licence edit before opening the Test panel.
+- After a Save, Instructions returns to Preview: switch to Edit before reading the frontmatter.
+- Reasoning slider mark positions are clicked-through by the MUI thumb; drive the slider input with the End key.
+- The number of reasoning levels depends on the model; the test reads the resulting `elitea-reasoning-effort` instead of hardcoding it.

@@ -7,6 +7,8 @@ Handles: /skills/create and /skills/all/{id} (edit mode)
 """
 
 import logging
+
+import yaml
 from playwright.sync_api import Page
 
 from .base_page import BasePage
@@ -847,6 +849,29 @@ class SkillFormPage(BasePage):
         if text.startswith("---") and "---" in text[3:]:
             text = text[3:].split("---", 1)[1]
         return text.strip()
+
+    @action("Add licence to the frontmatter editor")
+    def add_frontmatter_license(self, license_id: str):
+        """Insert ``license: <id>`` as a top-level key of the Instructions
+        editor's YAML frontmatter (Edit mode, existing skill).
+
+        The editor shows the frontmatter only on a saved skill; the key is
+        inserted right before the closing ``---`` and the whole text is
+        re-entered with the atomic-insert mechanism of
+        :meth:`fill_instructions_markdown`.
+        """
+        text = self.instructions_editor_content.inner_text()
+        assert text.startswith("---") and "\n---" in text, (
+            f"Instructions editor shows no frontmatter block: {text[:80]!r}"
+        )
+        self.fill_instructions_markdown(text.replace("\n---", f"\nlicense: {license_id}\n---", 1))
+
+    def get_frontmatter(self) -> dict:
+        """Parse the YAML frontmatter shown in the Instructions editor (Edit mode)."""
+        text = self.instructions_editor_content.inner_text()
+        parts = text.split("---", 2)
+        assert len(parts) == 3, f"Instructions editor shows no frontmatter block: {text[:80]!r}"
+        return yaml.safe_load(parts[1]) or {}
 
     def get_instructions_multiline(self) -> str:
         """Return the Instructions CodeMirror editor's text content,

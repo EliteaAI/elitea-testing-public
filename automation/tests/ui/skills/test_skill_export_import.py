@@ -80,12 +80,16 @@ class TestSkillExportImport:
         1. Navigate to create-skill form; Save starts disabled.
         2. Fill name/description/tags/instructions; Save enables.
         3. Save; note the source skill ID.
+        3b. Add `license: MIT` in the frontmatter editor and a non-default
+            reasoning model, Custom max tokens and a reasoning effort; save.
         4. Export the base version via the overflow menu; verify .md download.
-        5. Read the exported file; verify frontmatter + instructions body.
+        5. Read the exported file; verify spec-format frontmatter (licence,
+           metadata incl. run settings, no legacy top-level keys) + body.
         6. Navigate to Skills list; click Import; verify file chooser.
         7. Upload the exported file; verify the Import parameters dialog.
         8. Confirm import; verify navigation + success toast + new unique ID.
-        9. Verify imported skill's version/name/description/tags/instructions.
+        9. Verify imported skill's version/name/description/tags/instructions,
+           licence and run settings.
         10. Edit + save the imported skill; verify a clean save.
         """
         # Kebab-case, <= 32 chars (MAX_NAME_LENGTH), lowercase letters/digits/hyphens only.
@@ -95,6 +99,8 @@ class TestSkillExportImport:
             "Automation test skill for base version export/import round trip (ELITEA-3749)."
         )
         skill_tag = "regression"
+        skill_license = "MIT"
+        skill_max_tokens = 5000
         skill_instructions = (
             "You are a test skill created for ELITEA-3749 export/import base version "
             "verification. Always respond with the single word CONFIRMED."
@@ -140,6 +146,34 @@ class TestSkillExportImport:
             source_skill_id = detail_page.get_skill_id()
             cleanup_skill_ids.append(int(source_skill_id))
             logger.info("Source skill created — id=%s", source_skill_id)
+
+        # ------------------------------------------------------------------
+        # Step 3b — Add licence + run settings on the saved base version
+        # (the create form has no frontmatter editor; both live on the detail page)
+        # ------------------------------------------------------------------
+        with allure.step("Step 3b — Add licence and run settings (model, max tokens, reasoning); save"):
+            detail_page.click_edit_mode()
+            expect(detail_page.instructions_editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            detail_page.add_frontmatter_license(skill_license)
+            # Save the licence first: with unsaved edits the app renders a second
+            # (hidden) "Testing unsaved changes" test panel.
+            detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+
+            detail_page.open_test_skill_panel()
+            model_api_name, model_display = detail_page.select_non_default_reasoning_model()
+            detail_page.set_run_settings_in_dialog(max_tokens=skill_max_tokens)
+            detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+            # The selected effort is whatever the slider's top mark maps to for
+            # this model — read it back from the frontmatter the editor mirrors.
+            detail_page.click_edit_mode()  # a save returns Instructions to Preview
+            expect(detail_page.instructions_editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            source_metadata = detail_page.get_frontmatter().get("metadata") or {}
+            reasoning_effort = source_metadata.get("elitea-reasoning-effort")
+            assert reasoning_effort, f"Reasoning effort not reflected in frontmatter: {source_metadata!r}"
+            assert source_metadata.get("elitea-model") == model_api_name
+            source_run_settings = detail_page.read_run_settings_from_dialog()
+            assert source_run_settings["custom"] and source_run_settings["max_tokens"] == str(skill_max_tokens)
+            logger.info("Source skill configured — model=%s", model_api_name)
 
         # ------------------------------------------------------------------
         # Step 4 — Export the base version via the overflow menu
@@ -188,8 +222,32 @@ class TestSkillExportImport:
             assert json.loads(raw_tags) == [skill_tag], (
                 f"Exported frontmatter metadata elitea-tags mismatch: {raw_tags!r}"
             )
-            # No explicit 'version' key is expected in the frontmatter — this is
-            # expected live behavior (case-text drift clarification #21), not a bug.
+            # Agent Skills spec format (EL-7183): only spec keys at top level;
+            # tags / version / run settings live under metadata.elitea-*.
+            assert set(frontmatter) == {"name", "description", "license", "metadata"}, (
+                f"Exported top-level keys should be exactly the spec keys, got: {sorted(frontmatter)}"
+            )
+            for legacy_key in ("tags", "version", "elitea_version", "elitea_run_settings"):
+                assert legacy_key not in frontmatter, (
+                    f"Exported frontmatter must not carry legacy top-level {legacy_key!r}"
+                )
+            assert frontmatter["license"] == skill_license, (
+                f"Exported license mismatch: {frontmatter['license']!r} != {skill_license!r}"
+            )
+            assert metadata.get("elitea-model") == model_api_name, (
+                f"Exported elitea-model mismatch: {metadata.get('elitea-model')!r} != {model_api_name!r}"
+            )
+            assert metadata.get("elitea-max-tokens") == str(skill_max_tokens), (
+                f"Exported elitea-max-tokens mismatch: {metadata.get('elitea-max-tokens')!r}"
+            )
+            assert metadata.get("elitea-reasoning-effort") == reasoning_effort, (
+                f"Exported elitea-reasoning-effort mismatch: {metadata.get('elitea-reasoning-effort')!r}"
+            )
+            # Base version -> no elitea-version in metadata (and no top-level
+            # 'version', asserted above; clarification #21).
+            assert "elitea-version" not in metadata, (
+                f"Base version export must not carry metadata elitea-version: {metadata!r}"
+            )
             assert instructions_body == skill_instructions, (
                 "Exported instructions body should match the source skill's instructions"
             )
@@ -263,7 +321,7 @@ class TestSkillExportImport:
         # ------------------------------------------------------------------
         # Step 9 — Verify imported skill's fields match the source
         # ------------------------------------------------------------------
-        with allure.step("Step 9 — Verify version/name/description/tags/instructions match source"):
+        with allure.step("Step 9 — Verify name/description/tags/instructions, licence and run settings match source"):
             assert detail_page.get_name() == skill_name, (
                 "Imported skill's name should match the source skill"
             )
@@ -282,6 +340,33 @@ class TestSkillExportImport:
             assert detail_page.get_instructions_body() == skill_instructions, (
                 "Imported skill's instructions should match the source skill's exported content"
             )
+            # Licence + run settings restored on the base version: the
+            # frontmatter editor mirrors them, and the Model settings dialog
+            # shows the effective values.
+            imported_frontmatter = detail_page.get_frontmatter()
+            imported_metadata = imported_frontmatter.get("metadata") or {}
+            assert imported_frontmatter.get("license") == skill_license, (
+                f"Imported licence mismatch: {imported_frontmatter.get('license')!r}"
+            )
+            assert json.loads(imported_metadata.get("elitea-tags", "null")) == [skill_tag], (
+                f"Imported metadata elitea-tags mismatch: {imported_metadata!r}"
+            )
+            assert imported_metadata.get("elitea-model") == model_api_name, (
+                f"Imported elitea-model mismatch: {imported_metadata.get('elitea-model')!r}"
+            )
+            detail_page.open_test_skill_panel()
+            assert detail_page.get_selected_model_name() == model_display, (
+                f"Imported model selector shows {detail_page.get_selected_model_name()!r}, "
+                f"expected {model_display!r}"
+            )
+            restored = detail_page.read_run_settings_from_dialog()
+            assert restored == source_run_settings, (
+                f"Imported run settings not restored: {restored!r} != {source_run_settings!r}"
+            )
+            assert imported_metadata.get("elitea-reasoning-effort") == reasoning_effort, (
+                f"Imported reasoning effort mismatch: {imported_metadata!r}"
+            )
+            assert imported_metadata.get("elitea-max-tokens") == str(skill_max_tokens)
 
         # ------------------------------------------------------------------
         # Step 10 — Edit + save the imported skill; verify a clean save
