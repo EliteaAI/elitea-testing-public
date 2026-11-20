@@ -1,0 +1,80 @@
+{
+  "batch": "toolkit-copy-4758",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-toolkit-copy-4758",
+  "gate": {
+    "verdict": "red",
+    "runs": 0,
+    "seconds": [
+      89
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/toolkits/test_toolkit_test_result_copy_icons.py::test_toolkit_test_result_copy_icons_show_tooltip_and_toast",
+        "case_ids": [
+          "ELITEA-4758"
+        ],
+        "signature": "playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. - waiting for get_by_role(\"textbox\", name=\"Toolkit Name\") to be visible (2 reruns also failed; 1 failed, 2 rerun in 86s)"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4758",
+      "outcome": "blocked",
+      "note": "gate red: playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 15000ms exceeded. - waiting for get_by_role(\"textbox\", name=\"Toolkit Name\") to be visible (2 reruns also failed; 1 failed, 2 rerun in 8",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "automation/.env.test is missing in this sandbox. Without APP_PREFIX=/app, navigation lands on a 404 page and the toolkit detail page never shows the Toolkit Name field. A memory entry for this already exists on the feature branch."
+        },
+        {
+          "kind": "note",
+          "note": "DEV returned a transient 503 (no healthy upstream) mid-session, so a gate run could fail for that reason alone."
+        },
+        {
+          "kind": "note",
+          "note": "The Run History button check from case step 1 is not asserted, because no handle was verified. The AFS Coverage Map marks it out-of-scope."
+        },
+        {
+          "kind": "note",
+          "note": "ruff is not installed in the repo venv, so the lint step could not run."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 1 expects both Test and Run History buttons visible. The spec asserts only test_button. The AFS Coverage Map discloses this as out-of-scope, conditional on no verified handle. Acceptable, but the TMS case text keeps an unasserted expectation. Consider adding a Run History visibility check in a later pass if DEV has a role+name handle.",
+          "ref": "automation/tests/ui/toolkits/test_toolkit_test_result_copy_icons.py:Step 1"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep over the diff (automation/pages and automation/tests) found no get_by_*, .locator(, .nth(, locator= or fallback= additions. Command: git diff main...tests/ELITEA-4758-toolkit-copy-icons -- automation/pages automation/tests, with the reviewer pattern applied by reading the full diff. Result: 0 hits. All 4 new declarations are class-level. Three use testid=. open_tooltips use… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_test_settings_page.py:155"
+        },
+        {
+          "kind": "note",
+          "note": "TMS pair check: @pytest.mark.tms(ELITEA-4758) and @allure.issue are both present. The linked file ELITEA-4758_toolkit-test-result-copy-markdown-and-copy-text-actions.md exists in TMS toolkits_UI. tms_backwrite.py check printed 'TMS links OK' (297 UI tests, 295 with TMS links, 272 linked cases), run by me read-only, not a spec execution."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case, AFS and diff: Steps 1-9 each carry a real assertion in their own allure.step. Visibility and enabled at step 5. Exact tooltip text at 6 and 8. Exact toast text at 7 and 9. Toast cleared before the second icon is clicked. No skip, xfail, soft-assert or weakened assertion. Cleanup runs in finally. Nothing is covered-by, so no covered-by rows to verify. The AFS Axis 2 enabled chec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Unverified statically: whether wait_for_tool_result's result text contains 'list_files', and whether LocatorDescriptor supports .last, which the new page-object code uses. The AFS says both were confirmed in the live probe. The 3x DEV gate must confirm them.",
+          "ref": "automation/pages/toolkit_test_settings_page.py:548"
+        }
+      ],
+      "afs": "test-specs/toolkits/l1_toolkit-test-result-copy-markdown-and-copy-text-icons-toast_ELITEA-4758.md",
+      "branch": "tests/ELITEA-4758-toolkit-copy-icons",
+      "pr": 3002
+    }
+  ],
+  "totals": {
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
