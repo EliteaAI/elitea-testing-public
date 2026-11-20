@@ -1531,6 +1531,18 @@
       "updated": "2026-10-05",
       "history": []
     },
+    "pages/toolkit_test_settings_page.py::ToolkitTestSettingsPage.open_tooltips": {
+      "file": "pages/toolkit_test_settings_page.py",
+      "line": 170,
+      "kind": "role",
+      "selector": "tooltip",
+      "suggested_testid": "chat-copy-tooltip",
+      "description": "Open MUI tooltip popper (role=tooltip); callers use .last (the one just hovered).",
+      "state": "raw",
+      "added": "2026-11-20",
+      "updated": "2026-11-20",
+      "history": []
+    },
     "pages/user_profile_settings_page.py::UserProfileSettingsPage.context_window_option_radio": {
       "file": "pages/user_profile_settings_page.py",
       "line": 77,
@@ -1546,21 +1558,21 @@
   },
   "last_sync": "2026-11-20",
   "metric": {
-    "declared_total": 1511,
-    "declared_testid": 1384,
-    "declared_non_testid": 127,
-    "non_testid_with_hint": 106,
+    "declared_total": 1515,
+    "declared_testid": 1387,
+    "declared_non_testid": 128,
+    "non_testid_with_hint": 107,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 32,
       "fallback": 20,
       "label": 1,
       "locator": 1,
-      "role": 43,
-      "testid": 1384,
+      "role": 44,
+      "testid": 1387,
       "xpath": 30
     },
-    "locator_debt": 0.0841,
+    "locator_debt": 0.0845,
     "unmanaged_handles": 309
   }
 }
