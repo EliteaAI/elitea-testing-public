@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "eab3c03f-7524-4d05-a8eb-5f777f35bfa4",
+  "intent": "automation",
+  "batch": "skill-copy-4757",
+  "cases": [
+    "ELITEA-4757"
+  ],
+  "declaredAt": "2026-11-20T12:02:44.480Z",
+  "updatedAt": "2026-11-20T12:27:01.973Z",
+  "outcomes": {
+    "ELITEA-4757": {
+      "outcome": "automated",
+      "at": "2026-11-20T12:26:45.096Z"
+    }
+  },
+  "closedAt": "2026-11-20T12:27:01.973Z"
+}
