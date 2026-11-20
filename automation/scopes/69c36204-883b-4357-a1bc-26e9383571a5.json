@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "69c36204-883b-4357-a1bc-26e9383571a5",
+  "intent": "automation",
+  "batch": "pipe-copy-4756",
+  "cases": [
+    "ELITEA-4756"
+  ],
+  "declaredAt": "2026-11-20T11:22:31.822Z",
+  "updatedAt": "2026-11-20T12:00:31.364Z",
+  "outcomes": {
+    "ELITEA-4756": {
+      "outcome": "automated",
+      "at": "2026-11-20T12:00:16.357Z"
+    }
+  },
+  "closedAt": "2026-11-20T12:00:31.364Z"
+}
