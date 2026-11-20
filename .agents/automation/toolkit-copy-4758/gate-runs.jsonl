@@ -1,3 +1,3 @@
-{"run": 1, "verdict": "pass", "seconds": 19.7}
-{"run": 2, "verdict": "pass", "seconds": 20.6}
-{"run": 3, "verdict": "pass", "seconds": 19.5}
+{"run": 1, "verdict": "green", "seconds": 19.7}
+{"run": 2, "verdict": "green", "seconds": 20.6}
+{"run": 3, "verdict": "green", "seconds": 19.5}
