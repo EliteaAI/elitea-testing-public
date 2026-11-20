@@ -1,0 +1,81 @@
+{
+  "batch": "pipe-copy-4756",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-pipe-copy-4756",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      20.34,
+      20.6,
+      21.33
+    ],
+    "failures": [],
+    "note": "Lead's own gate, 3 separate invocations, APP_PREFIX=/app --reruns 0. Workflow's red was environmental: sandbox had no .env.test so APP_PREFIX was empty and detail navigation 404'd."
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4756",
+      "outcome": "automated",
+      "note": "gated 3/3 green by lead after env fix (APP_PREFIX=/app)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The AFS did not observe the 'Run 1 details' label from case step 3. It is not asserted in the AFS, and the implementer may optionally check it.",
+          "ref": "ELITEA-4756"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS opens the pipeline by direct navigate instead of through the Pipelines list. The list-to-open path is covered by other specs, and the AFS records this as acceptable transit.",
+          "ref": "ELITEA-4756"
+        },
+        {
+          "kind": "note",
+          "note": "The sandbox has no automation/.env.test, so config.py defaults app_prefix to '' and every pipeline detail navigation 404s. The gate must run with APP_PREFIX=/app (and the credentials env). ELITEA-4720 fails the same way without it."
+        },
+        {
+          "kind": "note",
+          "note": "Ruff is not installed in .venv (`ruff` is missing from the venv and `python -m ruff` fails), so the conventions lint step could not be run on this unit."
+        },
+        {
+          "kind": "note",
+          "note": "AFS case-element 3 ('Run 1 details' label) was not asserted, per the AFS itself. Final response shown is asserted via 2 chat items plus a non-empty last response.",
+          "ref": "ELITEA-4756"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 3 expects 'Run 1 details' to appear. The AFS Coverage Map marks the row 'asserted', but the analyst says the label was not observed and the spec only asserts 2 chat items plus a non-empty response. The row's disposition should read 'clarification / not asserted' rather than 'asserted'. A 'pipeline-run-details-panel' testid exists on PipelineDetailPage (run_details_panel, ~line 2088). The\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l1_pipeline-test-chat-copy-markdown-and-copy-text-icons-toast_ELITEA-4756.md (Coverage Map row 3)"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4 uses a bare assert on is_visible(), which does not auto-wait. It is safe only if the action icons render at the same moment the response text does. Using expect(locator).to_be_visible(timeout=T) would remove that race. The gate's 3 runs will show whether it flakes. The page-object helper is_last_response_copy_icon_visible has the same shape.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_test_chat_copy_icons.py:Step 4"
+        },
+        {
+          "kind": "note",
+          "note": "Locator checks. The mechanical ladder grep on the full diff (automation/pages and automation/tests) for get_by_*, query_selector, page.locator, .locator(, .nth(, locator= and fallback= returned 0 hits (rc=1). The two new descriptors, chat_copy_markdown_button and chat_copy_text_button, are class-level and use testid=, which is rung 1 and needs no suggested_testid. They reuse the DEV testids the AF\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:1925-1934"
+        },
+        {
+          "kind": "note",
+          "note": "TMS pair is present: @pytest.mark.tms('ELITEA-4756') plus @allure.issue pointing at the blob URL tests/automated-full-regression-ui/pipelines/ELITEA-4756_pipeline-test-chat-copy-markdown-and-copy-text-actions.md. That file exists in the sibling TMS clone and its name carries the same id. Each of the 8 steps is wrapped in allure.step. No skip, xfail or weakened assertions found. Tooltip and toast s\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case, AFS and diff for the single case ELITEA-4756: steps 1-8 and the Pass criteria (visible, clickable, toast after each click) all map to real assertions in the spec at the matching step. 'Clickable' is covered by to_be_enabled before each click. The AFS discloses that it opens the pipeline by direct navigation instead of via the left-menu list. That is acceptable as transit and\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l1_pipeline-test-chat-copy-markdown-and-copy-text-icons-toast_ELITEA-4756.md",
+      "branch": "tests/ELITEA-4756-pipeline-copy-icons"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

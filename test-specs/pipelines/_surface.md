@@ -4323,3 +4323,8 @@ Schedule left the entry-node Trigger dropdown (EL-7011/#7338); `get_trigger_opti
 - Save -> `POST /api/v2/elitea_core/schedules/prompt_lib/<project>` 201, then back to the pipeline; card `pipeline-schedule-card-{id}` (+ `-rule-`, `-timezone-`, `-next-`, `-state-`, `-toggle-`); rule line reads "At 09:30"; section fills ~3-6 s after load.
 - Risk check `POST .../schedules/prompt_lib/<project>/check`: Printer/HITL -> `blocking[human_input_step]` -> `schedule-risk-block-box` + Save disabled + "Fix the risk check to save" (`#schedule-risk-hint`); link "Open pipeline to change steps" is `target=_blank` (new tab). Saved `interrupt_before/after` is NOT blocked (#2984).
 - Quirks: `platform-banner-center` dialog and `platform-banner-corner` both intercept clicks (close via `platform-banner-close`); an open node panel collapses the left column (hides the SCHEDULES section) - `close_node_panel()` then `config_panel_collapse_button`. Deleting a pipeline cascades its schedules.
+
+## Pipeline test-chat response copy actions (confirmed live on DEV, 2026-11-20, ELITEA-4756)
+
+- After a run in the Test Pipeline panel the last AI message shows `chat-copy-markdown-button` (tooltip "Copy markdown") and `chat-copy-text-button` ("Copy text") with no hover needed; message actions also include `chat-read-out-button`, `chat-regenerate-button`, `chat-delete-button`. Toasts (`toast-alert` severity info / `toast-message`): "Markdown copied to clipboard." / "Text copied to clipboard."; gone within ~20s. Same testids as the agent surface (see agents/_surface.md ELITEA-4755).
+- `PipelineDetailPage` has no copy-icon/tooltip descriptors yet (AgentDetailPage does). Seed: `pipeline_with_fstring_llm_id`, send "go", wait 2 chat items.

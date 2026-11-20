@@ -621,7 +621,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.ADD_NODE_MENU_ITEM_LABEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2031,
+      "line": 2042,
       "kind": "css",
       "selector": "span.MuiTypography-bodyMedium",
       "suggested_testid": "pipeline-add-node-menu-item-label",
@@ -633,7 +633,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_REPLACE_ALL_BUTTON": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1974,
+      "line": 1985,
       "kind": "css",
       "selector": ".cm-search button[name=\"replaceAll\"]",
       "suggested_testid": "pipeline-node-yaml-replace-all-button",
@@ -645,7 +645,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_REPLACE_BUTTON": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1969,
+      "line": 1980,
       "kind": "css",
       "selector": ".cm-search button[name=\"replace\"]",
       "suggested_testid": "pipeline-node-yaml-replace-button",
@@ -657,7 +657,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_SEARCH_MATCH": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1964,
+      "line": 1975,
       "kind": "css",
       "selector": ".cm-searchMatch",
       "suggested_testid": "pipeline-node-yaml-search-match",
@@ -669,7 +669,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.CM_SEARCH_PANEL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1959,
+      "line": 1970,
       "kind": "css",
       "selector": ".cm-search",
       "suggested_testid": "pipeline-node-yaml-search-panel",
@@ -705,7 +705,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_EDITABLE_CONTROL": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1990,
+      "line": 2001,
       "kind": "css",
       "selector": "input, select, textarea, [contenteditable=\"true\"]",
       "suggested_testid": "pipeline-node-editable-control",
@@ -717,7 +717,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_PANEL_NAME_ERROR": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1996,
+      "line": 2007,
       "kind": "xpath",
       "selector": ".//p[normalize-space(text())='Name is required']",
       "suggested_testid": "pipeline-node-panel-name-error",
@@ -729,7 +729,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_YAML_LINE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1984,
+      "line": 1995,
       "kind": "css",
       "selector": ".cm-line:has-text(\"{}\")",
       "suggested_testid": "pipeline-node-yaml-line-{}",
@@ -741,7 +741,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.NODE_YAML_LINE_ITEM": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1979,
+      "line": 1990,
       "kind": "css",
       "selector": ".cm-line",
       "suggested_testid": "pipeline-node-yaml-line-item",
@@ -753,7 +753,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.PICKER_GROUP_TITLE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10744,
+      "line": 10755,
       "kind": "xpath",
       "selector": ".//span[normalize-space(text())='{}']",
       "suggested_testid": "pipeline-agent-node-agent-select-group-title-{}",
@@ -765,7 +765,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.canvas_edges": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2039,
+      "line": 2050,
       "kind": "css",
       "selector": ".react-flow__edge",
       "suggested_testid": "pipeline-canvas-edge",
@@ -777,7 +777,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.node_yaml_copied_message": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 1943,
+      "line": 1954,
       "kind": "xpath",
       "selector": "//*[normalize-space(text())='Copied']",
       "suggested_testid": "pipeline-node-panel-yaml-copied-toast",
@@ -789,7 +789,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.run_details_timeline_section": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 2112,
+      "line": 2123,
       "kind": "locator",
       "selector": "[data-testid=\"pipeline-run-details-panel\"] >> text=\"Timeline step:\" >> xpath=..",
       "suggested_testid": null,
@@ -1534,8 +1534,8 @@
   },
   "last_sync": "2026-11-20",
   "metric": {
-    "declared_total": 1505,
-    "declared_testid": 1379,
+    "declared_total": 1507,
+    "declared_testid": 1381,
     "declared_non_testid": 126,
     "non_testid_with_hint": 105,
     "non_testid_without_hint": 21,
@@ -1545,10 +1545,10 @@
       "label": 1,
       "locator": 1,
       "role": 42,
-      "testid": 1379,
+      "testid": 1381,
       "xpath": 30
     },
-    "locator_debt": 0.0837,
+    "locator_debt": 0.0836,
     "unmanaged_handles": 309
   }
 }
