@@ -17,6 +17,7 @@ first paint).
 Spec: test-specs/skills/l3_import-agent-recreates-skills-with-new-ids_ELITEA-1795.md
 """
 
+import json
 import logging
 import tempfile
 import uuid
@@ -43,14 +44,23 @@ IMPORT_TIMEOUT = 15_000
 logger = logging.getLogger("elitea.tests.skills")
 
 MARKER = "ELITEA_1795_MARKER_TEXT"
+SKILL_TAG = "regression"
+SKILL_LICENSE = "MIT"
+SKILL_MAX_TOKENS = 5000
 
 
-def _create_skill(page, name: str, description: str, instructions: str) -> int:
+def _create_skill(
+    page, name: str, description: str, instructions: str,
+) -> tuple[int, dict]:
     """Create a skill via the UI and return its numeric ID.
 
     Mirrors the create flow shared across ELITEA-1735/1737/1738/1739/1789/
     1792/1794: fill the form (name / description / CodeMirror instructions),
-    save, and confirm the resulting detail page.
+    save, and confirm the resulting detail page. Since #2992 (EL-7183) the
+    source Skill also gets a tag, licence MIT and run settings (non-default
+    fixed model + Custom max tokens), mirroring ELITEA-1794 / the Skill
+    export-import spec; returns ``(skill_id, source_run_info)`` where the dict
+    holds the selected model + dialog run settings to compare after import.
     """
     list_page = SkillsListPage(page)
     list_page.navigate_to_create()
@@ -58,6 +68,7 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
     form_page = SkillFormPage(page)
     form_page.wait_for_form_load()
     form_page.fill_form(name=name, instructions=instructions, description=description)
+    form_page.add_tag(SKILL_TAG)
     form_page.wait_for_form_validation()
     assert form_page.is_save_enabled(), (
         f"Save should be enabled after filling all required fields for skill '{name}'"
@@ -68,7 +79,37 @@ def _create_skill(page, name: str, description: str, instructions: str) -> int:
     detail_page.verify_on_detail_page()
     skill_id = int(detail_page.get_skill_id())
     logger.info("Created skill %r with id=%d", name, skill_id)
-    return skill_id
+
+    # The create form has no frontmatter / run-settings editor: add the licence
+    # and run settings on the saved base version (same sequence as
+    # test_skill_export_import.py Step 3b).
+    detail_page.click_edit_mode()
+    expect(detail_page.instructions_editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+    detail_page.add_frontmatter_license(SKILL_LICENSE)
+    # Save the licence first: with unsaved edits the app renders a second
+    # (hidden) "Testing unsaved changes" test panel.
+    detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+
+    detail_page.open_test_skill_panel()
+    model_api_name, model_display = detail_page.select_non_default_reasoning_model()
+    detail_page.set_run_settings_in_dialog(max_tokens=SKILL_MAX_TOKENS)
+    detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+    detail_page.click_edit_mode()  # a save returns Instructions to Preview
+    expect(detail_page.instructions_editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+    source_metadata = detail_page.get_frontmatter().get("metadata") or {}
+    reasoning_effort = source_metadata.get("elitea-reasoning-effort")
+    assert reasoning_effort, f"Reasoning effort not reflected in frontmatter: {source_metadata!r}"
+    assert source_metadata.get("elitea-model") == model_api_name
+    run_settings = detail_page.read_run_settings_from_dialog()
+    assert run_settings["custom"] and run_settings["max_tokens"] == str(SKILL_MAX_TOKENS), (
+        f"Source run settings not saved: {run_settings!r}"
+    )
+    return skill_id, {
+        "model_api_name": model_api_name,
+        "model_display": model_display,
+        "reasoning_effort": reasoning_effort,
+        "run_settings": run_settings,
+    }
 
 
 class TestImportAgentRecreatesSkillsWithNewIds:
@@ -135,7 +176,7 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 "a Skill + an Agent, attach the Skill, export via the "
                 "actions overflow menu"
             ):
-                source_skill_id = _create_skill(
+                source_skill_id, source_info = _create_skill(
                     page, skill_name, skill_description, skill_instructions,
                 )
 
@@ -222,7 +263,9 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 skill_instructions_preview = (
                     agents_list_page.import_preview_skill_instructions.first.text_content()
                 )
-                assert skill_instructions_preview == skill_instructions, (
+                # The body now carries a leading blank line (the frontmatter is
+                # split out of it, as in ELITEA-1794's export) — whitespace-only.
+                assert skill_instructions_preview.strip() == skill_instructions, (
                     "Import dialog should preview the embedded Skill's full "
                     f"instructions verbatim (incl. marker {MARKER!r}), proving "
                     "the dialog parses the uploaded file's content client-side, "
@@ -379,6 +422,44 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 assert imported_instructions == skill_instructions, (
                     "Imported skill's instructions should match the source "
                     "skill's full instructions text verbatim"
+                )
+
+                # EL-7183 (#2992): the recreated Skill keeps the source's
+                # frontmatter data (licence, tags, run settings) and lands on
+                # the `base` version. Temperature is deliberately not asserted
+                # (not used by the app).
+                imported_frontmatter = skill_detail_page.get_frontmatter()
+                imported_metadata = imported_frontmatter.get("metadata") or {}
+                assert imported_frontmatter.get("license") == SKILL_LICENSE, (
+                    f"Imported licence mismatch: {imported_frontmatter.get('license')!r}"
+                )
+                assert skill_detail_page.get_tags() == [SKILL_TAG], (
+                    f"Imported skill's tags mismatch: {skill_detail_page.get_tags()!r}"
+                )
+                assert json.loads(imported_metadata.get("elitea-tags", "null")) == [SKILL_TAG], (
+                    f"Imported metadata elitea-tags mismatch: {imported_metadata!r}"
+                )
+                assert imported_metadata.get("elitea-model") == source_info["model_api_name"], (
+                    f"Imported elitea-model mismatch: {imported_metadata.get('elitea-model')!r}"
+                )
+                assert imported_metadata.get("elitea-max-tokens") == str(SKILL_MAX_TOKENS), (
+                    f"Imported elitea-max-tokens mismatch: {imported_metadata!r}"
+                )
+                assert imported_metadata.get("elitea-reasoning-effort") == source_info["reasoning_effort"], (
+                    f"Imported reasoning effort mismatch: {imported_metadata!r}"
+                )
+                skill_detail_page.open_test_skill_panel()
+                assert skill_detail_page.get_selected_model_name() == source_info["model_display"], (
+                    f"Imported model selector shows {skill_detail_page.get_selected_model_name()!r}, "
+                    f"expected {source_info['model_display']!r}"
+                )
+                restored = skill_detail_page.read_run_settings_from_dialog()
+                assert restored == source_info["run_settings"], (
+                    f"Imported run settings not restored: {restored!r} != {source_info['run_settings']!r}"
+                )
+                assert skill_detail_page.get_version_selector_value() == "base", (
+                    "Recreated Skill's version should be 'base', got: "
+                    f"{skill_detail_page.get_version_selector_value()!r}"
                 )
 
                 # Positive check: the import is purely additive — the

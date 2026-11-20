@@ -1,0 +1,3 @@
+{"run":1,"verdict":"green","spec":"tests/ui/skills/test_import_agent_recreates_skills_with_new_ids.py::TestImportAgentRecreatesSkillsWithNewIds::test_import_agent_recreates_skills_with_new_ids","result":"pass","env":"APP_PREFIX=/app HEADLESS=true"}
+{"run":2,"verdict":"green","spec":"tests/ui/skills/test_import_agent_recreates_skills_with_new_ids.py::TestImportAgentRecreatesSkillsWithNewIds::test_import_agent_recreates_skills_with_new_ids","result":"pass","env":"APP_PREFIX=/app HEADLESS=true"}
+{"run":3,"verdict":"green","spec":"tests/ui/skills/test_import_agent_recreates_skills_with_new_ids.py::TestImportAgentRecreatesSkillsWithNewIds::test_import_agent_recreates_skills_with_new_ids","result":"pass","env":"APP_PREFIX=/app HEADLESS=true"}

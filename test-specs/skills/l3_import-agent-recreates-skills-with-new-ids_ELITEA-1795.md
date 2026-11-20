@@ -490,3 +490,31 @@ Expect clean green 3/3 — no sanctioned-RED signature, no linked open defect.
 `ready-for-automation` — this is a repair; the case was always automatable
 and nothing about automatability changed. The fix is a one-line comparison
 swap with no design question pending for Step 7.
+
+## Adjustment — 2026-11-20 (case update, tracking issue #2992, EL-7183)
+
+**Triage:** not a repair — the TMS case was extended (EliteaAI/onetest-ai-tm-Elitea#314,
+branch `tests/7183-align-skill-frontmatter`); the import flow is unchanged. Related
+#2674/#2444 are closed and already covered (live `max_skills`, Edit-mode body read);
+no open defect applies, so no `expect.soft` / `# Known defect`.
+
+**Step 1 (setup) now:** the source Skill is created with tag `regression`, then on
+the saved base version: licence `MIT` (frontmatter), a non-default fixed
+reasoning-capable model and Custom max tokens `5000` (Model settings dialog) —
+same sequence as `test_skill_export_import.py` Step 3b / ELITEA-1794. Temperature
+is NOT set or asserted (not used by the app). Source model/effort/run-settings
+are read back and kept for the step 7 comparison.
+
+**Step 7 additions (Expected-result changes — additive only):** on the recreated
+Skill (Edit mode): frontmatter `license == MIT`; chips `get_tags() == [tag]` and
+`metadata.elitea-tags`; `metadata.elitea-model`, `elitea-max-tokens`,
+`elitea-reasoning-effort` equal the source; model selector + Model settings dialog
+equal the source's; version selector `== base`. Existing assertions kept.
+
+**Observed drift handled (how, not what):** the Import dialog's Skill
+instructions preview now has a leading blank line (frontmatter split out), so
+the verbatim comparison is `.strip() ==` (whitespace only; the body is still
+compared in full, marker included).
+
+**Handles:** no new locators; reuses `SkillDetailPage` / `SkillFormPage`
+methods (all existing ladder declarations).
