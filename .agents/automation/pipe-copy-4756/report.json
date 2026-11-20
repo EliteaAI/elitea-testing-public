@@ -4,24 +4,21 @@
   "pr_unit": "trunk",
   "integration_branch": "tests/batch-pipe-copy-4756",
   "gate": {
-    "verdict": "red",
-    "runs": 0,
-    "seconds": [],
-    "failures": [
-      {
-        "spec": "automation/tests/ui/pipelines/test_pipeline_test_chat_copy_icons.py::test_pipeline_test_chat_copy_icons_show_tooltip_and_toast",
-        "case_ids": [
-          "ELITEA-4756"
-        ],
-        "signature": "Step 1: PipelineDetailPage.navigate() -> wait_for_detail_page_load() (pages/pipeline_detail_page.py:2242 -> 2266) playwright TimeoutError: Page.wait_for_function: Timeout 15000ms exceeded, raised before any copy-icon assertion. Seen in 2 separate invocations: the first used the project's default reruns and went 1 failed, 2 rerun in 85.68s; the second used --reruns 0 and went 1 failed in 28.76s."
-      }
-    ]
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      20.34,
+      20.6,
+      21.33
+    ],
+    "failures": [],
+    "note": "Lead's own gate, 3 separate invocations, APP_PREFIX=/app --reruns 0. Workflow's red was environmental: sandbox had no .env.test so APP_PREFIX was empty and detail navigation 404'd."
   },
   "cases": [
     {
       "id": "ELITEA-4756",
-      "outcome": "blocked",
-      "note": "gate red: Step 1: PipelineDetailPage.navigate() -> wait_for_detail_page_load() (pages/pipeline_detail_page.py:2242 -> 2266) playwright TimeoutError: Page.wait_for_function: Timeout 15000ms exceeded, raised befo",
+      "outcome": "automated",
+      "note": "gated 3/3 green by lead after env fix (APP_PREFIX=/app)",
       "findings": [
         {
           "kind": "note",
@@ -48,7 +45,7 @@
         },
         {
           "kind": "clarification",
-          "note": "Case step 3 expects 'Run 1 details' to appear. The AFS Coverage Map marks the row 'asserted', but the analyst says the label was not observed and the spec only asserts 2 chat items plus a non-empty response. The row's disposition should read 'clarification / not asserted' rather than 'asserted'. A 'pipeline-run-details-panel' testid exists on PipelineDetailPage (run_details_panel, ~line 2088). The… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Case step 3 expects 'Run 1 details' to appear. The AFS Coverage Map marks the row 'asserted', but the analyst says the label was not observed and the spec only asserts 2 chat items plus a non-empty response. The row's disposition should read 'clarification / not asserted' rather than 'asserted'. A 'pipeline-run-details-panel' testid exists on PipelineDetailPage (run_details_panel, ~line 2088). The\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "test-specs/pipelines/l1_pipeline-test-chat-copy-markdown-and-copy-text-icons-toast_ELITEA-4756.md (Coverage Map row 3)"
         },
         {
@@ -58,16 +55,16 @@
         },
         {
           "kind": "note",
-          "note": "Locator checks. The mechanical ladder grep on the full diff (automation/pages and automation/tests) for get_by_*, query_selector, page.locator, .locator(, .nth(, locator= and fallback= returned 0 hits (rc=1). The two new descriptors, chat_copy_markdown_button and chat_copy_text_button, are class-level and use testid=, which is rung 1 and needs no suggested_testid. They reuse the DEV testids the AF… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Locator checks. The mechanical ladder grep on the full diff (automation/pages and automation/tests) for get_by_*, query_selector, page.locator, .locator(, .nth(, locator= and fallback= returned 0 hits (rc=1). The two new descriptors, chat_copy_markdown_button and chat_copy_text_button, are class-level and use testid=, which is rung 1 and needs no suggested_testid. They reuse the DEV testids the AF\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/pages/pipeline_detail_page.py:1925-1934"
         },
         {
           "kind": "note",
-          "note": "TMS pair is present: @pytest.mark.tms('ELITEA-4756') plus @allure.issue pointing at the blob URL tests/automated-full-regression-ui/pipelines/ELITEA-4756_pipeline-test-chat-copy-markdown-and-copy-text-actions.md. That file exists in the sibling TMS clone and its name carries the same id. Each of the 8 steps is wrapped in allure.step. No skip, xfail or weakened assertions found. Tooltip and toast s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "TMS pair is present: @pytest.mark.tms('ELITEA-4756') plus @allure.issue pointing at the blob URL tests/automated-full-regression-ui/pipelines/ELITEA-4756_pipeline-test-chat-copy-markdown-and-copy-text-actions.md. That file exists in the sibling TMS clone and its name carries the same id. Each of the 8 steps is wrapped in allure.step. No skip, xfail or weakened assertions found. Tooltip and toast s\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
-          "note": "Triangulation of case, AFS and diff for the single case ELITEA-4756: steps 1-8 and the Pass criteria (visible, clickable, toast after each click) all map to real assertions in the spec at the matching step. 'Clickable' is covered by to_be_enabled before each click. The AFS discloses that it opens the pipeline by direct navigation instead of via the left-menu list. That is acceptable as transit and… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Triangulation of case, AFS and diff for the single case ELITEA-4756: steps 1-8 and the Pass criteria (visible, clickable, toast after each click) all map to real assertions in the spec at the matching step. 'Clickable' is covered by to_be_enabled before each click. The AFS discloses that it opens the pipeline by direct navigation instead of via the left-menu list. That is acceptable as transit and\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         }
       ],
       "afs": "test-specs/pipelines/l1_pipeline-test-chat-copy-markdown-and-copy-text-icons-toast_ELITEA-4756.md",
@@ -75,7 +72,7 @@
     }
   ],
   "totals": {
-    "blocked": 1
+    "automated": 1
   },
   "quality_flags": [],
   "quota_halted": false,
