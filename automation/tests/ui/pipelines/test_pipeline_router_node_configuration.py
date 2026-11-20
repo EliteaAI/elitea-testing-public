@@ -26,6 +26,7 @@ SAVE_RESPONSE_TIMEOUT = 15_000
 _CONDITION = "{% if 'yes' in input %}approve{% else %}reject{% endif %}"
 _TARGETS = ["approve", "reject"]
 _ROUTER_ID = "Router 1"
+_DEFAULT_OUTPUT_SOURCE = f"{_ROUTER_ID}default_output"  # source handle id in the edge testid
 
 
 @pytest.mark.tms("ELITEA-2033")
@@ -92,8 +93,6 @@ def test_router_node_configuration_and_persistence(page, pipeline_id):
         assert pipeline_page.get_router_node_input_value() == "input", "Input should be 'input'"
 
     with allure.step("Step 6 — Set Default output to END"):
-        # Known: on a fresh node END is already the display fallback, so the click is a no-op
-        # for onChange (AFS Known Defects); only the displayed value is asserted.
         pipeline_page.select_router_node_default_output("END", timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_router_node_default_output_value() == "END", "Default output should read END"
 
@@ -104,6 +103,11 @@ def test_router_node_configuration_and_persistence(page, pipeline_id):
         )
         assert save_response is not None, "Save should return the persisted pipeline version"
         assert not console_errors, f"Save should not introduce console errors: {console_errors}"
+        # The Default output -> END edge appears on Save, without a reload.
+        pipeline_page.wait_for_edge_present(_DEFAULT_OUTPUT_SOURCE, "END", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.edge_exists(_DEFAULT_OUTPUT_SOURCE, "END"), (
+            f"{_ROUTER_ID} default output -> END edge should appear after Save (before reload)"
+        )
 
     with allure.step("Step 8 — Reload; reopen Router 1; all four fields are restored"):
         page.goto(canonical_url)
@@ -117,10 +121,14 @@ def test_router_node_configuration_and_persistence(page, pipeline_id):
         pipeline_page.expand_router_node_advanced_section(timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_router_node_input_value() == "input", "Input should persist"
 
-    with allure.step("Step 9 — Canvas edges Router 1 -> approve / reject exist after reload"):
+    with allure.step("Step 9 — Canvas edges Router 1 -> approve / reject / END exist after reload"):
         for target_name in _TARGETS:
             pipeline_page.wait_for_edge_present(_ROUTER_ID, target_name, timeout=UI_ELEMENT_TIMEOUT)
             assert pipeline_page.edge_exists(_ROUTER_ID, target_name), (
                 f"{_ROUTER_ID} -> {target_name} edge should persist after reload"
             )
+        pipeline_page.wait_for_edge_present(_DEFAULT_OUTPUT_SOURCE, "END", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.edge_exists(_DEFAULT_OUTPUT_SOURCE, "END"), (
+            f"{_ROUTER_ID} default output -> END edge should persist after reload"
+        )
         assert not console_errors, f"Flow should not produce console errors: {console_errors}"

@@ -25,10 +25,10 @@
 4. Open Routes, click `select-option-approve` then `select-option-reject` (multi-select; popover stays open), Escape. **Verify** field text `approvereject`; Axis-2: canvas edges `rf__edge-xy-edge__Router 1---approve` and `...---reject` exist immediately (before Save).
 5. Expand Advanced, open Input, click `select-option-input`, Escape. **Verify** field text `input`.
 6. Default output: DEV shows `END` already on a fresh node (display fallback). Open it; options `select-option-approve|reject|END`; click `select-option-END`. **Verify** text `END`.
-   - OBSERVED: clicking END is a no-op (value unchanged => MUI fires no onChange): no `Router 1default_output---END` edge appears before save and YAML `default_output` stays `''`. Do NOT assert pre-save default edge or YAML default_output. Assert only the displayed value `END` (case expectation "Default output is set to END").
-7. Close panel, click `agent-save-button`. **Verify** no console errors; for a pipeline created through the fixture the save is `PUT .../elitea_core/application/prompt_lib/{pid}/{id}` (use `save_and_wait_for_update`; the first save of a UI-created pipeline is a `POST .../applications/prompt_lib/{pid}` 201).
+   - RULING (#2983 ruled not-a-bug by a maintainer): after clicking Save the default-output edge `Router 1default_output---END` appears WITHOUT a reload (asserted in step 7, again in step 9). Pre-save it is not rendered; do not assert it before Save.
+7. Close panel, click `agent-save-button`. **Verify** no console errors; for a pipeline created through the fixture the save is `PUT .../elitea_core/application/prompt_lib/{pid}/{id}` (use `save_and_wait_for_update`; the first save of a UI-created pipeline is a `POST .../applications/prompt_lib/{pid}` 201). **Verify** (after Save, before reload) the default-output edge `Router 1default_output---END` exists.
 8. `page.goto(canonical_url)` (reload, `?viewMode=owner`), click Router 1 card. **Verify** Condition value, Routes text `approvereject`, Default output `END`, Input (expand Advanced) `input`.
-9. **Verify** canvas edges after reload: `rf__edge-xy-edge__Router 1---approve` and `---reject` present (case step 9). Observed also present after reload: `rf__edge-xy-edge__Router 1default_output---END` (no separator before `default_output`) — optional Axis-2 assertion; do not require it pre-save.
+9. **Verify** canvas edges after reload: `rf__edge-xy-edge__Router 1---approve`, `---reject` and `rf__edge-xy-edge__Router 1default_output---END` present (case step 9).
 
 ## Coverage Map
 | Case element | Expected | Covered by | Asserted where | Disposition |
@@ -39,15 +39,15 @@
 | 3 Condition | accepted | step 3 | input_value | asserted |
 | 4 Routes approve+reject | both added | step 4 | field text + edges | asserted (picklist, not freeform) |
 | 5 Input=input | set | step 5 | field text | asserted |
-| 6 Default output END | END | step 6 | displayed text | asserted (see no-op observation) |
-| 7 Save | no errors | step 7 | console + response | asserted |
+| 6 Default output END | END | step 6 | displayed text | asserted |
+| 7 Save | no errors; default_output -> END edge appears on Save (no reload) | step 7 | console + response + edge testid | asserted |
 | 8 reload restores | all 4 | step 8 | UI values | asserted |
-| 9 edges to approve/reject | present | step 9 | edge testids | asserted |
+| 9 edges to approve/reject (+ default END) | present | step 9 | edge testids | asserted |
 
 Axis 2: immediate (pre-save) routes edges (step 4); zero console errors across steps (side channel).
 
 ## Known Defects
-- Default output "END" click is a silent no-op on a fresh node (value equals fallback, so no onChange; YAML `default_output: ''`). Previously tracked as #1036 (that number no longer resolves in the current tracker — `gh issue view 1036` fails; lead should check for a renumbered equivalent). Consequence is benign for this case (display is END before and after reload; edge appears after reload), so no soft-assert needed unless the lead wants the pre-save edge asserted.
+- none. Ruling: #2983 (Default output END click "no-op") closed as not-a-bug — the default-output edge appears on Save without a reload.
 
 ## Handles Reference (verified on DEV 2026-11-18)
 | Element | rung | handle | suggested_testid | provenance |
