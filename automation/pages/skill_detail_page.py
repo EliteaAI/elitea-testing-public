@@ -52,6 +52,11 @@ class SkillDetailPage(SkillFormPage):
         description="SkillTestPanel container"
     )
 
+    test_panel_input = LocatorDescriptor(
+        testid="chat-message-input",
+        description="Chat message input inside the SkillTestPanel"
+    )
+
     test_skill_button = LocatorDescriptor(
         testid="skill-test-button",
         description="Toolbar 'Test Skill' button (SkillEditorWorkspace.jsx) — opens the SkillTestPanel",
@@ -176,6 +181,19 @@ class SkillDetailPage(SkillFormPage):
     copy_text_button = LocatorDescriptor(
         testid="chat-copy-text-button",
         description="Copy-as-text button on the test-panel AI response (replaces chat-copy-button)",
+    )
+    chat_copy_markdown_button = LocatorDescriptor(
+        testid="chat-copy-markdown-button",
+        description="Copy-markdown icon under the test-panel AI response (ELITEA-4757)",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+    open_tooltips = LocatorDescriptor(
+        role="tooltip",
+        suggested_testid="chat-copy-tooltip",
+        description="Open MUI tooltip popper (role=tooltip); callers use .last (the one just hovered).",
     )
     # Voice mini player — appears after clicking Read out (Layer 2 proof).
     # Mirrors ChatPage.voice_mini_player (OptionalLocatorDescriptor since the
@@ -561,6 +579,35 @@ class SkillDetailPage(SkillFormPage):
             Integer count of message items.
         """
         return self._test_panel_messages().count()
+
+    def _last_response_copy_icon(self, kind: str):
+        if kind == "markdown":
+            return self.chat_copy_markdown_button.last
+        if kind == "text":
+            return self.copy_text_button.last
+        raise ValueError(f"kind must be 'markdown' or 'text', got {kind!r}")
+
+    def is_last_response_copy_icon_enabled(self, kind: str) -> bool:
+        """True when the last test-panel response's copy icon is visible and enabled."""
+        icon = self._last_response_copy_icon(kind)
+        return icon.is_visible() and icon.is_enabled()
+
+    def hover_last_response_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Hover the last response's copy icon; return the open tooltip text."""
+        icon = self._last_response_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        icon.hover()
+        self.open_tooltips.last.wait_for(state="visible", timeout=timeout)
+        return (self.open_tooltips.last.text_content() or "").strip()
+
+    def click_last_response_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Click the last response's copy icon; return the toast message text."""
+        icon = self._last_response_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        expect(icon).to_be_enabled(timeout=timeout)
+        icon.click()
+        self.toast_message.last.wait_for(state="visible", timeout=timeout)
+        return (self.toast_message.last.text_content() or "").strip()
 
     @action("Open the Test Skill panel")
     def open_test_skill_panel(self, timeout: int = 10000):

@@ -1,0 +1,30 @@
+{
+ "batch": "skill-copy-4757",
+ "base": "origin/main",
+ "pr_unit": "trunk",
+ "cases": [
+  {
+   "id": "ELITEA-4757",
+   "outcome": "automated",
+   "afs": "test-specs/skills/l1_skill-test-panel-copy-markdown-and-copy-text-icons-toast_ELITEA-4757.md",
+   "spec": "tests/ui/skills/test_skill_test_panel_copy_icons.py",
+   "review": "APPROVED (+2 nits fixed in 2ea74d04)"
+  }
+ ],
+ "totals": {
+  "automated": 1
+ },
+ "gate": {
+  "verdict": "green",
+  "n": 3,
+  "runs": [
+   "pass 32.27s",
+   "pass 31.12s",
+   "pass 32.10s"
+  ],
+  "blast_radius": "test_skill_test_panel_response_actions.py pass"
+ },
+ "notes": [
+  "merge/report workflow agents failed on a model 403 (haiku); lead merged and wrote this report by hand"
+ ]
+}

@@ -962,3 +962,10 @@ Full: `test-specs/skills/l1_run-catalog-skill-from-catalog-and-message-exchange_
 - Full details: `test-specs/skills/l1_test-skill-button-opens-panel-and-executes-skill_ELITEA-4635.md`.
 
 **Added during ELITEA-4635 implementation:** the `chat-send-button` is NOT rendered while the input is empty (a voice-input button occupies the slot); assert it only after typing. `SkillDetailPage` gained `edit_with_ai_button` (`edit-skill-with-ai-button`) and a panel-scoped `TEST_PANEL_ALERT` (role=alert, hint `skill-test-panel-alert`). Spec: `tests/ui/skills/test_skill_editor_test_button_execution.py`.
+
+## Test panel — Copy markdown / Copy text icons (ELITEA-4757, DEV 2026-11-20)
+- Replaces the single `chat-copy-button` (ELITEA-2442 note above is stale for copy): DEV renders `chat-copy-markdown-button` + `chat-copy-text-button` under the response (EL-5838), both visible+enabled once `wait_for_test_response` completes; exactly 1 each inside `skill-test-panel`.
+- Tooltips `Copy markdown` / `Copy text` (2 `[role=tooltip]` nodes in DOM on hover -> take `.last`); toasts `Markdown copied to clipboard.` / `Text copied to clipboard.`, `toast-alert` data-severity=info; wait toast count 0 before 2nd click.
+- Page object gap: SkillDetailPage lacks markdown icon / toast / tooltip descriptors (copy_text_button exists). Mirror AgentDetailPage:199,506,514-520,3091-3121.
+- Playwright MCP chrome missing in sandbox; scratch pytest probe via page objects worked (create skill via UI, `skill_api.delete_skill` cleanup).
+- Full: `test-specs/skills/l1_skill-test-panel-copy-markdown-and-copy-text-icons-toast_ELITEA-4757.md`.
