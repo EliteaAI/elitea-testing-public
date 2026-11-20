@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "0da991a7-2ac8-4480-a0c2-487a9afbe09e",
+  "intent": "automation",
+  "batch": "mcp-copy-4759",
+  "cases": [
+    "ELITEA-4759"
+  ],
+  "declaredAt": "2026-11-20T13:09:32.866Z",
+  "updatedAt": "2026-11-20T13:47:29.409Z",
+  "outcomes": {
+    "ELITEA-4759": {
+      "outcome": "automated",
+      "at": "2026-11-20T13:47:18.234Z"
+    }
+  },
+  "closedAt": "2026-11-20T13:47:29.409Z"
+}
