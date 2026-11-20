@@ -1922,6 +1922,17 @@ class PipelineDetailPage(PipelineFormPage):
         description="Currently shown MUI tooltip (the Test Pipeline gate reason after hovering the disabled button)"
     )
 
+    # Copy icons under an AI response in the embedded Test Pipeline chat (ELITEA-4756; same testids as
+    # AgentDetailPage / ChatPage). Several messages may carry them; callers use the last (= latest response).
+    chat_copy_markdown_button = LocatorDescriptor(
+        testid="chat-copy-markdown-button",
+        description="Copy-markdown icon under an AI response in the embedded chat.",
+    )
+    chat_copy_text_button = LocatorDescriptor(
+        testid="chat-copy-text-button",
+        description="Copy-text icon under an AI response in the embedded chat.",
+    )
+
     # Per-node templated testid constants, scoped to one ReactFlow node wrapper (`rf__node-{id}`).
     NODE_ENTRYPOINT_BADGE = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-entrypoint-badge"]'
     NODE_SUMMARY = '[data-testid="rf__node-{}"] [data-testid="pipeline-node-summary"]'
@@ -10910,6 +10921,36 @@ class PipelineDetailPage(PipelineFormPage):
         self.history_tab.hover()
         self.tooltip.first.wait_for(state="visible", timeout=timeout)
         return (self.tooltip.first.inner_text() or "").strip()
+
+    def _last_response_copy_icon(self, kind: str) -> Locator:
+        if kind == "markdown":
+            return self.chat_copy_markdown_button.last
+        if kind == "text":
+            return self.chat_copy_text_button.last
+        raise ValueError(f"kind must be 'markdown' or 'text', got {kind!r}")
+
+    def is_last_response_copy_icon_visible(self, kind: str) -> bool:
+        """True when the last AI response's copy icon (markdown/text) is visible."""
+        return self._last_response_copy_icon(kind).is_visible()
+
+    def hover_last_response_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Hover the last AI response's copy icon and return the tooltip text of THIS hover."""
+        icon = self._last_response_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        self.page.mouse.move(0, 0)
+        expect(self.tooltip).to_have_count(0, timeout=timeout)
+        icon.hover()
+        self.tooltip.first.wait_for(state="visible", timeout=timeout)
+        return (self.tooltip.first.inner_text() or "").strip()
+
+    def click_last_response_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Click the last AI response's copy icon; return the toast message text."""
+        icon = self._last_response_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        expect(icon).to_be_enabled(timeout=timeout)
+        icon.click()
+        self.toast_message.last.wait_for(state="visible", timeout=timeout)
+        return (self.toast_message.last.text_content() or "").strip()
 
     def hover_send_button_hint(self, timeout: int = 5000) -> str:
         """Hover the (disabled) send button and return the hint tooltip text; hover is forced (native disabled)."""
