@@ -261,3 +261,49 @@ deleted live in this run.
 
 ## Blocked Steps
 None — case executed end-to-end, all 7 case steps confirmed live, no blockers.
+
+## Update 2026-11-20 — Agent Skills spec frontmatter (#2991, EliteaAI/elitea_issues#7183)
+
+**Status: extend-existing** (target: `automation/tests/ui/skills/test_export_agent_with_attached_skills.py`, merged to main; covers ELITEA-1794 + ELITEA-1896). Flow unchanged; coverage extended, nothing dropped.
+Executed live on DEV (`https://dev.elitea.ai/app`, headless pytest scratch probes, 3 runs: base/no tag, non-base `v2`, base+tag). Setup used the existing UI helpers.
+
+### What DEV exports now (agent `.agent.md`, skill embedded under `skills[0]`)
+```yaml
+skills:
+- name: <skill>
+  description: <desc>
+  version: base            # or the version name, e.g. v2 — still present at skills[0].version
+  instructions: '\n\n    You are <skill>. MARK'   # NOTE: leading newline (frontmatter stripped)
+  frontmatter:
+    license: MIT
+    metadata:
+      elitea-tags: '["regression"]'      # only when the skill has tags; JSON-like string
+      elitea-model: <api model name>     # always present
+      elitea-reasoning-effort: medium    # present for the reasoning-capable default model
+```
+Agent-level keys: name, description, model, max_tokens, agent_type, step_limit, skills (no `temperature` any more — not asserted anyway).
+
+### Change list for the implementer
+| # | Where | Old | New |
+|---|---|---|---|
+| Setup | Step 1 | create skill (form) | create via form, add one tag in the form (`form_page.add_tag`, tag e.g. `regression`), then on the saved skill: `click_edit_mode()` -> expect `instructions_editor_content` visible -> `add_frontmatter_license("MIT")` -> `save_edits()` (same sequence as `test_skill_export_import.py` Step 3b, lines ~155-160; the create form has no frontmatter editor). Skill name/desc/instructions as before; `skill_instructions` stays the body. |
+| Step 3 | card version | `== "base"` | unchanged |
+| Step 7 | `skills[0].version == "base"` | | **KEEP** — still exported at `skills[0].version` (verified base and v2). |
+| Step 7 | `skills[0].instructions == skill_instructions` | | compare `.strip()` of exported instructions (export now has a leading blank line); marker check unchanged. |
+| Step 7 (new, case 1794 step 8 / 1896 step 4) | | | `fm = exported_skill["frontmatter"]`; `fm["license"] == "MIT"`. |
+| Step 7 (new, case 1794 step 6 / 1896 step 4) | | | `fm` has no top-level ELITEA keys: `set(fm) == {"license","metadata"}`; `json.loads(fm["metadata"]["elitea-tags"]) == [tag]` (exact); no `tags`/`elitea_version`/`elitea_run_settings` top-level in `fm` or in `exported_skill`. |
+| Step 7 (new, case step 7 base clause) | | | `"elitea-version" not in fm["metadata"]` (base). |
+
+Handles: all existing (pages/agent_detail_page, skill_form_page `add_tag`, `add_frontmatter_license`, `save_edits`); no new locators. Parse with `yaml.safe_load` of the whole file as before.
+
+### Non-base clause (case 1794 step 7) — NOT assertable as written; question for the lead
+Probe with a non-base version (`save_as_version("v2")` on the skill detail page, then in the agent card `open_skill_version_selector` + menuitem `v2`; card shows `v2`): export has `skills[0].version: v2` but **`frontmatter.metadata` has NO `elitea-version`** (only license, elitea-tags, elitea-model, elitea-reasoning-effort). The case says non-base -> `metadata.elitea-version` present; the standalone skill export does carry it (test_skill_export_import.py:562). Either the agent-embedded frontmatter intentionally omits it (version lives in `skills[0].version`) -> case-text clarification, or a product gap. Not filed as a bug (single probe; the version is still exported, no data lost). The test setup (and ELITEA-1896) uses base, so the update asserts the base clause only; do not add a non-base run until the lead rules. Do not assert temperature.
+
+### Coverage Map additions
+| Case element | Expected | Disposition |
+|---|---|---|
+| 1794 s6 frontmatter spec keys, ELITEA fields under `metadata` (e.g. `elitea-tags`) | fm keys == {license, metadata}; tags in metadata | asserted |
+| 1794 s7 base: no `elitea-version` | absent in fm.metadata | asserted |
+| 1794 s7 non-base: `metadata.elitea-version` present | observed ABSENT in agent export | clarification/question (not asserted) |
+| 1794 s8 / 1896 s1,s4 `license: MIT` | `fm.license == "MIT"` | asserted |
+| 1896 s4 no `elitea-version` for base | same as above | asserted |

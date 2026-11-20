@@ -132,3 +132,7 @@ setup.
 
 ## Blocked Steps
 None.
+
+## Update 2026-11-20 (#2991) — see `test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md` § Update
+
+Case 1896 now also requires `license: MIT` in the Skill's frontmatter at setup, ELITEA fields under `metadata`, and no `elitea-version` for base. Same single spec; same assertions (fm.license, fm key set, metadata, no elitea-version). Still extend-existing; both ids stay on `@pytest.mark.tms("ELITEA-1794", "ELITEA-1896")`.

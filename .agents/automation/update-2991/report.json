@@ -1,0 +1,4 @@
+{"batch":"update-2991","base":"main","pr_unit":"trunk","integration_branch":"tests/batch-update-2991",
+"gate":{"verdict":"green","runs":3,"by":"lead","note":"3 separate invocations, APP_PREFIX=/app HEADLESS=true, ~45s each"},
+"cases":[{"id":"ELITEA-1794","outcome":"automated","note":"update; reviewer APPROVED; gate 3/3; non-base elitea-version clause not asserted — question https://github.com/EliteaAI/elitea-testing-public/issues/2993","findings":[{"kind":"question","note":"non-base metadata.elitea-version absent in agent export","ref":"https://github.com/EliteaAI/elitea-testing-public/issues/2993"}]},
+{"id":"ELITEA-1896","outcome":"automated","note":"update; same spec; license MIT + metadata asserted","findings":[]}]}

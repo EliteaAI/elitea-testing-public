@@ -48,3 +48,6 @@ localhost:5173, agent detail page's actions overflow menu.
 
 `test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md` (Test
 Steps 5–7, Handles Reference, Coverage Map Axis 1/2).
+
+## Update 2026-11-20 (EL-7183, DEV)
+Embedded skill in agent export now has ELITEA/spec fields under `skills[i].frontmatter` (`license`, `metadata.elitea-tags` JSON string, `elitea-model`, `elitea-reasoning-effort`); `version` stays at `skills[i].version`; `instructions` starts with a blank line (strip). Non-base attached version: `metadata.elitea-version` ABSENT in agent export (only `skills[i].version`). Probe needs `APP_PREFIX=/app` exported when `.env.test` is absent (else /skills/create 404s).
