@@ -152,6 +152,27 @@ class ToolkitTestSettingsPage(BasePage):
     # to a real testid instead of a bare `main ul.MuiList-root` prefix.
     RESULT_MESSAGE_ITEM = '[data-testid="chat-message-list"] li.MuiListItem-root'
 
+    # Copy icons under the tool-result card (shared ApplicationAnswerActions.jsx,
+    # EL-5838 copy split) + the app-wide toast and MUI tooltip. Declarations
+    # mirror SkillDetailPage / AgentDetailPage (ELITEA-4757 / 4755).
+    chat_copy_markdown_button = LocatorDescriptor(
+        testid="chat-copy-markdown-button",
+        description="'Copy markdown' icon under the tool-result message",
+    )
+    chat_copy_text_button = LocatorDescriptor(
+        testid="chat-copy-text-button",
+        description="'Copy text' icon under the tool-result message",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+    open_tooltips = LocatorDescriptor(
+        role="tooltip",
+        suggested_testid="chat-copy-tooltip",
+        description="Open MUI tooltip popper (role=tooltip); callers use .last (the one just hovered).",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -506,3 +527,37 @@ class ToolkitTestSettingsPage(BasePage):
         text = result_locator.text_content() or ""
         logger.info("Tool-run result: %r", text[:120])
         return text
+
+    # ------------------------------------------------------------------
+    # Result copy icons (ELITEA-4758)
+    # ------------------------------------------------------------------
+
+    def _result_copy_icon(self, kind: str):
+        if kind == "markdown":
+            return self.chat_copy_markdown_button
+        if kind == "text":
+            return self.chat_copy_text_button
+        raise ValueError(f"kind must be 'markdown' or 'text', got {kind!r}")
+
+    def is_result_copy_icon_enabled(self, kind: str, timeout: int = 10000) -> bool:
+        """True when the result's copy icon is visible and enabled."""
+        icon = self._result_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        return icon.is_enabled()
+
+    def hover_result_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Hover the result's copy icon; return the open tooltip text."""
+        icon = self._result_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        icon.hover()
+        self.open_tooltips.last.wait_for(state="visible", timeout=timeout)
+        return (self.open_tooltips.last.text_content() or "").strip()
+
+    def click_result_copy_icon(self, kind: str, timeout: int = 10000) -> str:
+        """Click the result's copy icon; return the toast message text."""
+        icon = self._result_copy_icon(kind)
+        icon.wait_for(state="visible", timeout=timeout)
+        expect(icon).to_be_enabled(timeout=timeout)
+        icon.click()
+        self.toast_message.last.wait_for(state="visible", timeout=timeout)
+        return (self.toast_message.last.text_content() or "").strip()
