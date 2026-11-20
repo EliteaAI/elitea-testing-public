@@ -640,6 +640,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.agents.test_agent_test_chat_copy_icons.TestAgentTestChatCopyIcons.test_copy_markdown_and_copy_text_icons_show_tooltip_and_toast",
+      "markers": [
+        "agents",
+        "p1",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4755"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-4755_agent-test-chat-copy-markdown-and-copy-text-actions.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order",
       "markers": [
         "agents",
