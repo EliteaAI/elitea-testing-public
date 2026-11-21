@@ -1,0 +1,1 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Save skill edits (stay on detail page) — Expected 'Skill saved' toast, got: ''

@@ -1,0 +1,7 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open the skill icon picker dialog — Locator.scroll_into_view_if_needed: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skill-form-icon-button")
+
+ERROR    elitea.steps:actions.py:49 Step failed: Upload a custom skill icon — Locator.scroll_into_view_if_needed: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skill-form-icon-button")
