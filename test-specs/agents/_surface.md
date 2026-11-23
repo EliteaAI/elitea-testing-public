@@ -818,3 +818,7 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - `chat-answer-content` not present in embedded panel; wait on 2nd `chat-message-item` / `chat-answer-tool-chip` ("Attachments: read_multiple_files").
 
 **Added during ELITEA-4791 implementation (test-automation-engineer):** `AgentDetailPage.chat_attach_button` (`chat-attach-button`), `toggle_module_at_name` (left-offset click; centre click hits the (i) icon on Attachments), `drop_file_on_chat_input` (synthetic DragEvent), `wait_for_reply_with_tool_chip`. Sample file must be a natural sentence carrying the marker: a bare marker-only file made the model say "no file text came through". Env note: this host has no `.env.test`; run with `APP_PREFIX=/app` (only `APP_PREFIX_DEV` is exported), else DEV returns 404 and every spec fails at `agent-information-section`.
+
+## Modules x Save As Version (ELITEA-4792 run, 2026-11-23)
+- Unsaved module toggles + `save_as_version()` (no prior Save): new version carries them; base re-read after `select_version_by_name("base")` is unchanged; switching back to the new version shows them again. Save/Discard are disabled right after version creation. Fresh `agent_id` agents start with `elitea_builder` + `ask_user` ON. Pair `pyodide` + `web_search` toggles cleanly via `toggle_module`.
+
