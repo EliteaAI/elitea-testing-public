@@ -3,7 +3,7 @@
   "entries": {
     "pages/agent_detail_page.py::AgentDetailPage.modules_menu_item_icon": {
       "file": "pages/agent_detail_page.py",
-      "line": 213,
+      "line": 214,
       "kind": "css",
       "selector": "svg",
       "suggested_testid": "agent-module-menu-item-icon-{}",
@@ -15,7 +15,7 @@
     },
     "pages/agent_detail_page.py::AgentDetailPage.modules_menu_item_info_icon": {
       "file": "pages/agent_detail_page.py",
-      "line": 208,
+      "line": 209,
       "kind": "css",
       "selector": "[data-info-tooltip]",
       "suggested_testid": "agent-module-menu-item-info-icon-{}",
@@ -27,7 +27,7 @@
     },
     "pages/agent_detail_page.py::AgentDetailPage.modules_menu_list": {
       "file": "pages/agent_detail_page.py",
-      "line": 203,
+      "line": 204,
       "kind": "role",
       "selector": "menu[name='Modules']",
       "suggested_testid": "agent-modules-menu-list",
@@ -39,7 +39,7 @@
     },
     "pages/agent_detail_page.py::AgentDetailPage.modules_old_grid_header": {
       "file": "pages/agent_detail_page.py",
-      "line": 223,
+      "line": 224,
       "kind": "xpath",
       "selector": "//*[normalize-space(text())='MODULES']",
       "suggested_testid": "agent-modules-grid-header",
@@ -51,7 +51,7 @@
     },
     "pages/agent_detail_page.py::AgentDetailPage.modules_old_show_all_toggle": {
       "file": "pages/agent_detail_page.py",
-      "line": 218,
+      "line": 219,
       "kind": "xpath",
       "selector": "//*[normalize-space(text())='Show all' or normalize-space(text())='Show less']",
       "suggested_testid": "agent-modules-show-all-toggle",
@@ -63,7 +63,7 @@
     },
     "pages/agent_detail_page.py::AgentDetailPage.open_tooltips": {
       "file": "pages/agent_detail_page.py",
-      "line": 233,
+      "line": 234,
       "kind": "role",
       "selector": "tooltip",
       "suggested_testid": "agent-open-tooltip",
@@ -1642,8 +1642,8 @@
   },
   "last_sync": "2026-11-23",
   "metric": {
-    "declared_total": 1533,
-    "declared_testid": 1398,
+    "declared_total": 1534,
+    "declared_testid": 1399,
     "declared_non_testid": 135,
     "non_testid_with_hint": 114,
     "non_testid_without_hint": 21,
@@ -1653,10 +1653,10 @@
       "label": 2,
       "locator": 1,
       "role": 45,
-      "testid": 1398,
+      "testid": 1399,
       "xpath": 32
     },
-    "locator_debt": 0.0881,
+    "locator_debt": 0.088,
     "unmanaged_handles": 309
   }
 }

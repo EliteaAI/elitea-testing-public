@@ -1,0 +1,85 @@
+{
+  "batch": "agent-modules-persist-4790",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-agent-modules-persist-4790",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      43.65,
+      42.83,
+      101.19
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4790",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The shell exports only APP_PREFIX_DEV, and automation/.env.test is missing. Without APP_PREFIX=/app every spec 404s, which shows up as an agent-information-section timeout. I set it inline for the run. The venv also lacks pytest-rerunfailures, so the pytest.ini addopts fail with unrecognized arguments. I overrode addopts with -o and used --alluredir only. Both are environment gaps in this sandbox."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case ELITEA-4790 step 7 omits the Discard confirm dialog (discard-confirm-modal, then discard-confirm-button). Step 3 says the last module, but code_mode is last on DEV and switching it ON opens a warning dialog and closes the dropdown. Both are in the AFS clarifications.",
+          "ref": "ELITEA-4790"
+        },
+        {
+          "kind": "note",
+          "note": "A freshly created agent starts with elitea_builder and ask_user already ON, so the case precondition 'all modules OFF' does not hold. The spec asserts relative to that baseline."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep over `git diff main...tests/ELITEA-4790-modules-persist -- automation` (pattern: get_by_*|query_selector|page.locator|.locator(|.nth(|locator=|fallback=|skip|sleep|wait_for_timeout) gave 2 hits, both in the page object: `self.page.locator(self.MODULES_MENU_ITEM.format(key))` and `self.page.locator(self.MODULES_MENU_TOGGLE.format(key))`. Both are COMPLIANT under rule (a). One… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:+toggle_module/module_toggle"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation of case, AFS and diff covered all 9 steps. Step 1: Save and Discard disabled, A OFF, and the baseline recorded. Step 2: toggle checked, menu count 1, Save and Discard enabled. Step 3: wheel scroll then B checked and menu visible. Step 4: Escape, save, then both buttons disabled. Step 5: reload, with the ON-first helper checking that the first N rows equal the ON set and every later r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test_agent_modules_dropdown.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case text drifts from live DEV in three places, and the AFS and spec handle all three correctly. Discard opens a confirm dialog that step 7 omits. Switching code_mode ON opens a warning dialog and closes the dropdown, so Module B is the last non-code_mode row that is OFF at baseline. A fresh agent starts with elitea_builder and ask_user ON, so the spec asserts relative to the baseline rather t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "AFS Clarifications 1-2 / Amendment"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the docstring says the fresh agent 'has all modules OFF', which contradicts the Step 1 comment and the AFS amendment (elitea_builder and ask_user start ON). Fixing the wording is optional and non-blocking.",
+          "ref": "test_agent_modules_dropdown.py:test docstring"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: Step 9 cleanup is redundant because the fixture deletes the agent. It is harmless, and it adds a useful check that A and B can be switched OFF and saved. Neither nit blocks the merge.",
+          "ref": "test_agent_modules_dropdown.py: Step 9"
+        },
+        {
+          "kind": "note",
+          "note": "Review was static, as the contract requires. The spec was not run, and the hardening gate should confirm that the ON-on-top ordering after Discard (step 8) is stable. The AFS records that it was observed live."
+        }
+      ],
+      "afs": "test-specs/agents/l1_modules-switches-persist-after-save-on-top-after-reload-discard-restores_ELITEA-4790.md",
+      "branch": "tests/ELITEA-4790-modules-persist",
+      "pr": 3015,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          43.65,
+          42.83,
+          101.19
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

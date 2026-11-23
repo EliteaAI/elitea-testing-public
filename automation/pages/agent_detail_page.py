@@ -200,6 +200,7 @@ class AgentDetailPage(AgentFormPage):
     MODULES_MENU_ITEM_ANY = '[data-testid^="agent-module-menu-item-"]'
     MODULES_MENU_ITEM = '[data-testid="agent-module-menu-item-{}"]'
     MODULES_MENU_TOGGLE_ANY = '[data-testid^="agent-canvas-tools-toggle-"]'
+    MODULES_MENU_TOGGLE = '[data-testid="agent-canvas-tools-toggle-{}"]'
     modules_menu_list = ScopedLocator(
         role="menu",
         name="Modules",
@@ -886,6 +887,28 @@ class AgentDetailPage(AgentFormPage):
     def module_menu_toggle_count(self) -> int:
         """Number of per-module toggle switches rendered in the open dropdown."""
         return self.modules_menu.locator(self.MODULES_MENU_TOGGLE_ANY).count()
+
+    # ------------------------------------------------------------------
+    # Modules dropdown state (ELITEA-4790)
+    # ------------------------------------------------------------------
+
+    @action("Toggle module")
+    def toggle_module(self, key: str, timeout: int = 10000) -> None:
+        """Click the module's row (as a user does) to flip its switch."""
+        row = self.page.locator(self.MODULES_MENU_ITEM.format(key))
+        row.wait_for(state="visible", timeout=timeout)
+        row.click()
+
+    def module_toggle(self, key: str):
+        """Locator of the module's switch input (state = ``checked``)."""
+        return self.page.locator(self.MODULES_MENU_TOGGLE.format(key))
+
+    def module_is_on(self, key: str) -> bool:
+        return self.module_toggle(key).is_checked()
+
+    def module_on_keys(self) -> list[str]:
+        """Keys of switched-ON modules in the open dropdown, in DOM order."""
+        return [k for k in self.module_menu_item_keys() if self.module_is_on(k)]
 
     # ------------------------------------------------------------------
     # Wait helpers
