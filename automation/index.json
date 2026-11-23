@@ -560,6 +560,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.agents.test_agent_modules_dropdown.test_modules_dropdown_lists_all_modules_and_scrolls_to_last",
+      "markers": [
+        "agents",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4789"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/modules/ELITEA-4789_modules-dropdown-opens-lists-all-modules-and-scrolls-to-last-module.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.agents.test_agent_name_character_limit.test_agent_name_truncated_at_32_characters",
       "markers": [
         "agents",
