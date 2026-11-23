@@ -66,3 +66,6 @@ None.
 - Menu closes on `Escape`; focus/animation: poll with expect, no sleeps.
 - Do not click the switch input with force; click the row (`agent-module-menu-item-{key}`) as a user does.
 - web_search availability is environment/settings dependent: choose B dynamically, fail loudly if no non-code_mode last-module candidate beyond A.
+
+## Amendment (implementer, ELITEA-4790)
+Live run: a fresh `agent_id` agent starts with `elitea_builder` and `ask_user` already ON (not "all OFF"). Spec is baseline-relative: Module A/B must be OFF initially; ON-on-top and cleanup assert `baseline | {A,B}` / `baseline`. Module B = last row not in baseline and not code_mode.
