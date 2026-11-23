@@ -605,6 +605,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.agents.test_agent_modules_save_as_version.test_save_as_version_keeps_module_changes_and_base_unchanged",
+      "markers": [
+        "agents",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4792"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/modules/ELITEA-4792_save-as-version-keeps-module-changes-base-version-unchanged.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.agents.test_agent_name_character_limit.test_agent_name_truncated_at_32_characters",
       "markers": [
         "agents",
