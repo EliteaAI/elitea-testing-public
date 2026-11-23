@@ -802,3 +802,19 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - Keys: attachments, image_generation, data_analysis, elitea_builder, ask_user, planner, pyodide, swarm, lazy_tools_mode, web_search, code_mode (differs from Settings Default Modules list).
 - Source: EliteaUI `features/agent/ui/agent-details/configurations/modules/AgentModulesMenu.jsx`.
 - **Toggle/persist (ELITEA-4790 run, 2026-11-23):** click row `agent-module-menu-item-<key>` toggles; menu stays open for pyodide/web_search; Save `agent-save-button` + Discard `discard-button` start disabled, enable on first toggle, disable after save. Discard opens `discard-confirm-modal` -> `discard-confirm-button`. After reload ON modules sort FIRST in the list. `code_mode` ON opens a warning dialog (`agent-code-mode-warning`, confirm `agent-code-mode-warning-confirm`) and closes the menu. Platform banner `platform-banner-close` blocks clicks. MCP chrome binary absent on host: use repo-venv Playwright + `.playwright-mcp/dev-storage-state.json` for probes.
+
+## Attachments module -> embedded chat attach icon (ELITEA-4791 run, 2026-11-23)
+- Agent detail chat = Test Agent panel (`agent-test-button` -> `chat-message-input`). Attach icon is toolbar `chat-attach-button` (aria-label "attach files"), NOT the plus-menu `chat-attach-menuitem-button` of /chat. Gate = saved `version_details.meta.internal_tools` includes `attachments` (`useAgentAttachments.js`): OFF -> `disabled`, pointer-events none; ON -> enabled, file chooser works, chip `chat-attachment-chip-0`, reply shows tool chip "Attachments: read_multiple_files".
+- OFF + synthetic drop (DragEvent with DataTransfer on `chat-message-input` and ancestors) -> toast `toast-message` "Attachments are not allowed.", no chip.
+- `agent-module-menu-item-attachments` centre click does not toggle (hits the (i) tooltip); click at `position={x:40,y:10}` or press Space. `toggle_module()` centre-click works for pyodide/web_search only.
+- `chat-answer-content` was not found in the embedded panel after a send; wait on 2nd `chat-message-item` / `chat-answer-tool-chip`.
+- Fresh `agent_id` agent: Attachments default OFF.
+
+## Agent chat attach gating vs Attachments module (ELITEA-4791 run, 2026-11-23)
+- Embedded chat = Test Agent side panel (`agent-test-button` -> `chat-message-input`). Attach icon is toolbar `chat-attach-button` (aria-label "attach files"); state = DOM `disabled`. NOT the plus-menu `chat-attach-menuitem-button` of standalone /chat.
+- Gating is on the SAVED version (`useAgentAttachments.js`: `meta.internal_tools` includes 'attachments'): Save + reload before checking the chat. Fresh agent default = OFF (icon disabled, pointer-events none).
+- OFF + attach attempt: only drag-and-drop yields the error (synthetic DragEvent+DataTransfer on `chat-message-input`) -> `toast-message` "Attachments are not allowed.", 0 `chat-attachment-chip-*`.
+- `agent-module-menu-item-attachments` centre click hits the (i) tooltip and does not toggle; click at left offset (x=40,y=10) or press Space. Existing `toggle_module` centre click needs extending.
+- `chat-answer-content` not present in embedded panel; wait on 2nd `chat-message-item` / `chat-answer-tool-chip` ("Attachments: read_multiple_files").
+
+**Added during ELITEA-4791 implementation (test-automation-engineer):** `AgentDetailPage.chat_attach_button` (`chat-attach-button`), `toggle_module_at_name` (left-offset click; centre click hits the (i) icon on Attachments), `drop_file_on_chat_input` (synthetic DragEvent), `wait_for_reply_with_tool_chip`. Sample file must be a natural sentence carrying the marker: a bare marker-only file made the model say "no file text came through". Env note: this host has no `.env.test`; run with `APP_PREFIX=/app` (only `APP_PREFIX_DEV` is exported), else DEV returns 404 and every spec fails at `agent-information-section`.

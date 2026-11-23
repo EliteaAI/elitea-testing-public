@@ -389,6 +389,14 @@ class AgentDetailPage(AgentFormPage):
     chat_message_item = LocatorDescriptor(testid="chat-message-item")
     chat_message_input = LocatorDescriptor(testid="chat-message-input")
     chat_send_button = LocatorDescriptor(testid="chat-send-button")
+    # Direct toolbar attach IconButton of the embedded chat (aria-label "attach
+    # files"); NOT the standalone /chat plus-menu item. Disabled DOM attribute
+    # follows the SAVED Attachments module state (ELITEA-4791).
+    chat_attach_button = LocatorDescriptor(
+        testid="chat-attach-button",
+        description="Embedded-chat toolbar attach-files icon; disabled when the saved agent version lacks Attachments",
+    )
+    CHAT_ATTACHMENT_CHIP_ANY = '[data-testid^="chat-attachment-chip-"]'
     chat_delete_button = LocatorDescriptor(testid="chat-delete-button")
     chat_answer_content = LocatorDescriptor(testid="chat-answer-content")
     chat_artifact_file_list = LocatorDescriptor(testid="chat-artifact-file-list")
@@ -898,6 +906,59 @@ class AgentDetailPage(AgentFormPage):
         row = self.page.locator(self.MODULES_MENU_ITEM.format(key))
         row.wait_for(state="visible", timeout=timeout)
         row.click()
+
+    @action("Toggle module by its name area")
+    def toggle_module_at_name(self, key: str, timeout: int = 10000) -> None:
+        """Flip a module's switch by clicking the LEFT part of its row.
+
+        A centre click lands on the (i) tooltip icon on some rows (e.g.
+        Attachments) which stops propagation and does not toggle (ELITEA-4791).
+        """
+        row = self.page.locator(self.MODULES_MENU_ITEM.format(key))
+        row.wait_for(state="visible", timeout=timeout)
+        row.click(position={"x": 40, "y": 10})
+
+    @action("Drop a file onto the embedded chat composer")
+    def drop_file_on_chat_input(self, name: str, content: str) -> None:
+        """Dispatch dragenter/dragover/drop with a DataTransfer carrying a file.
+
+        Playwright cannot drive an OS drag; this is the exact event the chat
+        composer's onDrop handler reads (declared improvisation, ELITEA-4791).
+        """
+        self.chat_message_input.evaluate(
+            """(el, args) => {
+                const dt = new DataTransfer();
+                dt.items.add(new File([args.content], args.name, {type: 'text/plain'}));
+                for (const type of ['dragenter', 'dragover', 'drop']) {
+                    el.dispatchEvent(new DragEvent(type, {bubbles: true, cancelable: true, dataTransfer: dt}));
+                }
+            }""",
+            {"name": name, "content": content},
+        )
+
+    def chat_attachment_chips(self):
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_ANY)
+
+    def chat_attachment_chip_count(self) -> int:
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_ANY).count()
+
+    def chat_attachment_chip_texts(self) -> list[str]:
+        return [t.strip() for t in self.page.locator(self.CHAT_ATTACHMENT_CHIP_ANY).all_inner_texts()]
+
+    def wait_for_reply_with_tool_chip(self, marker: str, timeout: int = 90000) -> tuple[str, list[str]]:
+        """Wait until the last chat message holds a tool chip; return (text, chip texts)."""
+        last = self._embedded_chat_messages().last
+        last.locator(self.CHAT_ANSWER_TOOL_CHIP_SELECTOR).first.wait_for(state="visible", timeout=timeout)
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline and marker not in last.inner_text():
+            self.page.wait_for_timeout(500)
+        return last.inner_text(), last.locator(self.CHAT_ANSWER_TOOL_CHIP_SELECTOR).all_inner_texts()
+
+    @action("Attach a file via the chat attach icon")
+    def attach_file_via_chat_icon(self, path: str, timeout: int = 10000) -> None:
+        with self.page.expect_file_chooser(timeout=timeout) as fc:
+            self.chat_attach_button.click()
+        fc.value.set_files(path)
 
     def module_toggle(self, key: str):
         """Locator of the module's switch input (state = ``checked``)."""

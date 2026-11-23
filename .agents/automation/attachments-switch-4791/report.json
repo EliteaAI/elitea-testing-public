@@ -1,0 +1,95 @@
+{
+  "batch": "attachments-switch-4791",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-attachments-switch-4791",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [40.0, 37.0, 38.6],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4791",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text says 'Agent chat panel' and 'attach icon'. On the agent page this is the Test Agent side panel, and the icon is the toolbar button chat-attach-button, not the plus-menu item that ChatPage.attach_files_button points to."
+        },
+        {
+          "kind": "clarification",
+          "note": "Step 6 says 'click the icon', but the icon is truly disabled when the switch is OFF, so a click is impossible. The error toast 'Attachments are not allowed.' appears only on drag-and-drop. Declared improvisation: synthetic DragEvent with a DataTransfer on chat-message-input."
+        },
+        {
+          "kind": "note",
+          "note": "Gating follows the saved agent version, so Save and reload are needed before the chat reflects the switch."
+        },
+        {
+          "kind": "note",
+          "note": "AgentDetailPage.toggle_module uses a centre click, which hits the (i) tooltip on the Attachments row and does not toggle. Click at a left offset or press Space."
+        },
+        {
+          "kind": "note",
+          "note": "chat-answer-content is absent in the embedded panel. Wait on the 2nd chat-message-item or the chat-answer-tool-chip instead, and check AgentDetailPage.wait_for_chat_response."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case says 'open the Agent chat panel' and 'click the icon' for step 6. Live, chat is the Test Agent side panel and the attach icon is a disabled toolbar button. The 'Attachments are not allowed.' error only appears on drag-and-drop, and gating follows the SAVED version (Save then reload).",
+          "ref": "ELITEA-4791"
+        },
+        {
+          "kind": "note",
+          "note": "This host has no automation/.env.test and exports only APP_PREFIX_DEV. Without APP_PREFIX=/app every UI spec 404s at agent-information-section. Recorded in role memory and _surface.md."
+        },
+        {
+          "kind": "note",
+          "note": "Centre click on the agent-module-menu-item-attachments row hits the (i) icon and doesn't toggle. The spec uses the new toggle_module_at_name, which clicks at a left offset. The existing toggle_module is untouched."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep, run by reading the diff of automation/pages and automation/tests against main (static review). Hits: (1) agent_detail_page.py `self.page.locator(self.MODULES_MENU_ITEM.format(key))` in toggle_module_at_name uses an existing UPPER_CASE `[data-testid=\"agent-module-menu-item-{}\"]` template, so it is compliant. (2) `self.page.locator(self.CHAT_ATTACHMENT_CHIP_ANY)` in 3 helper… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertions checked against the case. Step 1: switch is checked after Save and reload. Step 2: attach icon is visible and enabled. Step 3: chip count is 1 and its text contains sample.txt. The reply must show an Attachments tool chip and contain a unique per-run marker, which proves it is based on the file. Step 4: switch is unchecked after reload. Step 5: attach icon is disabled. Step 6: … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_modules_attachments_switch.py"
+        },
+        {
+          "kind": "clarification",
+          "note": "Step 6 says 'click the icon or drag and drop'. The icon is truly disabled, so only the drag-and-drop route is exercised, using a synthetic DragEvent. Both the AFS and the code declare this as an improvisation, and the reasoning is sound: Playwright cannot drive an OS drag. Recommend adding it to the canon as a sanctioned pattern. Suggest the case text be clarified (disabled icon, so the error come… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-4791"
+        },
+        {
+          "kind": "note",
+          "note": "Nits, not blocking. (a) toggle_module_at_name hardcodes click position x=40,y=10. That is an offset inside a declared row, not a sibling pick, but it is brittle if the row layout changes. (b) `toast_message.last` follows an existing pattern in the file. (c) chat_attachment_chips and the two chip helpers have no @action decorator, unlike their neighbours. (d) wait_for_reply_with_tool_chip returns a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The LLM reply must contain the marker. The AFS risk section flagged non-determinism, and the file text was written as a natural sentence to mitigate it. Watch the 3x hardening gate for flake on the marker assertion. Do not weaken it."
+        },
+        {
+          "kind": "note",
+          "note": "The _surface.md notes now overlap. The 'Attachments module -> embedded chat attach icon' section and the 'Agent chat attach gating vs Attachments module' section both record the ELITEA-4791 facts, so a later pass could dedupe them.",
+          "ref": "test-specs/agents/_surface.md"
+        }
+      ],
+      "afs": "test-specs/agents/l0_attachments-module-switch-controls-chat-attach-icon-and-file-attachment_ELITEA-4791.md",
+      "branch": "tests/ELITEA-4791-attachments-switch",
+      "gate": {
+        "runs": 3,
+        "seconds": [40.0, 37.0, 38.6]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
