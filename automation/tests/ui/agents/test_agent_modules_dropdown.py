@@ -102,7 +102,7 @@ def test_modules_dropdown_lists_all_modules_and_scrolls_to_last(page, agent_id):
         titles = detail.module_menu_item_titles()
         assert len(row_keys) == len(set(row_keys)), f"duplicate module keys: {row_keys}"
         assert len(titles) == len(set(titles)), f"duplicate module titles: {titles}"
-        assert len(row_keys) == detail.modules_menu.locator(detail.MODULES_MENU_TOGGLE_ANY).count()
+        assert len(row_keys) == detail.module_menu_toggle_count()
         missing = REQUIRED_MODULE_KEYS - set(row_keys)
         assert not missing, f"required modules missing from dropdown: {sorted(missing)}"
         unknown_dupes = [k for k in row_keys if k in OPTIONAL_MODULE_KEYS and row_keys.count(k) != 1]

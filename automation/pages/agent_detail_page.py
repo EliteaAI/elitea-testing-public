@@ -879,9 +879,13 @@ class AgentDetailPage(AgentFormPage):
 
     def modules_menu_item_box(self, which: str) -> dict:
         """Bounding box of the 'first' or 'last' module row."""
-        rows = self.modules_menu.locator(self.MODULES_MENU_ITEM_ANY)
-        row = rows.nth(0) if which == "first" else rows.nth(rows.count() - 1)
-        return row.bounding_box()
+        keys = self.module_menu_item_keys()
+        key = keys[0] if which == "first" else keys[-1]
+        return self.page.locator(self.MODULES_MENU_ITEM.format(key)).bounding_box()
+
+    def module_menu_toggle_count(self) -> int:
+        """Number of per-module toggle switches rendered in the open dropdown."""
+        return self.modules_menu.locator(self.MODULES_MENU_TOGGLE_ANY).count()
 
     # ------------------------------------------------------------------
     # Wait helpers
