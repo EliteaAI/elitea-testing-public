@@ -6,7 +6,7 @@
   "gate": {
     "verdict": "green",
     "runs": 3,
-    "seconds": [],
+    "seconds": [40.0, 37.0, 38.6],
     "failures": []
   },
   "cases": [
@@ -81,7 +81,7 @@
       "branch": "tests/ELITEA-4791-attachments-switch",
       "gate": {
         "runs": 3,
-        "seconds": []
+        "seconds": [40.0, 37.0, 38.6]
       }
     }
   ],
