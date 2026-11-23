@@ -822,6 +822,27 @@ class AgentDetailPage(AgentFormPage):
         self.add_modules_button.click()
         self.modules_menu.wait_for(state="visible", timeout=timeout)
 
+    @action("Open a Tools-row picker")
+    def open_tools_row_picker(self, button: LocatorDescriptor, timeout: int = 10000):
+        """Click one of the Tools-row add buttons and wait for its picker popper.
+
+        The pickers (+ Toolkit / + MCP / + Agent / + Pipeline) are MUI poppers
+        sharing the ``toolkit-search-input`` field (ELITEA-4793).
+        """
+        button.wait_for(state="visible", timeout=timeout)
+        button.click()
+        self.toolkit_search_input.wait_for(state="visible", timeout=timeout)
+
+    @action("Dismiss open Tools-row picker")
+    def dismiss_tools_row_picker(self, timeout: int = 10000):
+        """Close an open picker popper by clicking outside it.
+
+        Escape does NOT close these poppers (verified live, ELITEA-4793), so
+        a click at a page corner is the dismiss gesture.
+        """
+        self.page.mouse.click(5, 5)
+        self.toolkit_search_input.wait_for(state="hidden", timeout=timeout)
+
     def tools_row_button_testids_in_x_order(self) -> list[str]:
         """Testids of the five Tools-row add buttons, left to right by bounding box."""
         buttons = {
