@@ -809,3 +809,5 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - `agent-module-menu-item-attachments` centre click does not toggle (hits the (i) tooltip); click at `position={x:40,y:10}` or press Space. `toggle_module()` centre-click works for pyodide/web_search only.
 - `chat-answer-content` was not found in the embedded panel after a send; wait on 2nd `chat-message-item` / `chat-answer-tool-chip`.
 - Fresh `agent_id` agent: Attachments default OFF.
+
+**Added during ELITEA-4791 implementation (test-automation-engineer):** `AgentDetailPage.chat_attach_button` (`chat-attach-button`), `toggle_module_at_name` (left-offset click; centre click hits the (i) icon on Attachments), `drop_file_on_chat_input` (synthetic DragEvent), `wait_for_reply_with_tool_chip`. Sample file must be a natural sentence carrying the marker: a bare marker-only file made the model say "no file text came through". Env note: this host has no `.env.test`; run with `APP_PREFIX=/app` (only `APP_PREFIX_DEV` is exported), else DEV returns 404 and every spec fails at `agent-information-section`.
