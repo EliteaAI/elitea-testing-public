@@ -3962,15 +3962,15 @@
       "work_item_level": "feature",
       "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
       "maturity": "pilot",
-      "sessions": 3,
-      "turns": 75,
-      "subagent_dispatches": 3,
-      "orchestrator_cost_pct": 63.2,
+      "sessions": 4,
+      "turns": 94,
+      "subagent_dispatches": 4,
+      "orchestrator_cost_pct": 46.3,
       "tokens": {
-        "input": 66802,
-        "output": 51737,
-        "cache_read": 12314655,
-        "cache_create": 806715
+        "input": 88062,
+        "output": 137087,
+        "cache_read": 29086705,
+        "cache_create": 1351334
       },
       "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
       "models_used": [
@@ -3978,14 +3978,14 @@
       ],
       "tokens_by_model": {
         "1_eu.anthropic.claude-sonnet-5-5": {
-          "input": 66802,
-          "output": 51737,
-          "cache_read": 12314655,
-          "cache_create": 806715
+          "input": 88062,
+          "output": 137087,
+          "cache_read": 29086705,
+          "cache_create": 1351334
         }
       },
-      "cost_api_equivalent_usd": 4.29,
-      "cache_read_share_pct": 48,
+      "cost_api_equivalent_usd": 8.23,
+      "cache_read_share_pct": 54.2,
       "scenarios_authored": 1,
       "scenarios_automated": 1,
       "scenarios_executed": 1,
