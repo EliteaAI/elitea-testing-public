@@ -3963,29 +3963,36 @@
       "work_item_brief": "Test-automation batch: 1 TMS case(s) through analyse → implement → review → merge → gate; 1 delivered.",
       "maturity": "pilot",
       "sessions": 4,
-      "turns": 94,
-      "subagent_dispatches": 4,
-      "orchestrator_cost_pct": 46.3,
+      "turns": 117,
+      "subagent_dispatches": 9,
+      "orchestrator_cost_pct": 40.7,
       "tokens": {
-        "input": 88062,
-        "output": 137087,
-        "cache_read": 29086705,
-        "cache_create": 1351334
+        "input": 141279,
+        "output": 184505,
+        "cache_read": 37369294,
+        "cache_create": 2137924
       },
       "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
       "models_used": [
-        "1_eu.anthropic.claude-sonnet-5-5"
+        "1_eu.anthropic.claude-sonnet-5-5",
+        "<synthetic>"
       ],
       "tokens_by_model": {
         "1_eu.anthropic.claude-sonnet-5-5": {
-          "input": 88062,
-          "output": 137087,
-          "cache_read": 29086705,
-          "cache_create": 1351334
+          "input": 141279,
+          "output": 184505,
+          "cache_read": 37369294,
+          "cache_create": 2137924
+        },
+        "<synthetic>": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_create": 0
         }
       },
-      "cost_api_equivalent_usd": 8.23,
-      "cache_read_share_pct": 54.2,
+      "cost_api_equivalent_usd": 11.61,
+      "cache_read_share_pct": 50,
       "scenarios_authored": 1,
       "scenarios_automated": 1,
       "scenarios_executed": 1,

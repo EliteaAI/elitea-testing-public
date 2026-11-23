@@ -7,12 +7,12 @@
     "ELITEA-1182"
   ],
   "declaredAt": "2026-11-23T12:40:19.325Z",
-  "updatedAt": "2026-11-23T13:10:09.926Z",
+  "updatedAt": "2026-11-23T14:09:52.330Z",
   "outcomes": {
     "ELITEA-1182": {
-      "outcome": "blocked",
-      "at": "2026-11-23T13:10:00.315Z"
+      "outcome": "automated",
+      "at": "2026-11-23T14:09:52.272Z"
     }
   },
-  "closedAt": "2026-11-23T13:10:09.926Z"
+  "closedAt": "2026-11-23T14:09:52.330Z"
 }
