@@ -8,6 +8,7 @@ import logging
 import re
 import time
 from playwright.sync_api import Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor, ScopedLocator
 from components.mui import Dialog, Popper
@@ -183,12 +184,14 @@ class ChatPage(BasePage):
     # library's own stable public contract on the <img>, not a generated
     # MUI class, so it is a legitimate css= rung.
     AI_MESSAGE_LOGO = ScopedLocator(
-        css='img[alt="Elitea"]',
+        css='img[alt^="Elitea"]',
         suggested_testid="chat-message-ai-author-marker",
         description=(
-            "BrandLogo <img alt='Elitea'> inside an AI-authored message's "
+            "BrandLogo <img alt='Elitea…'> inside an AI-authored message's "
             "header — presence distinguishes an AI message from a "
-            "user-authored one (UserAvatar renders no such <img>)."
+            "user-authored one (UserAvatar renders no such <img>). Prefix "
+            "match: the alt carries the env branding (DEV 'Elitea', stage2 "
+            "'EliteaStage2')."
         ),
     )
 
@@ -4081,15 +4084,19 @@ class ChatPage(BasePage):
         self.plus_menu_button.click()
         self.page.wait_for_timeout(300)  # Menu animation
 
-        # Step 2: Hover "Modules" menuitem to reveal submenu
-        # The submenu is triggered by onMouseEnter, not onClick
+        # Step 2: Open the "Modules" submenu. Older builds open it on hover
+        # (onMouseEnter); newer ones (stage2 release, PlusChatButton
+        # handleItemClick) only on click. Hover first; click if no switch shows.
         self.internal_tools_menuitem.wait_for(state="visible", timeout=timeout)
         self.internal_tools_menuitem.hover()
+        switch = self.page.locator('[role="switch"]').first
+        try:
+            switch.wait_for(state="visible", timeout=1500)
+        except PlaywrightTimeoutError:
+            self.internal_tools_menuitem.click()
 
         # Wait for the tools panel with switches to appear
-        self.page.locator('[role="switch"]').first.wait_for(
-            state="visible", timeout=timeout
-        )
+        switch.wait_for(state="visible", timeout=timeout)
         logger.info("Modules menu opened")
 
     def get_visible_switch_count(self) -> int:
