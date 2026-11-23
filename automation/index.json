@@ -560,6 +560,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.agents.test_agent_modules_attachments_switch.test_attachments_module_switch_controls_chat_attach",
+      "markers": [
+        "agents",
+        "p0",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4791"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/modules/ELITEA-4791_attachments-module-switch-controls-chat-attach-icon.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.agents.test_agent_modules_dropdown.test_module_switches_persist_after_save_on_top_and_discard_restores",
       "markers": [
         "agents",
