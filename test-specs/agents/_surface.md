@@ -795,3 +795,9 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 
 ## Agent test-chat USER message copy actions (ELITEA-4760 run, 2026-11-20)
 - After a response the user bubble shows `user-message-copy-markdown-button` / `user-message-copy-text-button` (UserMessage.jsx; visible+enabled w/o hover, count 1 each). Tooltips "Copy markdown"/"Copy text"; toasts "Markdown copied to clipboard." / "Text copied to clipboard." (info). Ancestor: `li[data-testid=chat-message-item]`. Distinct from AI-response `chat-copy-*-button`. Only `ChatPage.user_copy_markdown_action_button` is declared; no text descriptor.
+
+## Agent "+ Modules" dropdown (verified 2026-11-23, DEV, ELITEA-4789)
+- Tools row: `agent-add-{toolkit,mcp,agent,pipeline,modules}-button` all y=124 in that x order; `agent-add-skill-button` is a separate row below. No "MODULES" grid / Show all / Show less anymore.
+- Menu: `agent-modules-menu` (Paper) > `agent-modules-search-input` (placeholder "Search modules...") + `ul[aria-label=Modules]` (overflow auto; 11 rows on DEV). Rows `agent-module-menu-item-<key>` (li role=menuitemcheckbox), switch input `agent-canvas-tools-toggle-<key>`, `[data-info-tooltip]` (i). Escape closes.
+- Keys: attachments, image_generation, data_analysis, elitea_builder, ask_user, planner, pyodide, swarm, lazy_tools_mode, web_search, code_mode (differs from Settings Default Modules list).
+- Source: EliteaUI `features/agent/ui/agent-details/configurations/modules/AgentModulesMenu.jsx`.

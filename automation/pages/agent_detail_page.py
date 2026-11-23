@@ -18,7 +18,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
 from .agent_form_page import AgentFormPage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from .internal_tools import InternalTool, get_tool_testid
 from components.mui import Dialog, Popper
 from utils.actions import action
@@ -191,6 +191,40 @@ class AgentDetailPage(AgentFormPage):
     # ELITEA-1887, pushed to automation/testids commit ce74cd40. See
     # open_agent_picker() below.
     add_agent_button = LocatorDescriptor(testid="agent-add-agent-button")
+    # "+ Pipeline" and "+ Modules" buttons of the same Tools row (ELITEA-4789).
+    add_pipeline_button = LocatorDescriptor(testid="agent-add-pipeline-button")
+    add_modules_button = LocatorDescriptor(testid="agent-add-modules-button")
+    # Modules dropdown (ELITEA-4789): Paper, search box, and module rows.
+    modules_menu = LocatorDescriptor(testid="agent-modules-menu")
+    modules_search_input = LocatorDescriptor(testid="agent-modules-search-input")
+    MODULES_MENU_ITEM_ANY = '[data-testid^="agent-module-menu-item-"]'
+    MODULES_MENU_ITEM = '[data-testid="agent-module-menu-item-{}"]'
+    MODULES_MENU_TOGGLE_ANY = '[data-testid^="agent-canvas-tools-toggle-"]'
+    modules_menu_list = ScopedLocator(
+        role="menu",
+        name="Modules",
+        suggested_testid="agent-modules-menu-list",
+    )
+    modules_menu_item_info_icon = ScopedLocator(
+        css="[data-info-tooltip]",
+        suggested_testid="agent-module-menu-item-info-icon-{}",
+        description="(i) info icon inside a module row; no testid on DEV, one per row",
+    )
+    modules_menu_item_icon = ScopedLocator(
+        css="svg",
+        suggested_testid="agent-module-menu-item-icon-{}",
+        description="SVG icons inside a module row (module icon + (i) info icon); no testid on DEV",
+    )
+    modules_old_show_all_toggle = LocatorDescriptor(
+        xpath="//*[normalize-space(text())='Show all' or normalize-space(text())='Show less']",
+        suggested_testid="agent-modules-show-all-toggle",
+        description="Legacy MODULES grid Show all/Show less control (must be absent); plain text, no role/testid",
+    )
+    modules_old_grid_header = LocatorDescriptor(
+        xpath="//*[normalize-space(text())='MODULES']",
+        suggested_testid="agent-modules-grid-header",
+        description="Legacy MODULES grid header text (must be absent); plain text, no role/testid",
+    )
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
@@ -767,6 +801,91 @@ class AgentDetailPage(AgentFormPage):
         super(AgentDetailPage, self).navigate(f"/agents/all/{agent_id}?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to agent %d and page loaded", agent_id)
+
+    # ------------------------------------------------------------------
+    # Modules dropdown (ELITEA-4789)
+    # ------------------------------------------------------------------
+
+    @action("Open Modules dropdown")
+    def open_modules_menu(self, timeout: int = 10000):
+        """Click '+ Modules' and wait for the dropdown Paper to be visible."""
+        self.add_modules_button.wait_for(state="visible", timeout=timeout)
+        self.add_modules_button.click()
+        self.modules_menu.wait_for(state="visible", timeout=timeout)
+
+    def tools_row_button_testids_in_x_order(self) -> list[str]:
+        """Testids of the five Tools-row add buttons, left to right by bounding box."""
+        buttons = {
+            "agent-add-toolkit-button": self.add_toolkit_button,
+            "agent-add-mcp-button": self.add_mcp_button,
+            "agent-add-agent-button": self.add_agent_button,
+            "agent-add-pipeline-button": self.add_pipeline_button,
+            "agent-add-modules-button": self.add_modules_button,
+        }
+        boxes = []
+        for tid, loc in buttons.items():
+            box = loc.bounding_box()
+            boxes.append((tid, box["x"] if box else None))
+        return [t for t, x in sorted(boxes, key=lambda b: (b[1] is None, b[1]))]
+
+    def module_menu_item_keys(self) -> list[str]:
+        """Module keys of every row in the open dropdown, in DOM order."""
+        prefix = "agent-module-menu-item-"
+        rows = self.page.locator(self.MODULES_MENU_ITEM_ANY)
+        ids = [rows.nth(i).get_attribute("data-testid") for i in range(rows.count())]
+        return [i[len(prefix):] for i in ids]
+
+    def module_menu_item_titles(self) -> list[str]:
+        rows = self.page.locator(self.MODULES_MENU_ITEM_ANY)
+        return [(rows.nth(i).inner_text() or "").strip() for i in range(rows.count())]
+
+    def module_row_anatomy(self) -> list[dict]:
+        """Per-row anatomy: svg count, name text, info icons, switch inputs."""
+        menu = self.modules_menu
+        rows = menu.locator(self.MODULES_MENU_ITEM_ANY)
+        out = []
+        for i in range(rows.count()):
+            row = rows.nth(i)
+            out.append({
+                "key": row.get_attribute("data-testid").removeprefix("agent-module-menu-item-"),
+                "svgs": self.modules_menu_item_icon.within(row).count(),
+                "name": (row.inner_text() or "").strip(),
+                "info": self.modules_menu_item_info_icon.within(row).count(),
+                "switches": row.locator(self.MODULES_MENU_TOGGLE_ANY).count(),
+            })
+        return out
+
+    def wheel_scroll_modules_list_to_end(self, steps: int = 15, delta: int = 400):
+        """Mouse-wheel over the menu centre (no scrollTop assignment)."""
+        box = self.modules_menu.bounding_box()
+        self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        for _ in range(steps):
+            self.page.mouse.wheel(0, delta)
+
+    def wheel_scroll_modules_list_to_top(self, steps: int = 15, delta: int = 400):
+        box = self.modules_menu.bounding_box()
+        self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        for _ in range(steps):
+            self.page.mouse.wheel(0, -delta)
+
+    def modules_list_metrics(self) -> dict:
+        """scrollTop / scrollHeight / clientHeight of the list ul plus window.scrollY."""
+        m = self.modules_menu_list.within(self.modules_menu).evaluate(
+            "el => ({scrollTop: el.scrollTop, scrollHeight: el.scrollHeight,"
+            " clientHeight: el.clientHeight})"
+        )
+        m["windowScrollY"] = self.page.evaluate("window.scrollY")
+        return m
+
+    def modules_menu_item_box(self, which: str) -> dict:
+        """Bounding box of the 'first' or 'last' module row."""
+        keys = self.module_menu_item_keys()
+        key = keys[0] if which == "first" else keys[-1]
+        return self.page.locator(self.MODULES_MENU_ITEM.format(key)).bounding_box()
+
+    def module_menu_toggle_count(self) -> int:
+        """Number of per-module toggle switches rendered in the open dropdown."""
+        return self.modules_menu.locator(self.MODULES_MENU_TOGGLE_ANY).count()
 
     # ------------------------------------------------------------------
     # Wait helpers

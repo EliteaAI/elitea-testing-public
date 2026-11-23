@@ -1,0 +1,103 @@
+{
+  "batch": "modules-dropdown-4789",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-modules-dropdown-4789",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      20.36,
+      20.57,
+      19.79
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4789",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text says the reference module list is Settings > General > Default Modules. The AFS records that on DEV this is not the agent menu list. The menu has 11 rows (attachments, image_generation, data_analysis, elitea_builder, ask_user, planner, pyodide, swarm, lazy_tools_mode, web_search, code_mode). Settings lists internal_mcp, skill_builder and project_context_builder, which the menu lacks. The… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-4789"
+        },
+        {
+          "kind": "note",
+          "note": "The intake case snapshot .agents/automation/modules-dropdown-4789/cases/ELITEA-4789.md is missing. I read the case from the sibling TMS repo instead."
+        },
+        {
+          "kind": "note",
+          "note": "I did not repeat the live DEV execution in this dispatch. The prior same-day run covered it."
+        },
+        {
+          "kind": "note",
+          "note": "In this container automation/.env.test is absent, so settings.app_prefix is empty and every page-object navigation 404s on DEV. The shell only exports APP_PREFIX_DEV=/app. The lead's gate runs must set APP_PREFIX=/app or provide .env.test. Recorded in implementer memory."
+        },
+        {
+          "kind": "note",
+          "note": "ruff is not installed in .venv, so the lint check from conventions.md could not run."
+        },
+        {
+          "kind": "clarification",
+          "note": "The case text says to compare against the Settings > Default Modules reference list. Live, that list differs from the agent menu (the menu has attachments, elitea_builder and code_mode, and lacks internal_mcp, skill_builder and project_context_builder). The spec uses the AFS oracle instead: unique keys and titles, row count equal to switch count, and a required subset of 9 keys. The case text shou… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-4789"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case says to compare against the Settings > General > Default Modules list. The analyst found that list differs from the agent menu on live DEV, and the spec declares a different oracle: rows unique by key and title, row count equals switch count, and 9 required module keys present as a subset, with web_search and code_mode optional. This follows the case's own note to build the reference list… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "Step 7 / AFS Clarifications"
+        },
+        {
+          "kind": "note",
+          "note": "The rung is css='svg', a bare tag selector scoped to a row. It has a suggested_testid and a description, so it is compliant. It is a weak rung, and the info-icon count is the real guard for (i).",
+          "ref": "automation/pages/agent_detail_page.py (modules_menu_item_icon)"
+        },
+        {
+          "kind": "note",
+          "note": "Nits: (1) The module_row_anatomy() call and its misnamed 'keys' variable sit between Step 3 and Step 4, outside any allure.step. The call is a measurement for Step 4 and should move inside the Step 4 block. (2) The unknown_dupes check in Step 7 is redundant, because the uniqueness assertion already covers it.",
+          "ref": "automation/tests/ui/agents/test_agent_modules_dropdown.py (Step 4 and Step 7)"
+        },
+        {
+          "kind": "note",
+          "note": "Command: git diff main...tests/ELITEA-4789-modules-dropdown -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. Hits, all in agent_detail_page.py (diff lines 88, 89, 93, 94, 99, 102, 108, 138, 142). Lines 88-108 are page.loca… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "Reviewer mechanical grep"
+        },
+        {
+          "kind": "note",
+          "note": "It picks the first or last row via keys[0]/keys[-1] and then looks the row up by testid template. This is positional in intent, but the case itself asks for the first and last row, and it is not an nth pick of a sibling. A guard test pins it. Acceptable.",
+          "ref": "modules_menu_item_box"
+        },
+        {
+          "kind": "note",
+          "note": "The tms marker ELITEA-4789 and the allure.issue link to the ELITEA-4789_* case file match. There is no skip/xfail/test.fail and no weakened assertion. Every one of the case's 9 steps has a real assertion inside its allure.step. Step 5 asserts scrollTop at maximum and window.scrollY==0, and asserts the overflow precondition loudly rather than skipping. Step 6 checks the last row's bounding box agai… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "TMS pair, per-step assertions, masking"
+        },
+        {
+          "kind": "note",
+          "note": "The intake snapshot .agents/automation/modules-dropdown-4789/cases/ELITEA-4789.md does not exist, and the onetest-tms get_test_case verb returned 'not found'. I triangulated against the TMS case file read directly from the sibling clone onetest-ai-tm-Elitea, so the TMS adapter index may be stale or the snapshot step was skipped.",
+          "ref": "Intake snapshot"
+        }
+      ],
+      "afs": "test-specs/agents/l1_modules-dropdown-opens-lists-all-modules-and-scrolls-to-last_ELITEA-4789.md",
+      "branch": "tests/ELITEA-4789-modules-dropdown",
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          20.36,
+          20.57,
+          19.79
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

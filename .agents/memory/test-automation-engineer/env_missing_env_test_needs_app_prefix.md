@@ -1,8 +1,7 @@
 ---
-name: Missing .env.test needs APP_PREFIX=/app
-description: When automation/.env.test is absent, shell env supplies ELITEA_URL but not APP_PREFIX; set APP_PREFIX=/app inline or UI tests time out on skill-name-input
-type: project
+name: Missing .env.test means no APP_PREFIX - agent detail 404s
+description: In a container with no automation/.env.test, config app_prefix is empty and goto lands on 404; run with APP_PREFIX=/app
+type: feedback
 ---
 
-Symptom: every UI test times out waiting for the first form testid (e.g. `skill-name-input`) on dev.elitea.ai.
-Cause: no `.env.test` in the sandbox; `ELITEA_URL` is in shell env but `APP_PREFIX` defaults to "". Fix: `APP_PREFIX=/app HEADLESS=true ../.venv/bin/pytest ...`. ruff is not installed in `.venv`.
+When `automation/.env.test` is absent, `settings.app_prefix` is "" (shell only exports `APP_PREFIX_DEV=/app`), so page-object navigation hits `https://dev.elitea.ai/agents/...` and DEV serves a 404 page. Symptom: `Navigate to agent` times out on `agent-information-section`, screenshot shows "404 Page Not Found". Fix: prefix the run with `APP_PREFIX=/app` (do not edit files). Also `ruff` is not installed in `.venv`.
