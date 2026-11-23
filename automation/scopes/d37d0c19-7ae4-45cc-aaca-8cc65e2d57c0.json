@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "session": "d37d0c19-7ae4-45cc-aaca-8cc65e2d57c0",
+  "intent": "automation",
+  "batch": "attachments-switch-4791",
+  "cases": [
+    "ELITEA-4791"
+  ],
+  "declaredAt": "2026-11-23T18:58:46.078Z",
+  "updatedAt": "2026-11-23T19:43:45.072Z",
+  "closedAt": "2026-11-23T19:43:45.072Z"
+}
