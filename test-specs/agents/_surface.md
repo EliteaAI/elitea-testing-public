@@ -822,3 +822,7 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 ## Modules x Save As Version (ELITEA-4792 run, 2026-11-23)
 - Unsaved module toggles + `save_as_version()` (no prior Save): new version carries them; base re-read after `select_version_by_name("base")` is unchanged; switching back to the new version shows them again. Save/Discard are disabled right after version creation. Fresh `agent_id` agents start with `elitea_builder` + `ask_user` ON. Pair `pyodide` + `web_search` toggles cleanly via `toggle_module`.
 
+
+## Tools row quick-add pickers x Modules (ELITEA-4793 run, 2026-11-23)
+- `+ Toolkit/+ MCP/+ Agent/+ Pipeline` each open a MUI popper (not a dialog) holding `toolkit-search-input` (+ `toolkit-menu-item` rows; Toolkit also "Create new"). **Escape does not close it; click outside (`mouse.click(5,5)`) does.** Clicking a picker button while the Modules menu is open closes the menu and opens the picker.
+- Attach/remove of a toolkit persists immediately: `agent-save-button` and `discard-button` stay disabled, card survives reload. Module states unchanged after attach. `artifact_toolkit` fixture works as "any toolkit". Shell lacked `APP_PREFIX`; export `APP_PREFIX=/app` for pytest probes (override addopts with `-o addopts=""` if rerun plugin is missing).
