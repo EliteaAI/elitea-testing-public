@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "d93b1e21-5f7a-4084-ac6e-4544bea2bd51",
+  "intent": "automation",
+  "batch": "agent-modules-persist-4790",
+  "cases": [
+    "ELITEA-4790"
+  ],
+  "declaredAt": "2026-11-23T18:48:32.375Z",
+  "updatedAt": "2026-11-23T18:48:45.322Z",
+  "outcomes": {
+    "ELITEA-4790": {
+      "outcome": "automated",
+      "at": "2026-11-23T18:48:32.419Z"
+    }
+  },
+  "closedAt": "2026-11-23T18:48:45.322Z"
+}
