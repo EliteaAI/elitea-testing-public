@@ -809,3 +809,10 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - `agent-module-menu-item-attachments` centre click does not toggle (hits the (i) tooltip); click at `position={x:40,y:10}` or press Space. `toggle_module()` centre-click works for pyodide/web_search only.
 - `chat-answer-content` was not found in the embedded panel after a send; wait on 2nd `chat-message-item` / `chat-answer-tool-chip`.
 - Fresh `agent_id` agent: Attachments default OFF.
+
+## Agent chat attach gating vs Attachments module (ELITEA-4791 run, 2026-11-23)
+- Embedded chat = Test Agent side panel (`agent-test-button` -> `chat-message-input`). Attach icon is toolbar `chat-attach-button` (aria-label "attach files"); state = DOM `disabled`. NOT the plus-menu `chat-attach-menuitem-button` of standalone /chat.
+- Gating is on the SAVED version (`useAgentAttachments.js`: `meta.internal_tools` includes 'attachments'): Save + reload before checking the chat. Fresh agent default = OFF (icon disabled, pointer-events none).
+- OFF + attach attempt: only drag-and-drop yields the error (synthetic DragEvent+DataTransfer on `chat-message-input`) -> `toast-message` "Attachments are not allowed.", 0 `chat-attachment-chip-*`.
+- `agent-module-menu-item-attachments` centre click hits the (i) tooltip and does not toggle; click at left offset (x=40,y=10) or press Space. Existing `toggle_module` centre click needs extending.
+- `chat-answer-content` not present in embedded panel; wait on 2nd `chat-message-item` / `chat-answer-tool-chip` ("Attachments: read_multiple_files").
