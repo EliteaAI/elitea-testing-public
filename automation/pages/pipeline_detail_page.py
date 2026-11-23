@@ -10795,13 +10795,6 @@ class PipelineDetailPage(PipelineFormPage):
     LLM_NODE_TOOLKITS_PICKER_OPTION = '[data-testid="pipeline-llm-node-toolkits-select-option"]'
     # "Open toolkit in new tab" action of a TOOLS card (PipelineToolCardActions.jsx), chained off the card.
     TOOLKIT_CARD_OPEN_BUTTON = '[data-testid="pipeline-tool-card-open"]'
-    credential_warning_banner = LocatorDescriptor(
-        testid="credential-warning-banner",
-        description=(
-            "ToolValidationBanner under a TOOLS card; aria-label carries the message "
-            "(e.g. 'Authentication failed: …'). Rendered only once the SAVED version was validated (after a reload)"
-        ),
-    )
     tool_card_reload_button = LocatorDescriptor(
         css="#RefreshButton",
         suggested_testid="pipeline-tool-card-reload-button",
