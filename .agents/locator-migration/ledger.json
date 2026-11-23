@@ -883,6 +883,18 @@
       "updated": "2026-10-05",
       "history": []
     },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.tool_card_reload_button": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 10798,
+      "kind": "css",
+      "selector": "#RefreshButton",
+      "suggested_testid": "pipeline-tool-card-reload-button",
+      "description": "Reload icon of a TOOLS card. Present on the Agent tool card (ToolCard.jsx); NOT rendered by the pipeline PipelineToolCard on DEV — the locator exists so its absence/presence is observable",
+      "state": "raw",
+      "added": "2026-11-23",
+      "updated": "2026-11-23",
+      "history": []
+    },
     "pages/pipeline_detail_page.py::PipelineDetailPage.tooltip": {
       "file": "pages/pipeline_detail_page.py",
       "line": 1919,
@@ -905,6 +917,18 @@
       "state": "raw",
       "added": "2026-11-18",
       "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.version_warning_icon": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 10806,
+      "kind": "label",
+      "selector": "Toolkit(s) configuration issue in",
+      "suggested_testid": "pipeline-version-warning-icon",
+      "description": "Attention icon left of the VERSION selector (VersionSelect.jsx); aria-label 'Toolkit(s) configuration issue in <version>', shown when the version has toolkit errors",
+      "state": "raw",
+      "added": "2026-11-23",
+      "updated": "2026-11-23",
       "history": []
     },
     "pages/pipeline_form_page.py::PipelineFormPage.cancel_button": {
@@ -1556,23 +1580,23 @@
       "history": []
     }
   },
-  "last_sync": "2026-11-20",
+  "last_sync": "2026-11-23",
   "metric": {
-    "declared_total": 1515,
-    "declared_testid": 1387,
-    "declared_non_testid": 128,
-    "non_testid_with_hint": 107,
+    "declared_total": 1521,
+    "declared_testid": 1391,
+    "declared_non_testid": 130,
+    "non_testid_with_hint": 109,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 32,
+      "css": 33,
       "fallback": 20,
-      "label": 1,
+      "label": 2,
       "locator": 1,
       "role": 44,
-      "testid": 1387,
+      "testid": 1391,
       "xpath": 30
     },
-    "locator_debt": 0.0845,
+    "locator_debt": 0.0855,
     "unmanaged_handles": 309
   }
 }

@@ -1,0 +1,17 @@
+{
+ "batch": "adjust-elitea-1182-v2",
+ "card": 3008,
+ "cases": [
+  {
+   "id": "ELITEA-1182",
+   "outcome": "automated",
+   "triage": "A (UI flow changed: pipeline toolkits only via Toolkit/LLM nodes)",
+   "node": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestPipelineCredentialIndicators.test_pipeline_credential_indicators_e2e",
+   "review": "APPROVED",
+   "expected_result_changes": "Pipeline A Reload icon/tooltip checks dropped per case update (#3009); Open tooltip text 'Open toolkit in new tab'; Save+page reload re-validation"
+  }
+ ],
+ "gate": {"n": 3, "verdict": "green", "reruns": 0, "runs": ["66.70s", "62.84s", "63.18s"]},
+ "slug": "adjust-elitea-1182-v2",
+ "locatorDelta": {"declared": "1517->1521", "nonTestid": "128->130", "unmanaged": "309->309"}
+}

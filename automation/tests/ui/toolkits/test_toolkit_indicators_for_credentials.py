@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.ui, pytest.mark.toolkits]
 
+TOOL_NAME = "list_projects"
+
 
 class TestToolkitCredentialIndicators:
     """Tests for credential indicators on Toolkit detail page.
@@ -264,6 +266,7 @@ class TestPipelineCredentialIndicators:
     ):
         """E2E test: verify all indicators and fix invalid credentials on Pipeline."""
         from pages.pipeline_detail_page import PipelineDetailPage
+        from playwright.sync_api import expect
 
         if not settings.jira_api_key or not settings.jira_username:
             pytest.skip("JIRA_USERNAME and JIRA_API_KEY not set in .env.test - required for e2e test")
@@ -272,9 +275,15 @@ class TestPipelineCredentialIndicators:
         cred_name = f"autotest_pipe_cred_{ts}"[:32]
         toolkit_name = f"autotest_pipe_tk_{ts}"[:32]
         pipeline_name = f"autotest_pipeline_{ts}"[:32]
+        good_cred_name = f"autotest_pipe_ok_{ts}"[:32]
+        good_toolkit_name = f"autotest_pipe_tkok_{ts}"[:32]
+        good_pipeline_name = f"autotest_pipeline_b_{ts}"[:32]
         credential_id = None
         toolkit_id = None
         pipeline_id = None
+        good_credential_id = None
+        good_toolkit_id = None
+        good_pipeline_id = None
         new_tab = None
 
         try:
@@ -308,40 +317,86 @@ class TestPipelineCredentialIndicators:
                         "limit": 5,
                         "api_version": "Auto",
                         "verify_ssl": True,
+                        "selected_tools": [TOOL_NAME],
                     },
                 )
                 toolkit_id = toolkit["id"]
                 logger.info("Created Jira toolkit: %s", toolkit_id)
 
-            with allure.step("Step 3 — Create pipeline"):
+            with allure.step("Step 3 — Create valid Jira credential + toolkit and Pipelines A / B (no toolkit nodes yet)"):
+                good_cred = credential_api.create_credential({
+                    "type": "jira",
+                    "elitea_title": f"pipe_jira_ok_{ts}",
+                    "label": good_cred_name,
+                    "data": {
+                        "base_url": settings.jira_base_url,
+                        "username": settings.jira_username,
+                        "api_key": settings.jira_api_key,
+                    },
+                    "shared": False,
+                })
+                good_credential_id = good_cred["id"]
+                good_toolkit = toolkit_api.create_toolkit(
+                    name=good_toolkit_name,
+                    description="Valid toolkit for pipeline indicator test",
+                    toolkit_type="jira",
+                    settings={
+                        "jira_configuration": {"elitea_title": good_cred["elitea_title"], "private": True},
+                        "cloud": True,
+                        "limit": 5,
+                        "api_version": "Auto",
+                        "verify_ssl": True,
+                        "selected_tools": [TOOL_NAME],
+                    },
+                )
+                good_toolkit_id = good_toolkit["id"]
                 pipeline = pipeline_api.create_pipeline(
                     name=pipeline_name,
-                    description="Pipeline for credential indicator test",
+                    description="Pipeline A for credential indicator test",
                 )
                 pipeline_id = pipeline["id"]
-                logger.info("Created pipeline: %s", pipeline_id)
+                good_pipeline = pipeline_api.create_pipeline(
+                    name=good_pipeline_name,
+                    description="Pipeline B for credential indicator test",
+                )
+                good_pipeline_id = good_pipeline["id"]
+                logger.info("Created pipelines A=%s B=%s", pipeline_id, good_pipeline_id)
 
-            with allure.step("Step 4 — Navigate to pipeline and add toolkit"):
-                pipeline_page = PipelineDetailPage(page)
+            pipeline_page = PipelineDetailPage(page)
+            page.set_viewport_size({"width": 1600, "height": 1200})
+
+            with allure.step("Step 12 — Open Pipeline A (Flow tab): TOOLS does not list the invalid toolkit yet"):
                 pipeline_page.navigate(pipeline_id)
+                pipeline_page.dismiss_banner_if_present()
+                assert pipeline_page.is_flow_view_active(10000), "Pipeline canvas (Flow tab) should be displayed"
+                assert pipeline_page.tool_card_named(toolkit_name).count() == 0, (
+                    "TOOLS section must not list the toolkit before any node uses it"
+                )
 
-                add_toolkit_btn = page.locator('div[data-tour="agent-tools"] button').first
-                add_toolkit_btn.wait_for(state="visible", timeout=10000)
-                add_toolkit_btn.click()
-                page.wait_for_timeout(500)
+            with allure.step("Step 13-14 — Add a Toolkit node: select the invalid toolkit and a tool"):
+                pipeline_page.add_toolkit_node_with_tool(toolkit_name, TOOL_NAME)
 
-                popper = page.locator('.MuiPopper-root').first  # Use .first to avoid strict mode violation
-                popper.wait_for(state="visible", timeout=5000)
-                search_input = popper.locator('input')
-                if search_input.count() > 0:
-                    search_input.first.fill(toolkit_name)
-                    page.wait_for_timeout(500)
-                toolkit_option = popper.locator(f'li:has-text("{toolkit_name}")')
-                toolkit_option.first.click()
-                page.wait_for_timeout(2000)
-                logger.info("Added toolkit to pipeline via TOOLS panel")
+            with allure.step("Step 15-16 — Add an LLM node and add the same toolkit to its tools"):
+                pipeline_page.add_llm_node_with_toolkit(toolkit_name)
 
-            with allure.step("Step 5 — Verify warning message"):
+            with allure.step("Step 17 — TOOLS lists the toolkit with 'Used by' chips for both nodes"):
+                pipeline_page.expand_tools_section()
+                assert pipeline_page.tool_card_named(toolkit_name).count() == 1
+                assert pipeline_page.is_toolkit_card_used_by_node(toolkit_name, "Toolkit 1")
+                assert pipeline_page.is_toolkit_card_used_by_node(toolkit_name, "LLM 1")
+                # The credential validation runs against the SAVED version: persist, then reload.
+                pipeline_page.save_and_reload()
+
+            with allure.step("Step 18-19 — Open in new tab icon present with a meaningful tooltip"):
+                pipeline_page.hover_tool_card(toolkit_name)
+                open_btn = pipeline_page.tool_card_open_button(toolkit_name)
+                assert open_btn.is_visible(), "Expected open-in-new-tab button on the toolkit card"
+                open_tooltip = pipeline_page.hover_and_read_tooltip(open_btn)
+                assert open_tooltip == "Open toolkit in new tab", (
+                    f"Open tooltip should be 'Open toolkit in new tab', got: '{open_tooltip}'"
+                )
+
+            with allure.step("Step 20 — Warning message containing 'Authentication failed:'"):
                 assert pipeline_page.has_toolkit_warning_message(timeout=15000), (
                     "Expected warning message for invalid credential in pipeline"
                 )
@@ -351,34 +406,23 @@ class TestPipelineCredentialIndicators:
                 )
                 logger.info("Warning message verified: %s", warning_msg)
 
-            with allure.step("Step 6 — Verify Reload button"):
-                assert pipeline_page.has_toolkit_reload_button(toolkit_name, timeout=5000), (
-                    "Expected reload button on toolkit item"
+            with allure.step("Step 21-22 — Header warning icon next to VERSION with a hover message"):
+                assert pipeline_page.version_warning_icon.is_visible(), (
+                    "Expected a warning icon in the pipeline header for a misconfigured pipeline"
                 )
-                reload_tooltip = pipeline_page.get_toolkit_reload_button_tooltip(toolkit_name)
-                assert reload_tooltip == "refresh toolkit", (
-                    f"Reload tooltip should be 'refresh toolkit', got: '{reload_tooltip}'"
+                header_tooltip = pipeline_page.hover_and_read_tooltip(pipeline_page.version_warning_icon, reset=True)
+                assert header_tooltip.startswith("Toolkit(s) configuration issue"), (
+                    f"Header warning tooltip should describe the toolkit configuration issue, got: '{header_tooltip}'"
                 )
-                logger.info("Reload button verified")
 
-            with allure.step("Step 7 — Verify Open in new tab button"):
-                assert pipeline_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
-                    "Expected open-in-new-tab button on toolkit item"
-                )
-                open_tooltip = pipeline_page.get_toolkit_open_in_new_tab_button_tooltip(toolkit_name)
-                assert open_tooltip == "open in new tab", (
-                    f"Open tooltip should be 'open in new tab', got: '{open_tooltip}'"
-                )
-                logger.info("Open in new tab button verified")
-
-            with allure.step("Step 8 — Click Open in new tab and verify"):
-                new_tab = pipeline_page.click_toolkit_open_in_new_tab(toolkit_name)
+            with allure.step("Fix 1 — Click Open in new tab and verify"):
+                new_tab = pipeline_page.click_tool_card_open_in_new_tab(toolkit_name)
                 assert "/toolkits/" in new_tab.url or "/tools/" in new_tab.url, (
                     f"New tab should open toolkit page, got: {new_tab.url}"
                 )
                 logger.info("Open in new tab works - opened: %s", new_tab.url)
 
-            with allure.step("Step 9 — Fix credential via API"):
+            with allure.step("Fix 2 — Fix credential via API"):
                 valid_payload = {
                     "type": "jira",
                     "elitea_title": cred["elitea_title"],
@@ -392,37 +436,66 @@ class TestPipelineCredentialIndicators:
                 }
                 credential_api.update_credential(credential_id, valid_payload)
                 logger.info("Updated credential to valid Jira credentials")
-                page.wait_for_timeout(2000)
 
-            with allure.step("Step 10 — Close new tab and return to original"):
+            with allure.step("Fix 3 — Close new tab and return to original"):
                 new_tab.close()
                 new_tab = None
                 page.bring_to_front()
                 logger.info("Closed new tab and returned to original page")
 
-            with allure.step("Step 11 — Click Reload button"):
-                page.wait_for_timeout(1000)
-                pipeline_page.hover_toolkit_item(toolkit_name)
-                reload_btn = page.locator('#RefreshButton')
-                reload_btn.click()
-                pipeline_page.wait_for_network(timeout=10000)
-                page.wait_for_timeout(3000)
-                logger.info("Clicked reload button")
+            with allure.step("Fix 4 — Reload to re-validate (no Reload icon on the pipeline TOOLS card on DEV)"):
+                # Adjusted: the old flow clicked the card's Reload icon; DEV's pipeline card has none, so the
+                # re-validation is triggered by a page reload (version validation runs on load).
+                page.reload()
+                pipeline_page.wait_for_detail_page_load()
+                pipeline_page.ensure_toolkits_section_visible(timeout=15000)
 
-            with allure.step("Step 12 — Verify indicators disappear after fix"):
+            with allure.step("Fix 5 — Verify indicators disappear after fix"):
                 pipeline_page.wait_for_no_toolkit_status_indicator(toolkit_name, timeout=15000)
                 logger.info("Warning message disappeared")
 
                 assert not pipeline_page.has_toolkit_reload_button(toolkit_name, timeout=3000), (
                     "Reload button should disappear after fixing credentials"
                 )
-                logger.info("Reload button disappeared")
-
-                assert pipeline_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
+                assert pipeline_page.tool_card_open_button(toolkit_name).is_visible(), (
                     "Open in new tab should remain visible after fixing credentials"
                 )
-                logger.info("Open in new tab button still present")
-                logger.info("Pipeline e2e test passed")
+                expect(pipeline_page.version_warning_icon).to_have_count(0, timeout=10000)
+                logger.info("Pipeline A: indicators gone, Open in new tab remains")
+
+            with allure.step("Step 23 — Open Pipeline B (Flow tab): TOOLS does not list the valid toolkit yet"):
+                pipeline_page.navigate(good_pipeline_id)
+                pipeline_page.dismiss_banner_if_present()
+                assert pipeline_page.is_flow_view_active(10000), "Pipeline canvas (Flow tab) should be displayed"
+                assert pipeline_page.tool_card_named(good_toolkit_name).count() == 0
+
+            with allure.step("Step 24 — Add a Toolkit node with the valid toolkit and a tool"):
+                pipeline_page.add_toolkit_node_with_tool(good_toolkit_name, TOOL_NAME)
+
+            with allure.step("Step 25 — Add an LLM node with the valid toolkit attached"):
+                pipeline_page.add_llm_node_with_toolkit(good_toolkit_name)
+
+            with allure.step("Step 26 — TOOLS lists the valid toolkit with 'Used by' chips for both nodes"):
+                pipeline_page.expand_tools_section()
+                assert pipeline_page.tool_card_named(good_toolkit_name).count() == 1
+                assert pipeline_page.is_toolkit_card_used_by_node(good_toolkit_name, "Toolkit 1")
+                assert pipeline_page.is_toolkit_card_used_by_node(good_toolkit_name, "LLM 1")
+                pipeline_page.save_and_reload()
+
+            with allure.step("Step 27 — Open in new tab icon is visible for the valid credential"):
+                pipeline_page.hover_tool_card(good_toolkit_name)
+                assert pipeline_page.tool_card_open_button(good_toolkit_name).is_visible()
+
+            with allure.step("Step 28 — No Reload icon for the valid credential"):
+                assert pipeline_page.tool_card_reload_button.count() == 0, "Reload icon must be absent"
+
+            with allure.step("Step 29 — No warning indicator and no warning message for the valid credential"):
+                assert not pipeline_page.has_toolkit_warning_message(timeout=5000), (
+                    "No warning message expected for a valid credential"
+                )
+
+            with allure.step("Step 30 — No warning icon in the pipeline header"):
+                expect(pipeline_page.version_warning_icon).to_have_count(0, timeout=5000)
 
         finally:
             if new_tab:
@@ -430,24 +503,27 @@ class TestPipelineCredentialIndicators:
                     new_tab.close()
                 except Exception:
                     pass
-            if pipeline_id:
-                try:
-                    pipeline_api.delete_pipeline(pipeline_id)
-                    logger.info("Cleaned up pipeline %s", pipeline_id)
-                except Exception as exc:
-                    logger.warning("Failed to delete pipeline: %s", exc)
-            if toolkit_id:
-                try:
-                    toolkit_api.delete_toolkit(toolkit_id)
-                    logger.info("Cleaned up toolkit %s", toolkit_id)
-                except Exception as exc:
-                    logger.warning("Failed to delete toolkit: %s", exc)
-            if credential_id:
-                try:
-                    credential_api.delete_credential(credential_id)
-                    logger.info("Cleaned up credential %s", credential_id)
-                except Exception as exc:
-                    logger.warning("Failed to delete credential: %s", exc)
+            for pid in (pipeline_id, good_pipeline_id):
+                if pid:
+                    try:
+                        pipeline_api.delete_pipeline(pid)
+                        logger.info("Cleaned up pipeline %s", pid)
+                    except Exception as exc:
+                        logger.warning("Failed to delete pipeline: %s", exc)
+            for tid in (toolkit_id, good_toolkit_id):
+                if tid:
+                    try:
+                        toolkit_api.delete_toolkit(tid)
+                        logger.info("Cleaned up toolkit %s", tid)
+                    except Exception as exc:
+                        logger.warning("Failed to delete toolkit: %s", exc)
+            for cid in (credential_id, good_credential_id):
+                if cid:
+                    try:
+                        credential_api.delete_credential(cid)
+                        logger.info("Cleaned up credential %s", cid)
+                    except Exception as exc:
+                        logger.warning("Failed to delete credential: %s", exc)
 
 
 class TestAgentCredentialIndicators:

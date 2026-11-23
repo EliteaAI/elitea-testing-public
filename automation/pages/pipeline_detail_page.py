@@ -10790,6 +10790,98 @@ class PipelineDetailPage(PipelineFormPage):
         rows = self.page.locator(self.TOOLKIT_NODE_PICKER_OPTION)
         return [(rows.nth(i).text_content() or "").strip() for i in range(rows.count())]
 
+    # --- Credential indicators on a pipeline's TOOLS card (ELITEA-1182 adjust, EL-7159 read-only TOOLS) ---
+    # LLM node "Toolkits" multi-select rows (ToolkitsSelect.jsx; row label = toolkit name).
+    LLM_NODE_TOOLKITS_PICKER_OPTION = '[data-testid="pipeline-llm-node-toolkits-select-option"]'
+    # "Open toolkit in new tab" action of a TOOLS card (PipelineToolCardActions.jsx), chained off the card.
+    TOOLKIT_CARD_OPEN_BUTTON = '[data-testid="pipeline-tool-card-open"]'
+    tool_card_reload_button = LocatorDescriptor(
+        css="#RefreshButton",
+        suggested_testid="pipeline-tool-card-reload-button",
+        description=(
+            "Reload icon of a TOOLS card. Present on the Agent tool card (ToolCard.jsx); NOT rendered by the "
+            "pipeline PipelineToolCard on DEV — the locator exists so its absence/presence is observable"
+        ),
+    )
+    version_warning_icon = LocatorDescriptor(
+        label="Toolkit(s) configuration issue in",
+        suggested_testid="pipeline-version-warning-icon",
+        description=(
+            "Attention icon left of the VERSION selector (VersionSelect.jsx); aria-label "
+            "'Toolkit(s) configuration issue in <version>', shown when the version has toolkit errors"
+        ),
+    )
+
+    def select_llm_node_toolkit(self, toolkit_name: str, timeout: int = 10000) -> None:
+        """Add *toolkit_name* to the open LLM node's Toolkits multi-select (opens the node panel if needed)."""
+        self._ensure_node_panel_open(self.llm_node_toolkits_select, "llm", timeout=timeout)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.llm_node_toolkits_select.click(timeout=timeout)
+        option = self.page.locator(self.LLM_NODE_TOOLKITS_PICKER_OPTION).filter(has_text=toolkit_name).first
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        logger.info("Added toolkit '%s' to the LLM node", toolkit_name)
+
+    def add_toolkit_node_with_tool(self, toolkit_name: str, tool_name: str, timeout: int = 15000) -> None:
+        """"+ Node" -> Toolkit node on the Flow canvas, then pick *toolkit_name* and *tool_name* in its panel.
+
+        Works on an empty pipeline (empty-state button) and on one that already has nodes.
+        """
+        if self.empty_state_add_node_button.is_visible():
+            self.empty_state_add_node_button.click()
+            self.select_add_node_menu_item("toolkit")
+        else:
+            self.add_node("Toolkit", timeout=timeout)
+        self.open_toolkit_node_by_card("Toolkit 1", timeout=timeout)
+        self.select_toolkit_node_toolkit(toolkit_name, timeout=timeout)
+        self.select_toolkit_node_tool(tool_name, timeout=timeout)
+        self.close_node_panel(timeout=timeout)
+
+    def add_llm_node_with_toolkit(self, toolkit_name: str, timeout: int = 15000) -> None:
+        """"+ Node" -> LLM node, then add *toolkit_name* to the node's Toolkits select."""
+        self.add_node("LLM", timeout=timeout)
+        self.open_toolkit_node_by_card("LLM 1", timeout=timeout)
+        self.select_llm_node_toolkit(toolkit_name, timeout=timeout)
+        self.close_node_panel(timeout=timeout)
+
+    def save_and_reload(self, timeout: int = 30000) -> None:
+        """Save the pipeline, then reload the page — the version validation (banner / header icon) runs on load."""
+        self.save_button.evaluate("el => el.click()")
+        expect(self.save_button).to_be_disabled(timeout=timeout)
+        self.page.reload()
+        self.wait_for_detail_page_load()
+        self.ensure_toolkits_section_visible(timeout=timeout)
+
+    def hover_tool_card(self, name: str) -> None:
+        """Hover the TOOLS card named *name* (its action icons only render on hover)."""
+        self.tool_card_named(name).first.hover()
+
+    def tool_card_open_button(self, name: str) -> Locator:
+        """The 'Open … in new tab' button of the TOOLS card named *name*."""
+        return self.tool_card_named(name).first.locator(self.TOOLKIT_CARD_OPEN_BUTTON)
+
+    def hover_and_read_tooltip(self, target: Locator, timeout: int = 5000, reset: bool = False) -> str:
+        """Hover *target* and return the text of the MUI tooltip that appears."""
+        if reset:
+            # Park the pointer away first so a tooltip from a previous hover is dismissed
+            # (not for hover-revealed targets: moving away would hide them).
+            self.page.mouse.move(1, 1)
+            expect(self.tooltip).to_have_count(0, timeout=timeout)
+        target.hover(timeout=timeout)
+        self.tooltip.first.wait_for(state="visible", timeout=timeout)
+        return (self.tooltip.first.text_content() or "").strip()
+
+    def click_tool_card_open_in_new_tab(self, name: str, timeout: int = 10000) -> Page:
+        """Click the TOOLS card's open-in-new-tab action and return the new tab's page."""
+        self.hover_tool_card(name)
+        button = self.tool_card_open_button(name)
+        with self.page.context.expect_page(timeout=timeout) as new_page_info:
+            button.click(timeout=timeout)
+        new_page = new_page_info.value
+        new_page.wait_for_load_state("domcontentloaded")
+        return new_page
+
     def clear_toolkit_node_toolkit(self, timeout: int = 10000) -> None:
         """Click the X next to the open Toolkit node panel's Toolkit field."""
         self.toolkit_node_toolkit_select_clear.click(timeout=timeout)
