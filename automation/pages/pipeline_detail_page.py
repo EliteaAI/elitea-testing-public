@@ -2154,6 +2154,18 @@ class PipelineDetailPage(PipelineFormPage):
     # constant per .agents/testing.md § Locator policy.
     RUN_DETAILS_TIMELINE_STEP = '[data-testid="pipeline-run-details-timeline-step-{}"]'
 
+    # Visible node-name label rendered next to each timeline dot (EliteaUI PR #1585,
+    # TimeLineStepName.jsx: Text.EllipsisTypography). Scoped to the dot; the label
+    # container is the dot's preceding sibling inside the same MUI Step.
+    RUN_DETAILS_TIMELINE_STEP_NAME = ScopedLocator(
+        xpath="./preceding-sibling::*//div[normalize-space(text())!='']",
+        suggested_testid="pipeline-run-details-timeline-step-name-{}",
+        description=(
+            "rungs 1-4 failed: step name text has no testid/role/label on DEV; "
+            "scoped from the per-index dot testid to its preceding-sibling name container"
+        ),
+    )
+
     # Dynamic (runtime-parameterized) testid — one accordion-row header per
     # state variable in the STATES section.
     RUN_DETAILS_STATE_ROW = '[data-testid="pipeline-run-details-state-row-{}"]'
@@ -9395,25 +9407,26 @@ class PipelineDetailPage(PipelineFormPage):
         return dot.get_attribute("data-status") or ""
 
     def get_run_details_timeline_step_node_id(self, index: int, timeout: int = 10000) -> str:
-        """Return the timeline-step dot's hover node-id at *index*.
+        """Return the node name shown under the timeline-step dot at *index*.
 
-        Reads the `aria-label` attribute MUI's Tooltip surfaces statically on
-        the trigger element (`title={step.id}`) — present even without a real
-        hover event. The node id renders WITHOUT the YAML id's space
-        (`"LLM 2"` -> `"LLM2"`), same as the Timeline label (ELITEA-2450).
+        Since EliteaUI PR #1585 the dot has no Tooltip/aria-label; the node name
+        is visible text (for a collapsed group: the group label). Rendered
+        WITHOUT the YAML id's space (`"LLM 2"` -> `"LLM2"`).
 
         Args:
             index: Zero-based index into the run's timeline.
-            timeout: Maximum wait time for the dot to appear.
+            timeout: Maximum wait time for the name to appear.
         """
         dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
         dot.wait_for(state="visible", timeout=timeout)
-        return dot.get_attribute("aria-label") or ""
+        name = self.RUN_DETAILS_TIMELINE_STEP_NAME.within(dot, index)
+        name.wait_for(state="visible", timeout=timeout)
+        return (name.text_content() or "").strip()
 
     def hover_run_details_timeline_step(self, index: int, timeout: int = 10000):
         """Hover the timeline-step dot at *index* (behavioral fidelity with
         the case's literal "on hover" wording — the node-id assertion itself
-        reads the static `aria-label`, not the rendered popup).
+        reads the visible step-name text, not a popup).
 
         Args:
             index: Zero-based index into the run's timeline.

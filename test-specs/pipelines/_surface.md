@@ -201,7 +201,7 @@ The run node is created on the `AgentStart`/`StartTask` socket event
 opened mid-run, badge read `In progress`, then flipped in place to `Completed`
 (`RunStatus.jsx:15-16` renders `data-testid` + `data-status={status}`). With the
 panel opened during the run, the post-completion panel content is fully
-correct — timeline step 0 `data-status="completed"` / `aria-label="pyodide"`,
+correct — timeline step 0 `data-status="completed"` / step name text `pyodide` (was `aria-label` before EL-3734),
 `Timeline step:pyodide` section text, and the state row's After JSON. All of
 these testids are on EliteaUI **`main`** (verified 2026-09-09 after
 `git fetch origin`), so the pattern is safe for deployed-env CI.

@@ -85,30 +85,19 @@
    case's own precondition), all N dots are green; there is no per-step
    success/failure color — the run-level status IS the color signal. Confirmed
    live: all 3 dots rendered green, connected by a green `StepConnector` line.
-5. Node name (on hover) matching the node id from the pipeline.
-   **Expected — confirmed live, WITH a mechanism clarification**: hovering a
-   timeline-step dot shows a small popup with the node's id — e.g. hovering the
-   middle dot showed `"LLM2"` (screenshot:
-   `test-results/screenshots/ELITEA-2451-step-hover-tooltip.png`). The id
-   renders **without the YAML id's space** (`"LLM 2"` → `"LLM2"`) — same
-   space-stripping behavior already documented for the Timeline label in
-   ELITEA-2450's AFS. Mechanism: the dot (`ProcessStepIcon.jsx`'s outer `Box`,
-   already carrying the `pipeline-run-details-timeline-step-{index}` testid) is
-   wrapped in a `StyledTooltip` with `title={step.id}` — MUI's Tooltip surfaces
-   this as a static `aria-label` HTML attribute on the trigger element itself
-   (confirmed via `outerHTML` read: `aria-label="LLM1"` on the dot, alongside
-   `data-mui-internal-clone-element="true"`), present even before a real
-   mouse-hover event fires (accessibility snapshot showed the name
-   immediately on panel open — same technique already documented in role
-   memory,
-   `artifacts_bucket_search_testid_gaps_and_tooltip_aria_label_technique.md`,
-   for a different MUI Tooltip call site). A real `browser_hover` on the dot
-   additionally rendered the VISUAL popup on top of it (screenshot above).
-   Automation reads `get_attribute("aria-label")` on the
-   EXISTING per-index testid locator — no new handle needed for this
-   assertion; a real `.hover()` call is still exercised for behavioral fidelity
-   with the case's literal "on hover" wording, but the assertion itself doesn't
-   need the popup to be visually rendered.
+5. Node name shown under the dot matching the node id from the pipeline.
+   **Expected — amended 2026-11 (EL-3734 / EliteaUI PR #1585)**: the Tooltip /
+   `aria-label` on the dot was removed; the node name is now **visible text under
+   the dot** (`TimeLineStepName.jsx`; a collapsed group shows the group label).
+   The name renders **without the YAML id's space** (`"LLM 2"` → `"LLM2"`) — same
+   space-stripping behavior documented for the Timeline label in ELITEA-2450's
+   AFS. Automation reads the visible text of the step-name element belonging to
+   the dot's step (new `RUN_DETAILS_TIMELINE_STEP_NAME` ScopedLocator, see
+   Concrete Handles) via the helper `get_run_details_timeline_step_node_id(i)`;
+   the assertion (name == node id, space-stripped) is unchanged. No hover is
+   needed any more.
+   _(Superseded original mechanism: hover popup + static MUI `aria-label` on the
+   dot — no longer served by DEV.)_
 6. Timestamp in HH:MM:SS format.
    **Expected — confirmed live, exact format match**: each timeline entry shows
    a timestamp directly under its dot in `HH:mm:ss` (e.g. `13:32:19`, `13:32:20`,
@@ -151,7 +140,7 @@
 ## Expected Final State
 The Run Details panel is open, showing exactly one timeline-step entry per
 executed node (3 for this case's fixture), each with a green dot, a
-hover-revealed node-id tooltip, and an `HH:mm:ss` timestamp, laid out in
+node name shown under the dot, and an `HH:mm:ss` timestamp, laid out in
 execution order (left to right, confirmed live) — all asserted above.
 
 ## Coverage Map
@@ -164,7 +153,7 @@ execution order (left to right, confirmed live) — all asserted above.
 | Step 2: Open Run Details | Target page/section loads successfully | Step 2 (`open_run_details_panel()`, reused from ELITEA-2450) | Step 2 | covered |
 | Step 3: "Verify each executed node appears as a timeline entry with:" (section intro) | Condition holds as described | N/A — introduces steps 4–6 | — | covered (via steps 4–6) |
 | Step 4: Green dot indicator (successful execution) | Action completes without error | Step 4 | Step 4 | **covered, with mechanism note** — color is a single run-level flag applied uniformly to every step, not computed per-step; asserting the run's `Completed` status (existing `pipeline-run-details-status-badge`'s `data-status`) is the ground truth the dot color derives from |
-| Step 5: Node name (on hover) matching the node id from the pipeline | Action completes without error | Step 5 | Step 5 | **covered, with mechanism note** — node id renders space-stripped (`"LLM 2"` → `"LLM2"`), same as ELITEA-2450's Timeline-label finding; read via the dot's `aria-label` attribute, real `.hover()` also exercised |
+| Step 5: Node name shown under the dot matching the node id from the pipeline | Action completes without error | Step 5 | Step 5 | **covered, with mechanism note** — node id renders space-stripped (`"LLM 2"` → `"LLM2"`), same as ELITEA-2450's Timeline-label finding; read from the visible step-name text under the dot (EL-3734) |
 | Step 6: Timestamp in HH:MM:SS format | Action completes without error | Step 6 | Step 6 | covered — exact format match (`HH:mm:ss`) |
 | Step 7: Verify nodes appear in execution order (top to bottom = first to last) | Condition holds as described | Step 7 | Step 7 | **covered, with CLARIFICATION** — layout is left-to-right, not top-to-bottom; filed `EliteaAI/elitea-testing-public#1375`. Execution-order semantic itself holds and is asserted via DOM-index/timestamp correlation. |
 | Step 8: Verify total timeline entries match the number of nodes that executed | Condition holds as described | Step 8 | Step 8 | covered — 3 entries for 3 executed nodes, with an automation caveat about structured-output nodes (see Known Defects) |
@@ -181,9 +170,9 @@ execution order (left to right, confirmed live) — all asserted above.
 | Element | Recommended Locator | Provenance | Fallback |
 |---|---|---|---|
 | Run node label / Run Details panel / header / status badge / timeline section / states section | Reuse unmodified: `pipeline-run-node-label`, `pipeline-run-details-panel`, `pipeline-run-details-header`, `pipeline-run-details-status-badge` (+`data-status`), `pipeline-run-details-timeline-section` | **on-`main`** — added by ELITEA-2450, already merged. Already wired as `PipelineDetailPage` fields/methods (`open_run_details_panel()`, `get_run_details_status()`, etc.) | none needed |
-| Timeline-step dot (per index) | `RUN_DETAILS_TIMELINE_STEP.format(index)` → `[data-testid="pipeline-run-details-timeline-step-{}"]` | **on-`main`** — added by ELITEA-2452, already merged (`PipelineDetailPage.select_run_details_timeline_step()` already uses it). This case reads the SAME element's `aria-label` attribute (node id, for step 5) and `data-status` attribute (green/error, for step 4 — **needs-adding**, see below) rather than clicking it. | none needed |
+| Timeline-step dot (per index) | `RUN_DETAILS_TIMELINE_STEP.format(index)` → `[data-testid="pipeline-run-details-timeline-step-{}"]` | **on-`main`** — added by ELITEA-2452, already merged (`PipelineDetailPage.select_run_details_timeline_step()` already uses it). This case reads the SAME element's `data-status` attribute (green/error, for step 4 — **needs-adding**, see below) rather than clicking it. | none needed |
 | Timeline-step dot `data-status` (green/error signal) | Same testid as above, NEW attribute: `data-status="{data.status === Error ? 'error' : 'completed'}"` mirroring the existing `isError` prop already passed into `ProcessStepIcon` | **needs-adding.** Source: `ProcessStepIcon.jsx` — the `isError` boolean already exists as a prop (drives `innerBox`/`outerBox` color), just isn't exposed as a DOM attribute. Mirrors the exact `pipeline-run-details-status-badge`'s `data-status` pattern (`.agents/testing.md` "testid = stable identity; state via `data-*`" ruling) — avoids any CSS-color-literal assertion. | interim only, exploration-only: `to_have_css("background-color", "rgb(...)")` on the SAME testid locator (fragile to theme changes — do not ship; used only to visually confirm "green" this session, screenshot above) |
-| Timeline-step dot `aria-label` attribute (hover node-id) | Same testid as above — `get_attribute("aria-label")`, no new handle | **on-`main`**, pre-existing MUI `Tooltip` mechanism (confirmed via `outerHTML` read: `aria-label="LLM1"` static on the dot; NOT `title` — reading an ATTRIBUTE of an already-testid-located element, not using it AS a locator) | none needed |
+| Timeline-step node name (visible text under the dot, per index) | `RUN_DETAILS_TIMELINE_STEP_NAME` — `ScopedLocator`, rung 5 `xpath=` (`.within(index)`), `suggested_testid="pipeline-run-details-timeline-step-name-{}"` | ladder — no testid on DEV (verified against `TimeLineStepName.jsx`; EliteaUI PR #1585 removed the Tooltip/aria-label) | `suggested_testid` hint only |
 | Per-step timestamp (`HH:mm:ss` text, sibling of the dot inside the same `Step`) | `testid needed: pipeline-run-details-timeline-timestamp-{index}` (dynamic, UPPER_CASE template constant: `RUN_DETAILS_TIMELINE_TIMESTAMP = '[data-testid="pipeline-run-details-timeline-timestamp-{}"]'`) | **needs-adding.** Source: `RunStateDialog.jsx:285-290` — the `Typography` rendering `format(new Date(step.created_at), 'HH:mm:ss')` has zero testid/aria-label; it is a plain sibling of `ProcessStepIcon` inside each `Step`. Use `index` (already the same index the dot's testid uses) so the two stay correlated 1:1. | none needed |
 | Timeline entry count (total dots) | NEW UPPER_CASE prefix constant: `RUN_DETAILS_TIMELINE_STEP_PREFIX = '[data-testid^="pipeline-run-details-timeline-step-"]'`, `.count()` on it | **No new testid needed** — same mechanism as the pre-existing `CHAT_ATTACHMENT_CHIP_PREFIX` precedent (`pipeline_detail_page.py`), just a new prefix-selector constant over the ALREADY-EXISTING per-index dot testid. Confirmed live: exactly 3 matches for a 3-node completed run. | none needed |
 
@@ -235,8 +224,8 @@ never reached `Completed` status needed for this case).
   2. Add `data-testid="pipeline-run-details-timeline-timestamp-{index}"` to
      the sibling `Typography` rendering the `HH:mm:ss` timestamp
      (`RunStateDialog.jsx:285-290`).
-  No new testid is needed for the dot itself, the hover node-id (read via
-  existing `aria-label` attribute), or the entry count (new prefix-selector
+  No new testid is needed for the dot itself, the node name (read from the visible step-name text
+  via the ladder xpath handle above), or the entry count (new prefix-selector
   constant over the existing per-index testid) — see Concrete Handles.
 - **Recommended new fixture**: no existing fixture provides exactly "3+ plain
   (non-structured-output) nodes, all `Completed`". Add a
@@ -259,6 +248,20 @@ never reached `Completed` status needed for this case).
   sequence is non-decreasing — this proves "execution order" without relying on
   the (clarified-wrong) top-to-bottom axis or on brittle pixel coordinates.
 - `_surface.md` updated this session with a new subsection on the Timeline
-  Stepper's per-step handles (dot aria-label attribute, needed timestamp testid,
+  Stepper's per-step handles (dot step-name text, needed timestamp testid,
   needed data-status attribute, count-prefix constant) under the existing
   Run Details panel entry.
+
+## Adjustment — 2026-11 (EL-3734)
+- **Triage class:** A — UI drift (intentional product change). EliteaUI PR #1585
+  removed the Tooltip/`aria-label` from the timeline-step dot; the node name is now
+  visible text under the dot (`TimeLineStepName.jsx`; a collapsed group shows the
+  group label).
+- **Change:** step 5 mechanism moved from hover + `aria-label` to the visible
+  step name; new handle `RUN_DETAILS_TIMELINE_STEP_NAME` (xpath rung, ladder — no
+  testid on DEV, `suggested_testid=pipeline-run-details-timeline-step-name-{}`).
+  Helper `get_run_details_timeline_step_node_id` now reads that text (also used
+  by ELITEA-2443 / ELITEA-2444, whose AFS needed no text change).
+- **Expected-result changes:** none — assertions unchanged.
+- **TMS case wording:** step 5 "Node name(on hover)…" → "Node name shown under the
+  dot…" (TMS PR on branch `adjust/ELITEA-2451-step-name`).

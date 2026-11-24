@@ -813,7 +813,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.PICKER_GROUP_TITLE": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10755,
+      "line": 10768,
       "kind": "xpath",
       "selector": ".//span[normalize-space(text())='{}']",
       "suggested_testid": "pipeline-agent-node-agent-select-group-title-{}",
@@ -821,6 +821,18 @@
       "state": "raw",
       "added": "2026-11-18",
       "updated": "2026-11-18",
+      "history": []
+    },
+    "pages/pipeline_detail_page.py::PipelineDetailPage.RUN_DETAILS_TIMELINE_STEP_NAME": {
+      "file": "pages/pipeline_detail_page.py",
+      "line": 2160,
+      "kind": "xpath",
+      "selector": "./preceding-sibling::*//div[normalize-space(text())!='']",
+      "suggested_testid": "pipeline-run-details-timeline-step-name-{}",
+      "description": "rungs 1-4 failed: step name text has no testid/role/label on DEV; scoped from the per-index dot testid to its preceding-sibling name container",
+      "state": "raw",
+      "added": "2026-11-24",
+      "updated": "2026-11-24",
       "history": []
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.canvas_edges": {
@@ -945,7 +957,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.tool_card_reload_button": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10798,
+      "line": 10811,
       "kind": "css",
       "selector": "#RefreshButton",
       "suggested_testid": "pipeline-tool-card-reload-button",
@@ -981,7 +993,7 @@
     },
     "pages/pipeline_detail_page.py::PipelineDetailPage.version_warning_icon": {
       "file": "pages/pipeline_detail_page.py",
-      "line": 10806,
+      "line": 10819,
       "kind": "label",
       "selector": "Toolkit(s) configuration issue in",
       "suggested_testid": "pipeline-version-warning-icon",
@@ -1640,12 +1652,12 @@
       "history": []
     }
   },
-  "last_sync": "2026-11-23",
+  "last_sync": "2026-11-24",
   "metric": {
-    "declared_total": 1536,
+    "declared_total": 1537,
     "declared_testid": 1401,
-    "declared_non_testid": 135,
-    "non_testid_with_hint": 114,
+    "declared_non_testid": 136,
+    "non_testid_with_hint": 115,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 35,
@@ -1654,9 +1666,9 @@
       "locator": 1,
       "role": 45,
       "testid": 1401,
-      "xpath": 32
+      "xpath": 33
     },
-    "locator_debt": 0.0879,
+    "locator_debt": 0.0885,
     "unmanaged_handles": 309
   }
 }
