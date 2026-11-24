@@ -1,0 +1,27 @@
+{
+  "v": 1,
+  "session": "e17a096e-3f0e-4589-a776-91e7ea54f583",
+  "intent": "automation",
+  "batch": "adjust-timeline-step-name",
+  "cases": [
+    "ELITEA-2443",
+    "ELITEA-2444",
+    "ELITEA-2451"
+  ],
+  "declaredAt": "2026-11-24T10:44:29.596Z",
+  "updatedAt": "2026-11-24T10:44:29.641Z",
+  "outcomes": {
+    "ELITEA-2451": {
+      "outcome": "automated",
+      "at": "2026-11-24T10:44:29.641Z"
+    },
+    "ELITEA-2443": {
+      "outcome": "automated",
+      "at": "2026-11-24T10:44:29.641Z"
+    },
+    "ELITEA-2444": {
+      "outcome": "automated",
+      "at": "2026-11-24T10:44:29.641Z"
+    }
+  }
+}
