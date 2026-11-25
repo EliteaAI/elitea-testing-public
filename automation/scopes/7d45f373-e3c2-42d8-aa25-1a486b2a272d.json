@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "7d45f373-e3c2-42d8-aa25-1a486b2a272d",
+  "intent": "automation",
+  "batch": "adjust-elitea-4635",
+  "cases": [
+    "ELITEA-4635"
+  ],
+  "declaredAt": "2026-11-25T22:12:46.051Z",
+  "updatedAt": "2026-11-25T22:24:15.173Z",
+  "outcomes": {
+    "ELITEA-4635": {
+      "outcome": "automated",
+      "at": "2026-11-25T22:24:15.132Z"
+    }
+  },
+  "closedAt": "2026-11-25T22:24:15.173Z"
+}
