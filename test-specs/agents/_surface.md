@@ -833,3 +833,5 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - M from `GET /api/v2/admin/plugin_config_values/administration/guardrails` (`values.max_conversation_starters`) and `/api/v2/elitea_core/platform_settings/prompt_lib` (`conversation_starters_max`); DEV = 6. Cookie-session (`context.request`) works; Bearer token got 401.
 - Create form has `Cancel` (no testid) -> dialog "discard changes?" with `Discard` (no testids); `discard-button` only exists on the edit page.
 - Playwright MCP Chrome missing on this host; probed with repo Python Playwright + storage state.
+
+**Resolved/added during ELITEA-4863 implementation:** the Agents list `+` is `agents-add-button` -> `agents-add-new` (the old `sidebar-create-button` no longer exists on DEV); added `AgentsListPage.open_new_agent_form_via_add_menu()`. Limit APIs read via `page.request` (cookie auth). Create-form discard dialog `role=dialog` has no accessible name; the confirm button `role=button name=Discard` is the handle. Local env lacked `APP_PREFIX`/`.env.test`, run with `APP_PREFIX=/app`.
