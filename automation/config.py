@@ -244,8 +244,8 @@ class Settings(BaseSettings):
     #   (items[].name / items[].display_name). Override per env, keep them paired.
     # model_project_id=1 matches UI-created agents (0 may cause issues)
     # ------------------------------------------------------------------
-    default_model_name: str = "global.openai.gpt-6-luna"
-    default_model_display_name: str = "Bedrock-GPT-6-Luna"
+    default_model_name: str = "global.anthropic.claude-haiku-5-5"
+    default_model_display_name: str = "Anthropic Claude Haiku 5.5"
     default_model_project_id: int = 1
 
     # ------------------------------------------------------------------
