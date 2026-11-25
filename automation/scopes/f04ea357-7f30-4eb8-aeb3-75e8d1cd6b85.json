@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "f04ea357-7f30-4eb8-aeb3-75e8d1cd6b85",
+  "intent": "automation",
+  "batch": "elitea-4863-chat-starters-limit",
+  "cases": [
+    "ELITEA-4863"
+  ],
+  "declaredAt": "2026-11-25T11:48:26.365Z",
+  "updatedAt": "2026-11-25T11:48:40.468Z",
+  "outcomes": {
+    "ELITEA-4863": {
+      "outcome": "automated",
+      "at": "2026-11-25T11:48:26.406Z"
+    }
+  },
+  "closedAt": "2026-11-25T11:48:40.468Z"
+}
