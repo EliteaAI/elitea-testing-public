@@ -465,6 +465,21 @@
       ]
     },
     {
+      "automation_test_id": "tests.ui.agents.test_agent_chat_starters_limit.test_chat_starters_limit_counter_and_disabled_add",
+      "markers": [
+        "agents",
+        "p1",
+        "regression",
+        "ui"
+      ],
+      "tms_case_ids": [
+        "ELITEA-4863"
+      ],
+      "tms_case_links": [
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/configurable-chat-starters-limit/ELITEA-4863_add-chat-starters-up-to-the-admin-limit-and-verify-the-counter.md"
+      ]
+    },
+    {
       "automation_test_id": "tests.ui.agents.test_agent_copy_version_link.TestAgentCopyVersionLink.test_copy_version_link_produces_version_specific_url",
       "markers": [
         "agents",
