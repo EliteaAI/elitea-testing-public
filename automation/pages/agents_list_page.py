@@ -221,6 +221,15 @@ class AgentsListPage(BasePage):
         description="Agent card name (title) — collection locator, one per visible card",
     )
 
+    agents_add_button = LocatorDescriptor(
+        testid="agents-add-button",
+        description="Agents list '+' button that opens the add menu (replaces the removed sidebar-create-button)",
+    )
+    agents_add_new_item = LocatorDescriptor(
+        testid="agents-add-new",
+        description="'New Agent' item of the agents add menu",
+    )
+
     # Shared Card.jsx component testids (ELITEA-1899 testid-only rework —
     # `entity-card` mirrors the pre-existing pattern used by
     # CredentialsListPage/SkillsListPage/McpListPage; `entity-card-icon` is
@@ -472,6 +481,14 @@ class AgentsListPage(BasePage):
         self.create_agent_button.wait_for(state="visible", timeout=timeout)
         self.create_agent_button.click(force=True)
         self.wait_for_network(timeout=timeout)
+
+    @action("Open new agent form via add menu")
+    def open_new_agent_form_via_add_menu(self, timeout: int = 15000):
+        """Click '+' then 'New Agent' in the Agents list and wait for the create route."""
+        self.dismiss_banner_if_present()
+        self.agents_add_button.click()
+        self.agents_add_new_item.click()
+        self.page.wait_for_url(re.compile(r"/agents/create"), timeout=timeout)
 
     # ------------------------------------------------------------------
     # View switching

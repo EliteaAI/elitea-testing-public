@@ -9,6 +9,7 @@ Handles: /agents/create and /agents/all/{id} (edit mode)
 import logging
 import re
 
+from config import settings
 from playwright.sync_api import Locator, Page, expect
 from utils.actions import action
 
@@ -112,6 +113,40 @@ class AgentFormPage(BasePage):
         testid="agent-conversation-starter-add",
         fallback=lambda page: page.locator('div[data-tour="agent-conversation-starters"] button.MuiButton-iconLabel'),
         description="Add conversation starter button"
+    )
+
+    conversation_starters_limit_counter = LocatorDescriptor(
+        testid="agent-conversation-starters-limit-counter",
+        description="Section counter 'n/M starters added.' (ELITEA-4863)",
+    )
+
+    conversation_starter_add_tooltip_wrapper = LocatorDescriptor(
+        css='[aria-label="You have reached the limit of chat starters"]',
+        suggested_testid="agent-conversation-starter-add-tooltip-wrapper",
+        description="Wrapper div of the disabled add button carrying the at-limit tooltip; no testid on DEV",
+    )
+
+    at_limit_tooltip = LocatorDescriptor(
+        role="tooltip",
+        name="You have reached the limit of chat starters",
+        suggested_testid="agent-conversation-starter-limit-tooltip",
+        description="MUI tooltip shown on hovering the disabled add button",
+    )
+
+    create_cancel_button = LocatorDescriptor(
+        role="button",
+        name="Cancel",
+        exact=True,
+        suggested_testid="agent-create-cancel-button",
+        description="Cancel button on the create form (the tab-bar discard-button is absent on create)",
+    )
+
+    create_discard_dialog_confirm = LocatorDescriptor(
+        role="button",
+        name="Discard",
+        exact=True,
+        suggested_testid="agent-create-discard-confirm-button",
+        description="Discard button of the create-form confirmation dialog; no testid on DEV",
     )
 
     conversation_starter_inputs = LocatorDescriptor(
@@ -1040,3 +1075,46 @@ class AgentFormPage(BasePage):
         # Use inner_text() instead of text_content() for more reliable extraction
         # from CodeMirror's contenteditable div - text_content() can miss chars
         return cm_content.inner_text() or ""
+
+    # ------------------------------------------------------------------
+    # Chat-starters admin limit (ELITEA-4863)
+    # ------------------------------------------------------------------
+
+    def _api_get_json(self, path: str, timeout: int = 15000) -> dict:
+        """GET ``<elitea_api_base><path>`` with the browser session cookies and return the JSON body."""
+        url = f"{settings.elitea_api_base.rstrip('/')}{path}"
+        response = self.page.request.get(url, timeout=timeout)
+        assert response.ok, f"GET {url} -> {response.status}"
+        return response.json()
+
+    @action("Read admin chat-starters limit")
+    def get_admin_conversation_starters_limit(self) -> int:
+        """Return ``max_conversation_starters`` from the admin guardrails settings."""
+        data = self._api_get_json("/admin/plugin_config_values/administration/guardrails")
+        return int(data["values"]["max_conversation_starters"])
+
+    @action("Read editor chat-starters limit")
+    def get_editor_conversation_starters_limit(self) -> int:
+        """Return ``conversation_starters_max`` delivered to the editor via platform settings."""
+        data = self._api_get_json("/elitea_core/platform_settings/prompt_lib")
+        return int(data["conversation_starters_max"])
+
+    @action("Add conversation starter and wait for count")
+    def add_conversation_starter_and_wait_count(self, text: str, expected_count: int, timeout: int = 5000):
+        """Click add, fill the new (last) field and wait until ``expected_count`` fields exist."""
+        self.conversation_starter_add_button.click()
+        expect(self.conversation_starter_inputs).to_have_count(expected_count, timeout=timeout)
+        self.conversation_starter_inputs.last.fill(text)
+
+    @action("Hover at-limit add button wrapper")
+    def hover_add_button_at_limit(self, timeout: int = 5000):
+        """Hover the wrapper of the disabled add button (the tooltip lives on the wrapper)."""
+        self.conversation_starter_add_tooltip_wrapper.hover(timeout=timeout)
+
+    @action("Cancel create form and confirm discard")
+    def cancel_create_and_confirm_discard(self, timeout: int = 10000):
+        """Click Cancel on the create form, confirm Discard in the dialog and wait for it to close."""
+        self.create_cancel_button.click()
+        expect(self.create_discard_dialog_confirm).to_be_visible(timeout=timeout)
+        self.create_discard_dialog_confirm.click()
+        expect(self.create_discard_dialog_confirm).to_be_hidden(timeout=timeout)

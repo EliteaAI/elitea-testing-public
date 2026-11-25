@@ -839,3 +839,5 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - Testids on DEV: `agent-conversation-starters-limit-counter` (text `n/M starters added.`), `agent-conversation-starter-add`, `agent-conversation-starter-input`, `agent-conversation-starters-section`.
 - Add button is disabled while the LAST starter field is empty: fill field n before the next add. At limit, button is wrapped by `div[aria-label="You have reached the limit of chat starters"]`; hover shows `role=tooltip`.
 - Create form: `Cancel` button (role+name, no testid) -> dialog "Are you sure you want to discard changes?" with `Cancel`/`Discard` (no testids). `discard-button` absent on create.
+
+**Resolved/added during ELITEA-4863 implementation:** the Agents list `+` is `agents-add-button` -> `agents-add-new` (the old `sidebar-create-button` no longer exists on DEV); added `AgentsListPage.open_new_agent_form_via_add_menu()`. Limit APIs read via `page.request` (cookie auth). Create-form discard dialog `role=dialog` has no accessible name; the confirm button `role=button name=Discard` is the handle. Local env lacked `APP_PREFIX`/`.env.test`, run with `APP_PREFIX=/app`.
