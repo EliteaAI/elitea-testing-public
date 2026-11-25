@@ -1,0 +1,106 @@
+{
+  "batch": "elitea-4863-chat-starters-limit",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-elitea-4863-chat-starters-limit",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      17.09,
+      18.51,
+      18.64
+    ],
+    "by": "lead",
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4863",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The case snapshot file is missing at .agents/automation/elitea-4863-chat-starters-limit/cases/ELITEA-4863.md. The AFS read the case from the TMS sibling clone."
+        },
+        {
+          "kind": "note",
+          "note": "The Bearer ELITEA_API_TOKEN returned 401 on the two limit endpoints when called via requests. Implement the API reads through the page's context.request (cookie auth), which returned 200."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 10 says Discard. On the create form the control is Cancel, which opens a confirm dialog with a Discard button. Behaviour matches the case's intent.",
+          "ref": "ELITEA-4863"
+        },
+        {
+          "kind": "note",
+          "note": "The existing cancel_button field in the page object has a testid that DEV does not serve on the create form. The implementer should declare a role+name ladder locator with suggested_testid instead."
+        },
+        {
+          "kind": "note",
+          "note": "The Bearer ELITEA_API_TOKEN returned 401 on the admin guardrails and prompt_lib endpoints, per the analyst. The test reads the limit through `page.request` (browser cookie auth) instead, which works."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 10 says 'Discard', but the create form shows 'Cancel', then a confirm dialog with 'Discard'. Behaviour matches the intent. This is a case-text clarification only, not a defect.",
+          "ref": "ELITEA-4863"
+        },
+        {
+          "kind": "note",
+          "note": "`pytest-rerunfailures` is missing from the repo `.venv`, so the `pytest.ini` addopts (`--reruns` etc.) make pytest fail at startup. The `.env.test` symlink is also missing. Tests were run with `-o addopts=\"\"` and `APP_PREFIX=/app`. The gate agent needs the same workaround or the plugin installed."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep on `git diff main...tests/ELITEA-4863-chat-starters-limit -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'` returned 0 hits (no matches). Added declarations are class-level and carry well-formed sugge\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case<->AFS<->diff: all 10 steps map to code. Step 1 asserts 1<=M<=10 and a 200 via response.ok. Step 2 asserts M equals the editor limit. Step 3 asserts the URL and form load. Step 4 asserts counter 0/M and add enabled. Steps 5-7 loop n=1..M with a counter assertion each iteration, enabled-before-M, and disabled at M. Step 8 asserts the tooltip text on hover of the wrapper. Step 9 as\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_chat_starters_limit.py"
+        },
+        {
+          "kind": "note",
+          "note": "Step 9 says 'try to click the disabled add button', but the test only asserts `to_be_disabled` plus an unchanged field count and counter. The AFS chose this deliberately, and a disabled button cannot be clicked, so the strength is acceptable. A `click(force=True)` attempt would be the literal reading. Optional.",
+          "ref": "automation/tests/ui/agents/test_agent_chat_starters_limit.py:67"
+        },
+        {
+          "kind": "note",
+          "note": "`conversation_starter_inputs.last.fill(...)` in `add_conversation_starter_and_wait_count` is a `.last` pick on a declared locator. It is gated by a count assertion, so it targets the freshly added field and is not a sibling pick. It is outside the mechanical grep, but it is a mild positional smell. Acceptable as 'the newly appended field'.",
+          "ref": "automation/pages/agent_form_page.py:1103"
+        },
+        {
+          "kind": "note",
+          "note": "Step 5 expects the typed text to appear in the field, but only the counter is asserted. The step 10 negative check treats an empty search result as 'absent' via `get_agent_card_names`, which returns [] on a 5s timeout. Both are weak but sound. Optional: assert the field value after fill."
+        },
+        {
+          "kind": "note",
+          "note": "Drift between AFS and implementation: the AFS suggested_testid names `agent-cancel-button` and `agent-discard-confirm-button`, while the code uses `agent-create-cancel-button` and `agent-create-discard-confirm-button`. The AFS also claims the existing `cancel_button` field 'has a testid not served'. Hints are informational, so this is not blocking. Align the AFS on the next touch. The case snapsho\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l1_chat-starters-limit-counter-and-disabled-add_ELITEA-4863.md"
+        },
+        {
+          "kind": "note",
+          "note": "ruff is not installed in `.venv` here (`../.venv/bin/ruff` missing), so lint was not run. A possible I001 nit is that `from config import settings` sits in the third-party import block above `playwright` in `agent_form_page.py`. The implementer should confirm with ruff or the gate.",
+          "ref": "automation/pages/agent_form_page.py:12"
+        },
+        {
+          "kind": "note",
+          "note": "Scope check: the diff touches this repo only. Page-object changes are additive. The agents list gained `open_new_agent_form_via_add_menu`, because the old sidebar-create-button no longer exists on DEV. Case text 'Discard' versus the live Cancel->Discard dialog is a clarification, not a defect, and the AFS records it. The Bearer token returning 401 on the admin endpoints was not investigated. The t\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/agents/l1_chat-starters-limit-counter-and-disabled-add_ELITEA-4863.md",
+      "branch": "tests/ELITEA-4863-chat-starters-limit",
+      "gate": {
+        "runs": 3,
+        "seconds": []
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
