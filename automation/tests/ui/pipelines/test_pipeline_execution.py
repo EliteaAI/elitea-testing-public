@@ -28,6 +28,7 @@ Usage:
 """
 
 import pytest
+from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipelines_list_page import PipelinesListPage
 import allure
@@ -269,7 +270,6 @@ class TestExecutePipelineStreaming:
     """
 
     USER_PROMPT = "Write a 500-word essay on AI"
-    MODEL_DISPLAY_NAME = "Anthropic Claude Haiku 5.5"  # single place to edit when the DEV model catalog changes
     MIN_RESPONSE_LENGTH = 200
 
     @pytest.mark.tms("ELITEA-2017", "ELITEA-2058")
@@ -301,13 +301,16 @@ class TestExecutePipelineStreaming:
            (fixture — API-created, ready for execution).
         2. [ELITEA-2058] Verify the Model Selector Menu button is visible
            and shows a non-empty default model name before any switch.
-        3. Select "Anthropic Claude Haiku 5.5" via the Model Selector Menu.
+           The default is the model the fixture created the pipeline with
+           (``settings.default_model_name`` / ``default_model_display_name``).
+        3. Open the Model Selector Menu, read every listed model and select
+           the one right after the selected (default) one — no hardcoded name.
         4. Send "Write a 500-word essay on AI".
         5. Verify the response streams progressively (tokens appear
            incrementally, not all at once).
         6. Verify the final response is complete and exceeds 200 characters.
         7. [ELITEA-2058] Verify the settled response's model-attribution
-           chip names the selected model ("Anthropic Claude Haiku 5.5"), proving execution
+           chip names the selected model, proving execution
            used the selected model, not the pipeline's prior default.
         8. Verify no timeout or error occurs during streaming.
         """
@@ -340,15 +343,29 @@ class TestExecutePipelineStreaming:
                 "Model selector should display a non-empty default model name "
                 "before any interaction"
             )
+            # The fixture pipeline is created with settings.default_model_name;
+            # the selector must show that model's UI label
+            # (DEFAULT_MODEL_NAME / DEFAULT_MODEL_DISPLAY_NAME are one pair).
+            assert default_model == settings.default_model_display_name, (
+                f"Pipeline was created with model '{settings.default_model_name}', so the "
+                f"selector should show '{settings.default_model_display_name}', got "
+                f"'{default_model}' — check that DEFAULT_MODEL_NAME and "
+                f"DEFAULT_MODEL_DISPLAY_NAME name the same model"
+            )
 
         with allure.step(
-            f"Step 3 — Select a model via the Model Selector Menu "
-            f"('{self.MODEL_DISPLAY_NAME}')"
+            "Step 3 — Select a different model via the Model Selector Menu "
+            "(the one listed after the selected model)"
         ):
             pipelines.open_model_selector()
-            pipelines.select_llm_model(self.MODEL_DISPLAY_NAME)
-            assert pipelines.get_selected_model_name() == self.MODEL_DISPLAY_NAME, (
-                f"Model selector should display '{self.MODEL_DISPLAY_NAME}' after selection"
+            selected_model = pipelines.select_next_llm_model()
+            allure.attach(selected_model, "Selected model", allure.attachment_type.TEXT)
+            assert selected_model != default_model, (
+                f"The next model should differ from the default '{default_model}', "
+                f"got '{selected_model}'"
+            )
+            assert pipelines.get_selected_model_name() == selected_model, (
+                f"Model selector should display '{selected_model}' after selection"
             )
 
         with allure.step("Step 4 — Ask a question requiring a lengthy answer"):
@@ -404,12 +421,12 @@ class TestExecutePipelineStreaming:
 
         with allure.step(
             "Step 7 — [ELITEA-2058] Verify the settled response's model-"
-            f"attribution chip names the selected model ('{self.MODEL_DISPLAY_NAME}')"
+            "attribution chip names the selected model"
         ):
             chip_text = pipelines.get_answer_model_chip_text()
-            assert self.MODEL_DISPLAY_NAME in chip_text, (
+            assert selected_model in chip_text, (
                 f"Response model-attribution chip should name the selected model "
-                f"'{self.MODEL_DISPLAY_NAME}', got: {chip_text!r}"
+                f"'{selected_model}', got: {chip_text!r}"
             )
 
         with allure.step("Step 8 — Verify no timeout or error occurred during streaming"):

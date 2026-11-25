@@ -377,8 +377,8 @@ def pipeline_with_variable_task_llm_id(pipeline_api: PipelineAPI, request):
     (same generic helper :func:`pipeline_with_fstring_llm_id` /
     :func:`pipeline_with_two_llm_nodes_id` already use) so the mapping is
     correct — and persisted — from creation, with no separate UI Save step
-    needed. Uses the default ``gpt-5.2`` model (``_default_llm_settings()``'s
-    fallback) — the DEV-backend default (Claude 4.5 Sonnet, on the shared
+    needed. Uses the configured default model (``settings.default_model_name`` via
+    ``_default_llm_settings()``) — the DEV-backend default (Claude 4.5 Sonnet, on the shared
     ``test-pipeline`` UI fixture only) 400s with no configured LLM-provider
     fallback; AFS § Test Data records this as environment test data, not an
     Attach-Files defect.

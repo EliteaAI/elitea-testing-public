@@ -146,7 +146,9 @@ def test_pipeline_test_panel_controls_and_session(page, pipeline_with_fstring_ll
         expect(pp.test_pipeline_panel).to_be_visible(timeout=T)
         expect(items).to_have_count(6, timeout=RUN_TIMEOUT)
         expect(pp.skill_test_last_response.last).not_to_be_empty(timeout=RUN_TIMEOUT)
-        assert len(pp.get_last_embedded_chat_message_text().splitlines()) > 1, "Poem should span several lines"
+        # Completed answer = its model chip with the run duration ("<model> (LLM1)· 1.2s"), one chip per answer.
+        expect(pp.chat_answer_model_chip).to_have_count(3, timeout=RUN_TIMEOUT)
+        expect(pp.chat_answer_model_chip.last).to_have_text(re.compile(r"·\s*\d+(\.\d+)?\s*m?s\b"), timeout=RUN_TIMEOUT)
         expect(pp.node_card_running(LLM)).to_have_count(0, timeout=RUN_TIMEOUT)
 
     with allure.step("Step 12 — Drag the handle wider; the width survives a reload"):

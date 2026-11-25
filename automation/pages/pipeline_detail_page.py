@@ -832,6 +832,12 @@ class PipelineDetailPage(PipelineFormPage):
     model_selector_button = LocatorDescriptor(testid="model-selector-button")
     model_selector_name = LocatorDescriptor(testid="model-selector-name")
     MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+    # One menu row per model, in rendered order. The ANY selector above also
+    # matches each row's ``model-selector-option-description-{name}`` child;
+    # the ``role="option"`` filter keeps only the rows themselves
+    # (EliteaUI ``widgets/llm-model-selector/ui/ModelRow.jsx`` on main).
+    MODEL_SELECTOR_OPTION_ROW_SELECTOR = '[data-testid^="model-selector-option-"][role="option"]'
+    MODEL_SELECTOR_OPTION_TEMPLATE = '[data-testid="model-selector-option-{}"][role="option"]'
 
     # AI response's model-attribution chip (ELITEA-2058) — mirrors
     # ChatPage.answer_model_chip (chat_page.py:620) exactly; renders through
@@ -8870,6 +8876,66 @@ class PipelineDetailPage(PipelineFormPage):
         option.first.wait_for(state="visible", timeout=timeout)
         option.first.click()
         logger.info("LLM model '%s' selected", display_name)
+
+    def get_model_options(self) -> list[dict]:
+        """Return every row of the OPEN model-selector dropdown, in rendered order.
+
+        Call after :meth:`open_model_selector`. Each item is
+        ``{"name": <API model name>, "display_name": <rendered label>,
+        "selected": <bool>}``: ``name`` is the ``model-selector-option-{name}``
+        testid suffix, ``display_name`` the row's first text line, and
+        ``selected`` its ``aria-selected`` state.
+
+        LOCATOR: ``MODEL_SELECTOR_OPTION_ROW_SELECTOR`` (testid prefix +
+        ``role="option"``), enumerated in full, so no row is picked by position.
+        """
+        prefix = "model-selector-option-"
+        rows = self.page.locator(self.MODEL_SELECTOR_OPTION_ROW_SELECTOR).evaluate_all(
+            """els => els.map(e => ({
+                testid: e.getAttribute('data-testid'),
+                text: (e.innerText || '').trim(),
+                selected: e.getAttribute('aria-selected') === 'true',
+            }))"""
+        )
+        return [
+            {
+                "name": r["testid"][len(prefix):],
+                "display_name": r["text"].splitlines()[0].strip() if r["text"] else "",
+                "selected": r["selected"],
+            }
+            for r in rows
+        ]
+
+    @action("Select the LLM model after the selected one")
+    def select_next_llm_model(self, timeout: int = 5000) -> str:
+        """Select the model listed right after the currently selected one.
+
+        Call after :meth:`open_model_selector`. Reads the full list
+        (:meth:`get_model_options`), finds the ``aria-selected`` row and
+        clicks the next one, wrapping to the first row when the selected row
+        is last. Nothing is hardcoded, so a model-catalog change on the env
+        cannot break the pick.
+
+        Returns:
+            The rendered display name of the newly selected model.
+        """
+        options = self.get_model_options()
+        selected = [i for i, o in enumerate(options) if o["selected"]]
+        assert len(options) >= 2, (
+            f"Model selector needs at least 2 models to switch, got {len(options)}: {options}"
+        )
+        assert len(selected) == 1, (
+            f"Expected exactly one selected model in the dropdown, got {len(selected)}: {options}"
+        )
+        target = options[(selected[0] + 1) % len(options)]
+        logger.info(
+            "Selecting the model after '%s': '%s' (%s)",
+            options[selected[0]]["display_name"], target["display_name"], target["name"],
+        )
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_TEMPLATE.format(target["name"]))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        return target["display_name"]
 
     def get_answer_model_chip_text(self, timeout: int = 5000) -> str:
         """Return the settled response's model-attribution chip text.

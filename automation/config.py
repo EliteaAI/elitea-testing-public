@@ -233,11 +233,19 @@ class Settings(BaseSettings):
     public_project_id: int = 1
 
     # ------------------------------------------------------------------
-    # Default LLM settings for API-created agents / pipelines
-    # Using gpt-5.2 as cheap default model for cost efficiency in tests
+    # Default LLM model for tests (env: DEFAULT_MODEL_NAME / DEFAULT_MODEL_DISPLAY_NAME)
+    # default_model_name: the API id written into llm_settings.model_name of
+    #   API-created agents / pipelines.
+    # default_model_display_name: the SAME model's label as the UI renders it
+    #   (model selector option, answer model chip) — for UI tests that select
+    #   or assert a model by name.
+    # Both MUST name a model the target env serves:
+    #   GET /api/v2/configurations/models/{project_id}?include_shared=true
+    #   (items[].name / items[].display_name). Override per env, keep them paired.
     # model_project_id=1 matches UI-created agents (0 may cause issues)
     # ------------------------------------------------------------------
-    default_model_name: str = "gpt-5.2"
+    default_model_name: str = "global.openai.gpt-6-luna"
+    default_model_display_name: str = "Bedrock-GPT-6-Luna"
     default_model_project_id: int = 1
 
     # ------------------------------------------------------------------

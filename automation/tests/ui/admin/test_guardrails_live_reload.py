@@ -193,7 +193,7 @@ def guardrails_test_agent(
     The toolkit is attached via UI (AgentDetailPage.add_toolkit) because
     the API doesn't support attaching toolkits directly during creation.
 
-    Uses default model from config (gpt-5.2) for cost efficiency.
+    Uses the default model from config (``settings.default_model_name``).
     """
     name = "guardrails_test_agent"
     description = "Agent for guardrails live-reload tests"
