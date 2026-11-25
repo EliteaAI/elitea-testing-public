@@ -59,12 +59,28 @@ class SkillDetailPage(SkillFormPage):
 
     test_skill_button = LocatorDescriptor(
         testid="skill-test-button",
-        description="Toolbar 'Test Skill' button (SkillEditorWorkspace.jsx) — opens the SkillTestPanel",
+        description="'Test' button (aria-label 'Test skill') in the Instructions (SKILL.md) header "
+        "(SkillTestButton.jsx, EL-7573) — opens the Test column",
+    )
+
+    instructions_header = LocatorDescriptor(
+        testid="skill-instructions-header",
+        description="Header of the Instructions (SKILL.md) pane — hosts the Test button (EL-7573)",
+    )
+
+    TEST_BUTTON_IN_HEADER = ScopedLocator(
+        testid="skill-test-button",
+        description="Test button resolved inside the Instructions header scope",
+    )
+
+    skill_view_settings_tab = LocatorDescriptor(
+        testid="skill-view-settings",
+        description="Settings tab of the left tab bar (neighbour of Edit with AI, EL-7573)",
     )
 
     edit_with_ai_button = LocatorDescriptor(
         testid="edit-skill-with-ai-button",
-        description="Toolbar 'Edit with AI' button, the neighbour of 'Test Skill' (ELITEA-4635)",
+        description="'Edit with AI' button at the right end of the Settings / Files tab bar (ELITEA-4635, EL-7573)",
     )
 
     TEST_PANEL_ALERT = ScopedLocator(
@@ -611,7 +627,7 @@ class SkillDetailPage(SkillFormPage):
 
     @action("Open the Test Skill panel")
     def open_test_skill_panel(self, timeout: int = 10000):
-        """Open the SkillTestPanel via the toolbar 'Test Skill' button.
+        """Open the SkillTestPanel via the 'Test' button in the Instructions header.
 
         Idempotent: no-op when the panel is already visible. Waits for the
         button to be enabled first.

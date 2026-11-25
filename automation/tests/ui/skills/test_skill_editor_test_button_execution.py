@@ -62,20 +62,25 @@ class TestSkillEditorTestButtonExecution:
         skill_id = int(created["id"] if isinstance(created, dict) else created)
         conv_id = None
         try:
-            with allure.step("Step 1 — Open the skill editor: Test Skill button next to Edit with AI, panel closed"):
+            with allure.step("Step 1 — Open skill editor: Test in Instructions header, Edit with AI in tab bar"):
                 skills.navigate()
                 skills.dismiss_announcement_dialog_if_present()
                 detail.navigate(skill_id)
                 expect(detail.test_skill_button).to_be_visible(timeout=NAVIGATION_TIMEOUT)
                 expect(detail.test_skill_button).to_be_enabled()
-                expect(detail.test_skill_button).to_contain_text("Test Skill")
+                expect(detail.test_skill_button).to_have_text("Test")
+                expect(detail.test_skill_button).to_have_attribute("aria-label", "Test skill")
+                expect(detail.TEST_BUTTON_IN_HEADER.within(detail.instructions_header)).to_be_visible()
                 expect(detail.edit_with_ai_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(detail.skill_view_settings_tab).to_be_visible()
+                expect(detail.TEST_BUTTON_IN_HEADER.within(detail.instructions_header)).to_have_count(1)
                 expect(detail.test_panel).not_to_be_visible()
 
-            with allure.step("Step 2 — Click Test Skill: the test panel opens"):
+            with allure.step("Step 2 — Click Test: the Test column opens (panel=test)"):
                 detail.dismiss_announcement_dialog_if_present()
                 detail.test_skill_button.click()
                 expect(detail.test_panel).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(page).to_have_url(re.compile(r"[?&]panel=test(&|$)"))
 
             with allure.step("Step 3 — Panel shows the input (placeholder) and no messages"):
                 expect(chat.message_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)

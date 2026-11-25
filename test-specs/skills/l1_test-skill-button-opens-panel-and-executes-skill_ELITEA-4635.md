@@ -24,8 +24,8 @@
 - Transit: `SkillsListPage().navigate()` + dismiss + `SkillDetailPage.navigate(id)` (direct detail navigation first-load can show a 404/blank if the list was never visited; visit list first as 4634 does).
 
 ## Observed flow (live)
-1. Skill editor `/skills/all/{id}`: toolbar has exactly two buttons: `edit-skill-with-ai-button` ("Edit with AI") then `skill-test-button` ("Test Skill"); visible+enabled; `skill-test-panel` not visible before click.
-2. Click `skill-test-button` -> `skill-test-panel` visible (right side). Panel contains `chat-message-input` (placeholder "Type your message..."), `chat-send-button`, `chat-attach-button`, `model-selector-button`, header `skill-run-history-button`, `chat-clear-button`, `skill-test-panel-close`.
+1. Skill editor `/skills/all/{id}`: **[superseded 2026-11-25, see Adjustment]** originally the toolbar had two buttons `edit-skill-with-ai-button` ("Edit with AI") then `skill-test-button` ("Test Skill"). Now: `skill-test-button` (text "Test", aria-label "Test skill") sits in the Instructions header (`skill-instructions-header`); `edit-skill-with-ai-button` is at the right end of the Settings/Files tab bar. Visible+enabled; `skill-test-panel` not visible before click.
+2. Click `skill-test-button` -> `skill-test-panel` visible (now a third column "Test" inside `skill-run-pane`; URL gets `?panel=test`). Panel contains `chat-message-input` (placeholder "Type your message..."), `chat-send-button`, `chat-attach-button`, `model-selector-button`, header `skill-run-history-button`, `chat-clear-button`, `skill-test-panel-close`.
 3. Fill "run" -> input value "run". Click send. Two `chat-message-item`: user (text "run", author) then AI.
 4. Reply ~7s total: AI item contains `chat-answer-thought-accordion` "Thought for 2 secs", `chat-answer-tool-chip` "Skill: <name>", `chat-answer-model-chip`, `chat-answer-chip-duration`; `skill-test-last-response` text `RUN`; action buttons present.
 5. URL -> `/skills/all/{id}?run={convId}`. Network non-socket POST: only `conversations/prompt_lib/575` (201). Console errors: none. `[role=alert]` count 0.
@@ -33,17 +33,19 @@
 ## Handles Reference (verified on DEV 2026-11-11)
 | rung | handle | suggested_testid | provenance |
 |---|---|---|---|
-| testid | `skill-test-button` (`SkillDetailPage.test_skill_button`) | - | testid on DEV ✓ |
-| testid | `edit-skill-with-ai-button` | - | testid on DEV ✓ (neighbour check, step 1) |
-| testid | `skill-test-panel` (`test_panel`) | - | testid on DEV ✓ |
+| testid | `skill-test-button` (`SkillDetailPage.test_skill_button`; scoped via `TEST_BUTTON_IN_HEADER` ScopedLocator within `instructions_header`) - text "Test", aria-label "Test skill", lives in the Instructions header | - | testid on DEV ✓ (unchanged; location moved, PR #1575) |
+| testid | `skill-instructions-header` (`instructions_header`) - scope for the Test button | - | testid on DEV ✓ |
+| testid | `skill-view-settings` / `skill-view-files` (`skill_view_settings_tab`) - tab bar; `edit-skill-with-ai-button` now at its right end | - | testid on DEV ✓ |
+| testid | `edit-skill-with-ai-button` | - | testid on DEV ✓ (relocated to tab bar) |
+| testid | `skill-test-panel` (`test_panel`) inside `skill-run-pane` | - | testid on DEV ✓ |
 | testid | `chat-message-input`, `chat-send-button`, `chat-message-item`, `skill-test-last-response` | - | testid on DEV ✓ (existing in SkillDetailPage/ChatPage) |
 | testid | `chat-answer-thought-accordion`, `chat-answer-tool-chip`, `chat-answer-model-chip`, `chat-answer-chip-duration` | - | testid on DEV ✓ (check whether ChatPage/SkillDetailPage already declare; else add class-level testid fields scoped to the AI message) |
 | testid | `platform-banner-center`, `platform-banner-close` | - | testid on DEV ✓ |
 | attr | placeholder "Type your message..." via `get_attribute("placeholder")` on `chat-message-input` | - | observed |
 
 ## Steps (AFS)
-1. Create skill via API; open list (dismiss banners) and `SkillDetailPage.navigate(id)`. **Verify** `skill-test-button` visible+enabled, text "Test Skill"; `edit-skill-with-ai-button` also present (case "next to Edit with AI"); `skill-test-panel` not visible.
-2. Click `skill-test-button`. **Verify** `skill-test-panel` visible.
+1. Create skill via API; open list (dismiss banners) and `SkillDetailPage.navigate(id)`. **Verify** `skill-test-button` within `skill-instructions-header` is visible+enabled, text "Test" (was "Test Skill"); `edit-skill-with-ai-button` present in the Settings/Files tab bar; `skill-test-panel` not visible.
+2. Click `skill-test-button`. **Verify** `skill-test-panel` visible AND URL contains `panel=test`.
 3. **Verify** `chat-message-input` visible, placeholder "Type your message...", `chat-send-button` visible; `chat-message-item` count 0.
 4. Dismiss corner banner; fill "run". **Verify** input value == "run".
 5. Click `chat-send-button`. **Verify** first `chat-message-item` contains "run" and the sender label `to <skill name>` (no username asserted - account-independent).
@@ -55,8 +57,8 @@
 ## Coverage Map
 | Case element | Expected | Covered by | Disposition |
 |---|---|---|---|
-| 1 Test Skill btn visible next to Edit with AI | | AFS 1 | covered |
-| 2 click opens panel right | | AFS 2 | covered (position not asserted) |
+| 1 Test btn visible (now in Instructions header; Edit with AI moved to tab bar) | | AFS 1 | covered (label/location per TMS PR #348) |
+| 2 click opens Test panel (third column) | URL `panel=test` | AFS 2 | covered (position not asserted; URL added) |
 | 3 input/placeholder/send icon | | AFS 3 | covered |
 | 4-5 type/send | | AFS 4-5 | covered |
 | 6 message in thread w/ avatar/name | | AFS 5 | covered (skill name in sender label; username deliberately not asserted) |
@@ -77,3 +79,10 @@ None.
 
 ## Adjustment (2026-11-17, card #2954 - account independence)
 Step 5 previously asserted the literal `autotest_user_admin` and failed under other accounts (e.g. `autotest_user_2`). Now asserts the first `chat-message-item` contains "run" and matches `to <skill name>` from the sender label; no username is asserted or required. Step 7 unchanged: `chat-answer-tool-chip` == `Skill: <name>` (skill) and `chat-answer-model-chip` visible/non-empty (LLM was called).
+
+## Adjustment (2026-11-25, class A - UI drift)
+- **What changed:** the button moved. Old: toolbar with `Edit with AI` then `Test Skill`. New: `Test` button (aria-label "Test skill") in the Instructions (SKILL.md) header; `Edit with AI` at the right end of the Settings/Files tab bar. Clicking Test opens a third column "Test" (`skill-test-panel` in `skill-run-pane`) and the URL gets `?panel=test`; nothing is sent automatically.
+- **Why:** intentional product change (EliteaUI PR #1575 / elitea_issues#7573); TMS case updated in EliteaAI/onetest-ai-tm-Elitea#348. Not a defect.
+- **Triage:** class A. All testids unchanged (`skill-test-button`, `skill-test-panel`, `edit-skill-with-ai-button`, `skill-instructions-header`, `skill-view-settings`, `skill-view-files`; testid on DEV).
+- **Expected-result changes:** Step 1 label "Test Skill" -> "Test" and location (Instructions header); Step 2 adds `panel=test` URL assertion. Steps 3-14 unchanged. No assertion weakened.
+- **Code:** `pages/skill_detail_page.py` (new `instructions_header`, `TEST_BUTTON_IN_HEADER` ScopedLocator, `skill_view_settings_tab`; descriptions updated) and spec Steps 1-2.
