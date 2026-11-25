@@ -73,6 +73,54 @@
       "updated": "2026-11-16",
       "history": []
     },
+    "pages/agent_form_page.py::AgentFormPage.at_limit_tooltip": {
+      "file": "pages/agent_form_page.py",
+      "line": 129,
+      "kind": "role",
+      "selector": "tooltip[name='You have reached the limit of chat starters']",
+      "suggested_testid": "agent-conversation-starter-limit-tooltip",
+      "description": "MUI tooltip shown on hovering the disabled add button",
+      "state": "raw",
+      "added": "2026-11-25",
+      "updated": "2026-11-25",
+      "history": []
+    },
+    "pages/agent_form_page.py::AgentFormPage.conversation_starter_add_tooltip_wrapper": {
+      "file": "pages/agent_form_page.py",
+      "line": 123,
+      "kind": "css",
+      "selector": "[aria-label=\"You have reached the limit of chat starters\"]",
+      "suggested_testid": "agent-conversation-starter-add-tooltip-wrapper",
+      "description": "Wrapper div of the disabled add button carrying the at-limit tooltip; no testid on DEV",
+      "state": "raw",
+      "added": "2026-11-25",
+      "updated": "2026-11-25",
+      "history": []
+    },
+    "pages/agent_form_page.py::AgentFormPage.create_cancel_button": {
+      "file": "pages/agent_form_page.py",
+      "line": 136,
+      "kind": "role",
+      "selector": "button[name='Cancel']",
+      "suggested_testid": "agent-create-cancel-button",
+      "description": "Cancel button on the create form (the tab-bar discard-button is absent on create)",
+      "state": "raw",
+      "added": "2026-11-25",
+      "updated": "2026-11-25",
+      "history": []
+    },
+    "pages/agent_form_page.py::AgentFormPage.create_discard_dialog_confirm": {
+      "file": "pages/agent_form_page.py",
+      "line": 144,
+      "kind": "role",
+      "selector": "button[name='Discard']",
+      "suggested_testid": "agent-create-discard-confirm-button",
+      "description": "Discard button of the create-form confirmation dialog; no testid on DEV",
+      "state": "raw",
+      "added": "2026-11-25",
+      "updated": "2026-11-25",
+      "history": []
+    },
     "pages/agent_hub_page.py::AgentHubPage.skill_run_tooltip": {
       "file": "pages/agent_hub_page.py",
       "line": 100,
@@ -1652,23 +1700,23 @@
       "history": []
     }
   },
-  "last_sync": "2026-11-24",
+  "last_sync": "2026-11-25",
   "metric": {
-    "declared_total": 1537,
-    "declared_testid": 1401,
-    "declared_non_testid": 136,
-    "non_testid_with_hint": 115,
+    "declared_total": 1544,
+    "declared_testid": 1404,
+    "declared_non_testid": 140,
+    "non_testid_with_hint": 119,
     "non_testid_without_hint": 21,
     "by_kind": {
-      "css": 35,
+      "css": 36,
       "fallback": 20,
       "label": 2,
       "locator": 1,
-      "role": 45,
-      "testid": 1401,
+      "role": 48,
+      "testid": 1404,
       "xpath": 33
     },
-    "locator_debt": 0.0885,
+    "locator_debt": 0.0907,
     "unmanaged_handles": 309
   }
 }
