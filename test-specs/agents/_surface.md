@@ -826,3 +826,10 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 ## Tools row quick-add pickers x Modules (ELITEA-4793 run, 2026-11-23)
 - `+ Toolkit/+ MCP/+ Agent/+ Pipeline` each open a MUI popper (not a dialog) holding `toolkit-search-input` (+ `toolkit-menu-item` rows; Toolkit also "Create new"). **Escape does not close it; click outside (`mouse.click(5,5)`) does.** Clicking a picker button while the Modules menu is open closes the menu and opens the picker.
 - Attach/remove of a toolkit persists immediately: `agent-save-button` and `discard-button` stay disabled, card survives reload. Module states unchanged after attach. `artifact_toolkit` fixture works as "any toolkit". Shell lacked `APP_PREFIX`; export `APP_PREFIX=/app` for pytest probes (override addopts with `-o addopts=""` if rerun plugin is missing).
+
+
+## Chat starters limit (ELITEA-4863 run, 2026-11-25)
+- Create form: `agent-conversation-starters-limit-counter` reads `n/M starters added.`; add (`agent-conversation-starter-add`) is disabled while the last starter textarea is empty and at M. At-limit tooltip is on wrapper `div[aria-label="You have reached the limit of chat starters"]`.
+- M from `GET /api/v2/admin/plugin_config_values/administration/guardrails` (`values.max_conversation_starters`) and `/api/v2/elitea_core/platform_settings/prompt_lib` (`conversation_starters_max`); DEV = 6. Cookie-session (`context.request`) works; Bearer token got 401.
+- Create form has `Cancel` (no testid) -> dialog "discard changes?" with `Discard` (no testids); `discard-button` only exists on the edit page.
+- Playwright MCP Chrome missing on this host; probed with repo Python Playwright + storage state.
