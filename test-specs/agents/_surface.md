@@ -833,3 +833,9 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - M from `GET /api/v2/admin/plugin_config_values/administration/guardrails` (`values.max_conversation_starters`) and `/api/v2/elitea_core/platform_settings/prompt_lib` (`conversation_starters_max`); DEV = 6. Cookie-session (`context.request`) works; Bearer token got 401.
 - Create form has `Cancel` (no testid) -> dialog "discard changes?" with `Discard` (no testids); `discard-button` only exists on the edit page.
 - Playwright MCP Chrome missing on this host; probed with repo Python Playwright + storage state.
+
+## Chat starters limit on the Agent create form (ELITEA-4863 run, 2026-11-25)
+- Limit M: `GET /api/v2/admin/plugin_config_values/administration/guardrails` -> `values.max_conversation_starters`; `GET /api/v2/elitea_core/platform_settings/prompt_lib` -> `conversation_starters_max` (DEV M=6, both agree). Cookie auth (page `context.request`) works; Bearer `ELITEA_API_TOKEN` gave 401 on both.
+- Testids on DEV: `agent-conversation-starters-limit-counter` (text `n/M starters added.`), `agent-conversation-starter-add`, `agent-conversation-starter-input`, `agent-conversation-starters-section`.
+- Add button is disabled while the LAST starter field is empty: fill field n before the next add. At limit, button is wrapped by `div[aria-label="You have reached the limit of chat starters"]`; hover shows `role=tooltip`.
+- Create form: `Cancel` button (role+name, no testid) -> dialog "Are you sure you want to discard changes?" with `Cancel`/`Discard` (no testids). `discard-button` absent on create.
