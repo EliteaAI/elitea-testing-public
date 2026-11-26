@@ -1,0 +1,1 @@
+{"batch":"update-3042","card":3042,"cases":[{"id":"ELITEA-1795","outcome":"automated","spec":"tests.ui.skills.test_import_agent_recreates_skills_with_new_ids.TestImportAgentRecreatesSkillsWithNewIds.test_import_agent_recreates_skills_with_new_ids","review":"APPROVED"}],"gate":{"verdict":"green","runs":3,"passed":3}}

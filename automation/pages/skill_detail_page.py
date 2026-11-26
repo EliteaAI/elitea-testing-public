@@ -1583,10 +1583,12 @@ class SkillDetailPage(SkillFormPage):
         ) as response_info:
             self.save_button.evaluate("el => el.click()")
 
-        self.version_toast_message.wait_for(state="visible", timeout=timeout)
-        toast_text = self.version_toast_message.text_content()
-        assert toast_text == "Skill saved", (
-            f"Expected 'Skill saved' toast, got: {toast_text!r}"
+        # DEV may stack two identical "Skill saved" toasts — wait on the
+        # collection (no positional pick) and assert on every toast text.
+        expect(self.version_toast_message).not_to_have_count(0, timeout=timeout)
+        toast_texts = self.version_toast_message.all_text_contents()
+        assert "Skill saved" in toast_texts, (
+            f"Expected 'Skill saved' toast, got: {toast_texts!r}"
         )
         self.wait_for_network(timeout=5000)
 

@@ -518,3 +518,47 @@ compared in full, marker included).
 
 **Handles:** no new locators; reuses `SkillDetailPage` / `SkillFormPage`
 methods (all existing ladder declarations).
+
+## Adjustment — 2026-11-26 (case update, card #3042; OneTest PR #355 `tests/7185-skill-zip-packages`)
+
+**Triage class: A (UI drift) for the entry point + additive Expected-result changes for the two dialogs.
+Also two class-D/handle-robustness findings in the setup path (below).** Status stays `ready-for-automation`
+(extend of the merged spec; no new test file). Where this section conflicts with anything above, it wins.
+Executed live on DEV (`https://dev.elitea.ai/app`, headless Playwright scratch probes using the repo page objects for setup; 2026-11-26).
+The Playwright MCP browser was unavailable on this host (no Chrome), so exploration used the venv Playwright with the MCP storage state — same DOM.
+
+### What changed (old -> new)
+| # | Case step | Old (test today) | New (DEV) |
+|---|---|---|---|
+| 1 | Open Agents -> **Add** -> **Import from file** | Page-toolbar "Import" button `agents-import-button`, click opens file chooser directly | Toolbar Import button is GONE (count 0). Toolbar now has `agents-add-button` ("Add", `aria-label="Add agent"`, `aria-haspopup=menu`). Clicking opens a menu: `agents-add-new` ("New Agent"), **`agents-import-button` ("Import from file")**, `agents-build-with-ai`. The testid `agents-import-button` is REUSED for the menu item; the file chooser opens on clicking the menu item. |
+| 2a | Import parameters dialog | Name + Skill name + Skill instructions previews | NEW element `agent-import-skills-summary` (span): `"1 of 1 skills selected (the target project allows at most 50 per agent)"`, plus per-skill checkbox `agent-import-skill-select-checkbox` (MUI checkbox, `Mui-checked` by default; inner `<input type=checkbox>`). Existing testids unchanged and still resolve: `agent-import-preview-dialog`, `-name`, `-skill-name`, `-card-toggle` (x2, `data-expanded=false`), `-skill-instructions`, `-notes`, `agent-import-confirm-button`. Dialog also has a Project select (`agent-import-wizard-project-select`, default current project `Private`). Skill instructions text is visible after expand and equals the source body (leading blank line, `.strip()` as already done). |
+| 2b | Import Complete dialog | Agents + Skills lists | Unchanged structure: `agent-import-complete-dialog`, `-list-agents`, `-list-skills`, `-got-it-button`; text "Import Complete / IMPORTED: / 1 Agents: <name> / 1 Skills: <name> / Got it". No errors. "Got it" navigates to `/agents/all/<new id>?viewMode=owner&name=<agent>`. Console errors: none. |
+
+Evidence: ![Add menu](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1795-adjust-add_menu.png)
+![Import parameters](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1795-adjust-import_params.png)
+![Import Complete](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1795-adjust-import_complete.png)
+
+### Handles Reference (this adjustment) — verified on DEV 2026-11-26
+| Element | rung | handle | suggested_testid | provenance |
+|---|---|---|---|---|
+| Agents toolbar Add button | 1 testid | `agents-add-button` | - | testid on DEV ✓ (`AgentsListPage` has no declaration yet — add class-level) |
+| Add menu item "Import from file" | 1 testid | `agents-import-button` (now a `menuitem` inside the Add menu) | - | testid on DEV ✓ (same testid as before, different element; the existing `import_button` declaration resolves only after the Add menu is open) |
+| Skills summary text | 1 testid | `agent-import-skills-summary` | - | testid on DEV ✓ |
+| Skill select checkbox | 1 testid | `agent-import-skill-select-checkbox` (state = inner input `checked` / `Mui-checked`) | - | testid on DEV ✓ |
+| Platform banner close (blocks clicks on the Agents list until dismissed) | 1 testid | `platform-banner-close` | - | testid on DEV ✓ — `dismiss_banner_if_present()` must precede the Add click |
+
+### Implementer work order (page object + spec; this AFS does not edit code)
+1. `AgentsListPage.import_agent()`: dismiss banner, click `agents-add-button`, then click the `agents-import-button` menu item inside `expect_file_chooser()`. Add class-level `add_button = LocatorDescriptor(testid="agents-add-button")`. Keep method name/signature.
+2. Step 2/3 assertions (additive, rail-compliant): after the dialog opens, `agent-import-skills-summary` text starts with `"1 of 1 skills selected"` (assert the "N of N" form; do NOT hard-code the 50 cap — read live / regex `^(\d+) of \1 skills selected`), and the skill checkbox input is checked. Declare both as class-level testid locators.
+3. Step 4: existing Import Complete assertions already cover "Agent and Skills, no errors"; add an explicit check that the dialog shows no error text and the console has no errors (the test already captures console messages).
+
+### Expected-result changes
+Additive only: case step 2 now expects "Import parameters lists the Agent and its SKILLS" (N of N skills selected) and "Import Complete lists the Agent and the Skills, with no errors". Nothing weakened or removed; step 1 changed only HOW the picker is reached (Add menu).
+
+### Reproduction on DEV today — the test is red, but NOT for the reasons above (class D / robustness; fix before the entry-point change can be validated)
+`pytest ...::test_import_agent_recreates_skills_with_new_ids` (HEADLESS, `APP_PREFIX=/app`, `--reruns=0`) fails deterministically at `_create_skill` -> `detail_page.save_edits()` (test line 96): `strict mode violation: get_by_test_id("toast-message") resolved to 2 elements` (both "Skill saved"). DEV now renders the toast twice (a stacked/duplicate toast) when the licence edit is saved. `SkillDetailPage.version_toast_message` (testid `toast-message`, `skill_detail_page.py:440`, used in `save_edits` line ~1590) is non-unique. Sibling `test_export_agent_with_attached_skills.py` PASSES on DEV the same day (same setup sequence, 1/1), so the duplicate toast is intermittent/timing-dependent — **class D**, fix the wait (`.first` is a positional pick and is NOT allowed; scope e.g. to `toast-alert` filtered by `data-severity="success"` + text "Skill saved", or wait on the PUT response + `expect(...).to_have_count(>=1)` via the declared locator filtered by `has_text`), never the assertion. Note for lead: if it recurs it also threatens ELITEA-1794/1896 gate runs.
+A first run also failed with a 404 page because `APP_PREFIX` was unset in this sandbox (`automation/.env.test` is absent here, only the example exists) — environment, not product; I ran with `APP_PREFIX=/app` in the shell.
+Environment fixes I made so tests can run at all: `.venv` lacked pip/`pytest-rerunfailures` (installed `pip` via ensurepip and `pytest-rerunfailures`; `--reruns` is in `pytest.ini` addopts).
+
+### Cleanup
+Deleted 2 leaked agents and 10 leaked `el-1795-*` skills created by my probes and by earlier red runs of this test on DEV (via API, name-prefix filtered).

@@ -133,6 +133,18 @@
       "updated": "2026-11-11",
       "history": []
     },
+    "pages/agents_list_page.py::AgentsListPage.IMPORT_SKILL_CHECKBOX_INPUT": {
+      "file": "pages/agents_list_page.py",
+      "line": 82,
+      "kind": "role",
+      "selector": "checkbox",
+      "suggested_testid": "agent-import-skill-select-checkbox-input",
+      "description": "Native checkbox input inside the skill select checkbox wrapper (carries checked state)",
+      "state": "raw",
+      "added": "2026-11-26",
+      "updated": "2026-11-26",
+      "history": []
+    },
     "pages/artifacts_page.py::ArtifactsPage.EDIT_EXCEPTION_PERMISSION_SELECT": {
       "file": "pages/artifacts_page.py",
       "line": 2770,
@@ -1702,21 +1714,21 @@
   },
   "last_sync": "2026-11-26",
   "metric": {
-    "declared_total": 1550,
-    "declared_testid": 1410,
-    "declared_non_testid": 140,
-    "non_testid_with_hint": 119,
+    "declared_total": 1553,
+    "declared_testid": 1412,
+    "declared_non_testid": 141,
+    "non_testid_with_hint": 120,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 36,
       "fallback": 20,
       "label": 2,
       "locator": 1,
-      "role": 48,
-      "testid": 1410,
+      "role": 49,
+      "testid": 1412,
       "xpath": 33
     },
-    "locator_debt": 0.0903,
+    "locator_debt": 0.0908,
     "unmanaged_handles": 309
   }
 }

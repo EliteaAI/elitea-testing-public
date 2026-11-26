@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from playwright.sync_api import Page
 
 from .base_page import BasePage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, ScopedLocator
 from utils.actions import action
 
 
@@ -67,6 +67,22 @@ class AgentsListPage(BasePage):
     import_button = LocatorDescriptor(
         testid="agents-import-button",
         description="Import agent button in the Agents list page toolbar"
+    )
+
+    import_skills_summary = LocatorDescriptor(
+        testid="agent-import-skills-summary",
+        description="Import preview — 'N of N skills selected (the target project allows at most M per agent)' summary"
+    )
+
+    import_skill_select_checkbox = LocatorDescriptor(
+        testid="agent-import-skill-select-checkbox",
+        description="Import preview — per-skill select checkbox (MUI wrapper; inner input carries checked state)"
+    )
+
+    IMPORT_SKILL_CHECKBOX_INPUT = ScopedLocator(
+        role="checkbox",
+        suggested_testid="agent-import-skill-select-checkbox-input",
+        description="Native checkbox input inside the skill select checkbox wrapper (carries checked state)"
     )
 
     import_preview_dialog = LocatorDescriptor(
@@ -558,12 +574,11 @@ class AgentsListPage(BasePage):
     def import_agent(self, file_path: str, timeout: int = 10000):
         """Import an Agent from an exported ``.agent.md`` file.
 
-        Clicks the page-toolbar Import button (``agents-import-button``
-        data-testid — added via ``add-data-testid`` in the ELITEA-1795
-        testid-only rework, threading an optional ``testId`` prop through
-        the shared ``ToolbarImportButton``; see EliteaUI draft PR #552).
-        Clicking it opens a native OS file chooser directly (no
-        intermediate menu).
+        Dismisses the platform announcement banner if present, opens the
+        toolbar Add menu (``agents-add-button``), then clicks the
+        "Import from file" menu item (``agents-import-button`` — the
+        testid now lives on the menu item and only resolves once the menu
+        is open). That click opens the native OS file chooser.
 
         Handles the file chooser and waits for the "Import parameters"
         preview dialog (``agent-import-preview-dialog``) to render. Does
@@ -576,6 +591,9 @@ class AgentsListPage(BasePage):
             timeout: Maximum wait time in milliseconds for the dialog.
         """
         logger.info("Importing agent from file: %s", file_path)
+        self.dismiss_announcement_dialog_if_present()
+        self.agents_add_button.click()
+        self.import_button.wait_for(state="visible", timeout=timeout)
         with self.page.expect_file_chooser() as fc_info:
             self.import_button.click()
         file_chooser = fc_info.value

@@ -19,6 +19,7 @@ Spec: test-specs/skills/l3_import-agent-recreates-skills-with-new-ids_ELITEA-179
 
 import json
 import logging
+import re
 import tempfile
 import uuid
 from pathlib import Path
@@ -130,7 +131,7 @@ class TestImportAgentRecreatesSkillsWithNewIds:
         1. (Precondition setup, mirrors ELITEA-1794) Create a Skill + an
            Agent, attach the Skill, export the Agent via the actions
            overflow menu.
-        2. Navigate to the Agents list; click "Import"; verify a native
+        2. Navigate to the Agents list; Add -> "Import from file"; verify a native
            file chooser opens.
         3. Select the exported file; verify the "Import parameters"
            preview dialog previews the embedded Agent + Skill content.
@@ -227,7 +228,7 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 )
 
             with allure.step(
-                "Step 2 — Navigate to the Agents list; click 'Import'; "
+                "Step 2 — Navigate to the Agents list; open Add -> 'Import from file'; "
                 "verify a native file chooser opens"
             ):
                 agents_list_page.navigate()
@@ -259,6 +260,17 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                     "embedded Skill's name verbatim"
                 )
 
+                summary_text = (agents_list_page.import_skills_summary.text_content() or "").strip()
+                assert re.match(r"(\d+) of \1 skills selected", summary_text), (
+                    "Import parameters should show an 'N of N skills selected' "
+                    f"summary (all embedded skills selected) — got: {summary_text!r}"
+                )
+                assert agents_list_page.IMPORT_SKILL_CHECKBOX_INPUT.within(
+                    agents_list_page.import_skill_select_checkbox
+                ).is_checked(), (
+                    "The embedded Skill's select checkbox should be checked by default"
+                )
+
                 agents_list_page.expand_import_preview_details(timeout=IMPORT_TIMEOUT)
                 skill_instructions_preview = (
                     agents_list_page.import_preview_skill_instructions.first.text_content()
@@ -285,6 +297,10 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 # Complete" heading being shown.
                 assert agents_list_page.import_complete_dialog.is_visible(), (
                     "Success dialog should be visible after confirming the import"
+                )
+                complete_text = agents_list_page.import_complete_dialog.text_content() or ""
+                assert not re.search(r"error|fail", complete_text, re.IGNORECASE), (
+                    f"Import Complete dialog should show no error indication — got: {complete_text!r}"
                 )
                 assert source_agent_name in agents_list_page.import_complete_agents_list.text_content(), (
                     "Success dialog's Agents list should include the imported "
