@@ -78,6 +78,11 @@ class SkillDetailPage(SkillFormPage):
         description="Settings tab of the left tab bar (neighbour of Edit with AI, EL-7573)",
     )
 
+    skill_view_files_tab = LocatorDescriptor(
+        testid="skill-view-files",
+        description="Files tab of the left tab bar; label carries the file count ('Files – N')",
+    )
+
     edit_with_ai_button = LocatorDescriptor(
         testid="edit-skill-with-ai-button",
         description="'Edit with AI' button at the right end of the Settings / Files tab bar (ELITEA-4635, EL-7573)",

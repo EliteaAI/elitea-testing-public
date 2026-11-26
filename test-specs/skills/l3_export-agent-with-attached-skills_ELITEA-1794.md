@@ -22,6 +22,7 @@
 - User is logged in (on localhost, `auth_state` fixture skips login).
 - A project is selected/accessible (`Private`, id `399` in this run).
 - The Skills and Agents sections are available in the project.
+- Every attached Skill shows **Files – 0** (updated 2026-11: case precondition). Asserted in test Step 1 via the `skill-view-files` tab label (`Files – N`, testid on DEV).
 - An Agent exists with at least one Skill attached — created fresh in this run (see
   Test Data). No pre-existing Agent in the project had a disposable single-Skill
   shape suitable for export inspection, so seed-and-cleanup was used (this case's
@@ -212,6 +213,9 @@ No `reuse-existing` or shared fixture applies — this is a fresh-state flow (1 
 | Double file extension (`.agent.md`) | The case's pass/fail criterion is "exported file is `.md` format" — confirmed satisfied, but the exact naming convention (`{name}.agent.md` vs a bare `{name}.md`) is useful for an implementer asserting on the download's suggested filename |
 | Console messages checked immediately after the export click | Zero errors during the functional flow (attach, export, download) |
 | Marker-substring technique (`ELITEA_1794_MARKER_TEXT`) for asserting "verbatim, not a reference" | This is the load-bearing technique that actually proves the case's central claim — a bare "Skill name is present" check would pass even if the export only embedded an ID; the marker proves the full instructions text is embedded |
+
+## Notes — `.agent.zip` (elitea_issues#7185, 2026-11)
+An agent whose attached skill HAS files exports as `<agent>.agent.zip`; a skill with no files still exports `.md`. This test deliberately uses a file-less skill, so Step 6 asserts `.md` and explicitly NOT `.agent.zip`. ELITEA-1896 notes the same (skill has no files, export stays `.md`).
 
 ## Known Defects
 None. No product defects found. The doubled `//` in the export URL and the

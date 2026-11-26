@@ -15,6 +15,10 @@ for the dedup proof. Updated 2026-11 (#2991, Agent Skills spec frontmatter): the
 now carries a ``frontmatter`` mapping (license + ELITEA fields under
 ``metadata``); both cases assert it (base version: no elitea-version).
 
+Precondition (updated 2026-11, elitea_issues#7185): the attached Skill has no
+files (Files – 0) — a skill WITH files makes the agent export as
+``<agent>.agent.zip``; a file-less one still exports ``.md`` (asserted in Step 6).
+
 No product defect found.
 
 Spec: test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md
@@ -22,6 +26,7 @@ Spec: test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md
 
 import json
 import logging
+import re
 import tempfile
 import uuid
 from pathlib import Path
@@ -120,7 +125,7 @@ class TestExportAgentWithAttachedSkills:
            (already satisfied by step 3).
         5. Open the agent-actions overflow menu; click "Export" (VERSION
            group); verify a file download is initiated.
-        6. Verify the downloaded file has a `.md`-suffixed name.
+        6. Verify the downloaded file has a `.md`-suffixed name (not `.agent.zip`).
         7. Read the downloaded file's raw content; verify it's a YAML
            frontmatter + markdown body, with the Skill's name, `base`
            version, and full instructions (including the marker) embedded
@@ -160,6 +165,14 @@ class TestExportAgentWithAttachedSkills:
                 skill_id = _create_skill(
                     page, skill_name, skill_description, skill_instructions,
                     tag=SKILL_TAG, license_id=SKILL_LICENSE,
+                )
+                # Case precondition (ELITEA-1794): the attached Skill has no
+                # files (Files – 0). A skill with files exports as
+                # <agent>.agent.zip since elitea_issues#7185; this one must
+                # stay on the single-file .md path.
+                skill_detail = SkillDetailPage(page)
+                expect(skill_detail.skill_view_files_tab).to_have_text(
+                    re.compile(r"Files\s*[–-]\s*0"), timeout=UI_ELEMENT_TIMEOUT
                 )
 
             with allure.step("Step 2 — Create an Agent via UI"):
@@ -228,6 +241,11 @@ class TestExportAgentWithAttachedSkills:
             with allure.step(
                 "Step 6 — Verify the downloaded file has a .md-suffixed name"
             ):
+                assert not download.suggested_filename.endswith(".agent.zip"), (
+                    "Export format regression: an Agent whose attached Skill has "
+                    "no files (Files – 0) must export as a single .md, got a "
+                    f".agent.zip: {download.suggested_filename!r}"
+                )
                 assert download.suggested_filename.endswith(".md"), (
                     f"Expected a .md download, got: {download.suggested_filename!r}"
                 )
