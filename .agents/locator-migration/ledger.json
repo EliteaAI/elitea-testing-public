@@ -1521,7 +1521,7 @@
     },
     "pages/skills_list_page.py::SkillsListPage.ROW_ACTION_BUTTON": {
       "file": "pages/skills_list_page.py",
-      "line": 237,
+      "line": 242,
       "kind": "css",
       "selector": "button[id=\"{}-skill-action\"]",
       "suggested_testid": "skill-row-action-menu-button-{}",
@@ -1533,7 +1533,7 @@
     },
     "pages/skills_list_page.py::SkillsListPage.ROW_RUN_MENU_ITEM": {
       "file": "pages/skills_list_page.py",
-      "line": 245,
+      "line": 250,
       "kind": "role",
       "selector": "menuitem[name='Run']",
       "suggested_testid": "skill-row-run-menu-item",
@@ -1714,8 +1714,8 @@
   },
   "last_sync": "2026-11-26",
   "metric": {
-    "declared_total": 1553,
-    "declared_testid": 1412,
+    "declared_total": 1554,
+    "declared_testid": 1413,
     "declared_non_testid": 141,
     "non_testid_with_hint": 120,
     "non_testid_without_hint": 21,
@@ -1725,10 +1725,10 @@
       "label": 2,
       "locator": 1,
       "role": 49,
-      "testid": 1412,
+      "testid": 1413,
       "xpath": 33
     },
-    "locator_debt": 0.0908,
+    "locator_debt": 0.0907,
     "unmanaged_handles": 309
   }
 }

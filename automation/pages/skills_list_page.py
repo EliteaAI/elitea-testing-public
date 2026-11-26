@@ -30,9 +30,14 @@ class SkillsListPage(BasePage):
         description="Skills page header"
     )
 
+    skills_add_button = LocatorDescriptor(
+        testid="skills-add-button",
+        description="Skills list '+' Add button that opens the add menu"
+    )
+
     import_button = LocatorDescriptor(
         testid="skills-import-button",
-        description="Import skill button in the page toolbar"
+        description="'Import from file' item of the Skills Add menu (only rendered once the menu is open)"
     )
 
     import_preview_name = LocatorDescriptor(
@@ -836,7 +841,7 @@ class SkillsListPage(BasePage):
 
     @action("Upload skill file")
     def upload_skill_file(self, file_path: str):
-        """Click Import and upload a file via the native file chooser.
+        """Open Add -> Import from file and upload a file via the native file chooser.
 
         Unlike :meth:`import_skill`, this does NOT wait for the "Import
         parameters" dialog to appear — a file whose frontmatter is missing
@@ -849,6 +854,9 @@ class SkillsListPage(BasePage):
             file_path: Absolute path to the ``.md`` file to upload.
         """
         logger.info("Uploading skill file (no dialog wait): %s", file_path)
+        self.dismiss_announcement_dialog_if_present()
+        self.skills_add_button.click()
+        self.import_button.wait_for(state="visible", timeout=10000)
         with self.page.expect_file_chooser() as fc_info:
             self.import_button.click()
         file_chooser = fc_info.value

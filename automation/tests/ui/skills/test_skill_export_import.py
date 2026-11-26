@@ -739,8 +739,8 @@ class TestSkillImportMissingFrontmatter:
         # ------------------------------------------------------------------
         with allure.step("Step 1 — Navigate to Skills list; capture baseline skill IDs"):
             list_page.navigate()
-            assert list_page.import_button.is_visible(), (
-                "Import button should be visible in the Skills list toolbar"
+            assert list_page.skills_add_button.is_visible(), (
+                "Add button should be visible in the Skills list toolbar"
             )
             ids_before = {s["id"] for s in skill_api.list_skills().get("rows", [])}
 

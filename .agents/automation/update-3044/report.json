@@ -1,0 +1,1 @@
+{"batch":"update-3044","card":3044,"cases":[{"id":"ELITEA-3749","outcome":"automated","spec":"tests.ui.skills.test_skill_export_import.TestSkillExportImport.test_export_and_import_skill_base_version","review":"APPROVED"}],"gate":{"verdict":"green","runs":3,"passed":3}}
