@@ -5041,6 +5041,40 @@
       "scenarios_automated": 1,
       "scenarios_executed": 1,
       "notes": "gate green (3x); outcomes: automated 1. Telemetry cohort: reconstructed from .agents/automation/elitea-4863-chat-starters-limit/cost.json (v1); batch slug 'elitea-4863-chat-starters-limit'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
+    },
+    {
+      "work_item_ref": "T-update-3041",
+      "work_item_level": "feature",
+      "work_item_brief": "Test-automation batch: 2 TMS case(s) through analyse → implement → review → merge → gate; 2 delivered.",
+      "maturity": "pilot",
+      "sessions": 1,
+      "turns": 14,
+      "subagent_dispatches": 2,
+      "orchestrator_cost_pct": 40.3,
+      "tokens": {
+        "input": 32403,
+        "output": 17679,
+        "cache_read": 5620356,
+        "cache_create": 474331
+      },
+      "primary_model": "1_eu.anthropic.claude-sonnet-5-5",
+      "models_used": [
+        "1_eu.anthropic.claude-sonnet-5-5"
+      ],
+      "tokens_by_model": {
+        "1_eu.anthropic.claude-sonnet-5-5": {
+          "input": 32403,
+          "output": 17679,
+          "cache_read": 5620356,
+          "cache_create": 474331
+        }
+      },
+      "cost_api_equivalent_usd": 2.01,
+      "cache_read_share_pct": 44.1,
+      "scenarios_authored": 2,
+      "scenarios_automated": 2,
+      "scenarios_executed": 2,
+      "notes": "gate green (3x); outcomes: automated 2. Telemetry cohort: reconstructed from .agents/automation/update-3041/cost.json (v1); batch slug 'update-3041'. effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass). cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x). scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied)."
     }
   ]
 }
