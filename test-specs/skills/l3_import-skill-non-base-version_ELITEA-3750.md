@@ -13,6 +13,7 @@
 - User is logged in (on localhost, `auth_state` fixture skips login via `VITE_DEV_TOKEN`).
 - A project is selected/accessible (`Private`, id `399` in this run).
 - Skills section is available with export and import capabilities.
+- The Skill created in step 1 has no files (Files – 0), so it exports as `.md` (enforced by the step-3 `.md` filename assertion).
 
 ## Test Data
 
@@ -88,8 +89,9 @@ is generated per test and torn down in the same test's teardown.
      requirement to assert against (the case's own Test Data table doesn't
      list a frontmatter field for ELITEA-3750), but it's a useful assertion
      opportunity for the implementer (Axis 2 addition, see Coverage Map).
-5. Navigate to `${BASE_URL}/skills/all`. Click the **"Import"** button
-   (top-right toolbar). Upload the ver_1-exported `.md` file.
+5. Navigate to `${BASE_URL}/skills/all`. Open **Skills → Add → Import from file**
+   (the `Add` menu replaced the toolbar `Import` button), choose the
+   ver_1-exported `.md` file.
    - **Verify**: an "Import parameters" dialog opens showing PROJECT, the
      entity name, and **`Type: Skill | Version: base`** — confirmed live:
      even though the uploaded file was exported from `ver_1`, the dialog
@@ -101,7 +103,7 @@ is generated per test and torn down in the same test's teardown.
      the modified/appended instructions text is what's previewed, proving
      the exported ver_1 content — not base — is what's carried into the
      import).
-6. Click the dialog's **"Import"** button.
+6. Click **Import** in the Import parameters dialog.
    - **Verify**: navigation to `/skills/all/{new-id}` (e.g. `/skills/all/102`,
      unique vs. source skill id `101`); a success toast appears (implicit —
      new skill visible immediately after redirect); `POST
@@ -238,7 +240,8 @@ where unchanged — not re-verified in isolation in this run except where noted:
 | **"Create version" dialog** — Save (confirm) button | `page.get_by_test_id("skill-create-version-save-button")` (`SkillDetailPage.create_version_save_button`) — **testid added in the rework** via `BaseModal`'s existing `confirmButtonDataTestId` prop (previously unused by this call site) | n/a — testid-only, no fallback |
 | **"Create version" dialog** container | `page.get_by_test_id("skill-create-version-dialog")` (`SkillDetailPage.create_version_dialog`) — **testid added in the rework** via `BaseModal`'s existing `data-testid` prop (previously unused by this call site) | n/a — testid-only, no fallback |
 | `Version "{name}" created` toast | `page.get_by_test_id("toast-message")` (`SkillDetailPage.version_toast_message`) — **reused** the same app-wide Toast `toast-message` testid already exposed as `SkillsListPage.import_success_toast_message` (ELITEA-3749), asserted by `.text_content()` equality inside `save_as_version()` rather than located by the expected text | n/a — testid-only, no fallback |
-| Skills list **Import** button | `page.get_by_test_id("skills-import-button")` — **now has a testid** (confirmed live this run); ELITEA-3749's AFS flagged this as missing at the time — **resolved since**, no action needed | `page.get_by_role("button", name="Import")` |
+| Skills list **Add** button (opens the Add menu) | `skills-add-button` testid (`SkillsListPage`) | n/a |
+| Add-menu item **Import from file** | `skills-import-button` testid — now the menu item 'Import from file' (no longer a toolbar button); `SkillsListPage.upload_skill_file` clicks `skills-add-button` then this | n/a |
 | Import-parameters dialog **Import** (confirm) button | `page.get_by_role("dialog").get_by_role("button", name="Import")` — scoping to the dialog required, toolbar button shares the same accessible name | none needed if scoped correctly |
 | Import-parameters dialog **Show details** toggle | `page.get_by_role("button", name="Show details")` — confirmed live | none needed |
 | Delete-skill menu item | `page.get_by_test_id("skill-delete-menu-item")` | `page.get_by_role("menuitem", name="Delete skill")` |
@@ -356,3 +359,20 @@ metadata out of top-level frontmatter keys into `metadata`:
 
 Both keys verified live on DEV (second one surfaced only after the first was fixed).
 Expected-result changes: none. Sibling: ELITEA-3749 (commit e1e90e51).
+
+## Adjustment — 2026-11-26 (OneTest PR #355, triage class A: case-text/flow drift)
+
+Case ELITEA-3750 changed: new precondition "The Skill created in step 1 has no
+files (Files – 0), so it exports as `.md`"; step 3 now "Open Skills → Add →
+Import from file, choose the exported .md file, then click Import in the Import
+parameters dialog".
+
+| Old | New |
+|---|---|
+| Step 5: toolbar **Import** button, upload file | Skills → Add → Import from file, choose file |
+| Step 6: dialog Import | Import in the Import parameters dialog (unchanged control) |
+| Precondition: none about files | Skill has no files (Files – 0) → exports as `.md` |
+
+The shared page-object flow (`SkillsListPage.upload_skill_file`) was already
+updated by the ELITEA-3749 batch (aeba9df9). Spec docstring updated only.
+Expected-result changes: none — assertions untouched.

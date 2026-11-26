@@ -425,8 +425,9 @@ class TestSkillExportImportNonBaseVersion:
            the downloaded filename embeds the version name.
         4. Read the exported file; verify frontmatter (incl. `elitea_version`)
            and instructions body.
-        5. Navigate to Skills list; import the exported file; verify the
-           Import parameters dialog previews the ver_1 content.
+        5. Navigate to Skills list; Add -> Import from file with the exported
+           file; verify the Import parameters dialog previews the ver_1
+           content. (The skill has no files, so it exports as `.md`.)
         6. Confirm import; verify navigation + unique new skill ID.
         7. Verify imported skill's version is `base` and fields match the
            exported ver_1 content.
