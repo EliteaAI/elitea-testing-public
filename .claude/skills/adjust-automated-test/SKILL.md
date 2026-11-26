@@ -1,6 +1,6 @@
 ---
 name: adjust-automated-test
-description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs handle gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, have the lead land the test on main (direct push), and raise the TMS PR for a human to accept. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
+description: Repair a merged test that went red because the product changed — triage the failure (UI drift vs product bug vs data pollution vs handle gap), re-execute the case live, update the test/page object/AFS/TMS case to match current behaviour WITHOUT weakening what it verifies, gate it, have the lead land the test on main (direct push), and commit the TMS case update directly to the cases repo's main. Use when a previously-green automated test fails and the cause looks like an intentional UI/behaviour change ("this test broke, the UI changed", an [Adjust][ELITEA-<id>] task, a red test in a CI report, a stabilization pass).
 allowed-tools:
   - Bash
   - Read
@@ -119,9 +119,9 @@ suspicion, say so plainly and stop; that is a successful outcome, not a failure.
 | Renamed handles after a restructure | Replacing a state assertion with a mere presence check |
 
 An assertion may change **only** because the *case's expected result* genuinely changed —
-and then the TMS case changes alongside it (Step 8 — the landed test commit + the TMS PR).
+and then the TMS case changes alongside it (Step 8 — the landed test commit + the TMS case commit).
 Record every such change in the AFS and under **"Expected-result changes"** in the commit
-body and the TMS PR; if there are none, **say so
+body and the TMS case commit; if there are none, **say so
 explicitly.** Markers, docstring TMS links, and `allure.step("Step N — …")` structure are
 preserved verbatim — only internals move.
 
@@ -174,7 +174,7 @@ worktrees).
   cd automation && ../.venv/bin/python scripts/locator_inventory.py scan
   ```
 
-## Step 8 — Gate, then land the test and raise the TMS PR
+## Step 8 — Gate, then land the test and the TMS case update
 
 **Gate** (`.agents/testing.md` § Merge gate), against DEV: **3 separate consecutive invocations of the
 same node id**, clean process each time:
@@ -196,13 +196,17 @@ soft-asserted) — name which members fired.
    changes** (or "none"), gate evidence 3/3, handle provenance, and the self-check grep +
    scan output. Any other slot running this skill stops at a reviewed, gated branch and
    hands it to the lead.
-2. **TMS PR → `onetest-ai-tm-Elitea`** — the case's steps/expected results updated to
-   current behaviour. **Keep `automation_test_id` unchanged** (same test, same dotted path);
+2. **TMS case commit → `onetest-ai-tm-Elitea` `main` (direct push, no PR)** — the case's
+   steps/expected results updated to current behaviour, committed by the lead right after
+   the test lands, as `tms(adjust): ELITEA-<id> — <what changed>` with the same
+   **Expected-result changes** list in the body. Pull `main` first; on a non-fast-forward
+   push, rebase and retry — never force-push. **Keep `automation_test_id` unchanged** (same test, same dotted path);
    set `automation_pr` to the landed commit URL. Edit case files **by exact path** — several
    cases can share an `ELITEA-<id>`-looking name, so never glob by id.
 
-Never merge the TMS PR — an expected-result change is a human decision, and the lead's
-direct-push authority covers this repo's `main` only.
+Do not open a PR in the TMS repo — the human sign-off for an expected-result change is
+the one recorded in the commit body (Step 3), and the landed TMS commit is reviewable
+after the fact. The lead's direct-push authority covers both repos' `main`.
 
 ## Step 9 — Report
 
@@ -211,7 +215,7 @@ gap:
 
 | Class | What the report must carry |
 |---|---|
-| A drift | old→new handles, Expected-result changes (or "none"), landed commit + TMS PR links, gate 3/3 |
+| A drift | old→new handles, Expected-result changes (or "none"), landed commit + TMS commit links, gate 3/3 |
 | D pollution | the debris/timing observed, the robustness fix, and that assertions were untouched |
 | B / C bug | repro + `src/` pointer, the issue number, sanctioned-RED justification |
 | E testid gone | which element, the rung + `suggested_testid` now declared (or the `question` filed) |
@@ -224,7 +228,7 @@ Leave board routing and issue closure to the orchestrator/human
 
 - Never adjust a test to make a **product bug** or a **data-pollution** failure go green.
 - Never weaken an assertion, drop a step, or lower a count without explicit human sign-off
-  recorded in the commit body (and the TMS PR).
+  recorded in the commit body (and the TMS case commit).
 - Never write a new test file here — that is `[Automate]` work (`test-automation-workflow`).
 - Never file to `EliteaAI/elitea_issues` — local `bug` issues only; escalation there is
   attended + explicitly requested (`.agents/profile.md` § Bug filing).

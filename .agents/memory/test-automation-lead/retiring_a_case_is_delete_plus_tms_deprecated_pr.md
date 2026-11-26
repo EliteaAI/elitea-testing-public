@@ -1,5 +1,5 @@
 ---
-name: Retiring a case (not adjusting) — delete the test, TMS status: deprecated via lead-opened PR
+name: Retiring a case (not adjusting) — delete the test, TMS status: deprecated via lead direct push
 description: a human "delete this test, it's not needed" directive is a retirement, not an adjust-automated-test repair — different mechanics in both repos
 type: feedback
 ---
@@ -38,8 +38,8 @@ case/guarantee is gone, not changed.
 
    **This is a case-CONTENT change, so it follows the existing
    `adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr`
-   rule: the lead opens this PR, never a direct-edit back-write, and NEVER
-   merges it** — same rule that already governs an expected-result change,
+   rule: the lead commits it directly to TMS `main`, no PR (since
+   2026-11-26)** — same rule that already governs an expected-result change,
    because "which bucket does this edit fall in" (content vs. pure metadata)
    is the deciding question, not "is this an adjust or a retirement."
 
@@ -58,8 +58,7 @@ case/guarantee is gone, not changed.
 - This repo: delete test + AFS, grep-confirm no orphaned refs, confirm shared
   page-object methods untouched, normal PR+merge.
 - TMS repo: `status: deprecated`, `execution_type: manual`, drop
-  `automation_test_id`/`automation_pr`, add a deprecation note. Lead opens
-  the PR, never merges.
+  `automation_test_id`/`automation_pr`, add a deprecation note. Lead pushes
+  it directly to TMS `main`, no PR.
 - Closure record still applies (locator Δ, usually 0 for a pure deletion) —
-  note the open TMS PR as the one remaining human-only item, same as any
-  other awaiting-external-acceptance artifact.
+  link the TMS commit.

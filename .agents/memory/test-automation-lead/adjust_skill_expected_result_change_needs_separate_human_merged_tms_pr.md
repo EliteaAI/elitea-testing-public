@@ -1,8 +1,13 @@
 ---
 name: adjust-automated-test expected-result changes need a separate, human-merged TMS PR
-description: when an adjust-automated-test repair genuinely changes a case's expected result, open the TMS-case-text PR yourself (not the implementer) and NEVER merge it — only the test PR goes through your normal gate+merge
+description: when an adjust-automated-test repair genuinely changes a case's expected result, the lead (not the implementer) commits the TMS case change directly to TMS main — no PR (since 2026-11-26)
 type: feedback
 ---
+
+> **Superseded 2026-11-26 (operator ruling):** TMS case changes no longer go through a PR.
+> The lead commits them **directly to `onetest-ai-tm-Elitea` `main`** (no PR, no human
+> merge), right after the test lands. Rules 2 and 5 still hold with "PR" read as "TMS
+> commit"; rules 3–4 below are replaced by the direct push. The history is kept for context.
 
 ## What happened (issue #2396, ELITEA-1862, PR #2398, TMS PR onetest-ai-tm-Elitea#159)
 
@@ -40,16 +45,13 @@ by the orchestrator; case *content* = PR, orchestrator opens it, human merges.
    different authority) and never leaves it for a re-dispatch.
 3. Land the test change on `main` after your normal gate (3× green,
    independent, DEV) — a direct squash push, as for any batch
-   ([[main_direct_push_landing_cutover]]). The direct-push authority covers
-   THIS repo's `main` only; it never extends to the TMS repo.
-4. Do NOT merge the TMS PR. Note it under the closure record's "Still open"
-   row — this is itself anticipated by the record's own template field, not an
-   incomplete delivery. The card still goes to `Ready` with the test landed;
-   the TMS PR is the human's remaining action, same as any other
-   awaiting-external-acceptance item.
-5. Set `automation_pr` on the TMS case in the SAME PR as the content change
-   (the skill bundles them) — don't do a separate direct-edit back-write for
-   that field when a content-change PR is already in flight.
+   ([[main_direct_push_landing_cutover]]). The direct-push authority now also
+   covers the TMS repo's `main` (2026-11-26).
+4. Push the TMS case change directly to TMS `main` — no PR. Pull first;
+   on a rejected push, rebase and retry, never force. Link the TMS commit in
+   the closure record.
+5. Set `automation_pr` on the TMS case in the SAME commit as the content change
+   (the skill bundles them).
 
 ## Converse case (issue #2401, ELITEA-1866, PR #2402) — "Expected-result
 changes: none" means NO TMS PR at all, not a smaller one
