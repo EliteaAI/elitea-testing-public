@@ -43,7 +43,7 @@
 - [`gh run view --log` stub = false zero](gh_run_log_stub_is_a_false_zero.md) — in-progress run = 81B stub; counts lie
 - [Whole-matrix CI red = shared machinery](ci_blast_radius_points_at_shared_machinery.md) — triage the shared frame
 - [No TaskOutput tool → fallback](no_taskoutput_tool_fallback_is_listagents_plus_background_sleep.md) — ListAgents + bounded `run_in_background` sleep, still in-turn
-- [adjust-automated-test expected-result change](adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr.md) — lead opens the TMS PR, never merges it; the test change still lands on main by your gated push
+- [adjust-automated-test expected-result change](adjust_skill_expected_result_change_needs_separate_human_merged_tms_pr.md) — lead pushes the TMS case change straight to TMS main (no PR, since 2026-11-26); the test change still lands on main by your gated push
 - [adjust-skill Step 6 (AFS) falls through split dispatches](adjust_skill_step6_afs_update_falls_through_split_dispatches.md) — assign it explicitly or resume the analyst after merge
 - [New FIX card can dup a sibling's root cause](fix_card_shared_page_object_method_dedup.md) — check open PRs/issues for the shared method/symptom before triaging fresh
 - [Scan tracker text for secrets too](scan_tracker_text_for_secrets_too.md) — a subagent's auth-failure report can quote live creds; scrub before posting, not just before commit
@@ -52,7 +52,7 @@
 - [Old CI failure msg ≠ current state](ci_autotest_users_lack_second_project_membership.md) — walk recent job logs before trusting a card's quoted error as still true
 - [Recurring failure after the fix shipped = new cause](recurring_test_failure_after_fix_shipped_is_a_new_cause.md) — check `git merge-base --is-ancestor` before saying "rides the old PR"
 - [Sandbox APP_PREFIX/MCP-browser gaps are independent](sandbox_app_prefix_and_mcp_browser_can_both_be_broken_independently.md) — missing `/app` looks like a timeout; MCP-broken ≠ triage-blocked, script it directly
-- [Retiring a case ≠ adjusting it](retiring_a_case_is_delete_plus_tms_deprecated_pr.md) — delete test+AFS; TMS `status: deprecated` via lead-opened, never-merged PR
+- [Retiring a case ≠ adjusting it](retiring_a_case_is_delete_plus_tms_deprecated_pr.md) — delete test+AFS; TMS `status: deprecated` via lead direct push to TMS main
 - ["Issue with the selected model" is transient](workflow_transient_model_access_error_resume_not_restart.md) — check git, then resumeFromRunId, never a fresh dispatch
 - [AI-timeout RED can be one model route](ai_response_timeout_can_be_model_route_specific.md) — swap models in-conversation before classifying as pipeline-wide outage
 - sandbox_no_env_test_needs_app_prefix.md — missing .env.test => 404 everywhere; export APP_PREFIX=/app
