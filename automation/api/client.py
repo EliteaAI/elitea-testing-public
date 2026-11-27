@@ -504,6 +504,29 @@ class ConversationAPI:
                 return bool(row.get("has_running_task"))
         raise LookupError(f"conversation {conversation_id} not in the first 100 list rows")
 
+    def stop_running_task(self, conversation_id: int) -> bool:
+        """Stop the conversation's in-flight run, if any (best-effort teardown helper, ELITEA-4955).
+
+        The task id is the ``uuid`` of the conversation's still-streaming message group (the same id the
+        UI passes to ``DELETE .../elitea_core/task/prompt_lib/{pid}/{uuid}``). Returns True if a stop was sent.
+        """
+        streaming = [g for g in self.get_message_groups(conversation_id) if g.get("is_streaming")]
+        if not streaming:
+            return False
+        group_uuid = streaming[-1].get("uuid")
+        if not group_uuid:
+            raise LookupError(f"streaming message group of conversation {conversation_id} has no uuid")
+        url = f"{self.base_url}/elitea_core/task/prompt_lib/{self.project_id}/{group_uuid}"
+        logger.debug("DELETE task %s", url)
+        _raise_for_status(self._session.delete(url))
+        return True
+
+    def has_conversation(self, conversation_id: int) -> bool:
+        """Return True while the conversation is still listed (first 100 rows)."""
+        resp = self._session.get(self._conversations_url(), params={"limit": 100})
+        _raise_for_status(resp)
+        return any(str(r.get("id")) == str(conversation_id) for r in resp.json().get("rows", []))
+
     def add_agent_participant(self, conversation_id: int, agent_id: int) -> None:
         """Attach an agent as a participant of a conversation (ELITEA-4957).
 
