@@ -7454,3 +7454,63 @@ class ChatPage(BasePage):
         opt.last.click()
         expect(self.clarify_continue_button).to_be_enabled(timeout=timeout)
         self.clarify_continue_button.click()
+
+    # ------------------------------------------------------------------
+    # Leave a running chat four ways + "New response" dot (ELITEA-4954)
+    # ------------------------------------------------------------------
+
+    sidebar_explore_button = LocatorDescriptor(
+        testid="sidebar-explore",
+        description="Sidebar 'Explore' trigger; opens the sidebar-explore-menu with the Agents entry. ELITEA-4954",
+    )
+
+    sidebar_explore_agents_item = LocatorDescriptor(
+        testid="sidebar-explore-agents",
+        description="'Agents' entry of the Explore menu (links to /agents). ELITEA-4954",
+    )
+
+    sidebar_artifacts_link = LocatorDescriptor(
+        role="link",
+        name="Artifacts",
+        exact=True,
+        suggested_testid="sidebar-artifacts-link",
+        description="Left-menu 'Artifacts' link (href .../artifacts); unique in the sidebar. ELITEA-4954",
+    )
+
+    FORBIDDEN_LEAVE_TEXT_STILL_IN_PROGRESS = LocatorDescriptor(
+        xpath="//*[contains(normalize-space(text()), 'Response generation is still in progress')]",
+        suggested_testid="chat-leave-guard-in-progress-text",
+        description="Leave-guard text that must never appear when leaving a running chat. xpath because rungs 1-4 fail: plain text node, no testid/role/label. ELITEA-4954",
+    )
+
+    FORBIDDEN_LEAVE_TEXT_STILL_GENERATING = LocatorDescriptor(
+        xpath="//*[contains(normalize-space(text()), 'Output is still generating')]",
+        suggested_testid="chat-leave-guard-generating-text",
+        description="Leave-guard text that must never appear when leaving a running chat. xpath because rungs 1-4 fail: plain text node, no testid/role/label. ELITEA-4954",
+    )
+
+    @action("Open Agents from the left menu")
+    def open_agents_from_menu(self, timeout: int = 10000):
+        self.sidebar_explore_button.wait_for(state="visible", timeout=timeout)
+        self.sidebar_explore_button.click()
+        self.sidebar_explore_agents_item.wait_for(state="visible", timeout=timeout)
+        self.sidebar_explore_agents_item.click()
+
+    @action("Open Artifacts from the left menu")
+    def open_artifacts_from_menu(self, timeout: int = 10000):
+        self.sidebar_artifacts_link.wait_for(state="visible", timeout=timeout)
+        self.sidebar_artifacts_link.click()
+
+    @action("Click the sidebar New chat button")
+    def click_new_chat(self, timeout: int = 10000):
+        self.new_chat_button.wait_for(state="visible", timeout=timeout)
+        self.new_chat_button.click()
+
+    @action("Expand the sidebar chat list in-app via the toggle")
+    def expand_sidebar_list(self, timeout: int = 10000):
+        """Make the conversation rows visible in-app (never goto/reload): click the toggle only if collapsed."""
+        rows = self.get_conversation_item_rows()
+        if not rows.first.is_visible():
+            self.sidebar_toggle.wait_for(state="visible", timeout=timeout)
+            self.sidebar_toggle.click()
+        rows.first.wait_for(state="visible", timeout=timeout)
