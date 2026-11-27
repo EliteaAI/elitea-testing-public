@@ -40,9 +40,20 @@ def ask_conversations(conversation_api: ConversationAPI):
     yield str(a), str(b)
     for cid in (a, b):
         try:
+            if conversation_api.has_running_task(cid):  # test failed midway: stop the run first
+                conversation_api.stop_running_task(cid)
+        except Exception as exc:  # cleanup must not mask the verdict
+            logger.warning("Could not stop the run of conversation %s: %s", cid, exc)
+        try:
             conversation_api.delete_conversation(cid)
         except Exception as exc:  # cleanup must not mask the verdict
             logger.warning("Cleanup failed for conversation %s: %s", cid, exc)
+    for cid in (a, b):
+        try:
+            if conversation_api.has_conversation(cid):
+                logger.warning("Teardown leftover: conversation %s is still listed", cid)
+        except Exception as exc:
+            logger.warning("Teardown leftover check failed for conversation %s: %s", cid, exc)
 
 
 @allure.epic("Chat")

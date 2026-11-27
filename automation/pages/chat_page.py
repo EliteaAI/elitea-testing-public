@@ -7258,6 +7258,15 @@ class ChatPage(BasePage):
         ),
     )
 
+    TOOL_CHIP_SPINNER = ScopedLocator(
+        role="progressbar",
+        suggested_testid="chat-answer-tool-chip-progress",
+        description=(
+            "MUI CircularProgress (role=progressbar) rendered inside a tool chip instead of its icon while that "
+            "step is running (ActionView.jsx showProgress); resolved inside answer_tool_chip."
+        ),
+    )
+
     open_dialogs = LocatorDescriptor(
         role="dialog",
         suggested_testid="chat-open-dialog",
@@ -7270,6 +7279,10 @@ class ChatPage(BasePage):
     def get_conversation_running_icon(self, conversation_id: str | int):
         """The running spinner inside conversation *conversation_id*'s list row."""
         return self.CONVERSATION_RUNNING_ICON.within(self.get_conversation_item(conversation_id))
+
+    def get_running_step_spinner(self):
+        """Spinner(s) inside tool chips — one per step that is still running."""
+        return self.TOOL_CHIP_SPINNER.within(self.answer_tool_chip)
 
     def get_agent_running_indicator(self):
         """The 'Agent is running…' bubble locator (page-wide)."""

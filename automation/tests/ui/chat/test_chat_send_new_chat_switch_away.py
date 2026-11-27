@@ -27,6 +27,7 @@ _MESSAGE = f"The word is {_WORD}."
 _EXPECTED_TOOLS = ["waitSeconds", "getPost", "waitSeconds", "getUser", "waitSeconds"]
 RUN_CEILING_MS = 90_000
 UI_TIMEOUT = 15_000
+LIST_LIMIT = 100  # the API pages ungrouped chats by 10 unless asked
 
 
 def _unlink_quietly(fn, what: str) -> None:
@@ -36,19 +37,42 @@ def _unlink_quietly(fn, what: str) -> None:
         logger.warning("Cleanup failed for %s: %s", what, exc)
 
 
+def _conversation_ids(conversation_api: ConversationAPI) -> set[str]:
+    return {str(r["id"]) for r in conversation_api.list_conversations(limit=LIST_LIMIT).get("rows", [])}
+
+
+def _stop_and_delete(conversation_api: ConversationAPI, cid: str) -> None:
+    """Best-effort teardown of one conversation: stop a still-running task first, then delete."""
+    try:
+        if conversation_api.has_running_task(int(cid)):  # test failed midway: stop the run first
+            conversation_api.stop_running_task(int(cid))
+    except Exception as exc:  # cleanup must not mask the test verdict
+        logger.warning("Could not stop the run of conversation %s: %s", cid, exc)
+    _unlink_quietly(lambda: conversation_api.delete_conversation(int(cid)), f"conversation {cid}")
+
+
 @pytest.fixture
 def idle_conversation_b(conversation_api: ConversationAPI):
     """Idle conversation B (the switch target) plus cleanup of the UI-created chat."""
     suffix = uuid.uuid4().hex[:6]
     b = str(conversation_api.create_conversation(f"autotest_idle_B_{suffix}")["id"])
-    before = {str(r["id"]) for r in conversation_api.list_conversations().get("rows", [])}
+    before = _conversation_ids(conversation_api)
     created: list[str] = []
     yield b, created
     # the chat made by the UI has a client-side id first; sweep whatever the server listed since
-    after = conversation_api.list_conversations().get("rows", [])
-    created.extend(str(r["id"]) for r in after if str(r["id"]) not in before)
-    for cid in dict.fromkeys([b, *created]):
-        _unlink_quietly(lambda c=cid: conversation_api.delete_conversation(int(c)), f"conversation {cid}")
+    try:
+        created.extend(sorted(_conversation_ids(conversation_api) - before))
+    except Exception as exc:  # cleanup must not mask the test verdict
+        logger.warning("New-chat sweep failed: %s", exc)
+    targets = list(dict.fromkeys([b, *created]))
+    for cid in targets:
+        _stop_and_delete(conversation_api, cid)
+    try:  # Teardown step 5: none of them may still be listed
+        for cid in targets:
+            if conversation_api.has_conversation(int(cid)):
+                logger.warning("Teardown leftover: conversation %s is still listed", cid)
+    except Exception as exc:
+        logger.warning("Teardown leftover check failed: %s", exc)
 
 
 @allure.epic("Chat")

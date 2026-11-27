@@ -53,6 +53,7 @@ Unique-name the agent/toolkits per run (`autotest_`+suffix) and delete in teardo
 | Thought accordion | 1 | `chat-answer-thought-accordion` (Paper); toggle = its inner `button` (`aria-expanded` on the button) | - | testid on DEV ✓; header button ladder: css `[data-testid=chat-answer-thought-accordion] button` unique (first) |
 | Model chip | 1 | `chat-answer-model-chip` | - | testid on DEV ✓ |
 | "Agent is running…" indicator | 3/text | text "Agent is running" (only one in page) with MUI `progressbar` | `chat-agent-running-indicator` | ladder - no testid on DEV; unique text on the page |
+| Running-step spinner | 2 | `ChatPage.TOOL_CHIP_SPINNER`: `role=progressbar` resolved inside `chat-answer-tool-chip` (`get_running_step_spinner()`) | `chat-answer-tool-chip-progress` | ladder - no testid on DEV; unique per chip; code ref `ActionView.jsx` `showProgress` renders a MUI `CircularProgress` in place of the chip icon while the step runs |
 | Platform banner close | 1 | `platform-banner-close` | - | testid on DEV ✓ |
 | Agent in participant picker | 1 | `agents-menu-item-agent-<pid>-<agent_id>`; search `get_by_placeholder("Search agents...")`; `plus-menu-button`, menuitem "Agents" | - | testid on DEV ✓ |
 | Message item / input | 1 | `chat-message-item`, `chat-message-input`, `chat-message-list` | - | testid on DEV ✓ |
@@ -64,9 +65,10 @@ Unique-name the agent/toolkits per run (`autotest_`+suffix) and delete in teardo
 | Step 2 | B opens at once, no dialog, no DELETE /task | step 2 | request listener, dialog count | covered |
 | Step 3 | row spinner "Generating…" | step 3 | aria-label | covered (tooltip -> aria-label) |
 | Step 4 | steps with tool names, Stop, "Agent is running…" | step 4 | chips, text | covered: Stop hard (xpath handle); tool names soft (#7763) |
-| Step 5 | live steps, running-step spinner, RUN-DONE SMK1 | step 5 | chip growth poll, final text | covered; running-step spinner not asserted (no stable handle observed; not identified) -> clarification |
+| Step 5 | live steps, running-step spinner, RUN-DONE SMK1 | step 5 (+ step 4 block) | chip growth poll, final text; spinner: SOFT in the Step 4 block (right after the return, before staying in A) under #7763 aggregation | covered; running-step spinner asserted SOFT after the return (missing spinner -> soft failure, #7763 family); hard end-state check in Axis 2 |
 | Step 6 | final answer, 5 steps, no spinner | step 6 | expand accordion, chips==5, icon 0 | covered |
 | Step 7 | 5 traces == UI | step 7 | API tool_call rows | covered with kind filter (case drift: 6 rows incl. thinking_step) |
+| Axis 2 extra | no running-step spinner left after the run ends | step 5 (end of run) | `get_running_step_spinner()` count 0, HARD | addition, grounded in the same spinner handle |
 | Axis 2 extra | `has_running_task` false at end, `is_streaming` false | step 7 | API | grounded in case Notes oracle |
 
 ## Known Defects
@@ -78,3 +80,8 @@ Unique-name the agent/toolkits per run (`autotest_`+suffix) and delete in teardo
 - `chat-list-item-running-icon` is attached/detached with the run; poll with `wait_for(state="detached")` at the end.
 - Close `platform-banner-close` before any click on the page; it blocks pointer events.
 - Use `ConversationAPI([])` style token auth for the API oracle, or the cookie-based fixtures; cleanup agent, toolkits, A, B in teardown.
+
+## Teardown (vs case Teardown steps)
+- Case step 1 (stop a still-running run first): fixture finalizer `stop_and_delete_conversation` stops the streaming task (`DELETE .../task/{uuid}`) before deleting A and B; failures logged only.
+- Case steps 2-4 (delete conversations, agent, toolkits): finalizers, best-effort, never change the verdict.
+- Case step 5 (check nothing left): `warn_conversation_leftovers` + the agent/toolkit leftover check log a warning for anything still listed; logged only, no verdict change.
