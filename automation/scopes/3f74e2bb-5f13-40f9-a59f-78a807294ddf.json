@@ -2,17 +2,17 @@
   "v": 1,
   "session": "3f74e2bb-5f13-40f9-a59f-78a807294ddf",
   "intent": "automation",
-  "batch": "chat-bg-4953",
+  "batch": "adjust-4953",
   "cases": [
     "ELITEA-4953"
   ],
   "declaredAt": "2026-11-27T07:51:11.361Z",
-  "updatedAt": "2026-11-27T11:22:00.833Z",
+  "updatedAt": "2026-11-27T18:39:44.248Z",
   "outcomes": {
     "ELITEA-4953": {
       "outcome": "automated",
-      "at": "2026-11-27T11:21:43.089Z"
+      "at": "2026-11-27T18:39:44.209Z"
     }
   },
-  "closedAt": "2026-11-27T11:22:00.833Z"
+  "closedAt": "2026-11-27T18:39:44.248Z"
 }
