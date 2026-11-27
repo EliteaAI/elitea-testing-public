@@ -1,0 +1,79 @@
+{
+  "batch": "chat-ask-4955",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-ask-4955",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      46.9,
+      46.8,
+      45.7
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4955",
+      "outcome": "automated",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The 'Waiting for your answer' tooltip is not exposed as role=tooltip without a real hover. The spec asserts the badge's aria-label and data-reason=waiting instead."
+        },
+        {
+          "kind": "note",
+          "note": "ClarifyingQuestionControl renders no testids. The spec uses an exact-text xpath rung with a suggested_testid hint. The Skip button flips to Continue once an option is picked."
+        },
+        {
+          "kind": "note",
+          "note": "The case file name in the TMS repo is truncated (`...waits-on-the-chat-ro.md`). The `@allure.issue` link must use that truncated name."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on `git diff origin/main...origin/tests/batch-chat-ask-4955 -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'` returned 0 hits (no matches). I read every added declaration. CONVERSATION_UNREAD_BADGE i\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:7392-7440"
+        },
+        {
+          "kind": "note",
+          "note": "TMS pair is correct. `@pytest.mark.tms(\"ELITEA-4955\")` sits at test scope with an `@allure.issue` URL. The URL path and file name match the case file in the TMS clone (`tests/automated-full-regression-ui/chat/chat-runs-continue-in-background/ELITEA-4955_an-ask-user-question-reached-while-away-waits-on-the-chat-ro.md`). I only compared the URL by eye. I did not run tms_backwrite.py check, because t\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_ask_user_while_away.py:57"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case, AFS and diff, per step. Every case step has a real assertion at that step. Step 1 asserts the running icon, B's URL, and `open_dialogs` count 0. Step 2 asserts the badge count 1, `data-reason=waiting`, the running icon gone, and the aria-label. Step 3 asserts the question and both options visible plus the enabled Skip button. Step 4 asserts the running icon count 1 after Contin\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 2 says the tooltip 'Waiting for your answer'. The spec asserts the badge's `aria-label` instead. The AFS Gotchas section states why: no `role=tooltip` renders without a real hover. That is a declared, reasonable substitution. The case text could be clarified to say 'accessible name/tooltip'. Not blocking.",
+          "ref": "test-specs/chat-interface/l1_ask-user-question-while-away-waits-on-row_ELITEA-4955.md"
+        },
+        {
+          "kind": "note",
+          "note": "Case Teardown says to stop a still-running run before deleting the conversations, and to check that no entities are left. The `ask_conversations` fixture deletes A and B directly, with a logged warning on failure. It never stops a run and never verifies emptiness. Verdict impact is nil: the case says a failed delete does not change the verdict, and the delete is best-effort. Optional hardening is \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_ask_user_while_away.py:36-46"
+        },
+        {
+          "kind": "note",
+          "note": "Gate watch item. The spec uses the UI `add_agent_participant_by_id`. The `_surface.md` for ELITEA-4957 recorded that this timed out on DEV for a 2nd conversation, with an API-attach plus row-click-activate workaround. The 3x gate will show whether it is stable here. If it flakes, switch to `conversation_api.add_agent_participant` plus activation. The `conversation_api.add_agent_participant` helper\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_ask_user_while_away.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map has no Axis-2 section. The extra observables the spec asserts (message_traces tool list, has_running_task False, running icon absent at the pause) are traceable to the case Notes oracle guidance, so they are grounded. The AFS also lists the analyst as 'test-automation-engineer (combined slot)', which is a process note only.",
+          "ref": "test-specs/chat-interface/l1_ask-user-question-while-away-waits-on-row_ELITEA-4955.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_ask-user-question-while-away-waits-on-row_ELITEA-4955.md",
+      "branch": "tests/batch-chat-ask-4955"
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
