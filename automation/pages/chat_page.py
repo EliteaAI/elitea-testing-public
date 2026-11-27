@@ -4,6 +4,7 @@ Provides locators and methods for interacting with chat conversations,
 message input, participants, and chat settings.
 """
 
+import json
 import logging
 import re
 import time
@@ -7346,6 +7347,33 @@ class ChatPage(BasePage):
         urls: list[str] = []
         self.page.on("request", lambda r: urls.append(r.url) if r.method == "DELETE" else None)
         return urls
+
+    def start_recording_run_status_frames(self) -> list[dict]:
+        """Record every ``chat_run_status`` socket frame from now on; returns the live list (ELITEA-4957).
+
+        Each entry carries ``conversation_id``, ``message_group_uuid`` and ``status`` as sent by the server.
+        """
+        frames: list[dict] = []
+
+        def _on_frame(payload) -> None:
+            if not isinstance(payload, str) or "chat_run_status" not in payload:
+                return
+            try:
+                data = json.loads(payload[payload.index("["):])
+            except ValueError:
+                return
+            if isinstance(data, list) and len(data) > 1 and data[0] == "chat_run_status" and isinstance(data[1], dict):
+                frames.append(data[1])
+
+        self.page.on("websocket", lambda ws: ws.on("framereceived", _on_frame))
+        return frames
+
+    @action("Activate the attached agent participant in the open chat")
+    def activate_agent_participant(self, agent_name: str, timeout: int = 15000):
+        """Expand the participants panel, click the agent's row and wait until the composer chip shows it."""
+        self.expand_participants_panel_via_toggle()
+        self.get_participant_row_by_name(agent_name, timeout=timeout).click()
+        expect(self.switch_participant_button).to_contain_text(agent_name, timeout=timeout)
 
     def get_tool_chip_texts(self) -> list[str]:
         """Text of every currently rendered tool chip, in DOM order."""

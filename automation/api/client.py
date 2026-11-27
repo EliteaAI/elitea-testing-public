@@ -504,6 +504,22 @@ class ConversationAPI:
                 return bool(row.get("has_running_task"))
         raise LookupError(f"conversation {conversation_id} not in the first 100 list rows")
 
+    def add_agent_participant(self, conversation_id: int, agent_id: int) -> None:
+        """Attach an agent as a participant of a conversation (ELITEA-4957).
+
+        ``POST .../elitea_core/participants/prompt_lib/{pid}/{conv}``. The participant is attached but
+        NOT yet the composer's active one — the UI must activate it before sending.
+        """
+        url = f"{self.base_url}/elitea_core/participants/prompt_lib/{self.project_id}/{conversation_id}"
+        body = [{
+            "entity_name": "application",
+            "entity_meta": {"id": int(agent_id), "project_id": int(self.project_id)},
+            "entity_settings": {"variables": [], "icon_meta": {}},
+        }]
+        logger.debug("ADD participant %s agent=%s", url, agent_id)
+        resp = self._session.post(url, json=body)
+        _raise_for_status(resp)
+
     def delete_conversation(self, conversation_id: int) -> None:
         """Delete a conversation.  Returns ``None`` on success (HTTP 204).
 
