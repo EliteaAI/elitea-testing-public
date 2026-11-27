@@ -7508,9 +7508,15 @@ class ChatPage(BasePage):
 
     @action("Expand the sidebar chat list in-app via the toggle")
     def expand_sidebar_list(self, timeout: int = 10000):
-        """Make the conversation rows visible in-app (never goto/reload): click the toggle only if collapsed."""
+        """Make the conversation rows visible in-app (never goto/reload).
+
+        After arriving on /chat from another page the sidebar may open by itself a moment later, so the rows
+        get a short grace period first; the toggle is clicked only if they still are not shown.
+        """
         rows = self.get_conversation_item_rows()
-        if not rows.first.is_visible():
+        try:
+            rows.first.wait_for(state="visible", timeout=4000)
+        except Exception:  # still collapsed: open it with the toggle
             self.sidebar_toggle.wait_for(state="visible", timeout=timeout)
             self.sidebar_toggle.click()
         rows.first.wait_for(state="visible", timeout=timeout)

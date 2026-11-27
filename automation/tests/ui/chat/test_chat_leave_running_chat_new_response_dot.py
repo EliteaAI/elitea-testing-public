@@ -97,6 +97,7 @@ class TestLeaveRunningChatNewResponseDot:
         with allure.step("Step 4 — Browser Back, then Artifacts: each opens at once, no dialog or guard text"):
             page.go_back()
             expect(page).to_have_url(re.compile(r"/chat(/|\?|$)"), timeout=UI_TIMEOUT)
+            expect(chat.get_agent_running_indicator()).to_be_visible(timeout=UI_TIMEOUT)
             assert_left_cleanly(delete_requests)
             chat.open_artifacts_from_menu()
             expect(page).to_have_url(re.compile(r"/artifacts(/|\?|$)"), timeout=UI_TIMEOUT)
