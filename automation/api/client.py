@@ -414,14 +414,17 @@ class ConversationAPI:
             return f"{base}/{conversation_id}"
         return base
 
-    def list_conversations(self) -> dict:
+    def list_conversations(self, limit: Optional[int] = None) -> dict:
         """Return ``{"total": int, "rows": [...]}``.
+
+        ``limit`` (optional) is sent as the ``limit`` query param — the API pages ungrouped chats by 10
+        by default. Omitted, the request is unchanged.
 
         Raises ``requests.HTTPError`` on non-2xx status.
         """
         url = self._conversations_url()
-        logger.debug("LIST conversations %s", url)
-        resp = self._session.get(url)
+        logger.debug("LIST conversations %s limit=%s", url, limit)
+        resp = self._session.get(url, params={"limit": limit} if limit is not None else None)
         _raise_for_status(resp)
         return resp.json()
 
@@ -503,6 +506,39 @@ class ConversationAPI:
             if str(row.get("id")) == str(conversation_id):
                 return bool(row.get("has_running_task"))
         raise LookupError(f"conversation {conversation_id} not in the first 100 list rows")
+
+    def wait_until_run_ended(self, conversation_id: int, timeout_s: float = 90.0, interval_s: float = 1.0) -> None:
+        """Poll ``has_running_task`` until False; AssertionError after *timeout_s* (ELITEA-4954)."""
+        import time
+
+        deadline = time.monotonic() + timeout_s
+        while self.has_running_task(conversation_id):
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"conversation {conversation_id} still has a running task after {timeout_s}s")
+            time.sleep(interval_s)  # API-oracle poll interval, not a UI wait
+
+    def stop_running_task(self, conversation_id: int) -> bool:
+        """Stop the conversation's in-flight run, if any (best-effort teardown helper, ELITEA-4955).
+
+        The task id is the ``uuid`` of the conversation's still-streaming message group (the same id the
+        UI passes to ``DELETE .../elitea_core/task/prompt_lib/{pid}/{uuid}``). Returns True if a stop was sent.
+        """
+        streaming = [g for g in self.get_message_groups(conversation_id) if g.get("is_streaming")]
+        if not streaming:
+            return False
+        group_uuid = streaming[-1].get("uuid")
+        if not group_uuid:
+            raise LookupError(f"streaming message group of conversation {conversation_id} has no uuid")
+        url = f"{self.base_url}/elitea_core/task/prompt_lib/{self.project_id}/{group_uuid}"
+        logger.debug("DELETE task %s", url)
+        _raise_for_status(self._session.delete(url))
+        return True
+
+    def has_conversation(self, conversation_id: int) -> bool:
+        """Return True while the conversation is still listed (first 100 rows)."""
+        resp = self._session.get(self._conversations_url(), params={"limit": 100})
+        _raise_for_status(resp)
+        return any(str(r.get("id")) == str(conversation_id) for r in resp.json().get("rows", []))
 
     def add_agent_participant(self, conversation_id: int, agent_id: int) -> None:
         """Attach an agent as a participant of a conversation (ELITEA-4957).

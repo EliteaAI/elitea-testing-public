@@ -7258,6 +7258,15 @@ class ChatPage(BasePage):
         ),
     )
 
+    TOOL_CHIP_SPINNER = ScopedLocator(
+        role="progressbar",
+        suggested_testid="chat-answer-tool-chip-progress",
+        description=(
+            "MUI CircularProgress (role=progressbar) rendered inside a tool chip instead of its icon while that "
+            "step is running (ActionView.jsx showProgress); resolved inside answer_tool_chip."
+        ),
+    )
+
     open_dialogs = LocatorDescriptor(
         role="dialog",
         suggested_testid="chat-open-dialog",
@@ -7270,6 +7279,10 @@ class ChatPage(BasePage):
     def get_conversation_running_icon(self, conversation_id: str | int):
         """The running spinner inside conversation *conversation_id*'s list row."""
         return self.CONVERSATION_RUNNING_ICON.within(self.get_conversation_item(conversation_id))
+
+    def get_running_step_spinner(self):
+        """Spinner(s) inside tool chips — one per step that is still running."""
+        return self.TOOL_CHIP_SPINNER.within(self.answer_tool_chip)
 
     def get_agent_running_indicator(self):
         """The 'Agent is running…' bubble locator (page-wide)."""
@@ -7441,3 +7454,69 @@ class ChatPage(BasePage):
         opt.last.click()
         expect(self.clarify_continue_button).to_be_enabled(timeout=timeout)
         self.clarify_continue_button.click()
+
+    # ------------------------------------------------------------------
+    # Leave a running chat four ways + "New response" dot (ELITEA-4954)
+    # ------------------------------------------------------------------
+
+    sidebar_explore_button = LocatorDescriptor(
+        testid="sidebar-explore",
+        description="Sidebar 'Explore' trigger; opens the sidebar-explore-menu with the Agents entry. ELITEA-4954",
+    )
+
+    sidebar_explore_agents_item = LocatorDescriptor(
+        testid="sidebar-explore-agents",
+        description="'Agents' entry of the Explore menu (links to /agents). ELITEA-4954",
+    )
+
+    sidebar_artifacts_link = LocatorDescriptor(
+        role="link",
+        name="Artifacts",
+        exact=True,
+        suggested_testid="sidebar-artifacts-link",
+        description="Left-menu 'Artifacts' link (href .../artifacts); unique in the sidebar. ELITEA-4954",
+    )
+
+    FORBIDDEN_LEAVE_TEXT_STILL_IN_PROGRESS = LocatorDescriptor(
+        xpath="//*[contains(normalize-space(text()), 'Response generation is still in progress')]",
+        suggested_testid="chat-leave-guard-in-progress-text",
+        description="Leave-guard text that must never appear when leaving a running chat. xpath because rungs 1-4 fail: plain text node, no testid/role/label. ELITEA-4954",
+    )
+
+    FORBIDDEN_LEAVE_TEXT_STILL_GENERATING = LocatorDescriptor(
+        xpath="//*[contains(normalize-space(text()), 'Output is still generating')]",
+        suggested_testid="chat-leave-guard-generating-text",
+        description="Leave-guard text that must never appear when leaving a running chat. xpath because rungs 1-4 fail: plain text node, no testid/role/label. ELITEA-4954",
+    )
+
+    @action("Open Agents from the left menu")
+    def open_agents_from_menu(self, timeout: int = 10000):
+        self.sidebar_explore_button.wait_for(state="visible", timeout=timeout)
+        self.sidebar_explore_button.click()
+        self.sidebar_explore_agents_item.wait_for(state="visible", timeout=timeout)
+        self.sidebar_explore_agents_item.click()
+
+    @action("Open Artifacts from the left menu")
+    def open_artifacts_from_menu(self, timeout: int = 10000):
+        self.sidebar_artifacts_link.wait_for(state="visible", timeout=timeout)
+        self.sidebar_artifacts_link.click()
+
+    @action("Click the sidebar New chat button")
+    def click_new_chat(self, timeout: int = 10000):
+        self.new_chat_button.wait_for(state="visible", timeout=timeout)
+        self.new_chat_button.click()
+
+    @action("Expand the sidebar chat list in-app via the toggle")
+    def expand_sidebar_list(self, timeout: int = 10000):
+        """Make the conversation rows visible in-app (never goto/reload).
+
+        After arriving on /chat from another page the sidebar may open by itself a moment later, so the rows
+        get a short grace period first; the toggle is clicked only if they still are not shown.
+        """
+        rows = self.get_conversation_item_rows()
+        try:
+            rows.first.wait_for(state="visible", timeout=4000)
+        except Exception:  # still collapsed: open it with the toggle
+            self.sidebar_toggle.wait_for(state="visible", timeout=timeout)
+            self.sidebar_toggle.click()
+        rows.first.wait_for(state="visible", timeout=timeout)

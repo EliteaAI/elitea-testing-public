@@ -43,7 +43,7 @@ Setup (UI): **adding the agent participant needs a workaround, see Gotchas.** Pr
 |---|---|---|---|---|
 | Step 1 | both rows spin | step 1 | two icon counts | covered |
 | Step 2 | exactly one DELETE /task, for C's run; Stop gone | step 2 | request list len 1 + uuid == C's run uuid from socket frame | covered |
-| Step 2 | "C's row gets no dot" | step 2 | icon count 0 on C row | PARTIAL: no stable testid for the New-response dot found on DEV (row has only `conversation-multi-user-icon` data-has-icon=false, menu button); assert no running icon and no extra indicator is not possible -> clarification |
+| Step 2 | "C's row gets no dot" | steps 2 and 3 | `get_conversation_unread_badge(conv_c)` count 0 after Stop (on C) and after opening A (adjusted per reviewer; handle as in ELITEA-4955) | covered |
 | Step 3 | A still running | step 3 | indicator + Stop visible, row icon 1 | covered |
 | Step 4 | A answer RUN-DONE SMK5A | step 4 | last message text | covered |
 | Axis 2 | has_running_task A True/C False after Stop; A final is_streaming False; no 2nd DELETE | steps 2/4 | API oracle | grounded in case Notes oracle |
@@ -53,7 +53,7 @@ Setup (UI): **adding the agent participant needs a workaround, see Gotchas.** Pr
 - Navigate between chats by row click only (no goto).
 - Run uuids: take from the `chat_run_status` websocket frames (`page.on("websocket")` -> `framereceived`; fields `conversation_id`, `message_group_uuid`, `status`). The DELETE url's last segment == C's `message_group_uuid`.
 - Probe run: ~80 s total; use 90 s ceiling for A. Stop click when C has its first chip.
-- Teardown: delete A, C, agent, toolkits (fixture does agent+toolkits).
+- Teardown: stop any still-running run of A/C (has_running_task -> stop_running_task), delete A, C, agent, toolkits; then log (warning, never change verdict) any still listed (limit=100 listing).
 
 ## Known Defects
 None new. (#7763 chip names unrelated; do not assert chip names.)

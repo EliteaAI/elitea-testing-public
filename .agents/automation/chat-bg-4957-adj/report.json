@@ -1,0 +1,2 @@
+{"batch":"chat-bg-4957-adj","base":"main","pr_unit":"case","gate":{"verdict":"green","runs":3,"seconds":[64.1,64.5,64.9],"failures":[]},
+"cases":[{"id":"ELITEA-4957","outcome":"automated","note":"Adjustment of landed ec1cfba7 per human comment: unread-badge asserts, stop-before-delete teardown, leftover check. Review APPROVED (fresh session); lead 3x DEV gate green.","afs":"test-specs/chat-interface/l1_two-chats-run-stop-one-leaves-other_ELITEA-4957.md","branch":"tests/ELITEA-4957-adjust-teardown-badge","findings":[]}],"totals":{"automated":1}}

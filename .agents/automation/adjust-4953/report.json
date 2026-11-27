@@ -1,0 +1,3 @@
+{"batch":"adjust-4953","base":"main","pr_unit":"case-branch","integration_branch":"tests/adjust-4953-teardown",
+"gate":{"verdict":"green","runs":3,"by":"lead","note":"3 separate invocations, APP_PREFIX=/app HEADLESS=true, 67.4s/66.4s/66.6s"},
+"cases":[{"id":"ELITEA-4953","outcome":"automated","note":"adjust per #3047 comment (TMS#366): teardown stop-then-delete + leftover check, running-step spinner soft check under #7763 + hard end-state; reviewer APPROVED round 2 (AFS drift fixed)","findings":[{"kind":"defect","ref":"EliteaAI/elitea_issues#7763","note":"soft-asserted"}]}]}
