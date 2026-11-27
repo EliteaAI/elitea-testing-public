@@ -7287,6 +7287,60 @@ class ChatPage(BasePage):
         row.click()
         expect(self.agents_search_input).to_be_hidden(timeout=timeout)
 
+    new_chat_button = LocatorDescriptor(
+        testid="sidebar-new-chat-button",
+        description="Sidebar 'New chat' button (opens /chat?create=1 with an empty composer). ELITEA-4956",
+    )
+
+    HASH_SEARCH_RESULT_BY_NAME = ScopedLocator(
+        xpath="//*[normalize-space(text())='{}']",
+        suggested_testid="chat-hash-search-result-item-{}",
+        description=(
+            "Row of the '#' search-results panel, matched by the (run-unique) agent name; rungs 1-4 fail: "
+            "the row has no testid, role or label. Resolved page-wide while the panel is open."
+        ),
+    )
+
+    SEND_BUTTON_SELECTOR = '[data-testid="chat-send-button"]'
+
+    @action("Start a new chat and select an agent via '#' search")
+    def start_new_chat_with_agent_by_hash(self, agent_name: str, timeout: int = 15000):
+        """New chat -> type '#<agent name>' -> pick the row; the agent becomes the participant."""
+        self.new_chat_button.wait_for(state="visible", timeout=timeout)
+        self.new_chat_button.click()
+        self.message_input.wait_for(state="visible", timeout=timeout)
+        self.message_input.click()
+        self.message_input.press_sequentially(f"#{agent_name}")
+        result = self.HASH_SEARCH_RESULT_BY_NAME.within(self.page, agent_name)
+        result.first.wait_for(state="visible", timeout=timeout)
+        result.first.click()
+        expect(self.switch_participant_button).to_contain_text(agent_name, timeout=timeout)
+
+    def get_running_conversation_rows(self):
+        """List rows that currently show the running spinner."""
+        return self.page.locator(self.CONVERSATION_ITEM_PREFIX).filter(
+            has=self.CONVERSATION_RUNNING_ICON.within(self.page)
+        )
+
+    def get_conversation_item_ids(self) -> set[str]:
+        """Ids of every conversation row currently rendered in the list."""
+        rows = self.page.locator(self.CONVERSATION_ITEM_PREFIX)
+        ids = set()
+        for i in range(rows.count()):
+            tid = rows.nth(i).get_attribute("data-testid") or ""
+            ids.add(tid.removeprefix("chat-conversation-item-"))
+        return ids
+
+    @action("Click Send and a conversation row in one browser task")
+    def send_and_open_conversation_at_once(self, conversation_id: str | int):
+        """Click Send, then the row of *conversation_id*, inside ONE browser task (leaves before first chunk)."""
+        self.send_button.wait_for(state="visible", timeout=10000)
+        self.get_conversation_item(conversation_id).wait_for(state="visible", timeout=10000)
+        self.page.evaluate(
+            "([send, row]) => { document.querySelector(send).click(); document.querySelector(row).click(); }",
+            [self.SEND_BUTTON_SELECTOR, self.CONVERSATION_ITEM.format(conversation_id)],
+        )
+
     def start_recording_delete_requests(self) -> list[str]:
         """Record every outgoing DELETE request URL from now on; returns the live list."""
         urls: list[str] = []
