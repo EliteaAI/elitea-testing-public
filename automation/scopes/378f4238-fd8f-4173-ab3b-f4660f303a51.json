@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "session": "378f4238-fd8f-4173-ab3b-f4660f303a51",
+  "intent": "automation",
+  "batch": "chat-bg-4956",
+  "cases": [
+    "ELITEA-4956"
+  ],
+  "declaredAt": "2026-11-27T12:13:57.979Z",
+  "updatedAt": "2026-11-27T12:48:46.887Z",
+  "closedAt": "2026-11-27T12:48:46.887Z"
+}
