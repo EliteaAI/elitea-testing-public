@@ -75,6 +75,7 @@ from fixtures.data_fixtures import (
     pipeline_llm_printer_connected,
     clean_project_context,
 )
+from fixtures.chat_run_fixtures import long_runner_agent
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
     cleanup_leaked_credentials,
