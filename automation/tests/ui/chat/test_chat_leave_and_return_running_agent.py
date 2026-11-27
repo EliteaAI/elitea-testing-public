@@ -11,7 +11,6 @@ soft-asserted. The Stop button IS present after returning mid-run (hard assertio
 Markers: ui, chat, p0 (AFS l1 == TMS critical), regression.
 """
 
-import logging
 import re
 import uuid
 
@@ -21,9 +20,8 @@ from playwright.sync_api import expect
 
 from api import ConversationAPI
 from config import settings
+from fixtures.chat_run_fixtures import stop_and_delete_conversation, warn_conversation_leftovers
 from pages.chat_page import ChatPage
-
-logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p0, pytest.mark.regression]
 
@@ -34,22 +32,18 @@ RUN_CEILING_MS = 90_000
 UI_TIMEOUT = 15_000
 
 
-def _unlink_quietly(fn, what: str) -> None:
-    try:
-        fn()
-    except Exception as exc:  # cleanup must not mask the test verdict
-        logger.warning("Cleanup failed for %s: %s", what, exc)
-
-
 @pytest.fixture
 def two_conversations(conversation_api: ConversationAPI):
     """Fresh conversation A (run) and idle B (switch target); both deleted afterwards."""
     suffix = uuid.uuid4().hex[:6]
     a = conversation_api.create_conversation(f"autotest_run_A_{suffix}")["id"]
     b = conversation_api.create_conversation(f"autotest_idle_B_{suffix}")["id"]
-    yield str(a), str(b)
-    for cid in (a, b):
-        _unlink_quietly(lambda c=cid: conversation_api.delete_conversation(c), f"conversation {cid}")
+    try:
+        yield str(a), str(b)
+    finally:
+        for cid in (a, b):
+            stop_and_delete_conversation(conversation_api, cid)
+        warn_conversation_leftovers(conversation_api, (a, b))  # Teardown step 5 (log only)
 
 
 @allure.epic("Chat")
@@ -110,6 +104,12 @@ class TestLeaveAndReturnToRunningAgentChat:
                 soft_failures.append(f"#7763 restored chips lack tool name: {restored}")
             expect(chat.get_composer_stop_button()).to_be_visible(timeout=UI_TIMEOUT)
             expect(chat.get_conversation_running_icon(conv_a)).to_have_count(1)
+            # Soft: a still-running step shows a spinner after the return (same #7763 family)
+            try:
+                expect(chat.get_running_step_spinner()).not_to_have_count(0, timeout=UI_TIMEOUT)
+            except AssertionError:
+                # Known defect: elitea_issues#7763 — restored run view loses the running step's spinner
+                soft_failures.append("#7763 no running-step spinner after returning mid-run")
 
         with allure.step("Step 5 — Stay in A: steps appear live and the answer ends with RUN-DONE SMK1"):
             restored_count = len(restored)
@@ -119,6 +119,7 @@ class TestLeaveAndReturnToRunningAgentChat:
             assert chat.get_conversation_running_icon(conv_a).count() == 1, "run ended before late steps were observed live"
             expect(chat.get_conversation_running_icon(conv_a)).to_have_count(0, timeout=RUN_CEILING_MS)
             expect(chat.get_agent_running_indicator()).to_have_count(0, timeout=UI_TIMEOUT)
+            expect(chat.get_running_step_spinner()).to_have_count(0, timeout=UI_TIMEOUT)
             expect(chat.get_composer_stop_button()).to_have_count(0, timeout=UI_TIMEOUT)
             expect(chat.messages_container.last).to_contain_text(f"RUN-DONE {_WORD}", timeout=UI_TIMEOUT)
             expect(chat.answer_tool_chip).to_have_count(len(_EXPECTED_TOOLS), timeout=UI_TIMEOUT)

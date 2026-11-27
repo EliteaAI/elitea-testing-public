@@ -25,6 +25,25 @@ def _unlink_quietly(fn, what: str) -> None:
         logger.warning("Cleanup failed for %s: %s", what, exc)
 
 
+def stop_and_delete_conversation(conversation_api, cid) -> None:
+    """Best-effort teardown of one conversation: stop a still-running task first, then delete (never raises)."""
+    try:
+        conversation_api.stop_running_task(int(cid))  # no-op unless a run is streaming (test failed midway)
+    except Exception as exc:  # cleanup must not mask the test verdict
+        logger.warning("Could not stop the run of conversation %s: %s", cid, exc)
+    _unlink_quietly(lambda: conversation_api.delete_conversation(cid), f"conversation {cid}")
+
+
+def warn_conversation_leftovers(conversation_api, cids) -> None:
+    """Log (warning) any of *cids* still listed after teardown; never raises."""
+    try:
+        for cid in cids:
+            if conversation_api.has_conversation(int(cid)):
+                logger.warning("Teardown leftover: conversation %s is still listed", cid)
+    except Exception as exc:  # the check must not mask the test verdict
+        logger.warning("Teardown leftover check failed: %s", exc)
+
+
 def _list_ids(fn) -> set[str]:
     data = fn()
     rows = data.get("rows", []) if isinstance(data, dict) else data
