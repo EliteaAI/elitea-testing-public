@@ -327,7 +327,7 @@
     },
     "pages/chat_page.py::ChatPage.CLARIFY_TEXT": {
       "file": "pages/chat_page.py",
-      "line": 7403,
+      "line": 7416,
       "kind": "xpath",
       "selector": "//*[normalize-space(text())='{}']",
       "suggested_testid": "chat-clarifying-question-text-{}",
@@ -393,7 +393,7 @@
     },
     "pages/chat_page.py::ChatPage.HASH_SEARCH_RESULT_BY_NAME": {
       "file": "pages/chat_page.py",
-      "line": 7296,
+      "line": 7309,
       "kind": "xpath",
       "selector": "//*[normalize-space(text())='{}']",
       "suggested_testid": "chat-hash-search-result-item-{}",
@@ -475,6 +475,18 @@
       "updated": "2026-11-27",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.TOOL_CHIP_SPINNER": {
+      "file": "pages/chat_page.py",
+      "line": 7261,
+      "kind": "role",
+      "selector": "progressbar",
+      "suggested_testid": "chat-answer-tool-chip-progress",
+      "description": "MUI CircularProgress (role=progressbar) rendered inside a tool chip instead of its icon while that step is running (ActionView.jsx showProgress); resolved inside answer_tool_chip.",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.USER_MESSAGE_AVATAR": {
       "file": "pages/chat_page.py",
       "line": 1604,
@@ -489,7 +501,7 @@
     },
     "pages/chat_page.py::ChatPage.clarify_continue_button": {
       "file": "pages/chat_page.py",
-      "line": 7412,
+      "line": 7425,
       "kind": "role",
       "selector": "button[name='Continue']",
       "suggested_testid": "chat-clarifying-question-continue-button",
@@ -501,7 +513,7 @@
     },
     "pages/chat_page.py::ChatPage.clarify_skip_button": {
       "file": "pages/chat_page.py",
-      "line": 7420,
+      "line": 7433,
       "kind": "role",
       "selector": "button[name='Skip']",
       "suggested_testid": "chat-clarifying-question-skip-button",
@@ -597,7 +609,7 @@
     },
     "pages/chat_page.py::ChatPage.open_dialogs": {
       "file": "pages/chat_page.py",
-      "line": 7261,
+      "line": 7270,
       "kind": "role",
       "selector": "dialog",
       "suggested_testid": "chat-open-dialog",
@@ -1810,21 +1822,21 @@
   },
   "last_sync": "2026-11-27",
   "metric": {
-    "declared_total": 1567,
+    "declared_total": 1568,
     "declared_testid": 1418,
-    "declared_non_testid": 149,
-    "non_testid_with_hint": 128,
+    "declared_non_testid": 150,
+    "non_testid_with_hint": 129,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 37,
       "fallback": 20,
       "label": 2,
       "locator": 1,
-      "role": 52,
+      "role": 53,
       "testid": 1418,
       "xpath": 37
     },
-    "locator_debt": 0.0951,
+    "locator_debt": 0.0957,
     "unmanaged_handles": 309
   }
 }
