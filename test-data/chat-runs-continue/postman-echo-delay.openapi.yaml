@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Postman Echo delay (R7385 fixture)
+  version: "1.0"
+  description: >-
+    Public, no auth. GET /delay/{seconds} answers after that many seconds (0-10), which gives the
+    R7385 agents a deterministic latency knob.
+servers:
+  - url: https://postman-echo.com
+paths:
+  /delay/{seconds}:
+    get:
+      operationId: waitSeconds
+      summary: Wait the given number of seconds (0-10) and return {"delay":"<seconds>"}.
+      parameters:
+        - name: seconds
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10
+      responses:
+        "200":
+          description: Waited
