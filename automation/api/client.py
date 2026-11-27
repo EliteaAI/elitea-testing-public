@@ -483,6 +483,27 @@ class ConversationAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def get_message_traces(self, conversation_id: int) -> dict:
+        """Return ``{"total", "rows"}`` from ``GET .../message_traces/prompt_lib/{pid}/{conv}`` (ELITEA-4953).
+
+        Rows carry ``kind`` (``tool_call`` / ``thinking_step``); tool rows add ``tool_name``.
+        """
+        url = f"{self.base_url}/elitea_core/message_traces/prompt_lib/{self.project_id}/{conversation_id}"
+        logger.debug("GET message traces %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def has_running_task(self, conversation_id: int) -> bool:
+        """Return the conversation list row's ``has_running_task`` flag (ELITEA-4953)."""
+        url = self._conversations_url()
+        resp = self._session.get(url, params={"limit": 100})
+        _raise_for_status(resp)
+        for row in resp.json().get("rows", []):
+            if str(row.get("id")) == str(conversation_id):
+                return bool(row.get("has_running_task"))
+        raise LookupError(f"conversation {conversation_id} not in the first 100 list rows")
+
     def delete_conversation(self, conversation_id: int) -> None:
         """Delete a conversation.  Returns ``None`` on success (HTTP 204).
 
@@ -2224,6 +2245,26 @@ class ToolkitAPI:
         logger.debug("DELETE toolkit %s", url)
         resp = self._session.delete(url)
         _raise_for_status(resp)
+
+    def link_toolkit_to_agent(
+        self, toolkit_id: int, agent_id: int, agent_version_id: int, selected_tools: list[str]
+    ) -> dict:
+        """Attach an existing toolkit to an agent version with *selected_tools* (ELITEA-4953).
+
+        ``PATCH /elitea_core/tool/prompt_lib/{pid}/{toolkit_id}`` — the same relation write the UI makes.
+        """
+        url = self._toolkits_url(toolkit_id)
+        payload = {
+            "entity_id": agent_id,
+            "entity_version_id": agent_version_id,
+            "entity_type": "agent",
+            "has_relation": True,
+            "selected_tools": selected_tools,
+        }
+        logger.debug("LINK toolkit %s -> agent %s", toolkit_id, agent_id)
+        resp = self._session.patch(url, json=payload)
+        _raise_for_status(resp)
+        return resp.json()
 
     def get_toolkit(self, toolkit_id: int) -> dict:
         """Fetch a single toolkit's full JSON representation.

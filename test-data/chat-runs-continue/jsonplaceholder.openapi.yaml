@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: JSONPlaceholder (R7385 fixture)
+  version: "1.0"
+  description: >-
+    Static fake REST data. Users 1-10 and posts 1-100 exist; any other id returns 404,
+    which gives a deterministic tool error.
+servers:
+  - url: https://jsonplaceholder.typicode.com
+paths:
+  /users/{id}:
+    get:
+      operationId: getUser
+      summary: Get one user by numeric id (1-10). Returns name, username, email, company.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The user
+        "404":
+          description: No such user
+  /posts/{id}:
+    get:
+      operationId: getPost
+      summary: Get one blog post by numeric id (1-100). Returns userId (the author's user id), title, body.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The post
+        "404":
+          description: No such post
