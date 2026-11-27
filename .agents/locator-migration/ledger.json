@@ -379,6 +379,18 @@
         }
       ]
     },
+    "pages/chat_page.py::ChatPage.HASH_SEARCH_RESULT_BY_NAME": {
+      "file": "pages/chat_page.py",
+      "line": 7295,
+      "kind": "xpath",
+      "selector": "//*[normalize-space(text())='{}']",
+      "suggested_testid": "chat-hash-search-result-item-{}",
+      "description": "Row of the '#' search-results panel, matched by the (run-unique) agent name; rungs 1-4 fail: the row has no testid, role or label. Resolved page-wide while the panel is open.",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
       "line": 7146,
@@ -1762,10 +1774,10 @@
   },
   "last_sync": "2026-11-27",
   "metric": {
-    "declared_total": 1560,
-    "declared_testid": 1415,
-    "declared_non_testid": 145,
-    "non_testid_with_hint": 124,
+    "declared_total": 1563,
+    "declared_testid": 1417,
+    "declared_non_testid": 146,
+    "non_testid_with_hint": 125,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 37,
@@ -1773,10 +1785,10 @@
       "label": 2,
       "locator": 1,
       "role": 50,
-      "testid": 1415,
-      "xpath": 35
+      "testid": 1417,
+      "xpath": 36
     },
-    "locator_debt": 0.0929,
+    "locator_debt": 0.0934,
     "unmanaged_handles": 309
   }
 }
