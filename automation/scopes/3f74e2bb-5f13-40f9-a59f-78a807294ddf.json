@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "session": "3f74e2bb-5f13-40f9-a59f-78a807294ddf",
+  "intent": "automation",
+  "batch": "chat-bg-4953",
+  "cases": [
+    "ELITEA-4953"
+  ],
+  "declaredAt": "2026-11-27T07:51:11.361Z",
+  "updatedAt": "2026-11-27T08:27:08.315Z",
+  "outcomes": {
+    "ELITEA-4953": {
+      "outcome": "blocked",
+      "at": "2026-11-27T08:27:08.315Z"
+    }
+  }
+}
