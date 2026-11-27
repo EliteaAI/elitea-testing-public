@@ -7,11 +7,12 @@
     "ELITEA-4953"
   ],
   "declaredAt": "2026-11-27T07:51:11.361Z",
-  "updatedAt": "2026-11-27T08:27:08.315Z",
+  "updatedAt": "2026-11-27T11:22:00.833Z",
   "outcomes": {
     "ELITEA-4953": {
-      "outcome": "blocked",
-      "at": "2026-11-27T08:27:08.315Z"
+      "outcome": "automated",
+      "at": "2026-11-27T11:21:43.089Z"
     }
-  }
+  },
+  "closedAt": "2026-11-27T11:22:00.833Z"
 }
