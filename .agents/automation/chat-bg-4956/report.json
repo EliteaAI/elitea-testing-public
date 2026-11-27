@@ -1,0 +1,111 @@
+{
+  "batch": "chat-bg-4956",
+  "base": "main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-bg-4956",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      130.6,
+      127.4,
+      128.2
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4956",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Host environment: automation/.env.test is missing, so APP_PREFIX defaults to '' and navigation hits the /chat 404 page (run with APP_PREFIX=/app). pytest-rerunfailures is not installed in .venv, so pytest.ini addopts fail (--reruns). I used -o addopts=''. The lead's gate runs on this host may hit both."
+        },
+        {
+          "kind": "clarification",
+          "note": "ChatPage.click_create_new_conversation uses testid sidebar-create-button, but DEV now serves sidebar-new-chat-button (text 'New chat'). The old handle timed out in my probe. The implementer should verify this and either fix the page object or use the new testid.",
+          "ref": "automation/pages/chat_page.py:3220"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 3 says the new chat appears 'with its generated name'. The generated title is nondeterministic (observed 'Word SMK4.', and transiently '#autotest_runner_…The word SMK4.'). The AFS asserts the row and spinner only, not the title.",
+          "ref": "ELITEA-4956"
+        },
+        {
+          "kind": "note",
+          "note": "The 4953 spec defines the long_runner_agent fixture inside its test file, which violates the fixture-location rule. For reuse it should be moved to automation/fixtures/ and registered in conftest."
+        },
+        {
+          "kind": "note",
+          "note": "If the #agent is not actually selected before Send, the run is a plain LLM reply with no tools (seen in an early probe). The AFS requires asserting the participant is set before sending."
+        },
+        {
+          "kind": "note",
+          "note": "The UI-created chat's list-row testid carries a client-side uuid (not an int) until the run ends. The spec locates the new chat by its running row, re-resolves the id after the run, and the cleanup fixture uses a list_conversations diff. Worth adding to _surface.md as an observation; I did not edit it."
+        },
+        {
+          "kind": "note",
+          "note": "The sidebar-create-button path in ChatPage.click_create_new_conversation is stale; the new-chat testid on DEV is sidebar-new-chat-button, now declared as ChatPage.new_chat_button. The old method is untouched, so the 3+ existing callers are unaffected."
+        },
+        {
+          "kind": "note",
+          "note": "The final edit swapped `get_by_test_id` for `CONVERSATION_RUNNING_ICON.within(self.page)` in get_running_conversation_rows, and I did not re-run the spec afterwards. The lead's gate will cover it."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep command: git diff main...tests/ELITEA-4956-send-new-chat-switch-away -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(|\\.nth\\(|locator=|fallback=)'. 3 hits, all compliant. (1) the page.locator(self.CONVERSATION_ITEM_PREFIX) hit passes an… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py (get_running_conversation_rows, get_conversation_item_ids)"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case to AFS to diff holds. Step 1 (participant) is asserted by to_have_count(1) plus to_contain_text(agent name). Step 2 asserts URL stays on B, 0 dialogs and 0 DELETE requests. Step 3 asserts the new row count, the running row and the aria-label 'Generating…'. Step 4 asserts 2 messages, the user text and 'RUN-DONE SMK4'. Step 5 is the API oracle: 5 tool_call traces, is_streaming Fal… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l1_send-in-new-chat-and-switch-away-at-once_ELITEA-4956.md"
+        },
+        {
+          "kind": "note",
+          "note": "TMS pair is present: @pytest.mark.tms('ELITEA-4956') plus @allure.issue linking the case file. The file name in the URL matches the file in the TMS clone, which I checked on disk. Every step is wrapped in allure.step. No sleep, skip or weakened assertion. Fixture move: long_runner_agent now lives in fixtures/chat_run_fixtures.py and is registered in conftest. The 4953 spec only loses the fixture a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_send_new_chat_switch_away.py"
+        },
+        {
+          "kind": "note",
+          "note": "New locator declarations are class-level with well-formed suggested_testid hints. The xpath has a description saying why rungs 1-4 fail, and the new-chat button is on rung 1. Matches the AFS Handles Reference. The text-equality xpath on the unique run-specific agent name is acceptable.",
+          "ref": "automation/pages/chat_page.py (new_chat_button, HASH_SEARCH_RESULT_BY_NAME, open_dialogs)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the single page.evaluate uses document.querySelector with testid selector constants. This is the same-task click the case Notes prescribe, and the selectors are class constants, so it is compliant. No change needed.",
+          "ref": "automation/pages/chat_page.py (send_and_open_conversation_at_once)"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: the DELETE-requests list is asserted once, right after the switch. A DELETE /task fired later, while the run is going, would not be caught. The case only watches for DELETEs at the switch, so this is acceptable. Optionally re-assert it at the end of Step 4.",
+          "ref": "automation/tests/ui/chat/test_chat_send_new_chat_switch_away.py:82"
+        },
+        {
+          "kind": "clarification",
+          "note": "The case says the new chat appears 'with its generated name', but the spec does not assert the title. This is deliberate and documented in the AFS Coverage Map, because the generated name is nondeterministic. It is not masking.",
+          "ref": "ELITEA-4956 Step 3"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_send-in-new-chat-and-switch-away-at-once_ELITEA-4956.md",
+      "branch": "tests/ELITEA-4956-send-new-chat-switch-away",
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          130.6,
+          127.4,
+          128.2
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
