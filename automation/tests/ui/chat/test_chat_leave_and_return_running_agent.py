@@ -6,7 +6,7 @@ Leaving a running chat must not stop the run (no dialog, no DELETE /task), the c
 traces agree. Self-provisioning: toolkits, agent and the two conversations are created per run.
 
 Known defect: elitea_issues#7763 — restored/late tool chips lose the tool name until the run ends;
-also the Stop button is absent after returning mid-run. Both are soft-asserted.
+soft-asserted. The Stop button IS present after returning mid-run (hard assertion, question #3052).
 
 Markers: ui, chat, p0 (AFS l1 == TMS critical), regression.
 """
@@ -135,7 +135,7 @@ class TestLeaveAndReturnToRunningAgentChat:
             chat.dismiss_banner_if_present()
             chat.add_agent_participant_by_id(project_id, long_runner_agent["id"], long_runner_agent["name"])
             chat.expand_participants_panel_via_toggle()
-            expect(page.locator(chat.PARTICIPANT_ROW_PREFIX)).to_have_count(1, timeout=UI_TIMEOUT)
+            expect(chat.get_participant_rows()).to_have_count(1, timeout=UI_TIMEOUT)
             expect(chat.switch_participant_button).to_contain_text(long_runner_agent["name"], timeout=UI_TIMEOUT)
             delete_requests = chat.start_recording_delete_requests()
             chat.send_message(_MESSAGE)
@@ -168,16 +168,23 @@ class TestLeaveAndReturnToRunningAgentChat:
             expect(chat.get_conversation_running_icon(conv_a)).to_have_count(1)
 
         with allure.step("Step 5 — Stay in A: steps appear live and the answer ends with RUN-DONE SMK1"):
+            restored_count = len(restored)
+            # Live steps: while the run is still going, the chip count grows beyond what was restored on return
+            expect(chat.get_conversation_running_icon(conv_a)).to_have_count(1)
+            chat.wait_for_tool_chip_count_above(restored_count, timeout=RUN_CEILING_MS)
+            assert chat.get_conversation_running_icon(conv_a).count() == 1, "run ended before late steps were observed live"
             expect(chat.get_conversation_running_icon(conv_a)).to_have_count(0, timeout=RUN_CEILING_MS)
             expect(chat.get_agent_running_indicator()).to_have_count(0, timeout=UI_TIMEOUT)
+            expect(chat.get_composer_stop_button()).to_have_count(0, timeout=UI_TIMEOUT)
             expect(chat.messages_container.last).to_contain_text(f"RUN-DONE {_WORD}", timeout=UI_TIMEOUT)
             expect(chat.answer_tool_chip).to_have_count(len(_EXPECTED_TOOLS), timeout=UI_TIMEOUT)
             final_chips = chat.get_tool_chip_texts()
             names = [c.split("·")[0].split(":")[-1].strip() for c in final_chips]
-            if not all(":" in c.split("·")[0] for c in final_chips):
-                # Known defect: elitea_issues#7763
+            if all(":" in c.split("·")[0] for c in final_chips):
+                assert names == _EXPECTED_TOOLS, f"final chip tool names {names}"
+            else:
+                # Known defect: elitea_issues#7763 — chips lack "<toolkit>: <tool>" names
                 soft_failures.append(f"#7763 final chips lack tool name: {final_chips}")
-            assert names == _EXPECTED_TOOLS or not all(":" in c for c in final_chips)
 
         with allure.step("Step 6 — Open B then A: final answer, 5 steps, no spinner, no streaming indicator"):
             chat.click_conversation_item(conv_b)

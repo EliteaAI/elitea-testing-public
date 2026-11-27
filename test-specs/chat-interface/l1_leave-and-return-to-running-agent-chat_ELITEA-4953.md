@@ -29,13 +29,13 @@ Unique-name the agent/toolkits per run (`autotest_`+suffix) and delete in teardo
 
 ## Test Steps (live-observed)
 1. Open A (`/chat/<A>`), close the platform banner (`platform-banner-close`; it intercepts clicks), add the agent as participant (plus-menu -> Agents -> search -> pick; see `ChatPage.add_agent_participant` or the testid below), send message.
-   - Verify: ~2 s later `chat-list-item-running-icon` count 1 (A's row), `chat-inject-button` (Stop) present, `chat-answer-tool-chip` >=1 by ~4 s.
+   - Verify: ~2 s later `chat-list-item-running-icon` count 1 (A's row), `chat-answer-tool-chip` >=1 by ~4 s.
 2. After the first chip, click B's row `chat-conversation-item-<B>`.
    - Verify: URL becomes `/chat/<B>`, B is empty (0 `chat-message-item`), `[role=dialog]` count 0, recorded `DELETE` requests == 0 (page.on("request") filter on method DELETE / url contains `/task`). Observed 0 DELETE, 0 dialogs.
 3. In the list, A's row `chat-conversation-item-<A>` contains `chat-list-item-running-icon` with `aria-label="Generating…"` (the tooltip is that label; hovering renders no `[role=tooltip]` in headless, so assert the aria-label).
 4. ~8 s later click A's row again (still running).
    - Observed on return (t~21 s): `chat-answer-tool-chip` 2 inside `chat-answer-thought-accordion`; "Agent is running…" bubble visible (text; a `progressbar` span + the string, no testid). Chip text: `Postman Echo delay · 10.2s`, `JSONPlaceholder: getPost · 120ms` — i.e. NO tool name on restored/earlier chips (#7763) and later chips (`Postman Echo delay · 10.1s`) too. Row spinner still present.
-   - **Stop button NOT found after return**: `chat-inject-button` count 0 and no Stop-like button in the composer footer (screenshot-confirmed: composer shows "Reply to R7385LongRunner..." with no Stop). Case expects Stop. Only DIRECT live (no-leave) run shows `chat-inject-button`. Treat as a second symptom of the same area; assert Stop soft with `# Known defect` pointing at #7763 and flag to lead (see findings) - not independently filed as it needs a human decision whether it belongs to #7763.
+   - **Amended (implementer, per question #3052):** Stop IS present after return — the icon-only button next to "Agent is running…" (no aria-label, no testid, svg). It is NOT `chat-inject-button` (that is "Send to the running agent", shown only when the turn is injectable). Hard assertion; not a #7763 symptom.
 5. Stay in A: chips grow live (2 at 21 s, 3 at 27 s, final 5 at ~39 s, and running icon gone at ~39 s). Late steps DO appear before the final answer (case "Fail" clause "only with the final answer" did not reproduce on DEV today; chip names do not appear until the end: at 39 s all 5 read `<Toolkit>: <tool>`).
    - Final: message text ends `RUN-DONE SMK1` (second line `Post 3 "ea molestias quasi exercitationem repellat qui ipsa sit aut" was written by Leanne Graham (Sincere@april.biz).`), tool chips 5.
 6. Click B then A. Final answer present, `chat-list-item-running-icon` count 0 on A's row, no "Agent is running…". **The accordion is collapsed after re-open**: 0 `chat-answer-tool-chip` until you click the accordion header button (`[data-testid=chat-answer-thought-accordion] button` first; the Paper itself is not the click target). Expanded -> 5 chips: `Postman Echo delay: waitSeconds · 10.2s`, `JSONPlaceholder: getPost`, `...: waitSeconds`, `JSONPlaceholder: getUser`, `...: waitSeconds`.
@@ -47,7 +47,7 @@ Unique-name the agent/toolkits per run (`autotest_`+suffix) and delete in teardo
 |---|---|---|---|---|
 | Conversation row | 1 | `[data-testid="chat-conversation-item-{id}"]` (`ChatPage.CONVERSATION_ITEM`) | - | testid on DEV ✓ |
 | Row running spinner | 1 | `chat-list-item-running-icon`, `aria-label="Generating…"` | - | testid on DEV ✓ (span, scope under the row) |
-| Stop / inject button | 1 | `chat-inject-button` (existing `ChatPage.chat_inject_button`) | - | testid on DEV ✓ (present only in a never-left run; absent after return) |
+| Stop button | 5 (xpath) | `ChatPage.COMPOSER_STOP_BUTTON`: unlabelled, testid-less, text-less svg button among ancestors of `chat-input` that contain no `ul` | `chat-stop-button` | ladder — no testid on DEV; unique live (strict-mode `to_be_visible` passes). Present for the whole run incl. after return |
 | Tool chip | 1 | `chat-answer-tool-chip` (text `<toolkit>: <tool> · <dur>`) | - | testid on DEV ✓ |
 | Chip duration | 1 | `chat-answer-chip-duration` | - | testid on DEV ✓ |
 | Thought accordion | 1 | `chat-answer-thought-accordion` (Paper); toggle = its inner `button` (`aria-expanded` on the button) | - | testid on DEV ✓; header button ladder: css `[data-testid=chat-answer-thought-accordion] button` unique (first) |
@@ -63,7 +63,7 @@ Unique-name the agent/toolkits per run (`autotest_`+suffix) and delete in teardo
 | Step 1 | run starts, first tool step | step 1 | chip>=1, running icon | covered |
 | Step 2 | B opens at once, no dialog, no DELETE /task | step 2 | request listener, dialog count | covered |
 | Step 3 | row spinner "Generating…" | step 3 | aria-label | covered (tooltip -> aria-label) |
-| Step 4 | steps with tool names, Stop, "Agent is running…" | step 4 | chips, text | partial: tool names + Stop soft (#7763) |
+| Step 4 | steps with tool names, Stop, "Agent is running…" | step 4 | chips, text | covered: Stop hard (xpath handle); tool names soft (#7763) |
 | Step 5 | live steps, running-step spinner, RUN-DONE SMK1 | step 5 | chip growth poll, final text | covered; running-step spinner not asserted (no stable handle observed; not identified) -> clarification |
 | Step 6 | final answer, 5 steps, no spinner | step 6 | expand accordion, chips==5, icon 0 | covered |
 | Step 7 | 5 traces == UI | step 7 | API tool_call rows | covered with kind filter (case drift: 6 rows incl. thinking_step) |
@@ -71,7 +71,7 @@ Unique-name the agent/toolkits per run (`autotest_`+suffix) and delete in teardo
 
 ## Known Defects
 - elitea_issues#7763 (OPEN): restored/late chips lack tool name until the run ends. Reproduced 3/3 today. No new issue filed.
-- Possible additional symptom: Stop absent after return (see step 4); unfiled, lead decides.
+- (Withdrawn) Stop-absent-after-return was a wrong-locator artefact, not a defect (question #3052).
 
 ## Notes for the implementer
 - Run ~40 s; give the test a 90 s ceiling. Navigate between chats ONLY by clicking list rows (never `goto`).

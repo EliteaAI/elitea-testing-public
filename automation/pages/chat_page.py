@@ -176,16 +176,17 @@ class ChatPage(BasePage):
 
     COMPOSER_STOP_BUTTON = ScopedLocator(
         xpath=(
-            "//*[@data-testid='chat-message-input']/ancestor::*"
-            "[.//*[@data-testid='chat-input']]"
+            "//*[@data-testid='chat-input']/ancestor::*"
+            "[not(.//ul)]"
             "//button[not(@aria-label) and not(@data-testid) and not(normalize-space()) and .//*[local-name()='svg']]"
         ),
         suggested_testid="chat-stop-button",
         description=(
             "Stop-generation icon button next to 'Agent is running…' (UserInput.jsx BaseBtn + StopIcon). Unlike "
             "chat_inject_button it is shown for every streaming run, injectable or not. xpath because rungs 1-4 "
-            "fail: icon-only, no aria-label (Tooltip title not forwarded), no testid. Resolved among the composer "
-            "input's ancestors as an unlabelled, testid-less, text-less svg button."
+            "fail: icon-only, no aria-label (Tooltip title not forwarded), no testid. Resolved among the ancestors "
+            "of the composer input that do not contain the messages list (`ul`), i.e. only the composer box, as an "
+            "unlabelled, testid-less, text-less svg button."
         ),
     )
 
@@ -1902,6 +1903,21 @@ class ChatPage(BasePage):
         """
         item = self.interjection_queue_item.nth(index)
         return item.locator(self.INTERJECTION_QUEUE_ITEM_ATTACHMENT_SELECTOR).count()
+
+    TOOL_CHIP_SELECTOR = '[data-testid="chat-answer-tool-chip"]'
+
+    @action("Wait until the rendered tool-chip count exceeds a baseline")
+    def wait_for_tool_chip_count_above(self, baseline: int, timeout: int = 90000):
+        """Condition-wait (no sleep) until more than *baseline* tool chips are rendered."""
+        self.page.wait_for_function(
+            "([sel, n]) => document.querySelectorAll(sel).length > n",
+            arg=[self.TOOL_CHIP_SELECTOR, baseline],
+            timeout=timeout,
+        )
+
+    def get_participant_rows(self):
+        """All participant rows of the (expanded) Participants panel."""
+        return self.page.locator(self.PARTICIPANT_ROW_PREFIX)
 
     def get_composer_stop_button(self):
         """The icon-only Stop button shown while a run streams (injectable or not)."""
