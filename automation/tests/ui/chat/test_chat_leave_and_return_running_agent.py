@@ -12,6 +12,7 @@ Markers: ui, chat, p0 (AFS l1 == TMS critical), regression.
 """
 
 import logging
+import re
 import uuid
 from pathlib import Path
 
@@ -135,16 +136,16 @@ class TestLeaveAndReturnToRunningAgentChat:
             chat.add_agent_participant_by_id(project_id, long_runner_agent["id"], long_runner_agent["name"])
             chat.expand_participants_panel_via_toggle()
             expect(page.locator(chat.PARTICIPANT_ROW_PREFIX)).to_have_count(1, timeout=UI_TIMEOUT)
+            expect(chat.switch_participant_button).to_contain_text(long_runner_agent["name"], timeout=UI_TIMEOUT)
             delete_requests = chat.start_recording_delete_requests()
             chat.send_message(_MESSAGE)
             expect(chat.get_conversation_running_icon(conv_a)).to_have_count(1, timeout=UI_TIMEOUT)
-            expect(chat.chat_inject_button).to_be_visible(timeout=UI_TIMEOUT)
             expect(chat.answer_tool_chip.first).to_be_visible(timeout=30_000)
             assert conversation_api.has_running_task(conv_a) is True, "has_running_task should be True mid-run"
 
         with allure.step("Step 2 — Click B in the list: opens at once, no dialog, no DELETE /task"):
             chat.click_conversation_item(conv_b)
-            expect(page).to_have_url(f"{settings.elitea_url}{settings.app_prefix}/chat/{conv_b}", timeout=UI_TIMEOUT)
+            expect(page).to_have_url(re.compile(rf"/chat/{conv_b}(\?|$)"), timeout=UI_TIMEOUT)
             expect(chat.messages_container).to_have_count(0)
             expect(chat.open_dialogs).to_have_count(0)
             assert delete_requests == [], f"Leaving a running chat sent DELETE requests: {delete_requests}"
@@ -163,9 +164,7 @@ class TestLeaveAndReturnToRunningAgentChat:
             if not all(":" in t.split("·")[0] for t in restored):
                 # Known defect: elitea_issues#7763 — restored chips lose the "<toolkit>: <tool>" name
                 soft_failures.append(f"#7763 restored chips lack tool name: {restored}")
-            if chat.chat_inject_button.count() == 0:
-                # Known defect: elitea_issues#7763 (area) — Stop absent after returning mid-run
-                soft_failures.append("#7763 Stop button absent after returning to the running chat")
+            expect(chat.get_composer_stop_button()).to_be_visible(timeout=UI_TIMEOUT)
             expect(chat.get_conversation_running_icon(conv_a)).to_have_count(1)
 
         with allure.step("Step 5 — Stay in A: steps appear live and the answer ends with RUN-DONE SMK1"):

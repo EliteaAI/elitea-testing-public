@@ -174,6 +174,21 @@ class ChatPage(BasePage):
         ),
     )
 
+    COMPOSER_STOP_BUTTON = ScopedLocator(
+        xpath=(
+            "//*[@data-testid='chat-message-input']/ancestor::*"
+            "[.//*[@data-testid='chat-input']]"
+            "//button[not(@aria-label) and not(@data-testid) and not(normalize-space()) and .//*[local-name()='svg']]"
+        ),
+        suggested_testid="chat-stop-button",
+        description=(
+            "Stop-generation icon button next to 'Agent is running…' (UserInput.jsx BaseBtn + StopIcon). Unlike "
+            "chat_inject_button it is shown for every streaming run, injectable or not. xpath because rungs 1-4 "
+            "fail: icon-only, no aria-label (Tooltip title not forwarded), no testid. Resolved among the composer "
+            "input's ancestors as an unlabelled, testid-less, text-less svg button."
+        ),
+    )
+
     # AI-authored message marker — resolved inside a messages_container <li>
     # (ELITEA-2876/2878). AI messages render <BrandLogo> as <img alt="Elitea">
     # in their header (ApplicationAnswerHeader.jsx); user messages render a
@@ -1887,6 +1902,10 @@ class ChatPage(BasePage):
         """
         item = self.interjection_queue_item.nth(index)
         return item.locator(self.INTERJECTION_QUEUE_ITEM_ATTACHMENT_SELECTOR).count()
+
+    def get_composer_stop_button(self):
+        """The icon-only Stop button shown while a run streams (injectable or not)."""
+        return self.COMPOSER_STOP_BUTTON.within(self.page)
 
     def click_stop(self, timeout: int = 5000):
         """Click the Stop-generation control (see ``STOP_BUTTON``'s declaration docstring).
