@@ -1,0 +1,5 @@
+{"batch":"chat-bg-4953","base":"origin/main","pr_unit":"trunk","integration_branch":"tests/batch-chat-bg-4953",
+ "cases":[{"id":"ELITEA-4953","outcome":"automated","afs":"test-specs/chat-interface/l1_leave-and-return-to-running-agent-chat_ELITEA-4953.md","spec":"tests/ui/chat/test_chat_leave_and_return_running_agent.py::TestLeaveAndReturnToRunningAgentChat","review":"APPROVED (fresh session, round 2)","findings":[{"kind":"defect","ref":"EliteaAI/elitea_issues#7763","note":"restored chips lack tool name mid-run; soft-asserted"}]}],
+ "totals":{"automated":1},
+ "gate":{"verdict":"green","runs":3,"by":"lead","n":3,"runs":["pass 65.6s","pass 66.2s","pass 66.0s"],"target":"DEV","blast_radius":"additive (ChatPage declarations, APIClient helper) — no existing symbol modified"},
+ "notes":"Round 1 blocked on question #3052 (send race / Stop locator); answered by a human, fix rounds applied."}
