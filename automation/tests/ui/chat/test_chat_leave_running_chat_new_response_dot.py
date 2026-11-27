@@ -91,7 +91,7 @@ class TestLeaveRunningChatNewResponseDot:
 
         with allure.step("Step 3 — Open Agents in the left menu: the Agents page opens at once"):
             chat.open_agents_from_menu()
-            expect(page).to_have_url(re.compile(r"/agents(\?|$)"), timeout=UI_TIMEOUT)
+            expect(page).to_have_url(re.compile(r"/agents(/all)?(\?|$)"), timeout=UI_TIMEOUT)
             assert_left_cleanly(delete_requests)
 
         with allure.step("Step 4 — Browser Back, then Artifacts: each opens at once, no dialog or guard text"):
