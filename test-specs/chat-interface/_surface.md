@@ -1640,3 +1640,9 @@ on DEV.** Three load-bearing findings this pass:
 - Two chats can run at once: both rows show `chat-list-item-running-icon`. Stop in C -> one `DELETE /elitea_core/task/prompt_lib/<pid>/<C message_group_uuid>`; C icon + Stop gone, A icon stays, `has_running_task` A True / C False. Socket `chat_run_status` frames carry `conversation_id`, `message_group_uuid`, `status` (running/stopped).
 - `ChatPage.add_agent_participant_by_id` timed out on DEV today for a 2nd conversation (picker: "No agents found" for the run-unique agent; empty search lists 39). Workaround: API-attach participant (`POST .../participants/prompt_lib/{pid}/{conv}`, list body, entity_name application) then click `chat-participant-row-*` to ACTIVATE until `chat-switch-participant-button` shows the name; unactivated send goes to the default assistant (no run).
 - No testid found for the "New response" dot on a list row (row contains `conversation-multi-user-icon`, `conversation-menu-menu-button`).
+
+## Ask User pause while away (ELITEA-4955, 2026-11-27)
+
+- Waiting dot: `chat-list-item-unread-badge[data-reason=waiting]` in the row (aria-label "Waiting for your answer"); replaces the running spinner when the run pauses on `ask_user` (~10-15 s with the fixture).
+- Card (`ClarifyingQuestionControl`) has no testids: match question/option text exactly; action button reads "Skip" until an option is picked, then "Continue". Pill "Agent paused — waiting for your input" shows above the composer.
+- `ask_user` for an agent comes from `meta.internal_tools: ["ask_user"]` on the version (fixture `ask_user_agent`).

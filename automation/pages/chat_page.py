@@ -7387,3 +7387,57 @@ class ChatPage(BasePage):
         if toggle.get_attribute("aria-expanded") != "true":
             toggle.click()
         expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Ask User clarifying-question card + "waiting" row dot (ELITEA-4955)
+    # ------------------------------------------------------------------
+
+    CONVERSATION_UNREAD_BADGE = ScopedLocator(
+        testid="chat-list-item-unread-badge",
+        description=(
+            "Row dot shown when a chat ended or asked something while not open; data-reason is 'waiting' "
+            "(tooltip 'Waiting for your answer') or 'newResponse'."
+        ),
+    )
+
+    CLARIFY_TEXT = ScopedLocator(
+        xpath="//*[normalize-space(text())='{}']",
+        suggested_testid="chat-clarifying-question-text-{}",
+        description=(
+            "Question or option text of the Ask User card (ClarifyingQuestionControl), matched by its exact "
+            "text; the card renders no testid, role or label (rungs 1-4 fail)."
+        ),
+    )
+
+    clarify_continue_button = LocatorDescriptor(
+        role="button",
+        name="Continue",
+        exact=True,
+        suggested_testid="chat-clarifying-question-continue-button",
+        description="Continue action of the Ask User card; shows as 'Skip' until an option is picked.",
+    )
+
+    clarify_skip_button = LocatorDescriptor(
+        role="button",
+        name="Skip",
+        exact=True,
+        suggested_testid="chat-clarifying-question-skip-button",
+        description="Skip action of the Ask User card; the same button reads 'Continue' once an option is picked.",
+    )
+
+    def get_conversation_unread_badge(self, conversation_id: str | int):
+        """The unread/waiting dot inside conversation *conversation_id*'s list row."""
+        return self.CONVERSATION_UNREAD_BADGE.within(self.get_conversation_item(conversation_id))
+
+    def get_clarify_text(self, text: str):
+        """Question/option text element of the Ask User card."""
+        return self.CLARIFY_TEXT.within(self.page, text)
+
+    @action("Pick an option on the Ask User card and continue")
+    def answer_clarifying_question(self, option: str, timeout: int = 15000):
+        """Click *option* on the Ask User card, then Continue."""
+        opt = self.get_clarify_text(option)
+        opt.last.wait_for(state="visible", timeout=timeout)
+        opt.last.click()
+        expect(self.clarify_continue_button).to_be_enabled(timeout=timeout)
+        self.clarify_continue_button.click()
