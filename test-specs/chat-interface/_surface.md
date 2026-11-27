@@ -1630,6 +1630,14 @@ on DEV.** Three load-bearing findings this pass:
 - `platform-banner-close` must be dismissed first (modal intercepts clicks). Participant picker item testid `agents-menu-item-agent-<pid>-<agent_id>`.
 - Fixtures R7385* (agent/toolkits) are created via `ToolkitAPI.create_toolkit(..."openapi", {spec, selected_tools, openapi_configuration})` + `AgentAPI.create_agent_full` + `PATCH /elitea_core/tool/...` link; token-auth clients work with `[]` cookies.
 
+## Leave a running chat 4 ways + New response dot (ELITEA-4954, 2026-11-27)
+
+- Sidebar testids: `sidebar-new-chat-button`, `sidebar-toggle`, `sidebar-explore` -> `sidebar-explore-{agents,pipelines,skills,toolkits,mcps,applications,credentials}`; Artifacts is a plain link (no testid, href `/app/<pid>/artifacts`).
+- New chat: URL `/app/chat`, composer enabled at once, 0 dialogs/DELETE while a run continues. Browser Back from `/app/agents` returns to `/chat/<A>`.
+- Sidebar is COLLAPSED (no `chat-conversation-item-*`) on /chat reached from Artifacts and while on Agents/Artifacts: click `sidebar-toggle` to see rows.
+- Dot: `chat-list-item-unread-badge` in A's row, `data-reason="new_response"`, `aria-label="New response"` (no `[role=tooltip]` headless); clears when A opens and stays gone. Source `ConversationRunIndicator.jsx`.
+- Participant row count + `switch_participant_button` text must be awaited before send, else the message goes to a plain chat (no tool chips).
+
 ## New chat + send-and-switch race (ELITEA-4956, 2026-11-27)
 - New chat button is now `sidebar-new-chat-button` (`/app/chat?create=1`); `ChatPage.click_create_new_conversation` uses the older `sidebar-create-button` and timed out on DEV today (verify before reuse).
 - `#<agent name>` in the empty composer opens a "SEARCH RESULTS" panel (no testids; row text = agent name + "Agent"); clicking the name text sets the participant (`switch_participant_button`). `get_by_role("option")` matches nothing there.

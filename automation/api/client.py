@@ -507,6 +507,16 @@ class ConversationAPI:
                 return bool(row.get("has_running_task"))
         raise LookupError(f"conversation {conversation_id} not in the first 100 list rows")
 
+    def wait_until_run_ended(self, conversation_id: int, timeout_s: float = 90.0, interval_s: float = 1.0) -> None:
+        """Poll ``has_running_task`` until False; AssertionError after *timeout_s* (ELITEA-4954)."""
+        import time
+
+        deadline = time.monotonic() + timeout_s
+        while self.has_running_task(conversation_id):
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"conversation {conversation_id} still has a running task after {timeout_s}s")
+            time.sleep(interval_s)  # API-oracle poll interval, not a UI wait
+
     def stop_running_task(self, conversation_id: int) -> bool:
         """Stop the conversation's in-flight run, if any (best-effort teardown helper, ELITEA-4955).
 

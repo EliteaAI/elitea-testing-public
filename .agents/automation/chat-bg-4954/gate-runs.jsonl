@@ -1,0 +1,3 @@
+{"run":1,"verdict":"green","spec":"tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py::TestLeaveRunningChatNewResponseDot","result":"pass","env":"APP_PREFIX=/app HEADLESS=true"}
+{"run":2,"verdict":"green","spec":"tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py::TestLeaveRunningChatNewResponseDot","result":"pass","env":"APP_PREFIX=/app HEADLESS=true"}
+{"run":3,"verdict":"green","spec":"tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py::TestLeaveRunningChatNewResponseDot","result":"pass","env":"APP_PREFIX=/app HEADLESS=true"}

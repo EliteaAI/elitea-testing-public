@@ -1,0 +1,92 @@
+{
+  "batch": "chat-bg-4954",
+  "base": "origin/main",
+  "pr_unit": "trunk",
+  "integration_branch": "tests/batch-chat-bg-4954",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "by": "lead",
+    "note": "Workflow gate red 1/3 (raced /agents -> /agents/all redirect in a URL assertion). Fixed in ea83e47b; lead re-gated 3 separate invocations on the trunk: 3/3 passed (66.2s, 67.4s, 67.3s).",
+    "specs": [
+      "tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py::TestLeaveRunningChatNewResponseDot::test_leave_running_chat_four_ways_then_new_response_dot"
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-4954",
+      "outcome": "automated",
+      "note": "reviewer APPROVED; lead gate 3/3 green on trunk",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Merging origin/main into the trunk conflicted in test-specs/chat-interface/_surface.md. The conflict was only append-vs-append between the 4953/4956 and 4954 sections. I kept both sides."
+        },
+        {
+          "kind": "note",
+          "note": "The lead's wording 'stop via COMPOSER_STOP_BUTTON hard-asserted' fits the teardown path and a failed-mid-run case. In the happy path the run ends by itself, so the Stop click only happens when the run is still going at teardown."
+        },
+        {
+          "kind": "note",
+          "note": "The case text's Setup creates its own toolkits and agent. The long_runner_agent fixture already does this with the same source files under test-data/chat-runs-continue, so the implementer need not duplicate it."
+        },
+        {
+          "kind": "defect",
+          "note": "Possible product defect in the #7385 New response dot. The 'finished' chat_run_status frame arrives while the user is on Artifacts, but A's row shows no dot when the user left A, pressed Back and went straight to Artifacts before A had finished reloading. The same flow with a wait for 'Agent is running...' after Back, or with New chat clicked before Artifacts, shows the dot. The frontend reducer s\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 5 says to open the chat list via New chat. On DEV the sidebar is collapsed right after arriving on /chat from Artifacts, then auto-expands within a few seconds (sidebar-toggle aria-label 'Collapse sidebar' means OPEN). expand_sidebar_list waits for rows first and clicks the toggle only if absent. The AFS says to click the toggle unconditionally, which would collapse an already-open sideb\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The tooltip 'New response' is asserted through the badge's aria-label and data-reason=new_response, because hover renders no tooltip in headless runs (as in the AFS). The worker env had no .env.test, so runs used APP_PREFIX=/app HEADLESS=true as shell env; .env.test beats shell env, which was not an issue here."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical ladder grep over `git diff main...tests/ELITEA-4954-leave-chat-four-ways-dot -- automation` for get_by_*/query_selector/page.locator/.locator(/.nth(/locator=/fallback= returned 0 hits. New descriptors are class-level. testid rung: sidebar-explore, sidebar-explore-agents. Ladder rungs with suggested_testid: sidebar_artifacts_link (role link + name), and two xpath text descriptors (the xp\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py:7458"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation case, AFS and diff: every case step 1-6 and the Pass criteria have an assertion at their step. Step 1 asserts running icon, tool chip and has_running_task. Steps 2-4 assert URL, composer enabled, and (via assert_left_cleanly) no dialog, no forbidden texts, no native dialog and no DELETE after each navigation. Step 5 asserts the badge with data-reason=new_response, aria-label \"New res\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The lead adjustments are applied. Fresh conversation A per run. long_runner_agent is reused. The test waits for switch_participant_button to show the agent name before sending. The URL is matched by regex. Only tool_call rows are counted. The teardown finalizer stops a running task before deleting, then logs leftovers. No goto or reload after the run starts."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text says tooltip \"New response\"; the test asserts the aria-label (headless renders no tooltip role). This is declared in the AFS, so it is acceptable.",
+          "ref": "test-specs/chat-interface/l1_leave-running-chat-four-ways-then-new-response-dot_ELITEA-4954.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: ConversationAPI.wait_until_run_ended uses time.sleep(1s) in a poll loop. It is an API oracle poll with a deadline, not a UI wait, and it is commented as such. `import time` sits inside the function. Fine to leave.",
+          "ref": "automation/api/client.py:510"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: expand_sidebar_list uses a 4 s try/except Exception grace wait (rows.first visible) before clicking sidebar-toggle. The broad except could mask a real error, and the 4 s is a fixed budget. Narrow it to PlaywrightTimeoutError if it flakes at the gate.",
+          "ref": "automation/pages/chat_page.py:7508"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: Step 4 adds an Axis-2 assertion that the agent-running indicator is visible after Back, so A is reopened still running. The AFS grounds it as live-observed, but the gate should confirm it is stable. Step 2 asserts the composer is enabled, but not that the new chat is empty (no messages); the case wording is \"empty chat\". Teardown step 5 checks only conversation A for leftovers, not the agent \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py:93"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l1_leave-running-chat-four-ways-then-new-response-dot_ELITEA-4954.md",
+      "branch": "tests/ELITEA-4954-leave-chat-four-ways-dot",
+      "pr": 3055
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": [],
+  "next": "Land trunk as one squash commit; back-write by CI."
+}
