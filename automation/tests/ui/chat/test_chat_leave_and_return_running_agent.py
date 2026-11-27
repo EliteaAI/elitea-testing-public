@@ -14,14 +14,12 @@ Markers: ui, chat, p0 (AFS l1 == TMS critical), regression.
 import logging
 import re
 import uuid
-from pathlib import Path
 
 import allure
 import pytest
 from playwright.sync_api import expect
 
-from api import AgentAPI, ConversationAPI, ToolkitAPI
-from api.client import _default_llm_settings
+from api import ConversationAPI
 from config import settings
 from pages.chat_page import ChatPage
 
@@ -29,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p0, pytest.mark.regression]
 
-_DATA_DIR = Path(__file__).resolve().parents[4] / "test-data" / "chat-runs-continue"
 _WORD = "SMK1"
 _MESSAGE = f"The word is {_WORD}."
 _EXPECTED_TOOLS = ["waitSeconds", "getPost", "waitSeconds", "getUser", "waitSeconds"]
@@ -42,59 +39,6 @@ def _unlink_quietly(fn, what: str) -> None:
         fn()
     except Exception as exc:  # cleanup must not mask the test verdict
         logger.warning("Cleanup failed for %s: %s", what, exc)
-
-
-@pytest.fixture
-def long_runner_agent(agent_api: AgentAPI, toolkit_api: ToolkitAPI):
-    """R7385LongRunner agent with the two OpenAPI toolkits linked; deleted afterwards."""
-    suffix = uuid.uuid4().hex[:6]
-    created_toolkits: list[int] = []
-    agent_id = None
-    try:
-        echo = toolkit_api.create_toolkit(
-            f"autotest_echo_{suffix}", "Postman Echo delay (ELITEA-4953)", "openapi",
-            {
-                "spec": (_DATA_DIR / "postman-echo-delay.openapi.yaml").read_text(),
-                "selected_tools": ["waitSeconds"],
-                "openapi_configuration": {"private": True, "elitea_title": ""},
-            },
-        )
-        created_toolkits.append(echo["id"])
-        jph = toolkit_api.create_toolkit(
-            f"autotest_jph_{suffix}", "JSONPlaceholder (ELITEA-4953)", "openapi",
-            {
-                "spec": (_DATA_DIR / "jsonplaceholder.openapi.yaml").read_text(),
-                "selected_tools": ["getPost", "getUser"],
-                "openapi_configuration": {"private": True, "elitea_title": ""},
-            },
-        )
-        created_toolkits.append(jph["id"])
-
-        llm = _default_llm_settings()
-        llm["reasoning_effort"] = "low"
-        name = f"autotest_runner_{suffix}"
-        agent = agent_api.create_agent_full({
-            "name": name,
-            "description": "Long-running fixture agent for ELITEA-4953",
-            "type": "interface",
-            "versions": [{
-                "name": "base", "tags": [],
-                "instructions": (_DATA_DIR / "r7385-longrunner.instructions.md").read_text(),
-                "variables": [], "tools": [], "llm_settings": llm,
-                "conversation_starters": [], "agent_type": "openai", "welcome_message": "",
-                "meta": {"step_limit": 25},
-            }],
-        })
-        agent_id = agent["id"]
-        version_id = agent["version_details"]["id"] if "version_details" in agent else agent["versions"][0]["id"]
-        toolkit_api.link_toolkit_to_agent(echo["id"], agent_id, version_id, ["waitSeconds"])
-        toolkit_api.link_toolkit_to_agent(jph["id"], agent_id, version_id, ["getPost", "getUser"])
-        yield {"id": agent_id, "name": name}
-    finally:
-        if agent_id is not None:
-            _unlink_quietly(lambda: agent_api.delete_agent(agent_id), f"agent {agent_id}")
-        for tid in created_toolkits:
-            _unlink_quietly(lambda t=tid: toolkit_api.delete_toolkit(t), f"toolkit {tid}")
 
 
 @pytest.fixture
