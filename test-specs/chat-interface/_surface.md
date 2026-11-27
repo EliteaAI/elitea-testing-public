@@ -1629,3 +1629,9 @@ on DEV.** Three load-bearing findings this pass:
 - `message_traces/prompt_lib/{pid}/{conv}` -> `{total, rows}`; 5 `tool_call` + 1 `thinking_step`.
 - `platform-banner-close` must be dismissed first (modal intercepts clicks). Participant picker item testid `agents-menu-item-agent-<pid>-<agent_id>`.
 - Fixtures R7385* (agent/toolkits) are created via `ToolkitAPI.create_toolkit(..."openapi", {spec, selected_tools, openapi_configuration})` + `AgentAPI.create_agent_full` + `PATCH /elitea_core/tool/...` link; token-auth clients work with `[]` cookies.
+
+## New chat + send-and-switch race (ELITEA-4956, 2026-11-27)
+- New chat button is now `sidebar-new-chat-button` (`/app/chat?create=1`); `ChatPage.click_create_new_conversation` uses the older `sidebar-create-button` and timed out on DEV today (verify before reuse).
+- `#<agent name>` in the empty composer opens a "SEARCH RESULTS" panel (no testids; row text = agent name + "Agent"); clicking the name text sets the participant (`switch_participant_button`). `get_by_role("option")` matches nothing there.
+- One `page.evaluate` clicking `chat-send-button` then `chat-conversation-item-<B>` completes in ~30 ms: URL stays on B, new row `chat-conversation-item-<newid>` gets `chat-list-item-running-icon` (aria-label "Generating…"), generated title (e.g. `Word SMK4.`), run ends ~40 s with `RUN-DONE SMK4`, 5 tool_call traces.
+- No `.env.test` on this host -> `APP_PREFIX` empty -> 404 page; run with `APP_PREFIX=/app`. venv lacks pytest-rerunfailures (use `-o addopts=""` for probes).
