@@ -28,8 +28,7 @@ def _unlink_quietly(fn, what: str) -> None:
 def stop_and_delete_conversation(conversation_api, cid) -> None:
     """Best-effort teardown of one conversation: stop a still-running task first, then delete (never raises)."""
     try:
-        if conversation_api.has_running_task(int(cid)):  # test failed midway: stop the run first
-            conversation_api.stop_running_task(int(cid))
+        conversation_api.stop_running_task(int(cid))  # no-op unless a run is streaming (test failed midway)
     except Exception as exc:  # cleanup must not mask the test verdict
         logger.warning("Could not stop the run of conversation %s: %s", cid, exc)
     _unlink_quietly(lambda: conversation_api.delete_conversation(cid), f"conversation {cid}")
