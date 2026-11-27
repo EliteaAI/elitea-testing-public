@@ -35,6 +35,16 @@ def _unlink_quietly(fn, what: str) -> None:
         logger.warning("Cleanup failed for %s: %s", what, exc)
 
 
+def _stop_and_delete(conversation_api: ConversationAPI, cid) -> None:
+    """Best-effort teardown of one conversation: stop a still-running task first, then delete."""
+    try:
+        if conversation_api.has_running_task(int(cid)):  # test failed midway: stop the run first
+            conversation_api.stop_running_task(int(cid))
+    except Exception as exc:  # cleanup must not mask the test verdict
+        logger.warning("Could not stop the run of conversation %s: %s", cid, exc)
+    _unlink_quietly(lambda: conversation_api.delete_conversation(cid), f"conversation {cid}")
+
+
 @pytest.fixture
 def two_run_conversations(conversation_api: ConversationAPI, long_runner_agent):
     """Fresh conversations A and C, each with the agent pre-attached by API; both deleted afterwards."""
@@ -47,7 +57,13 @@ def two_run_conversations(conversation_api: ConversationAPI, long_runner_agent):
         yield str(a), str(c)
     finally:
         for cid in (a, c):
-            _unlink_quietly(lambda x=cid: conversation_api.delete_conversation(x), f"conversation {cid}")
+            _stop_and_delete(conversation_api, cid)
+        try:  # Teardown step 5: none of them may still be listed (limit=100 listing)
+            for cid in (a, c):
+                if conversation_api.has_conversation(int(cid)):
+                    logger.warning("Teardown leftover: conversation %s is still listed", cid)
+        except Exception as exc:  # the check must not mask the test verdict
+            logger.warning("Teardown leftover check failed: %s", exc)
 
 
 @allure.epic("Chat")
@@ -97,6 +113,8 @@ class TestTwoChatsRunStopOneLeavesOther:
             chat.get_composer_stop_button().click()
             expect(chat.get_composer_stop_button()).to_have_count(0, timeout=UI_TIMEOUT)
             expect(chat.get_conversation_running_icon(conv_c)).to_have_count(0, timeout=UI_TIMEOUT)
+            # C's row gets no dot (no unread/waiting badge) after the stop, while still on C
+            expect(chat.get_conversation_unread_badge(conv_c)).to_have_count(0)
             task_deletes = [u for u in delete_requests if "/task/" in u]
             assert len(task_deletes) == 1, f"expected exactly one DELETE /task, got {task_deletes}"
             assert task_deletes[0].rstrip("/").endswith(f"/{c_run_uuid}"), (
@@ -119,6 +137,8 @@ class TestTwoChatsRunStopOneLeavesOther:
             expect(page).to_have_url(re.compile(rf"/chat/{conv_a}(\?|$)"), timeout=UI_TIMEOUT)
             expect(chat.get_agent_running_indicator()).to_be_visible(timeout=UI_TIMEOUT)
             expect(chat.get_composer_stop_button()).to_have_count(1, timeout=UI_TIMEOUT)
+            # ...and C's row still shows no dot once the user has moved to A
+            expect(chat.get_conversation_unread_badge(conv_c)).to_have_count(0)
 
         with allure.step("Step 4 — Wait for A to end: answer RUN-DONE SMK5A, A never deleted"):
             expect(chat.get_conversation_running_icon(conv_a)).to_have_count(0, timeout=RUN_CEILING_MS)
