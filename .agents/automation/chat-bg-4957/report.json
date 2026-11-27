@@ -1,0 +1,4 @@
+{"batch":"chat-bg-4957","base":"main","pr_unit":"trunk","integration_branch":"tests/batch-chat-bg-4957",
+"gate":{"verdict":"green","runs":3,"seconds":[64.8,63.5,63.2],"failures":[]},
+"cases":[{"id":"ELITEA-4957","outcome":"automated","note":"Reviewed APPROVED (fresh session); merge agent failed on haiku 403, lead merged the unit branch by hand; lead's 3x DEV gate green with APP_PREFIX=/app.","afs":"test-specs/chat-interface/l1_two-chats-run-stop-one-leaves-other_ELITEA-4957.md","branch":"tests/ELITEA-4957-two-chats-stop-one","findings":[{"kind":"clarification","note":"Case step 2 'C row gets no dot' not asserted (no stable handle); spec asserts C running icon count 0."},{"kind":"note","note":"Fixture teardown does not stop a still-running run before deleting conversations."}]}],
+"totals":{"automated":1}}

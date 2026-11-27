@@ -12,11 +12,11 @@
 > Neighbour: ELITEA-4953 (`automation/tests/ui/chat/test_chat_leave_and_return_running_agent.py`, merged to main) shares the
 > fixtures (`long_runner_agent`, `two_conversations`), page object and flow. It proves a DIFFERENT observable
 > (row-click leave and return, spinner, steps), so this is NOT `already-covered`/`extend-existing`: new spec,
-> reusing the fixtures (move the two fixtures to `automation/fixtures/` or import them; implementer decides, see Notes).
+> reusing the fixtures (fixtures now live in `automation/fixtures/chat_run_fixtures.py`).
 > No known defect (#7763 is not hit: no mid-run return to A is asserted; final chips read `<toolkit>: <tool>` after the end).
 
 ## Fixtures
-Exactly as ELITEA-4953 AFS (self-provisioned: 2 OpenAPI toolkits + R7385LongRunner agent linked, unique `autotest_` names, torn down).
+Reuse `long_runner_agent` from `automation/fixtures/chat_run_fixtures.py` (merged to origin/main; registered in conftest). Never use an `R7385*` fixture. Fresh conversation A per run (unique `autotest_run_A_<sfx>`).
 Conversation A: fresh `create_conversation` (no clearing needed). **B is NOT needed** by this case (case text's "idle conversation B" is unused by steps 1-6); do not create it.
 Message: `The word is SMK2.`; expected final first line `RUN-DONE SMK2`.
 Env note: the run needs `APP_PREFIX=/app` and the API clients need the storage-state cookies (the normal fixtures provide them).
@@ -72,3 +72,12 @@ Env note: the run needs `APP_PREFIX=/app` and the API clients need the storage-s
 - Do not wait for badge while on Agents/Artifacts (list not rendered).
 - Local env note: this host has no `.env.test`; `APP_PREFIX=/app` and `HEADLESS=true` were passed as shell env.
 - TMS file: `chat/chat-runs-continue-in-background/ELITEA-4954_leave-a-running-chat-for-new-chat-agents-browser-back-and-ar.md`.
+
+## Lead adjustments applied (#3048 / #3052, binding)
+- Reuse `long_runner_agent`; create conversation A in a fixture/finalizer-owned scope; no B.
+- Before send: wait `chat-switch-participant-button` shows the agent name (hard wait, not sleep).
+- Stop handle = `ChatPage.COMPOSER_STOP_BUTTON` (icon button, no testid), NOT `chat-inject-button` ("send to running agent"). Used for teardown stop (hard-asserted when clicked).
+- URL match `/chat/<id>(\?|$)` (the `?name=` suffix is appended). Back lands on `/chat(/|$)`.
+- Expand "Thought for ..." (`chat-answer-thought-accordion`, inner `button[aria-expanded]`) before counting chips; in the API oracle count only `kind == tool_call` rows of `message_traces` (a `thinking_step` row also exists).
+- Teardown step 1: finalizer, if `has_running_task(A)` is true, stops the run first (`DELETE .../elitea_core/task/<uuid>` with uuid from the LAST `chat_run_status` "running" frame, or click Stop), then deletes A. Step 5: after deletes, check no created conversation/agent/toolkit is still listed; log leftovers, never change the verdict.
+- Dot is browser-held: return to list via New chat -> `sidebar-toggle`, never goto/reload.

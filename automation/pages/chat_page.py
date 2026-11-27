@@ -4,6 +4,7 @@ Provides locators and methods for interacting with chat conversations,
 message input, participants, and chat settings.
 """
 
+import json
 import logging
 import re
 import time
@@ -7287,11 +7288,92 @@ class ChatPage(BasePage):
         row.click()
         expect(self.agents_search_input).to_be_hidden(timeout=timeout)
 
+    new_chat_button = LocatorDescriptor(
+        testid="sidebar-new-chat-button",
+        description="Sidebar 'New chat' button (opens /chat?create=1 with an empty composer). ELITEA-4956",
+    )
+
+    HASH_SEARCH_RESULT_BY_NAME = ScopedLocator(
+        xpath="//*[normalize-space(text())='{}']",
+        suggested_testid="chat-hash-search-result-item-{}",
+        description=(
+            "Row of the '#' search-results panel, matched by the (run-unique) agent name; rungs 1-4 fail: "
+            "the row has no testid, role or label. Resolved page-wide while the panel is open."
+        ),
+    )
+
+    SEND_BUTTON_SELECTOR = '[data-testid="chat-send-button"]'
+
+    @action("Start a new chat and select an agent via '#' search")
+    def start_new_chat_with_agent_by_hash(self, agent_name: str, timeout: int = 15000):
+        """New chat -> type '#<agent name>' -> pick the row; the agent becomes the participant."""
+        self.new_chat_button.wait_for(state="visible", timeout=timeout)
+        self.new_chat_button.click()
+        self.message_input.wait_for(state="visible", timeout=timeout)
+        self.message_input.click()
+        self.message_input.press_sequentially(f"#{agent_name}")
+        result = self.HASH_SEARCH_RESULT_BY_NAME.within(self.page, agent_name)
+        result.first.wait_for(state="visible", timeout=timeout)
+        result.first.click()
+        expect(self.switch_participant_button).to_contain_text(agent_name, timeout=timeout)
+
+    def get_running_conversation_rows(self):
+        """List rows that currently show the running spinner."""
+        return self.page.locator(self.CONVERSATION_ITEM_PREFIX).filter(
+            has=self.CONVERSATION_RUNNING_ICON.within(self.page)
+        )
+
+    def get_conversation_item_ids(self) -> set[str]:
+        """Ids of every conversation row currently rendered in the list."""
+        rows = self.page.locator(self.CONVERSATION_ITEM_PREFIX)
+        ids = set()
+        for i in range(rows.count()):
+            tid = rows.nth(i).get_attribute("data-testid") or ""
+            ids.add(tid.removeprefix("chat-conversation-item-"))
+        return ids
+
+    @action("Click Send and a conversation row in one browser task")
+    def send_and_open_conversation_at_once(self, conversation_id: str | int):
+        """Click Send, then the row of *conversation_id*, inside ONE browser task (leaves before first chunk)."""
+        self.send_button.wait_for(state="visible", timeout=10000)
+        self.get_conversation_item(conversation_id).wait_for(state="visible", timeout=10000)
+        self.page.evaluate(
+            "([send, row]) => { document.querySelector(send).click(); document.querySelector(row).click(); }",
+            [self.SEND_BUTTON_SELECTOR, self.CONVERSATION_ITEM.format(conversation_id)],
+        )
+
     def start_recording_delete_requests(self) -> list[str]:
         """Record every outgoing DELETE request URL from now on; returns the live list."""
         urls: list[str] = []
         self.page.on("request", lambda r: urls.append(r.url) if r.method == "DELETE" else None)
         return urls
+
+    def start_recording_run_status_frames(self) -> list[dict]:
+        """Record every ``chat_run_status`` socket frame from now on; returns the live list (ELITEA-4957).
+
+        Each entry carries ``conversation_id``, ``message_group_uuid`` and ``status`` as sent by the server.
+        """
+        frames: list[dict] = []
+
+        def _on_frame(payload) -> None:
+            if not isinstance(payload, str) or "chat_run_status" not in payload:
+                return
+            try:
+                data = json.loads(payload[payload.index("["):])
+            except ValueError:
+                return
+            if isinstance(data, list) and len(data) > 1 and data[0] == "chat_run_status" and isinstance(data[1], dict):
+                frames.append(data[1])
+
+        self.page.on("websocket", lambda ws: ws.on("framereceived", _on_frame))
+        return frames
+
+    @action("Activate the attached agent participant in the open chat")
+    def activate_agent_participant(self, agent_name: str, timeout: int = 15000):
+        """Expand the participants panel, click the agent's row and wait until the composer chip shows it."""
+        self.expand_participants_panel_via_toggle()
+        self.get_participant_row_by_name(agent_name, timeout=timeout).click()
+        expect(self.switch_participant_button).to_contain_text(agent_name, timeout=timeout)
 
     def get_tool_chip_texts(self) -> list[str]:
         """Text of every currently rendered tool chip, in DOM order."""
@@ -7305,3 +7387,57 @@ class ChatPage(BasePage):
         if toggle.get_attribute("aria-expanded") != "true":
             toggle.click()
         expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Ask User clarifying-question card + "waiting" row dot (ELITEA-4955)
+    # ------------------------------------------------------------------
+
+    CONVERSATION_UNREAD_BADGE = ScopedLocator(
+        testid="chat-list-item-unread-badge",
+        description=(
+            "Row dot shown when a chat ended or asked something while not open; data-reason is 'waiting' "
+            "(tooltip 'Waiting for your answer') or 'newResponse'."
+        ),
+    )
+
+    CLARIFY_TEXT = ScopedLocator(
+        xpath="//*[normalize-space(text())='{}']",
+        suggested_testid="chat-clarifying-question-text-{}",
+        description=(
+            "Question or option text of the Ask User card (ClarifyingQuestionControl), matched by its exact "
+            "text; the card renders no testid, role or label (rungs 1-4 fail)."
+        ),
+    )
+
+    clarify_continue_button = LocatorDescriptor(
+        role="button",
+        name="Continue",
+        exact=True,
+        suggested_testid="chat-clarifying-question-continue-button",
+        description="Continue action of the Ask User card; shows as 'Skip' until an option is picked.",
+    )
+
+    clarify_skip_button = LocatorDescriptor(
+        role="button",
+        name="Skip",
+        exact=True,
+        suggested_testid="chat-clarifying-question-skip-button",
+        description="Skip action of the Ask User card; the same button reads 'Continue' once an option is picked.",
+    )
+
+    def get_conversation_unread_badge(self, conversation_id: str | int):
+        """The unread/waiting dot inside conversation *conversation_id*'s list row."""
+        return self.CONVERSATION_UNREAD_BADGE.within(self.get_conversation_item(conversation_id))
+
+    def get_clarify_text(self, text: str):
+        """Question/option text element of the Ask User card."""
+        return self.CLARIFY_TEXT.within(self.page, text)
+
+    @action("Pick an option on the Ask User card and continue")
+    def answer_clarifying_question(self, option: str, timeout: int = 15000):
+        """Click *option* on the Ask User card, then Continue."""
+        opt = self.get_clarify_text(option)
+        opt.last.wait_for(state="visible", timeout=timeout)
+        opt.last.click()
+        expect(self.clarify_continue_button).to_be_enabled(timeout=timeout)
+        self.clarify_continue_button.click()

@@ -303,7 +303,7 @@
     },
     "pages/chat_page.py::ChatPage.AGENT_RUNNING_INDICATOR": {
       "file": "pages/chat_page.py",
-      "line": 7242,
+      "line": 7243,
       "kind": "xpath",
       "selector": "//*[contains(normalize-space(text()), 'Agent is running')]",
       "suggested_testid": "chat-agent-running-indicator",
@@ -315,7 +315,7 @@
     },
     "pages/chat_page.py::ChatPage.AI_MESSAGE_LOGO": {
       "file": "pages/chat_page.py",
-      "line": 201,
+      "line": 202,
       "kind": "css",
       "selector": "img[alt=\"Elitea\"]",
       "suggested_testid": "chat-message-ai-author-marker",
@@ -325,9 +325,21 @@
       "updated": "2026-10-19",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.CLARIFY_TEXT": {
+      "file": "pages/chat_page.py",
+      "line": 7403,
+      "kind": "xpath",
+      "selector": "//*[normalize-space(text())='{}']",
+      "suggested_testid": "chat-clarifying-question-text-{}",
+      "description": "Question or option text of the Ask User card (ClarifyingQuestionControl), matched by its exact text; the card renders no testid, role or label (rungs 1-4 fail).",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.COMPOSER_STOP_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 177,
+      "line": 178,
       "kind": "xpath",
       "selector": "//*[@data-testid='chat-input']/ancestor::*[not(.//ul)]//button[not(@aria-label) and not(@data-testid) and not(normalize-space()) and .//*[local-name()='svg']]",
       "suggested_testid": "chat-stop-button",
@@ -339,7 +351,7 @@
     },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_DELETE_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 917,
+      "line": 918,
       "kind": "role",
       "selector": "button[name='Delete entity']",
       "suggested_testid": "generated-entity-chip-delete-button",
@@ -351,7 +363,7 @@
     },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_OPEN_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 911,
+      "line": 912,
       "kind": "role",
       "selector": "button[name='Open entity']",
       "suggested_testid": "generated-entity-chip-open-button",
@@ -379,9 +391,21 @@
         }
       ]
     },
+    "pages/chat_page.py::ChatPage.HASH_SEARCH_RESULT_BY_NAME": {
+      "file": "pages/chat_page.py",
+      "line": 7296,
+      "kind": "xpath",
+      "selector": "//*[normalize-space(text())='{}']",
+      "suggested_testid": "chat-hash-search-result-item-{}",
+      "description": "Row of the '#' search-results panel, matched by the (run-unique) agent name; rungs 1-4 fail: the row has no testid, role or label. Resolved page-wide while the panel is open.",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ATTENTION_CARD": {
       "file": "pages/chat_page.py",
-      "line": 7146,
+      "line": 7147,
       "kind": "xpath",
       "selector": "//div[@data-testid='chat-participant-warning-icon']/parent::*[contains(., '{}')]",
       "suggested_testid": "chat-participant-attention-card-{}",
@@ -393,7 +417,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_ICON_PATHS": {
       "file": "pages/chat_page.py",
-      "line": 7135,
+      "line": 7136,
       "kind": "css",
       "selector": "svg path",
       "suggested_testid": "chat-participant-icon-path",
@@ -405,7 +429,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_MENU_ITEM_SWITCH": {
       "file": "pages/chat_page.py",
-      "line": 214,
+      "line": 215,
       "kind": "role",
       "selector": "switch",
       "suggested_testid": "chat-plus-menu-participant-switch",
@@ -417,7 +441,7 @@
     },
     "pages/chat_page.py::ChatPage.PARTICIPANT_SECTION_TITLE": {
       "file": "pages/chat_page.py",
-      "line": 7124,
+      "line": 7125,
       "kind": "xpath",
       "selector": "//span[normalize-space(.)='{}' and not(ancestor::li) and ../preceding-sibling::*[local-name()='svg']]",
       "suggested_testid": "chat-participants-section-title-{}",
@@ -429,7 +453,7 @@
     },
     "pages/chat_page.py::ChatPage.STOP_BUTTON": {
       "file": "pages/chat_page.py",
-      "line": 160,
+      "line": 161,
       "kind": "xpath",
       "selector": "../../preceding-sibling::div[not(.//*[@data-testid])]//button",
       "suggested_testid": "chat-stop-button",
@@ -441,7 +465,7 @@
     },
     "pages/chat_page.py::ChatPage.THOUGHT_ACCORDION_TOGGLE": {
       "file": "pages/chat_page.py",
-      "line": 7251,
+      "line": 7252,
       "kind": "css",
       "selector": "button[aria-expanded]",
       "suggested_testid": "chat-answer-thought-accordion-toggle",
@@ -453,7 +477,7 @@
     },
     "pages/chat_page.py::ChatPage.USER_MESSAGE_AVATAR": {
       "file": "pages/chat_page.py",
-      "line": 1603,
+      "line": 1604,
       "kind": "xpath",
       "selector": ".//*[contains(@class, 'MuiAvatar-root')]",
       "suggested_testid": "chat-message-user-avatar",
@@ -463,9 +487,33 @@
       "updated": "2026-10-22",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.clarify_continue_button": {
+      "file": "pages/chat_page.py",
+      "line": 7412,
+      "kind": "role",
+      "selector": "button[name='Continue']",
+      "suggested_testid": "chat-clarifying-question-continue-button",
+      "description": "Continue action of the Ask User card; shows as 'Skip' until an option is picked.",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.clarify_skip_button": {
+      "file": "pages/chat_page.py",
+      "line": 7420,
+      "kind": "role",
+      "selector": "button[name='Skip']",
+      "suggested_testid": "chat-clarifying-question-skip-button",
+      "description": "Skip action of the Ask User card; the same button reads 'Continue' once an option is picked.",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.conversation_menu_all_items": {
       "file": "pages/chat_page.py",
-      "line": 1369,
+      "line": 1370,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "chat-conversation-menu-item-{}",
@@ -477,7 +525,7 @@
     },
     "pages/chat_page.py::ChatPage.conversation_menu_duplicate_item": {
       "file": "pages/chat_page.py",
-      "line": 1375,
+      "line": 1376,
       "kind": "role",
       "selector": "menuitem[name='Duplicate']",
       "suggested_testid": "chat-conversation-menu-duplicate-menuitem",
@@ -489,7 +537,7 @@
     },
     "pages/chat_page.py::ChatPage.conversation_menu_item_icon": {
       "file": "pages/chat_page.py",
-      "line": 1359,
+      "line": 1360,
       "kind": "css",
       "selector": "svg",
       "suggested_testid": "chat-conversation-menu-item-icon",
@@ -501,7 +549,7 @@
     },
     "pages/chat_page.py::ChatPage.export_chat_modal_option_radio": {
       "file": "pages/chat_page.py",
-      "line": 1342,
+      "line": 1343,
       "kind": "css",
       "selector": "input[type=\"radio\"]",
       "suggested_testid": "export-chat-modal-option-radio",
@@ -513,7 +561,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_items": {
       "file": "pages/chat_page.py",
-      "line": 1558,
+      "line": 1559,
       "kind": "role",
       "selector": "menuitem",
       "suggested_testid": "chat-folder-menu-item-{}",
@@ -525,7 +573,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_menu_new_chat_item": {
       "file": "pages/chat_page.py",
-      "line": 1564,
+      "line": 1565,
       "kind": "role",
       "selector": "menuitem[name='New chat']",
       "suggested_testid": "chat-folder-menu-new-chat-menuitem",
@@ -537,7 +585,7 @@
     },
     "pages/chat_page.py::ChatPage.folder_own_menu_button": {
       "file": "pages/chat_page.py",
-      "line": 1575,
+      "line": 1576,
       "kind": "xpath",
       "selector": ".//*[@data-testid=\"conversation-menu-menu-button\"][not(ancestor::*[starts-with(@data-testid, \"chat-conversation-item-\")])]",
       "suggested_testid": "chat-folder-menu-button",
@@ -549,7 +597,7 @@
     },
     "pages/chat_page.py::ChatPage.open_dialogs": {
       "file": "pages/chat_page.py",
-      "line": 7260,
+      "line": 7261,
       "kind": "role",
       "selector": "dialog",
       "suggested_testid": "chat-open-dialog",
@@ -561,7 +609,7 @@
     },
     "pages/chat_page.py::ChatPage.platform_banner_got_it_button": {
       "file": "pages/chat_page.py",
-      "line": 7083,
+      "line": 7084,
       "kind": "role",
       "selector": "button[name='Got it']",
       "suggested_testid": "platform-banner-got-it-button",
@@ -573,7 +621,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
       "file": "pages/chat_page.py",
-      "line": 7052,
+      "line": 7053,
       "kind": "role",
       "selector": "button[name='Discard']",
       "suggested_testid": "skill-canvas-discard-button",
@@ -585,7 +633,7 @@
     },
     "pages/chat_page.py::ChatPage.skill_canvas_save_button": {
       "file": "pages/chat_page.py",
-      "line": 7044,
+      "line": 7045,
       "kind": "role",
       "selector": "button[name='Save']",
       "suggested_testid": "skill-canvas-save-button",
@@ -597,7 +645,7 @@
     },
     "pages/chat_page.py::ChatPage.speaking_mode_button": {
       "file": "pages/chat_page.py",
-      "line": 1596,
+      "line": 1597,
       "kind": "role",
       "selector": "button[name='enter speaking mode']",
       "suggested_testid": "chat-speaking-mode-button",
@@ -609,7 +657,7 @@
     },
     "pages/chat_page.py::ChatPage.voice_input_button": {
       "file": "pages/chat_page.py",
-      "line": 1613,
+      "line": 1614,
       "kind": "role",
       "selector": "button[name='start voice input']",
       "suggested_testid": "chat-voice-input-button",
@@ -1762,21 +1810,21 @@
   },
   "last_sync": "2026-11-27",
   "metric": {
-    "declared_total": 1560,
-    "declared_testid": 1415,
-    "declared_non_testid": 145,
-    "non_testid_with_hint": 124,
+    "declared_total": 1567,
+    "declared_testid": 1418,
+    "declared_non_testid": 149,
+    "non_testid_with_hint": 128,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 37,
       "fallback": 20,
       "label": 2,
       "locator": 1,
-      "role": 50,
-      "testid": 1415,
-      "xpath": 35
+      "role": 52,
+      "testid": 1418,
+      "xpath": 37
     },
-    "locator_debt": 0.0929,
+    "locator_debt": 0.0951,
     "unmanaged_handles": 309
   }
 }
