@@ -174,6 +174,22 @@ class ChatPage(BasePage):
         ),
     )
 
+    COMPOSER_STOP_BUTTON = ScopedLocator(
+        xpath=(
+            "//*[@data-testid='chat-input']/ancestor::*"
+            "[not(.//ul)]"
+            "//button[not(@aria-label) and not(@data-testid) and not(normalize-space()) and .//*[local-name()='svg']]"
+        ),
+        suggested_testid="chat-stop-button",
+        description=(
+            "Stop-generation icon button next to 'Agent is running…' (UserInput.jsx BaseBtn + StopIcon). Unlike "
+            "chat_inject_button it is shown for every streaming run, injectable or not. xpath because rungs 1-4 "
+            "fail: icon-only, no aria-label (Tooltip title not forwarded), no testid. Resolved among the ancestors "
+            "of the composer input that do not contain the messages list (`ul`), i.e. only the composer box, as an "
+            "unlabelled, testid-less, text-less svg button."
+        ),
+    )
+
     # AI-authored message marker — resolved inside a messages_container <li>
     # (ELITEA-2876/2878). AI messages render <BrandLogo> as <img alt="Elitea">
     # in their header (ApplicationAnswerHeader.jsx); user messages render a
@@ -1887,6 +1903,25 @@ class ChatPage(BasePage):
         """
         item = self.interjection_queue_item.nth(index)
         return item.locator(self.INTERJECTION_QUEUE_ITEM_ATTACHMENT_SELECTOR).count()
+
+    TOOL_CHIP_SELECTOR = '[data-testid="chat-answer-tool-chip"]'
+
+    @action("Wait until the rendered tool-chip count exceeds a baseline")
+    def wait_for_tool_chip_count_above(self, baseline: int, timeout: int = 90000):
+        """Condition-wait (no sleep) until more than *baseline* tool chips are rendered."""
+        self.page.wait_for_function(
+            "([sel, n]) => document.querySelectorAll(sel).length > n",
+            arg=[self.TOOL_CHIP_SELECTOR, baseline],
+            timeout=timeout,
+        )
+
+    def get_participant_rows(self):
+        """All participant rows of the (expanded) Participants panel."""
+        return self.page.locator(self.PARTICIPANT_ROW_PREFIX)
+
+    def get_composer_stop_button(self):
+        """The icon-only Stop button shown while a run streams (injectable or not)."""
+        return self.COMPOSER_STOP_BUTTON.within(self.page)
 
     def click_stop(self, timeout: int = 5000):
         """Click the Stop-generation control (see ``STOP_BUTTON``'s declaration docstring).
@@ -7194,3 +7229,79 @@ class ChatPage(BasePage):
         expect(row).to_have_count(1, timeout=timeout)
         row.click()
         expect(self.skills_search_input).to_be_hidden(timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Leave / return to a running agent chat (ELITEA-4953)
+    # ------------------------------------------------------------------
+
+    CONVERSATION_RUNNING_ICON = ScopedLocator(
+        testid="chat-list-item-running-icon",
+        description="Row spinner (aria-label 'Generating…') inside a conversation list row while a run is active.",
+    )
+
+    AGENT_RUNNING_INDICATOR = ScopedLocator(
+        xpath="//*[contains(normalize-space(text()), 'Agent is running')]",
+        suggested_testid="chat-agent-running-indicator",
+        description=(
+            "'Agent is running…' bubble shown in an open chat while its run is active; no testid on DEV. "
+            "xpath because rungs 1-4 fail: plain text node beside a MUI progressbar, no role/label/stable css."
+        ),
+    )
+
+    THOUGHT_ACCORDION_TOGGLE = ScopedLocator(
+        css="button[aria-expanded]",
+        suggested_testid="chat-answer-thought-accordion-toggle",
+        description=(
+            "Expand/collapse button of the Thought accordion (aria-expanded carries state); resolved inside "
+            "answer_thought_accordion. The accordion re-opens collapsed after leaving and returning."
+        ),
+    )
+
+    open_dialogs = LocatorDescriptor(
+        role="dialog",
+        suggested_testid="chat-open-dialog",
+        description=(
+            "Any open MUI dialog (role=dialog). Used only to assert that NO confirmation dialog appears when "
+            "leaving a running chat; the platform banner dialog must be dismissed first."
+        ),
+    )
+
+    def get_conversation_running_icon(self, conversation_id: str | int):
+        """The running spinner inside conversation *conversation_id*'s list row."""
+        return self.CONVERSATION_RUNNING_ICON.within(self.get_conversation_item(conversation_id))
+
+    def get_agent_running_indicator(self):
+        """The 'Agent is running…' bubble locator (page-wide)."""
+        return self.AGENT_RUNNING_INDICATOR.within(self.page)
+
+    @action("Add an agent participant by id via the plus menu")
+    def add_agent_participant_by_id(self, project_id: str | int, agent_id: str | int, name: str, timeout: int = 10000):
+        """Plus menu -> Agents -> search *name* -> click the row for *agent_id*."""
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.agents_menuitem.click()
+        self.agents_search_input.wait_for(state="visible", timeout=timeout)
+        self.agents_search_input.fill(name)
+        row = self.page.locator(self.AGENT_PARTICIPANT_MENU_ITEM.format(project_id, agent_id))
+        row.wait_for(state="visible", timeout=timeout)
+        row.click()
+        expect(self.agents_search_input).to_be_hidden(timeout=timeout)
+
+    def start_recording_delete_requests(self) -> list[str]:
+        """Record every outgoing DELETE request URL from now on; returns the live list."""
+        urls: list[str] = []
+        self.page.on("request", lambda r: urls.append(r.url) if r.method == "DELETE" else None)
+        return urls
+
+    def get_tool_chip_texts(self) -> list[str]:
+        """Text of every currently rendered tool chip, in DOM order."""
+        chips = self.answer_tool_chip
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    @action("Expand the Thought accordion if collapsed")
+    def expand_thought_accordion(self, timeout: int = 10000):
+        toggle = self.THOUGHT_ACCORDION_TOGGLE.within(self.answer_thought_accordion)
+        toggle.wait_for(state="visible", timeout=timeout)
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click()
+        expect(toggle).to_have_attribute("aria-expanded", "true", timeout=timeout)
