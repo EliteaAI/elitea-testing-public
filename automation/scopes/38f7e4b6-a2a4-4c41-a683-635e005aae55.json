@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "session": "38f7e4b6-a2a4-4c41-a683-635e005aae55",
+  "intent": "automation",
+  "batch": "chat-bg-4957",
+  "cases": [
+    "ELITEA-4957"
+  ],
+  "declaredAt": "2026-11-27T12:51:19.288Z",
+  "updatedAt": "2026-11-27T13:41:11.142Z",
+  "outcomes": {
+    "ELITEA-4957": {
+      "outcome": "automated",
+      "at": "2026-11-27T13:41:11.103Z"
+    }
+  },
+  "closedAt": "2026-11-27T13:41:11.142Z"
+}
