@@ -349,6 +349,30 @@
       "updated": "2026-11-27",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.FORBIDDEN_LEAVE_TEXT_STILL_GENERATING": {
+      "file": "pages/chat_page.py",
+      "line": 7486,
+      "kind": "xpath",
+      "selector": "//*[contains(normalize-space(text()), 'Output is still generating')]",
+      "suggested_testid": "chat-leave-guard-generating-text",
+      "description": "Leave-guard text that must never appear when leaving a running chat. xpath because rungs 1-4 fail: plain text node, no testid/role/label. ELITEA-4954",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.FORBIDDEN_LEAVE_TEXT_STILL_IN_PROGRESS": {
+      "file": "pages/chat_page.py",
+      "line": 7480,
+      "kind": "xpath",
+      "selector": "//*[contains(normalize-space(text()), 'Response generation is still in progress')]",
+      "suggested_testid": "chat-leave-guard-in-progress-text",
+      "description": "Leave-guard text that must never appear when leaving a running chat. xpath because rungs 1-4 fail: plain text node, no testid/role/label. ELITEA-4954",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.GENERATED_ENTITY_CHIP_DELETE_BUTTON": {
       "file": "pages/chat_page.py",
       "line": 918,
@@ -629,6 +653,18 @@
       "state": "raw",
       "added": "2026-10-20",
       "updated": "2026-10-20",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.sidebar_artifacts_link": {
+      "file": "pages/chat_page.py",
+      "line": 7472,
+      "kind": "role",
+      "selector": "link[name='Artifacts']",
+      "suggested_testid": "sidebar-artifacts-link",
+      "description": "Left-menu 'Artifacts' link (href .../artifacts); unique in the sidebar. ELITEA-4954",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
       "history": []
     },
     "pages/chat_page.py::ChatPage.skill_canvas_discard_button": {
@@ -1822,21 +1858,21 @@
   },
   "last_sync": "2026-11-27",
   "metric": {
-    "declared_total": 1568,
-    "declared_testid": 1418,
-    "declared_non_testid": 150,
-    "non_testid_with_hint": 129,
+    "declared_total": 1573,
+    "declared_testid": 1420,
+    "declared_non_testid": 153,
+    "non_testid_with_hint": 132,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 37,
       "fallback": 20,
       "label": 2,
       "locator": 1,
-      "role": 53,
-      "testid": 1418,
-      "xpath": 37
+      "role": 54,
+      "testid": 1420,
+      "xpath": 39
     },
-    "locator_debt": 0.0957,
+    "locator_debt": 0.0973,
     "unmanaged_handles": 309
   }
 }

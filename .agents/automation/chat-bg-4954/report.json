@@ -4,26 +4,19 @@
   "pr_unit": "trunk",
   "integration_branch": "tests/batch-chat-bg-4954",
   "gate": {
-    "verdict": "red",
-    "runs": 0,
-    "seconds": [
-      181.3
-    ],
-    "failures": [
-      {
-        "spec": "tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py::TestLeaveRunningChatNewResponseDot::test_leave_running_chat_four_ways_then_new_response_dot",
-        "signature": "playwright TimeoutError: Locator.wait_for: Timeout 15000ms exceeded, waiting for get_by_test_id(\"chat-message-input\") to be visible; raised in ChatPage.navigate_to_chat -> wait_for_page_load (pages/chat_page.py:1675/1721) while navigating to chat in the test setup. The 2 reruns failed the same way (1 failed, 2 rerun in 178.65s). The log also showed 'Missing elitea-staging_auth_session cookie' at s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
-        "case_ids": [
-          "ELITEA-4954"
-        ]
-      }
+    "verdict": "green",
+    "runs": 3,
+    "by": "lead",
+    "note": "Workflow gate red 1/3 (raced /agents -> /agents/all redirect in a URL assertion). Fixed in ea83e47b; lead re-gated 3 separate invocations on the trunk: 3/3 passed (66.2s, 67.4s, 67.3s).",
+    "specs": [
+      "tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py::TestLeaveRunningChatNewResponseDot::test_leave_running_chat_four_ways_then_new_response_dot"
     ]
   },
   "cases": [
     {
       "id": "ELITEA-4954",
-      "outcome": "blocked",
-      "note": "gate red: playwright TimeoutError: Locator.wait_for: Timeout 15000ms exceeded, waiting for get_by_test_id(\"chat-message-input\") to be visible; raised in ChatPage.navigate_to_chat -> wait_for_page_load (pages/ch",
+      "outcome": "automated",
+      "note": "reviewer APPROVED; lead gate 3/3 green on trunk",
       "findings": [
         {
           "kind": "note",
@@ -39,11 +32,11 @@
         },
         {
           "kind": "defect",
-          "note": "Possible product defect in the #7385 New response dot. The 'finished' chat_run_status frame arrives while the user is on Artifacts, but A's row shows no dot when the user left A, pressed Back and went straight to Artifacts before A had finished reloading. The same flow with a wait for 'Agent is running...' after Back, or with New chat clicked before Artifacts, shows the dot. The frontend reducer s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Possible product defect in the #7385 New response dot. The 'finished' chat_run_status frame arrives while the user is on Artifacts, but A's row shows no dot when the user left A, pressed Back and went straight to Artifacts before A had finished reloading. The same flow with a wait for 'Agent is running...' after Back, or with New chat clicked before Artifacts, shows the dot. The frontend reducer s\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "clarification",
-          "note": "Case step 5 says to open the chat list via New chat. On DEV the sidebar is collapsed right after arriving on /chat from Artifacts, then auto-expands within a few seconds (sidebar-toggle aria-label 'Collapse sidebar' means OPEN). expand_sidebar_list waits for rows first and clicks the toggle only if absent. The AFS says to click the toggle unconditionally, which would collapse an already-open sideb… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Case step 5 says to open the chat list via New chat. On DEV the sidebar is collapsed right after arriving on /chat from Artifacts, then auto-expands within a few seconds (sidebar-toggle aria-label 'Collapse sidebar' means OPEN). expand_sidebar_list waits for rows first and clicks the toggle only if absent. The AFS says to click the toggle unconditionally, which would collapse an already-open sideb\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
@@ -51,12 +44,12 @@
         },
         {
           "kind": "note",
-          "note": "Mechanical ladder grep over `git diff main...tests/ELITEA-4954-leave-chat-four-ways-dot -- automation` for get_by_*/query_selector/page.locator/.locator(/.nth(/locator=/fallback= returned 0 hits. New descriptors are class-level. testid rung: sidebar-explore, sidebar-explore-agents. Ladder rungs with suggested_testid: sidebar_artifacts_link (role link + name), and two xpath text descriptors (the xp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Mechanical ladder grep over `git diff main...tests/ELITEA-4954-leave-chat-four-ways-dot -- automation` for get_by_*/query_selector/page.locator/.locator(/.nth(/locator=/fallback= returned 0 hits. New descriptors are class-level. testid rung: sidebar-explore, sidebar-explore-agents. Ladder rungs with suggested_testid: sidebar_artifacts_link (role link + name), and two xpath text descriptors (the xp\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/pages/chat_page.py:7458"
         },
         {
           "kind": "note",
-          "note": "Triangulation case, AFS and diff: every case step 1-6 and the Pass criteria have an assertion at their step. Step 1 asserts running icon, tool chip and has_running_task. Steps 2-4 assert URL, composer enabled, and (via assert_left_cleanly) no dialog, no forbidden texts, no native dialog and no DELETE after each navigation. Step 5 asserts the badge with data-reason=new_response, aria-label \"New res… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+          "note": "Triangulation case, AFS and diff: every case step 1-6 and the Pass criteria have an assertion at their step. Step 1 asserts running icon, tool chip and has_running_task. Steps 2-4 assert URL, composer enabled, and (via assert_left_cleanly) no dialog, no forbidden texts, no native dialog and no DELETE after each navigation. Step 5 asserts the badge with data-reason=new_response, aria-label \"New res\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
         },
         {
           "kind": "note",
@@ -79,7 +72,7 @@
         },
         {
           "kind": "note",
-          "note": "Nit: Step 4 adds an Axis-2 assertion that the agent-running indicator is visible after Back, so A is reopened still running. The AFS grounds it as live-observed, but the gate should confirm it is stable. Step 2 asserts the composer is enabled, but not that the new chat is empty (no messages); the case wording is \"empty chat\". Teardown step 5 checks only conversation A for leftovers, not the agent … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "note": "Nit: Step 4 adds an Axis-2 assertion that the agent-running indicator is visible after Back, so A is reopened still running. The AFS grounds it as live-observed, but the gate should confirm it is stable. Step 2 asserts the composer is enabled, but not that the new chat is empty (no messages); the case wording is \"empty chat\". Teardown step 5 checks only conversation A for leftovers, not the agent \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
           "ref": "automation/tests/ui/chat/test_chat_leave_running_chat_new_response_dot.py:93"
         }
       ],
@@ -89,10 +82,11 @@
     }
   ],
   "totals": {
-    "blocked": 1
+    "automated": 1
   },
   "quality_flags": [],
   "quota_halted": false,
   "expected_red": [],
-  "parked": []
+  "parked": [],
+  "next": "Land trunk as one squash commit; back-write by CI."
 }
