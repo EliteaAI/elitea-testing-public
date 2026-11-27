@@ -414,14 +414,17 @@ class ConversationAPI:
             return f"{base}/{conversation_id}"
         return base
 
-    def list_conversations(self) -> dict:
+    def list_conversations(self, limit: Optional[int] = None) -> dict:
         """Return ``{"total": int, "rows": [...]}``.
+
+        ``limit`` (optional) is sent as the ``limit`` query param — the API pages ungrouped chats by 10
+        by default. Omitted, the request is unchanged.
 
         Raises ``requests.HTTPError`` on non-2xx status.
         """
         url = self._conversations_url()
-        logger.debug("LIST conversations %s", url)
-        resp = self._session.get(url)
+        logger.debug("LIST conversations %s limit=%s", url, limit)
+        resp = self._session.get(url, params={"limit": limit} if limit is not None else None)
         _raise_for_status(resp)
         return resp.json()
 

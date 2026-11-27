@@ -65,3 +65,9 @@ None new. (#7763 chip tool-name loss is not in this case's expectations; do not 
 - 90 s ceiling on the run wait; test total ~70 s.
 - Prefer a family-free separate spec file; reuse 4953's agent fixture (relocate into `automation/fixtures/` shared by both).
 - Pytest markers: ui, chat, p0, regression; TMS pair `ELITEA-4956` + allure.issue to the case file blob URL.
+
+## Adjustment — class D (teardown hygiene, issue #3050)
+No expected-result or step changes. Teardown only:
+- `idle_conversation_b` finalizer stops a still-running task (`has_running_task` -> `stop_running_task`) on B and on the UI-created chat(s) before deleting; best-effort, never masks the verdict.
+- After the deletes, each created conversation is checked with `has_conversation`; leftovers are logged as warnings only. Agent/toolkit leftovers stay with `_warn_leftovers`.
+- The new-chat sweep lists with `limit=100` (`ConversationAPI.list_conversations(limit=None)` gained an optional param; default behaviour unchanged) — the API pages ungrouped chats by 10, so the new chat could be missed.
