@@ -1635,3 +1635,8 @@ on DEV.** Three load-bearing findings this pass:
 - `#<agent name>` in the empty composer opens a "SEARCH RESULTS" panel (no testids; row text = agent name + "Agent"); clicking the name text sets the participant (`switch_participant_button`). `get_by_role("option")` matches nothing there.
 - One `page.evaluate` clicking `chat-send-button` then `chat-conversation-item-<B>` completes in ~30 ms: URL stays on B, new row `chat-conversation-item-<newid>` gets `chat-list-item-running-icon` (aria-label "Generating…"), generated title (e.g. `Word SMK4.`), run ends ~40 s with `RUN-DONE SMK4`, 5 tool_call traces.
 - No `.env.test` on this host -> `APP_PREFIX` empty -> 404 page; run with `APP_PREFIX=/app`. venv lacks pytest-rerunfailures (use `-o addopts=""` for probes).
+
+## Two concurrent runs + Stop isolation (ELITEA-4957, 2026-11-27)
+- Two chats can run at once: both rows show `chat-list-item-running-icon`. Stop in C -> one `DELETE /elitea_core/task/prompt_lib/<pid>/<C message_group_uuid>`; C icon + Stop gone, A icon stays, `has_running_task` A True / C False. Socket `chat_run_status` frames carry `conversation_id`, `message_group_uuid`, `status` (running/stopped).
+- `ChatPage.add_agent_participant_by_id` timed out on DEV today for a 2nd conversation (picker: "No agents found" for the run-unique agent; empty search lists 39). Workaround: API-attach participant (`POST .../participants/prompt_lib/{pid}/{conv}`, list body, entity_name application) then click `chat-participant-row-*` to ACTIVATE until `chat-switch-participant-button` shows the name; unactivated send goes to the default assistant (no run).
+- No testid found for the "New response" dot on a list row (row contains `conversation-multi-user-icon`, `conversation-menu-menu-button`).
