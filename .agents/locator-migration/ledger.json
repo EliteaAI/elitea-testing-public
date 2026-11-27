@@ -325,6 +325,18 @@
       "updated": "2026-10-19",
       "history": []
     },
+    "pages/chat_page.py::ChatPage.CLARIFY_TEXT": {
+      "file": "pages/chat_page.py",
+      "line": 7403,
+      "kind": "xpath",
+      "selector": "//*[normalize-space(text())='{}']",
+      "suggested_testid": "chat-clarifying-question-text-{}",
+      "description": "Question or option text of the Ask User card (ClarifyingQuestionControl), matched by its exact text; the card renders no testid, role or label (rungs 1-4 fail).",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
     "pages/chat_page.py::ChatPage.COMPOSER_STOP_BUTTON": {
       "file": "pages/chat_page.py",
       "line": 178,
@@ -473,6 +485,30 @@
       "state": "raw",
       "added": "2026-10-22",
       "updated": "2026-10-22",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.clarify_continue_button": {
+      "file": "pages/chat_page.py",
+      "line": 7412,
+      "kind": "role",
+      "selector": "button[name='Continue']",
+      "suggested_testid": "chat-clarifying-question-continue-button",
+      "description": "Continue action of the Ask User card; shows as 'Skip' until an option is picked.",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
+      "history": []
+    },
+    "pages/chat_page.py::ChatPage.clarify_skip_button": {
+      "file": "pages/chat_page.py",
+      "line": 7420,
+      "kind": "role",
+      "selector": "button[name='Skip']",
+      "suggested_testid": "chat-clarifying-question-skip-button",
+      "description": "Skip action of the Ask User card; the same button reads 'Continue' once an option is picked.",
+      "state": "raw",
+      "added": "2026-11-27",
+      "updated": "2026-11-27",
       "history": []
     },
     "pages/chat_page.py::ChatPage.conversation_menu_all_items": {
@@ -1774,21 +1810,21 @@
   },
   "last_sync": "2026-11-27",
   "metric": {
-    "declared_total": 1563,
-    "declared_testid": 1417,
-    "declared_non_testid": 146,
-    "non_testid_with_hint": 125,
+    "declared_total": 1567,
+    "declared_testid": 1418,
+    "declared_non_testid": 149,
+    "non_testid_with_hint": 128,
     "non_testid_without_hint": 21,
     "by_kind": {
       "css": 37,
       "fallback": 20,
       "label": 2,
       "locator": 1,
-      "role": 50,
-      "testid": 1417,
-      "xpath": 36
+      "role": 52,
+      "testid": 1418,
+      "xpath": 37
     },
-    "locator_debt": 0.0934,
+    "locator_debt": 0.0951,
     "unmanaged_handles": 309
   }
 }
