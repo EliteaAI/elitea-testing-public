@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Confirm set-as-default in the confirmation dialog — Locator.wait_for: Error: strict mode violation: get_by_test_id("toast-message") resolved to 2 elements:
+    1) <div data-testid="toast-message" class="MuiBox-root css-1sn4tny">Version "ver_1" created</div> aka get_by_text("Version \"ver_1\" created")
+    2) <div data-testid="toast-message" class="MuiBox-root css-1sn4tny">Default version has been set successfully</div> aka get_by_text("Default version has been set")
+
+Call log:
+  - waiting for get_by_test_id("toast-message") to be visible

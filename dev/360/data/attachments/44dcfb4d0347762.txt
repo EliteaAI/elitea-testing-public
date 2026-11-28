@@ -1,0 +1,21 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Upload skill file — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skills-import-button")
+
+ERROR    elitea.steps:actions.py:49 Step failed: Import skill from file — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skills-import-button")
+ERROR    elitea.steps:actions.py:49 Step failed: Upload skill file — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skills-import-button")
+
+ERROR    elitea.steps:actions.py:49 Step failed: Import skill from file — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skills-import-button")
+ERROR    elitea.steps:actions.py:49 Step failed: Upload skill file — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skills-import-button")
+
+ERROR    elitea.steps:actions.py:49 Step failed: Import skill from file — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("skills-import-button")

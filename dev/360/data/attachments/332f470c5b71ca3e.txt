@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Restore chat from history — Page.wait_for_url: Timeout 15000ms exceeded.
+=========================== logs ===========================
+waiting for navigation until "load"
+  navigated to "https://dev.elitea.ai/app/skills/all/1240?panel=test"
+  navigated to "https://dev.elitea.ai/app/skills/all/1240?panel=test&run=1936"
+============================================================

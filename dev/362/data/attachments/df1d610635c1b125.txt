@@ -1,0 +1,1 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to agents list — Page.wait_for_load_state: Timeout 10000ms exceeded.

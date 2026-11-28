@@ -1,0 +1,3 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Filter skills by tag — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"tags-panel-chip-formatting\"]")

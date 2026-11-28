@@ -1,0 +1,1 @@
+WARNING  tests.ui.settings.test_set_llm_model_default_high_low_tier:test_set_llm_model_default_high_low_tier.py:243 Cleanup: Low-tier tier started UNSET on the shared project and the MUI dropdown offers no clear/blank option -- cannot restore to unset via the UI (AFS Cleanup). Left at whatever this test set it to.

@@ -1,0 +1,1 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Toggle skill pin via detail menu — Page.expect_response: Timeout 10000ms exceeded while waiting for event "response"

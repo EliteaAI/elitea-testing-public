@@ -1,0 +1,4 @@
+WARNING  elitea.pages.chat:chat_page.py:1609 Timeout waiting for AI response. Copy button seen: False, Current text: I'm ready to help copy a message, but I don't see the actual message content in your request. Could you please:
+Paste the message you'd like me to copy, or
+Specify the source (e.g., a file, a previous
+WARNING  elitea.pages.chat:chat_page.py:1609 Timeout waiting for AI response. Copy button seen: False, Current text: Thought for less than a second

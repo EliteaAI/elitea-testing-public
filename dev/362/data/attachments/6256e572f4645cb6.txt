@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Add sensitive tool — Locator.wait_for: Error: strict mode violation: locator("p.MuiTypography-root:text-is(\"jira\")") resolved to 2 elements:
+    1) <p class="MuiTypography-root MuiTypography-body2 css-1igejnw">jira</p> aka get_by_text("jira").first
+    2) <p class="MuiTypography-root MuiTypography-body2 css-1igejnw">jira</p> aka get_by_role("paragraph").filter(has_text="jira")
+
+Call log:
+  - waiting for locator("p.MuiTypography-root:text-is(\"jira\")") to be visible

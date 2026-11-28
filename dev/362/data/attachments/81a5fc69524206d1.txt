@@ -1,0 +1,92 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Activate the attached agent participant in the open chat — Locator expected to contain text 'autotest_runner_c12e7b'
+Actual value: None
+Error: element(s) not found 
+Call log:
+  - Expect "to_contain_text" get_by_test_id("chat-switch-participant-button") with timeout 15000ms
+  - waiting for get_by_test_id("chat-switch-participant-button")
+
+Aria snapshot:
+- navigation "side-bar":
+  - button "Collapse sidebar"
+  - img
+  - separator
+  - 'combobox "P Project: Private"'
+  - img
+  - separator
+  - button "New chat":
+    - img
+    - text: New chat
+  - navigation "Main":
+    - listitem:
+      - link "Artifacts":
+        - /url: /app/573/artifacts
+        - img
+        - text: Artifacts
+    - listitem:
+      - button "Explore":
+        - img
+        - text: Explore
+  - separator
+  - region "Chats":
+    - text: Chats
+    - button "Search chats":
+      - img
+    - button "Create folder"
+    - button "Import chat":
+      - img
+    - button "Today" [expanded]:
+      - img
+      - heading "Today" [level=6]
+    - button "autotest_run_C_5deada":
+      - link "autotest_run_C_5deada":
+        - /url: /app/573/chat/2018?name=autotest_run_C_5deada
+    - button "autotest_run_A_5deada Generating…":
+      - link "autotest_run_A_5deada Generating…":
+        - /url: /app/573/chat/2017?name=autotest_run_A_5deada
+        - text: autotest_run_A_5deada
+        - progressbar:
+          - img
+    - status
+  - link "Settings":
+    - /url: /app/573/settings/project-general
+    - img
+    - text: Settings
+  - link "Help Center":
+    - /url: /app/573/help-center
+    - img
+  - button "Support Assistant"
+  - img
+- main:
+  - region "scrollable content":
+    - list
+  - 'textbox "Type your message… # for assistants"'
+  - button "attach files":
+    - img
+  - button "plus menu":
+    - img
+  - button "clear the chat" [disabled]
+  - button "Context 0% used":
+    - progressbar:
+      - img
+    - progressbar:
+      - img
+    - text: "0"
+  - button "start voice input":
+    - img
+  - button "enter speaking mode":
+    - img
+  - button "Anthropic Claude Haiku 5.5":
+    - img
+    - paragraph: Anthropic Claude Haiku 5.5
+    - img
+  - button "model settings menu"
+  - text: Participants
+  - button:
+    - img
+  - img
+  - text: Agents autotest_runner_c12e7b base
+  - button "Edit agent"
+  - button "Remove agent"
+- button "Support Assistant":
+  - img
+- tooltip "autotest_runner_c12e7b"
